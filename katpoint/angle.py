@@ -1,6 +1,7 @@
 """ Replacement for ephem.Angle
 """
-import math
+
+import numpy
 from astropy import coordinates
 from astropy import units
 
@@ -28,10 +29,8 @@ def degrees(a):
     ----------
     a : An angle in hours as a float, an int or a sexagesimal string
     """
-    if type(a) is float:
-        return Angle(str(a) + 'd')
-    elif type(a) is int:
-        return Angle(str(float(a)) + 'd')
+    if type(a) is float or type(a) is int:
+        return Angle(str(numpy.rad2deg(a)) + 'd')
     else:
         return Angle(a + 'd')
 
@@ -42,9 +41,7 @@ def hours(a):
     ----------
     a : An angle in hours as a float, an int or a sexagesimal string
     """
-    if type(a) is float:
-        return Angle(str(a/15.0) + 'h')
-    elif type(a) is int:
-        return Angle(str(float(a)/15.0) + 'd')
+    if type(a) is float or type(a) is int:
+        return Angle(str(numpy.rad2deg(a/15.0)) + 'h')
     else:
         return Angle(a + 'h')
