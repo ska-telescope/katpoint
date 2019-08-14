@@ -39,11 +39,11 @@ class Galactic:
             # Parameters are a body.
             ra = args[0].ra
             dec = args[0].dec
-            epoch = epoch[0].epoch
-            fk5 = SkyCoord(ra=ra._a, dec=dec._a, epoch=epoch, frame='fk5')
-            lonlat = fk5.transform_to(Galactic)
-            lon = Angle(lonlat.l)
-            lat = Angle(lonlat.b)
+            epoch = args[0]._epoch
+            fk5 = SkyCoord(ra=ra._a, dec=dec._a, frame='fk5')
+            lonlat = fk5.transform_to('galactic')
+            self.lon = Angle(lonlat.l)
+            self.lat = Angle(lonlat.b)
         elif len(args) == 2:
             # Parameters are a pair of angles.
             self.lon = args[0]

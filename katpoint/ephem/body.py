@@ -17,13 +17,10 @@ class Body(object):
 class FixedBody(Body):
     def __init__(self):
         Body.__init__(self)
-        self._ra = 0.0
-        self._dec = 0.0
-        self._a_ra = 0.0
-        self._a_dec = 0.0
-        self._a_epoch = J2000
-    def compute(self, *args):
-        pass
+        self._epoch = J2000
+    def compute(self, *args, **kwargs):
+        self.ra = self._ra
+        self.dec = self._dec
 
 class Sun(Body):
     def __init__(self):
