@@ -5,19 +5,24 @@ from astropy.coordinates import SkyCoord
 from astropy.coordinates import FK5
 from astropy.coordinates import ICRS
 from astropy.coordinates import Galactic
+from astropy import units
+from astropy import coordinates
 
 from .angle import Angle
+from .constants import J2000
 
 class Equatorial:
-    def __init__(self, *args, epoch='2000'):
+    def __init__(self, *args, epoch=J2000):
         if len(args) == 1:
-            # Parameters are a body or an Equatorialor a Galactic.
+            # Parameters are a body or an Equatorial or a Galactic.
             if type(args[0]) == Equatorial:
                 self.ra = args[0].ra
                 self.dec = args[0].dec
                 self.epoch = epoch
             elif type(args[0]) == Galactic:
-                pass
+                radec = args[0].to_radec()
+                self.ra = radec[0]
+                self.dec = radec[1]
             else:
                 self.ra = args[0].ra
                 self.dec = args[0].dec
@@ -57,6 +62,7 @@ class Galactic:
     def to_radec(self):
         g = SkyCoord(l=self.lon._a, b=self.lat._a, frame='galactic')
         radec = g.transform_to(ICRS)
-        return Angle(radec.ra), Angle(radec.dec)
+        rah = coordinates.Angle(radec.ra, unit=units.hourangle)
+        return Angle(rah), Angle(radec.dec)
 
 
