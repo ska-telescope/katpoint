@@ -9,6 +9,7 @@ from astropy import units
 from astropy import coordinates
 
 from .angle import Angle
+from .angle import degrees
 from .constants import J2000
 
 class Equatorial:
@@ -18,7 +19,6 @@ class Equatorial:
             if type(args[0]) == Equatorial:
                 self.ra = args[0].ra
                 self.dec = args[0].dec
-                self.epoch = epoch
             elif type(args[0]) == Galactic:
                 radec = args[0].to_radec()
                 self.ra = radec[0]
@@ -26,13 +26,13 @@ class Equatorial:
             else:
                 self.ra = args[0].ra
                 self.dec = args[0].dec
-                self.epoch = epoch
         elif len(args) == 2:
             # Parameters are a pair of angles.
             self.ra = args[0]
             self.dec = args[1]
         else:
             raise runtimeError("wrong number of arguments")
+        self._epoch = epoch
 
     def get(self):
         return self.ra, self.dec
@@ -50,9 +50,9 @@ class Galactic:
             self.lon = Angle(lonlat.l)
             self.lat = Angle(lonlat.b)
         elif len(args) == 2:
-            # Parameters are a pair of angles.
-            self.lon = args[0]
-            self.lat = args[1]
+            # Parameters are a pair of floats.
+            self.lon = degrees(args[0])
+            self.lat = degrees(args[1])
         else:
             raise runtimeError("wrong number of arguments")
 
