@@ -28,6 +28,9 @@ class Angle(object):
     def __add__(self, a):
         return self._a.radian + a
 
+    def __radd__(self, a):
+        return self._a.radian + a
+
     def __sub__(self, a):
         return self._a.radian - a._a.radian
 
@@ -36,6 +39,9 @@ class Angle(object):
 
     def __mul__(self, a):
         return self._a.radian * a
+
+    def __neg__(self):
+        return -self._a.radian
 
     def __truediv__(self, a):
         return self._a.radian / a
@@ -63,6 +69,9 @@ class Angle(object):
 
     def sin(a):
         return np.sin(a._a.radian)
+
+    def tan(a):
+        return np.tan(a._a.radian)
 
     def __abs__(a):
         return np.abs(a._a.radian)
