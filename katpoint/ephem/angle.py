@@ -110,7 +110,7 @@ def hours(a):
 def separation(p1, p2):
     """ Separation between two positions. (tuples of Angles)
     """
-    c1 = coordinates.SkyCoord(p1[0], p1[1], frame='icrs')
-    c2 = coordinates.SkyCoord(p2[0], p2[1], frame='icrs')
+    c1 = coordinates.SkyCoord(p1[0]._a, p1[1]._a, frame='icrs')
+    c2 = coordinates.SkyCoord(p2[0]._a, p2[1]._a, frame='icrs')
     s = c1.separation(c2)
     return Angle(s)
