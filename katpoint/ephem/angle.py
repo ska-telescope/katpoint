@@ -1,4 +1,3 @@
-import math
 from astropy import units
 from astropy import coordinates
 
