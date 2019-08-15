@@ -10,19 +10,20 @@ from .angle import degrees
 from .angle import Angle
 from .date import Date
 from .date import now
+from .constants import J2000
 
 class Observer(object):
     """Represents a location
     """
     def __init__(self):
         self.date = now()
-        self.epoch = Date('2000/1/1 12:00:00')
+        self.epoch = J2000
         self.lon = degrees(0.0)
         self.lat = degrees(0.0)
         self.elevation = 0.0
         self.horizon = degrees(0.0)
         self.temp = 15.0
-        self.pressure = 1010.0
+        self.pressure = 0.0
 
     @property
     def lon(self):
