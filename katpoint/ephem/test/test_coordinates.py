@@ -7,6 +7,7 @@ from ephem import hours
 from ephem import Galactic
 from ephem import Equatorial
 from ephem import FixedBody
+from ephem import Observer
 
 class TestGalactic(unittest.TestCase):
     """Test for the Galactic class."""
@@ -26,7 +27,7 @@ class TestGalactic(unittest.TestCase):
         body = FixedBody()
         body._ra = ra
         body._dec = dec
-        body.compute()
+        body.compute(Observer())
         gal = Galactic(body)
         lonlat = gal.get()
         self.assertAlmostEqual(lonlat[0], 3.152913763)
