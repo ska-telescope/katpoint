@@ -24,8 +24,8 @@ class Equatorial:
                 self.ra = radec[0]
                 self.dec = radec[1]
             else:
-                self.ra = args[0].ra
-                self.dec = args[0].dec
+                self.ra = args[0].a_ra
+                self.dec = args[0].a_dec
         elif len(args) == 2:
             # Parameters are a pair of angles.
             self.ra = args[0]
@@ -42,8 +42,8 @@ class Galactic:
     def __init__(self, *args):
         if len(args) == 1:
             # Parameters are a body.
-            ra = args[0].ra
-            dec = args[0].dec
+            ra = args[0].a_ra
+            dec = args[0].a_dec
             epoch = args[0]._epoch
             fk5 = SkyCoord(ra=ra._a, dec=dec._a, frame='fk5')
             lonlat = fk5.transform_to('galactic')
