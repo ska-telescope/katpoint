@@ -24,5 +24,5 @@ class TestObserver(unittest.TestCase):
 
         #self.assertEqual(str(radec[0]), '12:59:07.12')
         #self.assertEqual(str(radec[1]), '58:26:58.6')
-        self.assertEqual(str(radec[0]), '12:59:06.1579')
-        self.assertEqual(str(radec[1]), '58:26:47.0605')
+        self.assertEqual(str(radec[0]), '12:59:06.16')
+        self.assertEqual(str(radec[1]), '58:26:47.1')

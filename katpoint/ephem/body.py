@@ -20,6 +20,7 @@ from astropy import coordinates
 from astropy import units
 
 from .constants import J2000
+from .angle import astropy_angle
 from .angle import degrees
 from .angle import Angle
 
@@ -30,25 +31,23 @@ class Body(object):
     def compute(self, obs, icrs):
 
         # Earth location
-        loc = EarthLocation(lon=obs._lon._a, lat=obs._lat._a,
-                height=obs.elevation)
+        loc = EarthLocation(lon=obs._lon.astropy_angle,
+                lat=obs._lat.astropy_angle, height=obs.elevation)
 
         # ICRS
-        rah = coordinates.Angle(icrs.ra, unit=units.hourangle)
-        self.a_ra = Angle(rah)
-        self.a_dec = Angle(icrs.dec)
+        self.a_ra = astropy_angle(icrs.ra, 'h')
+        self.a_dec = astropy_angle(icrs.dec)
 
         # ICRS to CIRS
         appt = icrs.transform_to(CIRS(obstime=obs.date._time))
-        rah = coordinates.Angle(appt.ra, unit=units.hourangle)
-        self.ra = Angle(rah)
-        self.dec = Angle(appt.dec)
+        self.ra = astropy_angle(appt.ra, 'h')
+        self.dec = astropy_angle(appt.dec)
 
         # ICRS to Az/El
         altaz = icrs.transform_to(AltAz(location=loc,
                 obstime=obs.date._time, pressure=obs.pressure))
-        self.az = Angle(altaz.az)
-        self.alt = Angle(altaz.alt)
+        self.az = astropy_angle(altaz.az)
+        self.alt = astropy_angle(altaz.alt)
 
 
 class FixedBody(Body):
@@ -56,7 +55,8 @@ class FixedBody(Body):
         Body.__init__(self)
 
     def compute(self, obs):
-        icrs = SkyCoord(ra=self._ra._a, dec=self._dec._a, frame='icrs')
+        icrs = SkyCoord(ra=self._ra.astropy_angle,
+                dec=self._dec.astropy_angle, frame='icrs')
         Body.compute(self, obs, icrs)
 
 class Sun(Body):
@@ -65,8 +65,7 @@ class Sun(Body):
         self.name = 'Sun'
 
     def compute(self, obs):
-        loc = EarthLocation(lat=obs._lat._a, lon=obs._lon._a,
-                height=obs.elevation)
+        loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
         moon = get_sun(obs.date._time)
         icrs = moon.transform_to(ICRS)
         Body.compute(self, obs, icrs)
@@ -78,8 +77,7 @@ class Moon(Body):
         self.name = 'Moon'
 
     def compute(self, obs):
-        loc = EarthLocation(lat=obs._lat._a, lon=obs._lon._a,
-                height=obs.elevation)
+        loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
         moon = get_moon(obs.date._time, loc)
         icrs = moon.transform_to(ICRS)
         Body.compute(self, obs, icrs)
@@ -97,8 +95,7 @@ class Planet(Body):
         self._name = name
 
     def compute(self, obs):
-        loc = EarthLocation(lat=obs._lat._a, lon=obs._lon._a,
-                height=obs.elevation)
+        loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
         with solar_system_ephemeris.set('builtin'):
             planet = get_body(self._name, obs.date._time, loc)
         icrs = planet.transform_to(ICRS)

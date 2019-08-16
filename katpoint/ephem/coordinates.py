@@ -8,7 +8,7 @@ from astropy.coordinates import Galactic
 from astropy import units
 from astropy import coordinates
 
-from .angle import Angle
+from .angle import astropy_angle
 from .angle import degrees
 from .constants import J2000
 
@@ -48,10 +48,11 @@ class Galactic:
             else:
                 ra = args[0].a_ra
                 dec = args[0].a_dec
-            fk5 = SkyCoord(ra=ra._a, dec=dec._a, frame='icrs')
+            fk5 = SkyCoord(ra=ra.astropy_angle, dec=dec.astropy_angle,
+                    frame='icrs')
             lonlat = fk5.transform_to('galactic')
-            self.lon = Angle(lonlat.l)
-            self.lat = Angle(lonlat.b)
+            self.lon = astropy_angle(lonlat.l)
+            self.lat = astropy_angle(lonlat.b)
         elif len(args) == 2:
             # Parameters are a pair of floats.
             self.lon = degrees(args[0])
@@ -63,9 +64,9 @@ class Galactic:
         return self.lon, self.lat
 
     def to_radec(self):
-        g = SkyCoord(l=self.lon._a, b=self.lat._a, frame='galactic')
+        g = SkyCoord(l=self.lon.astropy_angle, b=self.lat.astropy_angle,
+                frame='galactic')
         radec = g.transform_to(ICRS)
-        rah = coordinates.Angle(radec.ra, unit=units.hourangle)
-        return Angle(rah), Angle(radec.dec)
+        return astropy_angle(radec.ra, 'h'), astropy_angle(radec.dec)
 
 

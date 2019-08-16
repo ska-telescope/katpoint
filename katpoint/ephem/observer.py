@@ -9,7 +9,7 @@ from astropy import coordinates
 from astropy import units
 
 from .angle import degrees
-from .angle import Angle
+from .angle import astropy_angle
 from .date import Date
 from .date import now
 from .constants import J2000
@@ -65,18 +65,17 @@ class Observer(object):
     def sidereal_time(self):
         """Returns the sidereal time
         """
-        loc = (self.lon._a, self.lat._a)
-        t = Time(self.date._time, scale='utc', location=loc)
+        loc = (self.lon, self.lat)
+        t = Time(self.date._time, scale='ut1', location=loc)
         st = t.sidereal_time('mean')
         return Angle(st)
 
     def radec_of(self, az, alt):
         """Returns topocentric apparent RA, Dec
         """
-        loc = EarthLocation(lat=self._lat._a, lon=self._lon._a,
-                height=self.elevation)
-        altaz = AltAz(alt=alt._a, az=az._a, location=loc,
+        loc = EarthLocation(lat=self._lat.astropy_angle,
+                lon=self._lon.astropy_angle, height=self.elevation)
+        altaz = AltAz(alt=alt.astropy_angle, az=az.astropy_angle, location=loc,
                 obstime=self.date._time, pressure=self.pressure)
         radec = altaz.transform_to(CIRS)
-        rah = coordinates.Angle(radec.ra, unit=units.hourangle)
-        return Angle(rah), Angle(radec.dec)
+        return astropy_angle(radec.ra, 'h'), astropy_angle(radec.dec)

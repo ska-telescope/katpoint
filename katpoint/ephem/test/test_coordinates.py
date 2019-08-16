@@ -19,8 +19,8 @@ class TestGalactic(unittest.TestCase):
         lonlat = gal.get()
         self.assertAlmostEqual(lonlat[0], 0.177636329)
         self.assertAlmostEqual(lonlat[1], 0.704194621)
-        self.assertEqual(str(lonlat[0]), '10:10:40.123')
-        self.assertEqual(str(lonlat[1]), '40:20:50.567')
+        self.assertEqual(str(lonlat[0]), '10:10:40.1')
+        self.assertEqual(str(lonlat[1]), '40:20:50.6')
 
         ra = hours('10:10:40.123')
         dec = degrees('40:20:50.567')
@@ -30,8 +30,8 @@ class TestGalactic(unittest.TestCase):
         body.compute(Observer())
         gal = Galactic(body)
         lonlat = gal.get()
-        self.assertEqual(str(lonlat[0]), '180:38:55.1735')
-        self.assertEqual(str(lonlat[1]), '54:25:27.2027')
+        self.assertEqual(str(lonlat[0]), '180:38:55.2')
+        self.assertEqual(str(lonlat[1]), '54:25:27.2')
 
     def test_to_radec(self):
         l = degrees('10:10:40.123')
@@ -40,8 +40,8 @@ class TestGalactic(unittest.TestCase):
         radec = gal.to_radec()
         self.assertAlmostEqual(radec[0], 15.0 * 0.276394626)
         self.assertAlmostEqual(radec[1], 0.032872188)
-        self.assertEqual(str(radec[0]), '15:50:10.484')
-        self.assertEqual(str(radec[1]), '1:53:00.3754')
+        self.assertEqual(str(radec[0]), '15:50:10.48')
+        self.assertEqual(str(radec[1]), '1:53:00.4')
 
 
 class TestEquatorial(unittest.TestCase):
@@ -53,15 +53,15 @@ class TestEquatorial(unittest.TestCase):
         radec = equ.get()
         self.assertAlmostEqual(radec[0], 15.0 * 0.177636329)
         self.assertAlmostEqual(radec[1], 0.704194621)
-        self.assertEqual(str(radec[0]), '10:10:40.123')
-        self.assertEqual(str(radec[1]), '40:20:50.567')
+        self.assertEqual(str(radec[0]), '10:10:40.12')
+        self.assertEqual(str(radec[1]), '40:20:50.6')
 
         equ2 = Equatorial(equ)
         radec = equ2.get()
         self.assertAlmostEqual(radec[0], 15.0 * 0.177636329)
         self.assertAlmostEqual(radec[1], 0.704194621)
-        self.assertEqual(str(radec[0]), '10:10:40.123')
-        self.assertEqual(str(radec[1]), '40:20:50.567')
+        self.assertEqual(str(radec[0]), '10:10:40.12')
+        self.assertEqual(str(radec[1]), '40:20:50.6')
 
         l = degrees('10:10:40.123')
         b = degrees('40:20:50.567')
@@ -70,5 +70,5 @@ class TestEquatorial(unittest.TestCase):
         radec = equ3.get()
         self.assertAlmostEqual(radec[0], 15.0 * 0.276394626)
         self.assertAlmostEqual(radec[1], 0.032872188)
-        self.assertEqual(str(radec[0]), '15:50:10.484')
-        self.assertEqual(str(radec[1]), '1:53:00.3754')
+        self.assertEqual(str(radec[0]), '15:50:10.48')
+        self.assertEqual(str(radec[1]), '1:53:00.4')

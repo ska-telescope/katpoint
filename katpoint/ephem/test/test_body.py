@@ -28,8 +28,8 @@ class TestFixedBody(unittest.TestCase):
         body._dec = dec
         body.compute(obs)
 
-        self.assertEqual(str(body.a_ra), '10:10:40.123')
-        self.assertEqual(str(body.a_dec), '40:20:50.567')
+        self.assertEqual(str(body.a_ra), '10:10:40.12')
+        self.assertEqual(str(body.a_dec), '40:20:50.6')
 
         #self.assertEqual(str(body.ra), '10:11:51.77')
         #self.assertEqual(str(body.dec), '40:14:47.3')
@@ -37,9 +37,9 @@ class TestFixedBody(unittest.TestCase):
         #self.assertEqual(str(body.dec), '40:14:47.181')
 
         #self.assertEqual(str(body.az), '326:05:54.8')
-        self.assertEqual(str(body.az), '326:05:58.4284')
+        self.assertEqual(str(body.az), '326:05:58.4')
         #self.assertEqual(str(body.alt), '51:21:18.5')
-        self.assertEqual(str(body.alt), '51:21:20.5645')
+        self.assertEqual(str(body.alt), '51:21:20.6')
 
     def test_planet(self):
         obs = Observer()
@@ -56,8 +56,8 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '118:10:06.1')
         #self.assertEqual(str(body.alt), '27:23:13.3')
-        self.assertEqual(str(body.az), '118:10:04.6935')
-        self.assertEqual(str(body.alt), '27:23:11.9665')
+        self.assertEqual(str(body.az), '118:10:04.7')
+        self.assertEqual(str(body.alt), '27:23:12.0')
 
     def test_moon(self):
         obs = Observer()
@@ -74,8 +74,8 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '127:15:23.6')
         #self.assertEqual(str(body.alt), '60:05:13.7')
-        self.assertEqual(str(body.az), '127:15:45.1331')
-        self.assertEqual(str(body.alt), '60:05:17.8175')
+        self.assertEqual(str(body.az), '127:15:45.1')
+        self.assertEqual(str(body.alt), '60:05:17.8')
 
     def test_sun(self):
         obs = Observer()
@@ -92,5 +92,5 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '234:53:20.8')
         #self.assertEqual(str(body.alt), '31:38:09.4')
-        self.assertEqual(str(body.az), '234:53:18.9637')
-        self.assertEqual(str(body.alt), '31:38:12.2448')
+        self.assertEqual(str(body.az), '234:53:19.0')
+        self.assertEqual(str(body.alt), '31:38:12.2')
