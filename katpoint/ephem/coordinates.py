@@ -41,11 +41,14 @@ class Equatorial:
 class Galactic:
     def __init__(self, *args):
         if len(args) == 1:
-            # Parameters are a body.
-            ra = args[0].a_ra
-            dec = args[0].a_dec
-            epoch = args[0]._epoch
-            fk5 = SkyCoord(ra=ra._a, dec=dec._a, frame='fk5')
+            # Parameters are a body or an Equatorial.
+            if type(args[0]) == Equatorial:
+                ra = args[0].ra
+                dec = args[0].dec
+            else:
+                ra = args[0].a_ra
+                dec = args[0].a_dec
+            fk5 = SkyCoord(ra=ra._a, dec=dec._a, frame='icrs')
             lonlat = fk5.transform_to('galactic')
             self.lon = Angle(lonlat.l)
             self.lat = Angle(lonlat.b)
