@@ -65,10 +65,11 @@ class Observer(object):
     def sidereal_time(self):
         """Returns the sidereal time
         """
-        loc = (self.lon, self.lat)
-        t = Time(self.date._time, scale='ut1', location=loc)
+        loc = EarthLocation(lat=self._lat.astropy_angle,
+                lon=self._lon.astropy_angle, height=self.elevation)
+        t = Time(self.date._time, location=loc)
         st = t.sidereal_time('mean')
-        return Angle(st)
+        return astropy_angle(st, 'h')
 
     def radec_of(self, az, alt):
         """Returns topocentric apparent RA, Dec

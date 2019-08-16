@@ -26,3 +26,15 @@ class TestObserver(unittest.TestCase):
         #self.assertEqual(str(radec[1]), '58:26:58.6')
         self.assertEqual(str(radec[0]), '12:59:06.16')
         self.assertEqual(str(radec[1]), '58:26:47.1')
+
+    def test_sidereal_time(self):
+        """Test sidereal_time method"""
+        obs = Observer()
+        obs.lat = degrees('10:00:00.000')
+        obs.lon = degrees('80:00:00.000')
+        obs.date = Date('2020/1/1 10:00:00')
+
+        st = obs.sidereal_time()
+
+        #self.assertEqual(str(st), '22:02:06.79')
+        self.assertEqual(str(st), '22:02:07.55')
