@@ -9,6 +9,7 @@ pressure to zero so we compute apparent places instead.
 
 from astropy.coordinates import get_moon
 from astropy.coordinates import get_body
+from astropy.coordinates import get_sun
 from astropy.coordinates import EarthLocation
 from astropy.coordinates import solar_system_ephemeris
 from astropy.coordinates import CIRS
@@ -26,14 +27,18 @@ class Body(object):
     def __init__(self):
         self._epoch = J2000
 
-    def compute(self, obs):
-        self.a_ra  = self._ra
-        self.a_dec = self._dec
+    def compute(self, obs, icrs):
+
+        # Earth location
         loc = EarthLocation(lon=obs._lon._a, lat=obs._lat._a,
                 height=obs.elevation)
 
+        # ICRS
+        rah = coordinates.Angle(icrs.ra, unit=units.hourangle)
+        self.a_ra = Angle(rah)
+        self.a_dec = Angle(icrs.dec)
+
         # ICRS to CIRS
-        icrs = SkyCoord(ra=self.a_ra._a, dec=self.a_dec._a, frame='icrs')
         appt = icrs.transform_to(CIRS(obstime=obs.date._time))
         rah = coordinates.Angle(appt.ra, unit=units.hourangle)
         self.ra = Angle(rah)
@@ -51,7 +56,8 @@ class FixedBody(Body):
         Body.__init__(self)
 
     def compute(self, obs):
-        Body.compute(self, obs)
+        icrs = SkyCoord(ra=self._ra._a, dec=self._dec._a, frame='icrs')
+        Body.compute(self, obs, icrs)
 
 class Sun(Body):
     def __init__(self):
@@ -59,7 +65,12 @@ class Sun(Body):
         self.name = 'Sun'
 
     def compute(self, obs):
-        pass;
+        loc = EarthLocation(lat=obs._lat._a, lon=obs._lon._a,
+                height=obs.elevation)
+        moon = get_sun(obs.date._time)
+        icrs = moon.transform_to(ICRS)
+        Body.compute(self, obs, icrs)
+
 
 class Moon(Body):
     def __init__(self):
@@ -67,14 +78,11 @@ class Moon(Body):
         self.name = 'Moon'
 
     def compute(self, obs):
-        loc = EarthLocation(obs._lat._a, obs._lon._a, obs.elevation)
+        loc = EarthLocation(lat=obs._lat._a, lon=obs._lon._a,
+                height=obs.elevation)
         moon = get_moon(obs.date._time, loc)
-        cirs = moon.transform_to(CIRS)
-        self.a_ra = Angle(cirs.ra)
-        self.a_dec = Angle(cirs.dec)
         icrs = moon.transform_to(ICRS)
-        self.ra = Angle(icrs.ra)
-        self.dec = Angle(icrs.dec)
+        Body.compute(self, obs, icrs)
 
 class Earth(Body):
     def __init__(self):
@@ -89,15 +97,12 @@ class Planet(Body):
         self._name = name
 
     def compute(self, obs):
-        loc = EarthLocation(obs._lat._a, obs._lon._a, obs.elevation)
+        loc = EarthLocation(lat=obs._lat._a, lon=obs._lon._a,
+                height=obs.elevation)
         with solar_system_ephemeris.set('builtin'):
             planet = get_body(self._name, obs.date._time, loc)
-        cirs = planet.transform_to(CIRS)
-        self.a_ra = Angle(cirs.ra)
-        self.a_dec = Angle(cirs.dec)
         icrs = planet.transform_to(ICRS)
-        self.ra = Angle(icrs.ra)
-        self.dec = Angle(icrs.dec)
+        Body.compute(self, obs, icrs)
 
 class Mercury(Planet):
     def __init__(self):
