@@ -5,6 +5,8 @@ from astropy.time import Time
 from astropy.coordinates import CIRS
 from astropy.coordinates import AltAz
 from astropy.coordinates import EarthLocation
+from astropy import coordinates
+from astropy import units
 
 from .angle import degrees
 from .angle import Angle
@@ -71,8 +73,10 @@ class Observer(object):
     def radec_of(self, az, alt):
         """Returns topocentric apparent RA, Dec
         """
-        loc = EarthLocation(self._lat._a, self._lon._a, self.elevation)
-        altaz = AltAz(alt=az._a, az=alt._a, location=loc,
-                obstime=self.date._time)
+        loc = EarthLocation(lat=self._lat._a, lon=self._lon._a,
+                height=self.elevation)
+        altaz = AltAz(alt=alt._a, az=az._a, location=loc,
+                obstime=self.date._time, pressure=self.pressure)
         radec = altaz.transform_to(CIRS)
-        return Angle(radec.ra), Angle(radec.dec)
+        rah = coordinates.Angle(radec.ra, unit=units.hourangle)
+        return Angle(rah), Angle(radec.dec)

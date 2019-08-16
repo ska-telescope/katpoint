@@ -1,9 +1,22 @@
+"""Replacement for the pyephem body classes.
+
+We only implement ra, dec (CIRS), a_ra, a_dec (ICRS RA/dec) and alt, az
+(topcentric) as that is all that katpoint uses
+
+The real pyephem computes observed place but katpoint always sets the
+pressure to zero so we compute apparent places instead.
+"""
+
 from astropy.coordinates import get_moon
 from astropy.coordinates import get_body
 from astropy.coordinates import EarthLocation
 from astropy.coordinates import solar_system_ephemeris
 from astropy.coordinates import CIRS
 from astropy.coordinates import ICRS
+from astropy.coordinates import AltAz
+from astropy.coordinates import SkyCoord
+from astropy import coordinates
+from astropy import units
 
 from .constants import J2000
 from .angle import degrees
@@ -11,16 +24,34 @@ from .angle import Angle
 
 class Body(object):
     def __init__(self):
-        self.az = degrees(0.0)
-        self.alt = degrees(0.0)
+        self._epoch = J2000
+
+    def compute(self, obs):
+        self.a_ra  = self._ra
+        self.a_dec = self._dec
+        loc = EarthLocation(lon=obs._lon._a, lat=obs._lat._a,
+                height=obs.elevation)
+
+        # ICRS to CIRS
+        icrs = SkyCoord(ra=self.a_ra._a, dec=self.a_dec._a, frame='icrs')
+        appt = icrs.transform_to(CIRS(obstime=obs.date._time))
+        rah = coordinates.Angle(appt.ra, unit=units.hourangle)
+        self.ra = Angle(rah)
+        self.dec = Angle(appt.dec)
+
+        # ICRS to Az/El
+        altaz = icrs.transform_to(AltAz(location=loc,
+                obstime=obs.date._time, pressure=obs.pressure))
+        self.az = Angle(altaz.az)
+        self.alt = Angle(altaz.alt)
+
 
 class FixedBody(Body):
     def __init__(self):
         Body.__init__(self)
-        self._epoch = J2000
-    def compute(self, *args, **kwargs):
-        self.ra = self._ra
-        self.dec = self._dec
+
+    def compute(self, obs):
+        Body.compute(self, obs)
 
 class Sun(Body):
     def __init__(self):

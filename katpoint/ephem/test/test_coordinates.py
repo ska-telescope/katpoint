@@ -30,10 +30,8 @@ class TestGalactic(unittest.TestCase):
         body.compute(Observer())
         gal = Galactic(body)
         lonlat = gal.get()
-        self.assertAlmostEqual(lonlat[0], 3.152913763)
-        self.assertAlmostEqual(lonlat[1], 0.949881829)
-        self.assertEqual(str(lonlat[0]), '180:38:55.1466')
-        self.assertEqual(str(lonlat[1]), '54:25:27.1913')
+        self.assertEqual(str(lonlat[0]), '180:38:55.1735')
+        self.assertEqual(str(lonlat[1]), '54:25:27.2027')
 
     def test_to_radec(self):
         l = degrees('10:10:40.123')
