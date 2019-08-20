@@ -21,6 +21,7 @@ from astropy import units
 
 from .constants import J2000
 from .angle import astropy_angle
+from .angle import hours
 from .angle import degrees
 from .angle import Angle
 
@@ -28,7 +29,7 @@ class Body(object):
     def __init__(self):
         self._epoch = J2000
 
-    def compute(self, obs, icrs):
+    def _compute(self, obs, icrs):
 
         # Earth location
         loc = EarthLocation(lon=obs._lon.astropy_angle,
@@ -57,7 +58,10 @@ class FixedBody(Body):
     def compute(self, obs):
         icrs = SkyCoord(ra=self._ra.astropy_angle,
                 dec=self._dec.astropy_angle, frame='icrs')
-        Body.compute(self, obs, icrs)
+        Body._compute(self, obs, icrs)
+
+    def writedb(self):
+        return self.name + ',' + str(self._ra) + ',' + str(self._dec)
 
 class Sun(Body):
     def __init__(self):
@@ -68,7 +72,7 @@ class Sun(Body):
         loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
         moon = get_sun(obs.date._time)
         icrs = moon.transform_to(ICRS)
-        Body.compute(self, obs, icrs)
+        Body._compute(self, obs, icrs)
 
 
 class Moon(Body):
@@ -80,7 +84,7 @@ class Moon(Body):
         loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
         moon = get_moon(obs.date._time, loc)
         icrs = moon.transform_to(ICRS)
-        Body.compute(self, obs, icrs)
+        Body._compute(self, obs, icrs)
 
 class Earth(Body):
     def __init__(self):
@@ -99,7 +103,7 @@ class Planet(Body):
         with solar_system_ephemeris.set('builtin'):
             planet = get_body(self._name, obs.date._time, loc)
         icrs = planet.transform_to(ICRS)
-        Body.compute(self, obs, icrs)
+        Body._compute(self, obs, icrs)
 
 class Mercury(Planet):
     def __init__(self):
@@ -135,3 +139,21 @@ class Neptune(Planet):
     def __init__(self):
         Planet.__init__(self, 'neptune')
         self.name = 'Neptune'
+
+class EarthSatellite(Body):
+    def __init__(self, name):
+        self.name = name
+        Body.__init__(self)
+
+    def compute(self, obs):
+        self.a_ra = hours(0.0)
+        self.a_dec = degrees(0.0)
+        self.az = degrees(0.0)
+        self.alt = degrees(0.0)
+
+    def writedb(self):
+        return self.name + 'E,2000,0.0,0.0,1.0,1,1,1,1,1,1'
+
+
+def readtle(line1, line2, line3):
+    return EarthSatellite(line1)

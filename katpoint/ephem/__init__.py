@@ -14,9 +14,12 @@ from .body import Jupiter
 from .body import Saturn
 from .body import Neptune
 from .body import Uranus
+from .body import readtle
+from .stars import star
 from .constants import J2000
 from .constants import B1950
 from .constants import B1900
 from .constants import c
 from .coordinates import Equatorial
 from .coordinates import Galactic
+from .stars import readdb

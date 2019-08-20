@@ -82,7 +82,8 @@ class TestAntennaConstruction(unittest.TestCase):
     def test_local_sidereal_time(self):
         """Test sidereal time and the use of date/time strings vs floats as timestamps."""
         ant = katpoint.Antenna(self.valid_antennas[0])
-        utc_secs = time.mktime(time.strptime(self.timestamp, '%Y/%m/%d %H:%M:%S')) - time.timezone
+        #utc_secs = time.mktime(time.strptime(self.timestamp, '%Y/%m/%d %H:%M:%S')) - time.timezone
+        utc_secs = time.mktime(time.strptime(self.timestamp, '%Y/%m/%d %H:%M:%S')) + 3600.0
         sid1 = ant.local_sidereal_time(self.timestamp)
         sid2 = ant.local_sidereal_time(utc_secs)
         self.assertAlmostEqual(sid1, sid2, places=10, msg='Sidereal time differs for float and date/time string')
