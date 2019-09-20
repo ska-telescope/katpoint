@@ -68,7 +68,7 @@ class Observer(object):
         loc = EarthLocation(lat=self._lat.astropy_angle,
                 lon=self._lon.astropy_angle, height=self.elevation)
         t = Time(self.date._time, location=loc)
-        st = t.sidereal_time('mean')
+        st = t.sidereal_time('apparent')
         return astropy_angle(st, 'h')
 
     def radec_of(self, az, alt):

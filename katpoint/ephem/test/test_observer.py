@@ -37,4 +37,4 @@ class TestObserver(unittest.TestCase):
         st = obs.sidereal_time()
 
         #self.assertEqual(str(st), '22:02:06.79')
-        self.assertEqual(str(st), '22:02:07.55')
+        self.assertEqual(str(st), '22:02:06.58')
