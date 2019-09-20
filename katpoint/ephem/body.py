@@ -69,7 +69,8 @@ class Sun(Body):
         self.name = 'Sun'
 
     def compute(self, obs):
-        loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
+        loc = EarthLocation(lon=obs._lon.astropy_angle,
+                lat=obs._lat.astropy_angle, height=obs.elevation)
         moon = get_sun(obs.date._time)
         icrs = moon.transform_to(ICRS)
         Body._compute(self, obs, icrs)
@@ -81,7 +82,8 @@ class Moon(Body):
         self.name = 'Moon'
 
     def compute(self, obs):
-        loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
+        loc = EarthLocation(lon=obs._lon.astropy_angle,
+                lat=obs._lat.astropy_angle, height=obs.elevation)
         moon = get_moon(obs.date._time, loc)
         icrs = moon.transform_to(ICRS)
         Body._compute(self, obs, icrs)
@@ -99,7 +101,8 @@ class Planet(Body):
         self._name = name
 
     def compute(self, obs):
-        loc = EarthLocation(lat=obs._lat, lon=obs._lon, height=obs.elevation)
+        loc = EarthLocation(lon=obs._lon.astropy_angle,
+                lat=obs._lat.astropy_angle, height=obs.elevation)
         with solar_system_ephemeris.set('builtin'):
             planet = get_body(self._name, obs.date._time, loc)
         icrs = planet.transform_to(ICRS)

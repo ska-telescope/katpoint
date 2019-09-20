@@ -24,7 +24,7 @@ class TestObserver(unittest.TestCase):
 
         #self.assertEqual(str(radec[0]), '12:59:07.12')
         #self.assertEqual(str(radec[1]), '58:26:58.6')
-        self.assertEqual(str(radec[0]), '12:59:06.16')
+        self.assertEqual(str(radec[0]), '12:59:06.19')
         self.assertEqual(str(radec[1]), '58:26:47.1')
 
     def test_sidereal_time(self):
