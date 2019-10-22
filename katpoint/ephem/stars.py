@@ -110,9 +110,13 @@ Markab,f|S|B9,23:04:45.6|61.1,15:12:19|-42.56,2.49,2000,0
 
 stars = {}
 
+import numpy as np
+
 from .angle import hours
 from .angle import degrees
 from .body import FixedBody
+from .body import EarthSatellite
+from .date import Date
 
 def readdb(line):
     """Unpacks a line of an xephem catalogue and creates a star object.
@@ -120,17 +124,49 @@ def readdb(line):
     # Split line to fields
     fields = line.split(',')
 
-    # Extract the data we want
-    name = fields[0]
-    subfields = fields[2].split('|')
-    ra = subfields[0]
-    subfields = fields[3].split('|')
-    dec = subfields[0]
-    s = FixedBody()
-    s.name = name
-    s._ra = hours(ra)
-    s._dec = degrees(dec)
-    return s
+    if fields[1][0] == 'f':
+
+        # This is a fixed position
+        name = fields[0]
+        ra = fields[2].split('|')[0]
+        dec = fields[3].split('|')[0]
+        s = FixedBody()
+        s.name = name
+        s._ra = hours(ra)
+        s._dec = degrees(dec)
+        return s
+
+    elif fields[1][0] == 'E':
+        subfields = fields[2].split('|')
+
+        # This is an earth satellite.
+        e = EarthSatellite()
+        e.name = fields[0]
+        epoch = subfields[0].split('/')
+        yr = epoch[2]
+        mon = epoch[0]
+        h, day = np.modf(float(epoch[1]))
+        day = int(np.floor(day))
+        m, h = np.modf(h * 24.0)
+        h = int(np.floor(h))
+        s, m = np.modf(m * 60.0)
+        m = int(np.floor(m))
+        s = s * 60.0
+        e._epoch = Date('{0}/{1}/{2} {3:02d}:{4:02d}:{5}'.format(yr,mon,day,
+                h,m,s))
+        e._inc = degrees(np.deg2rad(float(fields[3])))
+        e._raan = degrees(np.deg2rad(float(fields[4])))
+        e._e = float(fields[5])
+        e._ap = degrees(np.deg2rad(float(fields[6])))
+        e._M = degrees(np.deg2rad(float(fields[7])))
+        e._n = float(fields[8])
+        e._decay = float(fields[9])
+        e._orbit = int(fields[10])
+        e._drag = float(fields[11])
+        return e
+
+    else:
+        raise ValueError('Bogus: ' + line)
 
 def build_stars():
     global stars
@@ -145,8 +181,3 @@ def star(name):
 build_stars()
 del build_stars
 
-#def star(name, *args, **kwargs):
-#    star = stars[name].copy()
-#    if args or kwargs:
-#        star.compute(*args, **kwargs)
-#    return star

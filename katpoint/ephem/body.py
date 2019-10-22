@@ -7,6 +7,8 @@ The real pyephem computes observed place but katpoint always sets the
 pressure to zero so we compute apparent places instead.
 """
 
+import copy
+
 from astropy.coordinates import get_moon
 from astropy.coordinates import get_body
 from astropy.coordinates import get_sun
@@ -16,14 +18,18 @@ from astropy.coordinates import CIRS
 from astropy.coordinates import ICRS
 from astropy.coordinates import AltAz
 from astropy.coordinates import SkyCoord
+from astropy.time import Time
+from astropy.time import TimeDelta
 from astropy import coordinates
 from astropy import units
+import numpy as np
 
 from .constants import J2000
 from .angle import astropy_angle
 from .angle import hours
 from .angle import degrees
 from .angle import Angle
+from .date import Date
 
 class Body(object):
     def __init__(self):
@@ -61,7 +67,7 @@ class FixedBody(Body):
         Body._compute(self, obs, icrs)
 
     def writedb(self):
-        return self.name + ',' + str(self._ra) + ',' + str(self._dec)
+        return '{0},f,{1},{2}'.format(self.name, self._ra, self._dec)
 
 class Sun(Body):
     def __init__(self):
@@ -144,8 +150,7 @@ class Neptune(Planet):
         self.name = 'Neptune'
 
 class EarthSatellite(Body):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self):
         Body.__init__(self)
 
     def compute(self, obs):
@@ -155,8 +160,64 @@ class EarthSatellite(Body):
         self.alt = degrees(0.0)
 
     def writedb(self):
-        return self.name + 'E,2000,0.0,0.0,1.0,1,1,1,1,1,1'
+        e = copy.deepcopy(self._epoch)
+        yr, mon, day, h, m, s = e.tuple()
+
+        # The epoch field contains 3 dates, the actual epoch and the range
+        # of valid dates which xepehm sets to +/- 100 days.
+        epoch0 = '{0}/{1}/{2}'.format(mon,
+                day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
+        e._time = e._time + TimeDelta(-100, format='jd')
+        yr, mon, day, h, m, s = e.tuple()
+        epoch1 = '{0}/{1:.6}/{2}'.format(mon,
+                day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
+        e._time = e._time + TimeDelta(200, format='jd')
+        yr, mon, day, h, m, s = e.tuple()
+        epoch2 = '{0}/{1:.6}/{2}'.format(mon,
+                day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
+
+        epoch = '{0}| {1}| {2}'.format(epoch0, epoch1, epoch2)
+
+        return '{0},{1},{2},{3},{4},{5:0.6f},{6:0.2f},{7},{8},{9},{10},{11}'.\
+            format(self.name, 'E',
+                epoch,
+                np.rad2deg(float(self._inc)),
+                np.rad2deg(float(self._raan)),
+                self._e,
+                np.rad2deg(float(self._ap)),
+                np.rad2deg(float(self._M)),
+                self._n,
+                self._decay,
+                self._orbit,
+                self._drag)
 
 
-def readtle(line1, line2, line3):
-    return EarthSatellite(line1)
+def _tle_to_float(tle_float):
+    """ Convert a TLE formatted float to a float
+    """
+    dash = tle_float.find('-')
+    if dash == -1:
+        return float(tle_float)
+    else:
+        return float(tle_float[:dash] + "e-" + tle_float[dash+1:])
+
+def readtle(name, line1, line2):
+    line1 = line1.lstrip()
+    line2 = line2.lstrip()
+    s = EarthSatellite()
+    s.name = name
+    epochyr = '20' + line1[18:20]
+    epochdays = float(line1[20:32])
+    s._epoch = Date(epochyr + '/1/1')
+    s._epoch._time = s._epoch._time + TimeDelta(epochdays - 1.0, format='jd')
+    s._inc = degrees(np.deg2rad(_tle_to_float(line2[8:16])))
+    s._raan = degrees(np.deg2rad(_tle_to_float(line2[17:25])))
+    s._e = _tle_to_float('0.' + line2[26:33])
+    s._ap = degrees(np.deg2rad(_tle_to_float(line2[34:42])))
+    s._M = degrees(np.deg2rad(_tle_to_float(line2[43:51])))
+    s._n = _tle_to_float(line2[52:63])
+    s._decay = _tle_to_float(line1[33:43])
+    s._orbit = int(line2[63:68])
+    s._drag = _tle_to_float('0.' + line1[53:61].strip())
+
+    return s

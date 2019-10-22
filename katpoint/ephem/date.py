@@ -15,7 +15,7 @@ class Date:
 
     def __init__(self, d):
         if type(d) is float:
-            self._time = Time(d + _djd, format='mjd', scale='ut1')
+            self._time = Time(d + _djd, format='mjd', scale='utc')
         elif type(d) is tuple:
             s = '{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:f}'.format(d[0],d[1],
                     d[2],d[3],d[4],d[5])

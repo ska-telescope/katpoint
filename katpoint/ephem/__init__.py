@@ -14,6 +14,7 @@ from .body import Jupiter
 from .body import Saturn
 from .body import Neptune
 from .body import Uranus
+from .body import EarthSatellite
 from .body import readtle
 from .stars import star
 from .constants import J2000
