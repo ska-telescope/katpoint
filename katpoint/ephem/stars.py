@@ -119,7 +119,9 @@ from .body import EarthSatellite
 from .date import Date
 
 def readdb(line):
-    """Unpacks a line of an xephem catalogue and creates a star object.
+    """Unpacks a line of an xephem catalogue and creates Body.
+
+    Only stars and Earth satellites have been implemented.
     """
     # Split line to fields
     fields = line.split(',')
@@ -137,6 +139,8 @@ def readdb(line):
         return s
 
     elif fields[1][0] == 'E':
+
+        # This is an Earth satellite
         subfields = fields[2].split('|')
 
         # This is an earth satellite.
@@ -169,14 +173,17 @@ def readdb(line):
         raise ValueError('Bogus: ' + line)
 
 def build_stars():
+    """ Builds the default catalogue
+    """
     global stars
     for line in db.strip().split('\n'):
         s = readdb(line)
         stars[s.name] = s
 
 def star(name):
+    """ Get a record from the catalogue
+    """
     return stars[name]
-    return body
 
 build_stars()
 del build_stars

@@ -67,6 +67,10 @@ class FixedBody(Body):
         Body._compute(self, obs, icrs)
 
     def writedb(self):
+        """ Create an XEphem catalogue entry.
+
+        See http://www.clearskyinstitute.com/xephem/xephem.html
+        """
         return '{0},f,{1},{2}'.format(self.name, self._ra, self._dec)
 
 class Sun(Body):
@@ -160,6 +164,10 @@ class EarthSatellite(Body):
         self.alt = degrees(0.0)
 
     def writedb(self):
+        """ Create an XEphem catalogue entry.
+
+        See http://www.clearskyinstitute.com/xephem/xephem.html
+        """
         e = copy.deepcopy(self._epoch)
         yr, mon, day, h, m, s = e.tuple()
 
@@ -202,6 +210,11 @@ def _tle_to_float(tle_float):
         return float(tle_float[:dash] + "e-" + tle_float[dash+1:])
 
 def readtle(name, line1, line2):
+    """ Create an EarthSatellite from a two line element description of
+    an orbit.
+
+    See https://en.wikipedia.org/wiki/Two-line_element_set
+    """
     line1 = line1.lstrip()
     line2 = line2.lstrip()
     s = EarthSatellite()
