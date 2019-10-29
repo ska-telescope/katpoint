@@ -1,6 +1,8 @@
 """Tests for the body module."""
 
 import unittest
+from sgp4.io import twoline2rv
+from sgp4.earth_gravity import wgs84
 
 from ephem import degrees
 from ephem import hours
@@ -102,7 +104,7 @@ class TestFixedBody(unittest.TestCase):
         line2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
         et = readtle(name, line1, line2)
 
-        #self.assertEqual(str(et._epoch), '2019/9/23 07:45:36')
+        self.assertEqual(str(et._epoch), '2019/9/23 07:45:36')
         self.assertEqual(str(et._inc), '55:26:26.9')
         self.assertEqual(str(et._raan), '61:22:44.4')
         self.assertEqual(et._e, 0.0191986)
@@ -133,3 +135,29 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(et.writedb().split(',')[8], xephem.split(',')[8])
         self.assertEqual(et.writedb().split(',')[9], xephem.split(',')[9])
         self.assertEqual(et.writedb().split(',')[10], xephem.split(',')[10])
+
+        # Test compute
+        obs = Observer()
+        obs.lat = degrees('10:00:00.000')
+        obs.lon = degrees('80:00:00.000')
+        obs.date = Date('2020/1/1 10:00:00')
+        obs.pressure = 0.0
+        et.compute(obs)
+
+        # Create an sgp4 objec
+        sgp = twoline2rv(line1, line2, wgs84)
+
+        self.assertEqual(sgp.epochyr, et._sat.epochyr)
+        self.assertAlmostEqual(sgp.epochdays, et._sat.epochdays)
+        self.assertEqual(sgp.bstar, et._sat.bstar)
+        self.assertEqual(sgp.inclo, et._sat.inclo)
+        self.assertEqual(sgp.nodeo, et._sat.nodeo)
+        self.assertEqual(sgp.ecco, et._sat.ecco)
+        self.assertEqual(sgp.argpo, et._sat.argpo)
+        self.assertEqual(sgp.mo, et._sat.mo)
+        self.assertAlmostEqual(sgp.no, et._sat.no)
+
+        self.assertEqual(str(et.a_ra), '22:20:00.48')
+        self.assertEqual(str(et.a_dec), '-68:43:38.9')
+        self.assertEqual(str(et.az), '178:11:58.1')
+        self.assertEqual(str(et.alt), '11:17:54.7')

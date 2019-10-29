@@ -23,6 +23,8 @@ from astropy.time import TimeDelta
 from astropy import coordinates
 from astropy import units
 import numpy as np
+import sgp4.io
+import sgp4.earth_gravity
 
 from .constants import J2000
 from .angle import astropy_angle
@@ -158,6 +160,29 @@ class EarthSatellite(Body):
         Body.__init__(self)
 
     def compute(self, obs):
+
+        # Create an SGP4 satellite object
+        self._sat = sgp4.io.Satellite()
+
+        # Extract dat and time from the epoch
+        ep = copy.deepcopy(self._epoch._time)
+        ep.format = 'yday'
+        y = int(ep.value[:4])
+        d = int(ep.value[5:8])
+        h = int(ep.value[9:11])
+        m = int(ep.value[12:14])
+        s = float(ep.value[15:])
+        self._sat.epochyr = y
+
+        self._sat.epochdays = d + (h + (m + s / 60.0) / 60.0) / 24.0
+        self._sat.bstar = self._drag
+        self._sat.inclo = float(self._inc)
+        self._sat.nodeo = float(self._raan)
+        self._sat.ecco = self._e
+        self._sat.argpo = self._ap
+        self._sat.mo = self._M
+        self._sat.no = self._n / (24.0 *60.0) * (2.0 * np.pi)
+
         self.a_ra = hours(0.0)
         self.a_dec = degrees(0.0)
         self.az = degrees(0.0)
@@ -219,10 +244,24 @@ def readtle(name, line1, line2):
     line2 = line2.lstrip()
     s = EarthSatellite()
     s.name = name
-    epochyr = '20' + line1[18:20]
+    epochyr = int('20' + line1[18:20])
     epochdays = float(line1[20:32])
-    s._epoch = Date(epochyr + '/1/1')
-    s._epoch._time = s._epoch._time + TimeDelta(epochdays - 1.0, format='jd')
+
+    # Extract day, hour, min, sec from epochdays
+    ed = float(epochdays)
+    d = int(ed)
+    f = ed - d
+    h = int(f * 24.0)
+    f = (f * 24.0  - h)
+    m = int(f * 60.0)
+    sec = (f * 60.0 - m) * 60.0
+    date = '{0:04d}:{1:03d}:{2:02d}:{3:02d}:{4:02}'.format(epochyr, d, h, m ,
+            sec)
+
+    s._epoch = Date('2000/1/1')
+    s._epoch._time = Time(date, format='yday')
+    s._epoch._time.format = 'mjd'
+
     s._inc = degrees(np.deg2rad(_tle_to_float(line2[8:16])))
     s._raan = degrees(np.deg2rad(_tle_to_float(line2[17:25])))
     s._e = _tle_to_float('0.' + line2[26:33])

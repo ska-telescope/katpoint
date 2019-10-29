@@ -52,7 +52,7 @@ def _encode(iso):
     day = int(iso[8:10])
     h = iso[11:13]
     m = iso[14:16]
-    s = iso[17:19]
+    s = str(round(float(iso[17:23])))
     return (str(yr) + '/' + str(mon) + '/' + str(day) + ' ' +
             h + ':' + m + ':' + s)
 
