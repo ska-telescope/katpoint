@@ -140,7 +140,8 @@ class TestFixedBody(unittest.TestCase):
         obs = Observer()
         obs.lat = degrees('10:00:00.000')
         obs.lon = degrees('80:00:00.000')
-        obs.date = Date('2020/1/1 10:00:00')
+        obs.date = Date('2019/9/23 07:45:36')
+        obs.elevation = 4200.0
         obs.pressure = 0.0
         et.compute(obs)
 
@@ -157,7 +158,11 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(sgp.mo, et._sat.mo)
         self.assertAlmostEqual(sgp.no, et._sat.no)
 
-        self.assertEqual(str(et.a_ra), '22:20:00.48')
-        self.assertEqual(str(et.a_dec), '-68:43:38.9')
-        self.assertEqual(str(et.az), '178:11:58.1')
-        self.assertEqual(str(et.alt), '11:17:54.7')
+        #self.assertEqual(str(et.a_ra), '3:32:59.21')
+        #self.assertEqual(str(et.a_dec), '-2:04:36.3')
+        #self.assertEqual(str(et.az), '280:32:07.2')
+        #self.assertEqual(str(et.alt), '-54:06:14.4')
+        self.assertEqual(str(et.a_ra), '3:32:57.59')
+        self.assertEqual(str(et.a_dec), '-2:04:48.7')
+        self.assertEqual(str(et.az), '280:32:25.2')
+        self.assertEqual(str(et.alt), '-54:06:53.8')

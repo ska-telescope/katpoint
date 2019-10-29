@@ -8,6 +8,8 @@ pressure to zero so we compute apparent places instead.
 """
 
 import copy
+import datetime
+import numpy as np
 
 from astropy.coordinates import get_moon
 from astropy.coordinates import get_body
@@ -22,9 +24,13 @@ from astropy.time import Time
 from astropy.time import TimeDelta
 from astropy import coordinates
 from astropy import units
-import numpy as np
+
 import sgp4.io
 import sgp4.earth_gravity
+from sgp4.propagation import sgp4init
+
+import pyorbital.orbital
+import pyorbital.geoloc
 
 from .constants import J2000
 from .angle import astropy_angle
@@ -163,6 +169,8 @@ class EarthSatellite(Body):
 
         # Create an SGP4 satellite object
         self._sat = sgp4.io.Satellite()
+        self._sat.whichconst = sgp4.earth_gravity.wgs84
+        self._sat.satnum = 1
 
         # Extract dat and time from the epoch
         ep = copy.deepcopy(self._epoch._time)
@@ -173,8 +181,9 @@ class EarthSatellite(Body):
         m = int(ep.value[12:14])
         s = float(ep.value[15:])
         self._sat.epochyr = y
-
         self._sat.epochdays = d + (h + (m + s / 60.0) / 60.0) / 24.0
+        ep.format = 'jd'
+        self._sat.jdsatepoch = ep.value
         self._sat.bstar = self._drag
         self._sat.inclo = float(self._inc)
         self._sat.nodeo = float(self._raan)
@@ -183,10 +192,36 @@ class EarthSatellite(Body):
         self._sat.mo = self._M
         self._sat.no = self._n / (24.0 *60.0) * (2.0 * np.pi)
 
-        self.a_ra = hours(0.0)
-        self.a_dec = degrees(0.0)
-        self.az = degrees(0.0)
-        self.alt = degrees(0.0)
+        # Compute position and velocity
+        date = copy.deepcopy(self._epoch._time)
+        date.format = 'iso'
+        yr = int(date.value[:4])
+        mon = int(date.value[5:7])
+        day = int(date.value[8:10])
+        h = int(date.value[11:13])
+        m = int(date.value[14:16])
+        s = float(date.value[17:])
+        sgp4init(sgp4.earth_gravity.wgs84, False, self._sat.satnum,
+                self._sat.jdsatepoch-2433281.5, self._sat.bstar,
+                self._sat.ecco, self._sat.argpo, self._sat.inclo,
+                self._sat.mo, self._sat.no,
+                self._sat.nodeo, self._sat)
+        p, v = self._sat.propagate(yr, mon, day, h, m, s)
+
+        # Convert to lon/lat/alt
+        dt = obs.date.tuple()
+        utc_time = datetime.datetime(dt[0], dt[1], dt[2], dt[3], dt[4],
+            int(dt[5]), int(dt[5] - int(dt[5])) * 1000000)
+        pos = np.array(p)
+        lon, lat, alt = pyorbital.geoloc.get_lonlatalt(pos, utc_time)
+
+        # Convert to alt, az at observer
+        az, alt = pyorbital.orbital.get_observer_look(lon, lat, alt, utc_time,
+                np.rad2deg(obs.lon), np.rad2deg(obs.lat), obs.elevation / 1000)
+
+        self.az = degrees(np.deg2rad(az))
+        self.alt = degrees(np.deg2rad(alt))
+        self.a_ra, self.a_dec = obs.radec_of(self.az, self.alt)
 
     def writedb(self):
         """ Create an XEphem catalogue entry.
