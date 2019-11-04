@@ -171,7 +171,7 @@ class EarthSatellite(Body):
         self._sat.whichconst = sgp4.earth_gravity.wgs84
         self._sat.satnum = 1
 
-        # Extract dat and time from the epoch
+        # Extract date and time from the epoch
         ep = copy.deepcopy(self._epoch)
         ep.format = 'yday'
         y = int(ep.value[:4])
@@ -192,7 +192,7 @@ class EarthSatellite(Body):
         self._sat.no = self._n / (24.0 *60.0) * (2.0 * np.pi)
 
         # Compute position and velocity
-        date = self._epoch.iso
+        date = obs.date.iso
         yr = int(date[:4])
         mon = int(date[5:7])
         day = int(date[8:10])
@@ -207,13 +207,6 @@ class EarthSatellite(Body):
         p, v = self._sat.propagate(yr, mon, day, h, m, s)
 
         # Convert to lon/lat/alt
-        date = obs.date.iso
-        yr = int(date[:4])
-        mon = int(date[5:7])
-        day = int(date[8:10])
-        h = int(date[11:13])
-        m = int(date[14:16])
-        s = float(date[17:])
         utc_time = datetime.datetime(yr, mon, day, h, m, int(s),
                 int(s - int(s)) * 1000000)
         pos = np.array(p)
