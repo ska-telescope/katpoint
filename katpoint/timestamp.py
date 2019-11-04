@@ -25,6 +25,7 @@ import math
 from functools import total_ordering
 
 import numpy as np
+from astropy.time import Time
 import ephem
 
 
@@ -66,15 +67,18 @@ class Timestamp(object):
     def __init__(self, timestamp=None):
         if isinstance(timestamp, basestring):
             try:
-                timestamp = ephem.Date(timestamp.strip().replace('-', '/'))
+                timestamp = timestamp.strip().replace('/', '-')
+                timestamp = Time(decode(timestamp))
             except ValueError:
                 raise ValueError("Timestamp string '%s' not in correct format - " % (timestamp,) +
                                  "should be 'YYYY-MM-DD HH:MM:SS' or 'YYYY/MM/DD HH:MM:SS' or prefix thereof " +
                                  "(all UTC, fractional seconds allowed)")
         if timestamp is None:
             self.secs = time.time()
-        elif isinstance(timestamp, ephem.Date):
-            timestamp = list(timestamp.tuple()) + [0, 0, 0]
+        elif isinstance(timestamp, Time):
+            iso = timestamp.iso
+            timestamp = [int(iso[:4]), int(iso[5:7]), int(iso[8:10]), int(iso[11:13]), int(iso[14:16]), float(iso[17:])]
+            timestamp = timestamp + [0, 0, 0]
             int_secs = math.floor(timestamp[5])
             frac_secs = timestamp[5] - int_secs
             timestamp[5] = int(int_secs)
@@ -174,14 +178,64 @@ class Timestamp(object):
             return '%s%5.3f' % (datetime[:-1], float(datetime[-1]) + frac_secs)
 
     def to_ephem_date(self):
-        """Convert timestamp to :class:`ephem.Date` object."""
+        """Convert timestamp to :class:`astropy.time.Time` object."""
         int_secs = math.floor(self.secs)
         timetuple = list(time.gmtime(int_secs)[:6])
         timetuple[5] += self.secs - int_secs
-        return ephem.Date(tuple(timetuple))
+        return Time('{0}-{1:02}-{2:02} {3:02}:{4:02}:{5:02}'.format(timetuple[0],
+                timetuple[1], timetuple[2], timetuple[3],
+                timetuple[4], timetuple[5]))
 
     def to_mjd(self):
         """Convert timestamp to Modified Julian Day (MJD)."""
         # Ephem dates are in Dublin Julian Days
         djd = self.to_ephem_date()
-        return djd + 2415020 - 2400000.5
+        return djd.mjd
+
+def decode(s):
+    """Decodes a date string
+    """
+    # Look for a dot
+    dot = s.find('.')
+    if dot > 0:
+        # fractional part of the seconds
+        f = s[dot:]
+        # date/time without fractional seconds
+        s = s[:dot]
+    else:
+        f = '.0'
+
+    # time without fractional seconds
+    try:
+        d = time.strptime(s, '%Y-%m-%d %H:%M:%S')
+    except:
+        try:
+            d = time.strptime(s, '%Y-%m-%d %H:%M')
+        except:
+            try:
+                d = time.strptime(s, '%Y-%m-%d %H')
+            except:
+                try:
+                    d = time.strptime(s, '%Y-%m-%d')
+                except:
+                    try:
+                        d = time.strptime(s, '%Y-%m')
+                    except:
+                        try:
+                            d = time.strptime(s, '%Y')
+                        except:
+                            raise ValueError('unable to decode date string')
+
+    # Convert to a unix time and add the fractional seconds
+    u = time.mktime(d)
+
+    # Back to a tuple
+    d = time.localtime(u)
+
+    return time.strftime('%Y-%m-%d %H:%M:%S',d) + f
+
+
+def now():
+    """ Create a Date representing 'now'
+    """
+    return Date(Time.now().mjd - _djd)

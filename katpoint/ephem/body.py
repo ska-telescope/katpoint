@@ -192,14 +192,13 @@ class EarthSatellite(Body):
         self._sat.no = self._n / (24.0 *60.0) * (2.0 * np.pi)
 
         # Compute position and velocity
-        date = copy.deepcopy(self._epoch)
-        date.format = 'iso'
-        yr = int(date.value[:4])
-        mon = int(date.value[5:7])
-        day = int(date.value[8:10])
-        h = int(date.value[11:13])
-        m = int(date.value[14:16])
-        s = float(date.value[17:])
+        date = self._epoch.iso
+        yr = int(date[:4])
+        mon = int(date[5:7])
+        day = int(date[8:10])
+        h = int(date[11:13])
+        m = int(date[14:16])
+        s = float(date[17:])
         sgp4init(sgp4.earth_gravity.wgs84, False, self._sat.satnum,
                 self._sat.jdsatepoch-2433281.5, self._sat.bstar,
                 self._sat.ecco, self._sat.argpo, self._sat.inclo,
@@ -208,14 +207,13 @@ class EarthSatellite(Body):
         p, v = self._sat.propagate(yr, mon, day, h, m, s)
 
         # Convert to lon/lat/alt
-        dt = copy.deepcopy(obs.date)
-        dt.format = 'iso'
-        yr = int(date.value[:4])
-        mon = int(date.value[5:7])
-        day = int(date.value[8:10])
-        h = int(date.value[11:13])
-        m = int(date.value[14:16])
-        s = float(date.value[17:])
+        date = obs.date.iso
+        yr = int(date[:4])
+        mon = int(date[5:7])
+        day = int(date[8:10])
+        h = int(date[11:13])
+        m = int(date[14:16])
+        s = float(date[17:])
         utc_time = datetime.datetime(yr, mon, day, h, m, int(s),
                 int(s - int(s)) * 1000000)
         pos = np.array(p)
@@ -234,9 +232,7 @@ class EarthSatellite(Body):
 
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
-        e = copy.deepcopy(self._epoch)
-        e.format = 'iso'
-        dt = str(e)
+        dt = self._epoch.iso
         yr = int(dt[:4])
         mon = int(dt[5:7])
         day = int(dt[8:10])
@@ -248,7 +244,7 @@ class EarthSatellite(Body):
         # of valid dates which xepehm sets to +/- 100 days.
         epoch0 = '{0}/{1:.9}/{2}'.format(mon,
                 day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
-        e = e + TimeDelta(-100, format='jd')
+        e = self._epoch + TimeDelta(-100, format='jd')
         dt = str(e)
         yr = int(dt[:4])
         mon = int(dt[5:7])
