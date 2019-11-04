@@ -111,12 +111,12 @@ Markab,f|S|B9,23:04:45.6|61.1,15:12:19|-42.56,2.49,2000,0
 stars = {}
 
 import numpy as np
+from astropy.time import Time
 
 from .angle import hours
 from .angle import degrees
 from .body import FixedBody
 from .body import EarthSatellite
-from .date import Date
 
 def readdb(line):
     """Unpacks a line of an xephem catalogue and creates Body.
@@ -156,8 +156,8 @@ def readdb(line):
         s, m = np.modf(m * 60.0)
         m = int(np.floor(m))
         s = s * 60.0
-        e._epoch = Date('{0}/{1}/{2} {3:02d}:{4:02d}:{5}'.format(yr,mon,day,
-                h,m,s))
+        e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr,mon,day,
+                h,m,s), scale='utc')
         e._inc = degrees(np.deg2rad(float(fields[3])))
         e._raan = degrees(np.deg2rad(float(fields[4])))
         e._e = float(fields[5])

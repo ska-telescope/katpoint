@@ -10,15 +10,13 @@ from astropy import units
 
 from .angle import degrees
 from .angle import astropy_angle
-from .date import Date
-from .date import now
 from .constants import J2000
 
 class Observer(object):
     """Represents a location
     """
     def __init__(self):
-        self.date = now()
+        self.date = Time(Time.now(), scale='utc')
         self.epoch = J2000
         self.lon = degrees(0.0)
         self.lat = degrees(0.0)
@@ -67,7 +65,7 @@ class Observer(object):
         """
         loc = EarthLocation(lat=self._lat.astropy_angle,
                 lon=self._lon.astropy_angle, height=self.elevation)
-        t = Time(self.date._time, location=loc)
+        t = Time(self.date, location=loc)
         st = t.sidereal_time('apparent')
         return astropy_angle(st, 'h')
 
@@ -77,6 +75,6 @@ class Observer(object):
         loc = EarthLocation(lat=self._lat.astropy_angle,
                 lon=self._lon.astropy_angle, height=self.elevation)
         altaz = AltAz(alt=alt.astropy_angle, az=az.astropy_angle, location=loc,
-                obstime=self.date._time, pressure=self.pressure)
+                obstime=self.date, pressure=self.pressure)
         radec = altaz.transform_to(CIRS)
         return astropy_angle(radec.ra, 'h'), astropy_angle(radec.dec)

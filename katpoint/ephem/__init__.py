@@ -2,7 +2,6 @@ from .angle import degrees
 from .angle import hours
 from .angle import separation
 from .observer import Observer
-from .date import Date
 from .body import FixedBody
 from .body import Sun
 from .body import Moon

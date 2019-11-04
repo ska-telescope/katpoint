@@ -4,7 +4,6 @@ import unittest
 import numpy as np
 
 from ephem import readdb
-from ephem import Date
 
 class test_stars(unittest.TestCase):
     def test_earth_satellite(self):
@@ -13,7 +12,7 @@ class test_stars(unittest.TestCase):
 
         e = readdb(record)
         self.assertEqual(e.name, 'GPS BIIA-21 (PR')
-        self.assertEqual(str(e._epoch), '2019/9/23 07:45:36')
+        self.assertEqual(str(e._epoch), '2019-09-23 07:45:35.842')
         self.assertEqual(e._inc, np.deg2rad(55.4408))
         self.assertEqual(e._raan, np.deg2rad(61.379002))
         self.assertEqual(e._e, 0.0191986)

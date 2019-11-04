@@ -37,7 +37,6 @@ from .angle import astropy_angle
 from .angle import hours
 from .angle import degrees
 from .angle import Angle
-from .date import Date
 
 class Body(object):
     def __init__(self):
@@ -54,13 +53,13 @@ class Body(object):
         self.a_dec = astropy_angle(icrs.dec)
 
         # ICRS to CIRS
-        appt = icrs.transform_to(CIRS(obstime=obs.date._time))
+        appt = icrs.transform_to(CIRS(obstime=obs.date))
         self.ra = astropy_angle(appt.ra, 'h')
         self.dec = astropy_angle(appt.dec)
 
         # ICRS to Az/El
         altaz = icrs.transform_to(AltAz(location=loc,
-                obstime=obs.date._time, pressure=obs.pressure))
+                obstime=obs.date, pressure=obs.pressure))
         self.az = astropy_angle(altaz.az)
         self.alt = astropy_angle(altaz.alt)
 
@@ -89,7 +88,7 @@ class Sun(Body):
     def compute(self, obs):
         loc = EarthLocation(lon=obs._lon.astropy_angle,
                 lat=obs._lat.astropy_angle, height=obs.elevation)
-        moon = get_sun(obs.date._time)
+        moon = get_sun(obs.date)
         icrs = moon.transform_to(ICRS)
         Body._compute(self, obs, icrs)
 
@@ -102,7 +101,7 @@ class Moon(Body):
     def compute(self, obs):
         loc = EarthLocation(lon=obs._lon.astropy_angle,
                 lat=obs._lat.astropy_angle, height=obs.elevation)
-        moon = get_moon(obs.date._time, loc)
+        moon = get_moon(obs.date, loc)
         icrs = moon.transform_to(ICRS)
         Body._compute(self, obs, icrs)
 
@@ -122,7 +121,7 @@ class Planet(Body):
         loc = EarthLocation(lon=obs._lon.astropy_angle,
                 lat=obs._lat.astropy_angle, height=obs.elevation)
         with solar_system_ephemeris.set('builtin'):
-            planet = get_body(self._name, obs.date._time, loc)
+            planet = get_body(self._name, obs.date, loc)
         icrs = planet.transform_to(ICRS)
         Body._compute(self, obs, icrs)
 
@@ -173,7 +172,7 @@ class EarthSatellite(Body):
         self._sat.satnum = 1
 
         # Extract dat and time from the epoch
-        ep = copy.deepcopy(self._epoch._time)
+        ep = copy.deepcopy(self._epoch)
         ep.format = 'yday'
         y = int(ep.value[:4])
         d = int(ep.value[5:8])
@@ -193,7 +192,7 @@ class EarthSatellite(Body):
         self._sat.no = self._n / (24.0 *60.0) * (2.0 * np.pi)
 
         # Compute position and velocity
-        date = copy.deepcopy(self._epoch._time)
+        date = copy.deepcopy(self._epoch)
         date.format = 'iso'
         yr = int(date.value[:4])
         mon = int(date.value[5:7])
@@ -209,9 +208,16 @@ class EarthSatellite(Body):
         p, v = self._sat.propagate(yr, mon, day, h, m, s)
 
         # Convert to lon/lat/alt
-        dt = obs.date.tuple()
-        utc_time = datetime.datetime(dt[0], dt[1], dt[2], dt[3], dt[4],
-            int(dt[5]), int(dt[5] - int(dt[5])) * 1000000)
+        dt = copy.deepcopy(obs.date)
+        dt.format = 'iso'
+        yr = int(date.value[:4])
+        mon = int(date.value[5:7])
+        day = int(date.value[8:10])
+        h = int(date.value[11:13])
+        m = int(date.value[14:16])
+        s = float(date.value[17:])
+        utc_time = datetime.datetime(yr, mon, day, h, m, int(s),
+                int(s - int(s)) * 1000000)
         pos = np.array(p)
         lon, lat, alt = pyorbital.geoloc.get_lonlatalt(pos, utc_time)
 
@@ -229,18 +235,37 @@ class EarthSatellite(Body):
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
         e = copy.deepcopy(self._epoch)
-        yr, mon, day, h, m, s = e.tuple()
+        e.format = 'iso'
+        dt = str(e)
+        yr = int(dt[:4])
+        mon = int(dt[5:7])
+        day = int(dt[8:10])
+        h = int(dt[11:13])
+        m = int(dt[14:16])
+        s = float(dt[17:])
 
         # The epoch field contains 3 dates, the actual epoch and the range
         # of valid dates which xepehm sets to +/- 100 days.
-        epoch0 = '{0}/{1}/{2}'.format(mon,
+        epoch0 = '{0}/{1:.9}/{2}'.format(mon,
                 day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
-        e._time = e._time + TimeDelta(-100, format='jd')
-        yr, mon, day, h, m, s = e.tuple()
+        e = e + TimeDelta(-100, format='jd')
+        dt = str(e)
+        yr = int(dt[:4])
+        mon = int(dt[5:7])
+        day = int(dt[8:10])
+        h = int(dt[11:13])
+        m = int(dt[14:16])
+        s = float(dt[17:])
         epoch1 = '{0}/{1:.6}/{2}'.format(mon,
                 day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
-        e._time = e._time + TimeDelta(200, format='jd')
-        yr, mon, day, h, m, s = e.tuple()
+        e = e + TimeDelta(200, format='jd')
+        dt = str(e)
+        yr = int(dt[:4])
+        mon = int(dt[5:7])
+        day = int(dt[8:10])
+        h = int(dt[11:13])
+        m = int(dt[14:16])
+        s = float(dt[17:])
         epoch2 = '{0}/{1:.6}/{2}'.format(mon,
                 day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
 
@@ -293,9 +318,10 @@ def readtle(name, line1, line2):
     date = '{0:04d}:{1:03d}:{2:02d}:{3:02d}:{4:02}'.format(epochyr, d, h, m ,
             sec)
 
-    s._epoch = Date('2000/1/1')
-    s._epoch._time = Time(date, format='yday')
-    s._epoch._time.format = 'mjd'
+    s._epoch = Time('2000-01-01 00:00:00.000')
+
+    s._epoch = Time(date, format='yday')
+    s._epoch.format = 'iso'
 
     s._inc = degrees(np.deg2rad(_tle_to_float(line2[8:16])))
     s._raan = degrees(np.deg2rad(_tle_to_float(line2[17:25])))
