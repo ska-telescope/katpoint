@@ -40,9 +40,9 @@ class TestFixedBody(unittest.TestCase):
         #self.assertEqual(str(body.dec), '40:14:47.181')
 
         #self.assertEqual(str(body.az), '326:05:54.8')
-        self.assertEqual(str(body.az), '326:05:57.6')
+        self.assertEqual(str(body.az), '326:05:57.4')
         #self.assertEqual(str(body.alt), '51:21:18.5')
-        self.assertEqual(str(body.alt), '51:21:20.0')
+        self.assertEqual(str(body.alt), '51:21:19.9')
 
     def test_planet(self):
         obs = Observer()
@@ -59,8 +59,8 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '118:10:06.1')
         #self.assertEqual(str(body.alt), '27:23:13.3')
-        self.assertEqual(str(body.az), '118:10:05.1')
-        self.assertEqual(str(body.alt), '27:23:12.9')
+        self.assertEqual(str(body.az), '118:10:05.2')
+        self.assertEqual(str(body.alt), '27:23:13.0')
 
     def test_moon(self):
         obs = Observer()
@@ -77,8 +77,8 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '127:15:23.6')
         #self.assertEqual(str(body.alt), '60:05:13.7')
-        self.assertEqual(str(body.az), '127:15:46.4')
-        self.assertEqual(str(body.alt), '60:05:18.6')
+        self.assertEqual(str(body.az), '127:15:17.3')
+        self.assertEqual(str(body.alt), '60:05:10.3')
 
     def test_sun(self):
         obs = Observer()
@@ -96,7 +96,7 @@ class TestFixedBody(unittest.TestCase):
         #self.assertEqual(str(body.az), '234:53:20.8')
         #self.assertEqual(str(body.alt), '31:38:09.4')
         self.assertEqual(str(body.az), '234:53:19.5')
-        self.assertEqual(str(body.alt), '31:38:11.4')
+        self.assertEqual(str(body.alt), '31:38:11.3')
 
     def test_earth_satellite(self):
         name = ' GPS BIIA-21 (PRN 09) '
