@@ -29,8 +29,8 @@ import sgp4.io
 import sgp4.earth_gravity
 from sgp4.propagation import sgp4init
 
-import pyorbital.orbital
 import pyorbital.geoloc
+import pyorbital.astronomy
 
 from .constants import J2000
 from .angle import astropy_angle
@@ -213,7 +213,7 @@ class EarthSatellite(Body):
         lon, lat, alt = pyorbital.geoloc.get_lonlatalt(pos, utc_time)
 
         # Convert to alt, az at observer
-        az, alt = pyorbital.orbital.get_observer_look(lon, lat, alt, utc_time,
+        az, alt = get_observer_look(lon, lat, alt, utc_time,
                 np.rad2deg(obs.lon), np.rad2deg(obs.lat), obs.elevation / 1000)
 
         self.az = degrees(np.deg2rad(az))
@@ -323,3 +323,53 @@ def readtle(name, line1, line2):
     s._drag = _tle_to_float('0.' + line1[53:61].strip())
 
     return s
+
+def get_observer_look(sat_lon, sat_lat, sat_alt, utc_time, lon, lat, alt):
+    """Calculate observers look angle to a satellite.
+    http://celestrak.com/columns/v02n02/
+
+    utc_time: Observation time (datetime object)
+    lon: Longitude of observer position on ground in degrees east
+    lat: Latitude of observer position on ground in degrees north
+    alt: Altitude above sea-level (geoid) of observer position on ground in km
+
+    Return: (Azimuth, Elevation)
+    """
+    (pos_x, pos_y, pos_z), (vel_x, vel_y, vel_z) = \
+        pyorbital.astronomy.observer_position(
+        utc_time, sat_lon, sat_lat, sat_alt)
+
+    (opos_x, opos_y, opos_z), (ovel_x, ovel_y, ovel_z) = \
+        pyorbital.astronomy.observer_position(utc_time, lon, lat, alt)
+
+    lon = np.deg2rad(lon)
+    lat = np.deg2rad(lat)
+
+    theta = (pyorbital.astronomy.gmst(utc_time) + lon) % (2 * np.pi)
+
+    rx = pos_x - opos_x
+    ry = pos_y - opos_y
+    rz = pos_z - opos_z
+
+    sin_lat = np.sin(lat)
+    cos_lat = np.cos(lat)
+    sin_theta = np.sin(theta)
+    cos_theta = np.cos(theta)
+
+    top_s = sin_lat * cos_theta * rx + \
+        sin_lat * sin_theta * ry - cos_lat * rz
+    top_e = -sin_theta * rx + cos_theta * ry
+    top_z = cos_lat * cos_theta * rx + \
+        cos_lat * sin_theta * ry + sin_lat * rz
+
+    az_ = np.arctan(-top_e / top_s)
+
+    az_ = np.where(top_s > 0, az_ + np.pi, az_)
+    az_ = np.where(az_ < 0, az_ + 2 * np.pi, az_)
+
+    rg_ = np.sqrt(rx * rx + ry * ry + rz * rz)
+    el_ = np.arcsin(top_z / rg_)
+
+    return np.rad2deg(az_), np.rad2deg(el_)
+
+

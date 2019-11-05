@@ -77,8 +77,8 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '127:15:23.6')
         #self.assertEqual(str(body.alt), '60:05:13.7')
-        self.assertEqual(str(body.az), '127:15:17.3')
-        self.assertEqual(str(body.alt), '60:05:10.3')
+        self.assertEqual(str(body.az), '127:15:46.5')
+        self.assertEqual(str(body.alt), '60:05:18.7')
 
     def test_sun(self):
         obs = Observer()
@@ -98,7 +98,7 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(str(body.az), '234:53:19.5')
         self.assertEqual(str(body.alt), '31:38:11.3')
 
-    def _test_earth_satellite(self):
+    def test_earth_satellite(self):
         name = ' GPS BIIA-21 (PRN 09) '
         line1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
         line2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
@@ -162,7 +162,7 @@ class TestFixedBody(unittest.TestCase):
         #self.assertEqual(str(et.a_dec), '-2:04:36.3')
         #self.assertEqual(str(et.az), '280:32:07.2')
         #self.assertEqual(str(et.alt), '-54:06:14.4')
-        self.assertEqual(str(et.a_ra), '3:32:57.59')
-        self.assertEqual(str(et.a_dec), '-2:04:48.7')
-        self.assertEqual(str(et.az), '280:32:25.2')
-        self.assertEqual(str(et.alt), '-54:06:53.8')
+        self.assertEqual(str(et.a_ra), '3:32:57.74')
+        self.assertEqual(str(et.a_dec), '-2:04:45.4')
+        self.assertEqual(str(et.az), '280:32:29.7')
+        self.assertEqual(str(et.alt), '-54:06:50.7')
