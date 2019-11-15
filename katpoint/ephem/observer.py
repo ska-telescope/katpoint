@@ -1,5 +1,6 @@
 """ Replacement for ephem.Observer
 """
+import numpy as np
 
 from astropy.time import Time
 from astropy.coordinates import CIRS
@@ -8,8 +9,6 @@ from astropy.coordinates import EarthLocation
 from astropy import coordinates
 from astropy import units
 
-from .angle import degrees
-from .angle import astropy_angle
 from .constants import J2000
 
 class Observer(object):
@@ -18,10 +17,10 @@ class Observer(object):
     def __init__(self):
         self.date = Time(Time.now(), scale='utc')
         self.epoch = J2000
-        self.lon = degrees(0.0)
-        self.lat = degrees(0.0)
+        self._lon = coordinates.Longitude(0.0, unit='deg')
+        self._lat = coordinates.Latitude(0.0, unit='deg')
         self.elevation = 0.0
-        self.horizon = degrees(0.0)
+        self.horizon = coordinates.Angle(0.0, unit='deg')
         self.temp = 15.0
         self.pressure = 0.0
 
@@ -31,7 +30,7 @@ class Observer(object):
 
     @lon.setter
     def lon(self, value):
-        self._lon = degrees(value)
+        self._lon = value
 
     @property
     def long(self):
@@ -39,7 +38,7 @@ class Observer(object):
 
     @long.setter
     def long(self, value):
-        self._lon = degrees(value)
+        self._lon = value
 
     @property
     def lat(self):
@@ -47,7 +46,7 @@ class Observer(object):
 
     @lat.setter
     def lat(self, value):
-        self._lat = degrees(value)
+        self._lat = value
 
     def __str__(self):
         return ("<ephem.observer date='" + str(self.date) +
@@ -63,18 +62,17 @@ class Observer(object):
     def sidereal_time(self):
         """Returns the sidereal time
         """
-        loc = EarthLocation(lat=self._lat.astropy_angle,
-                lon=self._lon.astropy_angle, height=self.elevation)
+        loc = EarthLocation(lat=self._lat, lon=self._lon, height=self.elevation)
         t = Time(self.date, location=loc)
         st = t.sidereal_time('apparent')
-        return astropy_angle(st, 'h')
+        return st
 
     def radec_of(self, az, alt):
         """Returns topocentric apparent RA, Dec
         """
-        loc = EarthLocation(lat=self._lat.astropy_angle,
-                lon=self._lon.astropy_angle, height=self.elevation)
-        altaz = AltAz(alt=alt.astropy_angle, az=az.astropy_angle, location=loc,
+        loc = EarthLocation(lat=self._lat,
+                lon=self._lon, height=self.elevation)
+        altaz = AltAz(alt=alt, az=az, location=loc,
                 obstime=self.date, pressure=self.pressure)
         radec = altaz.transform_to(CIRS)
-        return astropy_angle(radec.ra, 'h'), astropy_angle(radec.dec)
+        return radec.ra, radec.dec

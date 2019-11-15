@@ -20,6 +20,8 @@ from builtins import object, range
 from past.builtins import basestring
 
 import numpy as np
+from astropy import coordinates
+from astropy import units
 import ephem
 
 from .timestamp import Timestamp
@@ -250,7 +252,7 @@ class Target(object):
             if names.startswith('Galactic l:'):
                 fields = [tags]
             l, b = ephem.Galactic(ephem.Equatorial(self.body._ra, self.body._dec)).get()
-            fields += ['%.4f' % (rad2deg(l),), '%.4f' % (rad2deg(b),)]
+            fields += ['%.4f' % (l.deg,), '%.4f' % (b.deg,)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -343,7 +345,7 @@ class Target(object):
             self.body.compute(antenna.observer)
             return self.body.az, self.body.alt
         if is_iterable(timestamp):
-            azel = np.array([_scalar_azel(t) for t in timestamp])
+            azel = np.array([_scalar_azel(t) for t in timestamp], dtype=object)
             return azel[:, 0], azel[:, 1]
         else:
             return _scalar_azel(timestamp)
@@ -640,15 +642,15 @@ class Target(object):
         else:
             ra, dec = self.radec(timestamp, antenna)
         offset_sign = -1 if dec > 0 else 1
-        offset = construct_radec_target(ra, dec + 0.03 * offset_sign)
+        offset = construct_radec_target(ra.rad, dec.rad + 0.03 * offset_sign)
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_az, offset_el = offset.azel(timestamp, antenna)
         # Obtain direction vector(s) from reference antenna to target
         az, el = self.azel(timestamp, antenna)
         # w axis points toward target
-        w = np.array(azel_to_enu(az, el))
+        w = np.array(azel_to_enu(np.array([a.rad for a in az]), np.array([a.rad for a in el])))
         # enu vector pointing from reference antenna to offset point
-        z = np.array(azel_to_enu(offset_az, offset_el))
+        z = np.array(azel_to_enu(np.array([a.rad for a in offset_az]), np.array([a.rad for a in offset_el])))
         # u axis is orthogonal to z and w, and row_stack makes it 2-D array of column vectors
         u = np.row_stack(np.cross(z, w, axis=0)) * offset_sign
         u_norm = np.sqrt(np.sum(u ** 2, axis=0))
@@ -731,7 +733,7 @@ class Target(object):
             (l, m, n) coordinates of target(s).
         """
         ref_ra, ref_dec = self.radec(timestamp, antenna)
-        return sphere_to_ortho(ref_ra, ref_dec, ra, dec)
+        return sphere_to_ortho(ref_ra.rad, ref_dec.rad, ra, dec)
 
     def flux_density(self, flux_freq_MHz=None):
         """Calculate flux density for given observation frequency (or frequencies).
@@ -841,7 +843,7 @@ class Target(object):
 
         def _scalar_separation(t):
             """Calculate angular separation for a single time instant."""
-            return ephem.separation(self.azel(t, antenna), other_target.azel(t, antenna))
+            return self.azel(t, antenna).separation(other_target.azel(t, antenna))
         if is_iterable(timestamp):
             return np.array([_scalar_separation(t) for t in timestamp])
         else:
@@ -882,11 +884,11 @@ class Target(object):
         if coord_system == 'radec':
             # The target (ra, dec) coordinates will serve as reference point on the sphere
             ref_ra, ref_dec = self.radec(timestamp, antenna)
-            return sphere_to_plane[projection_type](ref_ra, ref_dec, az, el)
+            return sphere_to_plane[projection_type](ref_ra.rad, ref_dec.rad, az, el)
         else:
             # The target (az, el) coordinates will serve as reference point on the sphere
             ref_az, ref_el = self.azel(timestamp, antenna)
-            return sphere_to_plane[projection_type](ref_az, ref_el, az, el)
+            return sphere_to_plane[projection_type](ref_az.rad, ref_el.rad, az, el)
 
     def plane_to_sphere(self, x, y, timestamp=None, antenna=None, projection_type='ARC', coord_system='azel'):
         """Deproject plane coordinates to sphere with target position as reference.
@@ -1030,7 +1032,7 @@ def construct_target_params(description):
                              % description)
         l, b = float(fields[2]), float(fields[3])
         body = ephem.FixedBody()
-        ra, dec = ephem.Galactic(deg2rad(l), deg2rad(b)).to_radec()
+        ra, dec = ephem.Galactic(coordinates.Longitude(deg2rad(l), unit=units.deg), coordinates.Latitude(deg2rad(b), unit=units.deg)).to_radec()
         if preferred_name:
             body.name = preferred_name
         else:

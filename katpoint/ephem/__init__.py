@@ -1,6 +1,3 @@
-from .angle import degrees
-from .angle import hours
-from .angle import separation
 from .observer import Observer
 from .body import FixedBody
 from .body import Sun

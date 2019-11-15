@@ -55,6 +55,8 @@ class TestPointingModel(unittest.TestCase):
         self.assertEqual(pm4.description, pm.description, 'Saving pointing model to string and loading it again failed')
         self.assertEqual(pm4, pm, 'Pointing models should be equal')
         self.assertNotEqual(pm2, pm, 'Pointing models should be inequal')
+        print('*****')
+        print(pm4.values())
         np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
         try:
             self.assertEqual(hash(pm4), hash(pm), 'Pointing model hashes not equal')

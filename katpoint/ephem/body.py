@@ -33,10 +33,6 @@ import pyorbital.geoloc
 import pyorbital.astronomy
 
 from .constants import J2000
-from .angle import astropy_angle
-from .angle import hours
-from .angle import degrees
-from .angle import Angle
 
 class Body(object):
     def __init__(self):
@@ -45,23 +41,22 @@ class Body(object):
     def _compute(self, obs, icrs):
 
         # Earth location
-        loc = EarthLocation(lon=obs._lon.astropy_angle,
-                lat=obs._lat.astropy_angle, height=obs.elevation)
+        loc = EarthLocation(lon=obs.lon, lat=obs.lat, height=obs.elevation)
 
         # ICRS
-        self.a_ra = astropy_angle(icrs.ra, 'h')
-        self.a_dec = astropy_angle(icrs.dec)
+        self.a_ra = icrs.ra
+        self.a_dec = icrs.dec
 
         # ICRS to CIRS
         appt = icrs.transform_to(CIRS(obstime=obs.date))
-        self.ra = astropy_angle(appt.ra, 'h')
-        self.dec = astropy_angle(appt.dec)
+        self.ra = appt.ra
+        self.dec = appt.dec
 
         # ICRS to Az/El
         altaz = icrs.transform_to(AltAz(location=loc,
                 obstime=obs.date, pressure=obs.pressure))
-        self.az = astropy_angle(altaz.az)
-        self.alt = astropy_angle(altaz.alt)
+        self.az = altaz.az
+        self.alt = altaz.alt
 
 
 class FixedBody(Body):
@@ -69,8 +64,7 @@ class FixedBody(Body):
         Body.__init__(self)
 
     def compute(self, obs):
-        icrs = SkyCoord(ra=self._ra.astropy_angle,
-                dec=self._dec.astropy_angle, frame='icrs')
+        icrs = SkyCoord(ra=self._ra, dec=self._dec, frame='icrs')
         Body._compute(self, obs, icrs)
 
     def writedb(self):
@@ -86,8 +80,8 @@ class Sun(Body):
         self.name = 'Sun'
 
     def compute(self, obs):
-        loc = EarthLocation(lon=obs._lon.astropy_angle,
-                lat=obs._lat.astropy_angle, height=obs.elevation)
+        loc = EarthLocation(lon=obs._lon,
+                lat=obs._lat, height=obs.elevation)
         moon = get_sun(obs.date)
         icrs = moon.transform_to(ICRS)
         Body._compute(self, obs, icrs)
@@ -99,8 +93,8 @@ class Moon(Body):
         self.name = 'Moon'
 
     def compute(self, obs):
-        loc = EarthLocation(lon=obs._lon.astropy_angle,
-                lat=obs._lat.astropy_angle, height=obs.elevation)
+        loc = EarthLocation(lon=obs._lon,
+                lat=obs._lat, height=obs.elevation)
         moon = get_moon(obs.date, loc)
         icrs = moon.transform_to(ICRS)
         Body._compute(self, obs, icrs)
@@ -118,8 +112,8 @@ class Planet(Body):
         self._name = name
 
     def compute(self, obs):
-        loc = EarthLocation(lon=obs._lon.astropy_angle,
-                lat=obs._lat.astropy_angle, height=obs.elevation)
+        loc = EarthLocation(lon=obs._lon,
+                lat=obs._lat, height=obs.elevation)
         with solar_system_ephemeris.set('builtin'):
             planet = get_body(self._name, obs.date, loc)
         icrs = planet.transform_to(ICRS)
@@ -214,10 +208,10 @@ class EarthSatellite(Body):
 
         # Convert to alt, az at observer
         az, alt = get_observer_look(lon, lat, alt, utc_time,
-                np.rad2deg(obs.lon), np.rad2deg(obs.lat), obs.elevation / 1000)
+                obs.lon.deg, obs.lat.deg, obs.elevation / 1000)
 
-        self.az = degrees(np.deg2rad(az))
-        self.alt = degrees(np.deg2rad(alt))
+        self.az = coordinates.Longitude(az, unit=units.deg)
+        self.alt = coordinates.Latitude(alt, unit=units.deg)
         self.a_ra, self.a_dec = obs.radec_of(self.az, self.alt)
 
     def writedb(self):
@@ -312,11 +306,11 @@ def readtle(name, line1, line2):
     s._epoch = Time(date, format='yday')
     s._epoch.format = 'iso'
 
-    s._inc = degrees(np.deg2rad(_tle_to_float(line2[8:16])))
-    s._raan = degrees(np.deg2rad(_tle_to_float(line2[17:25])))
+    s._inc = np.deg2rad(_tle_to_float(line2[8:16]))
+    s._raan = np.deg2rad(_tle_to_float(line2[17:25]))
     s._e = _tle_to_float('0.' + line2[26:33])
-    s._ap = degrees(np.deg2rad(_tle_to_float(line2[34:42])))
-    s._M = degrees(np.deg2rad(_tle_to_float(line2[43:51])))
+    s._ap = np.deg2rad(_tle_to_float(line2[34:42]))
+    s._M = np.deg2rad(_tle_to_float(line2[43:51]))
     s._n = _tle_to_float(line2[52:63])
     s._decay = _tle_to_float(line1[33:43])
     s._orbit = int(line2[63:68])

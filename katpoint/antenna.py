@@ -25,6 +25,8 @@ from __future__ import print_function, division, absolute_import
 from builtins import object
 
 import numpy as np
+from astropy import coordinates
+from astropy import units
 import ephem
 
 from .timestamp import Timestamp
@@ -194,8 +196,18 @@ class Antenna(object):
 
         # Set up reference observer first
         self.ref_observer = ephem.Observer()
-        self.ref_observer.lat = latitude
-        self.ref_observer.long = longitude
+        if type(latitude) == str:
+            self.ref_observer.lat = coordinates.Latitude(latitude,
+                    unit=units.deg)
+        else:
+            self.ref_observer.lat = coordinates.Latitude(latitude,
+                    unit=units.rad)
+        if type(longitude) == str:
+            self.ref_observer.long = coordinates.Longitude(longitude,
+                    unit=units.deg)
+        else:
+            self.ref_observer.long = coordinates.Longitude(longitude,
+                    unit=units.rad)
         self.ref_observer.elevation = float(altitude)
         # All astrometric ra/dec coordinates will be in J2000 epoch
         self.ref_observer.epoch = ephem.J2000
@@ -210,14 +222,17 @@ class Antenna(object):
             self.position_ecef = enu_to_ecef(self.ref_observer.lat, self.ref_observer.long,
                                              self.ref_observer.elevation, *self.position_enu)
             self.observer = ephem.Observer()
-            self.observer.lat, self.observer.long, self.observer.elevation = ecef_to_lla(*self.position_ecef)
+            lat, long, elevation = ecef_to_lla(*self.position_ecef)
+            self.observer.lat  = coordinates.Latitude(lat, unit=units.rad)
+            self.observer.long = coordinates.Longitude(long, unit=units.rad)
+            self.observer.elevation = elevation
             self.observer.epoch = ephem.J2000
             self.observer.pressure = 0.0
             self.position_wgs84 = self.observer.lat, self.observer.long, self.observer.elevation
         else:
             self.observer = self.ref_observer
             self.position_enu = (0.0, 0.0, 0.0)
-            self.position_wgs84 = lat, lon, alt = self.observer.lat, self.observer.long, self.observer.elevation
+            self.position_wgs84 = lat, lon, alt = self.observer.lat.rad, self.observer.long.rad, self.observer.elevation
             self.position_ecef = enu_to_ecef(lat, lon, alt, *self.position_enu)
 
     def __str__(self):
@@ -259,7 +274,7 @@ class Antenna(object):
         # These fields are used to build up the antenna description string
         fields = [self.name]
         pos = self.ref_position_wgs84 if self.delay_model else self.position_wgs84
-        fields += [str(coord) for coord in pos]
+        fields += [str(coord.deg) for coord in pos]
         fields += [str(self.diameter)]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
@@ -317,6 +332,6 @@ class Antenna(object):
             self.observer.date = Timestamp(t).to_ephem_date()
             return self.observer.sidereal_time()
         if is_iterable(timestamp):
-            return np.array([_scalar_local_sidereal_time(t) for t in timestamp])
+            return np.array([_scalar_local_sidereal_time(t) for t in timestamp], dtype=object)
         else:
             return _scalar_local_sidereal_time(timestamp)

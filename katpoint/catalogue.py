@@ -750,7 +750,7 @@ class Catalogue(object):
             # Iterate over targets until one is found that satisfies dynamic criteria
             for n, target in enumerate(targets):
                 if azimuth_filter:
-                    az_deg = rad2deg(target.azel(latest_timestamp, antenna)[0])
+                    az_deg = target.azel(latest_timestamp, antenna)[0].deg
                     if az_limit_deg[1] > az_limit_deg[0]:
                         if (az_deg < az_limit_deg[0]) or (az_deg > az_limit_deg[1]):
                             continue
@@ -758,7 +758,7 @@ class Catalogue(object):
                         if (az_deg > az_limit_deg[1]) and (az_deg < az_limit_deg[0]):
                             continue
                 if elevation_filter:
-                    el_deg = rad2deg(target.azel(latest_timestamp, antenna)[1])
+                    el_deg = target.azel(latest_timestamp, antenna)[1].deg
                     if (el_deg < el_limit_deg[0]) or (el_deg > el_limit_deg[1]):
                         continue
                 if proximity_filter:
@@ -896,9 +896,9 @@ class Catalogue(object):
             raise ValueError('Unknown key to sort on')
         # Sort index indirectly, either in ascending or descending order
         if ascending:
-            self.targets = np.array(self.targets)[np.argsort(index)].tolist()
+            self.targets = np.array(self.targets, dtype=object)[np.argsort(index)].tolist()
         else:
-            self.targets = np.array(self.targets)[np.flipud(np.argsort(index))].tolist()
+            self.targets = np.array(self.targets, dtype=object)[np.flipud(np.argsort(index))].tolist()
         return self
 
     def visibility_list(self, timestamp=None, antenna=None, flux_freq_MHz=None, antenna2=None):

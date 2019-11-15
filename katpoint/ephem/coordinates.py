@@ -8,8 +8,6 @@ from astropy.coordinates import Galactic
 from astropy import units
 from astropy import coordinates
 
-from .angle import astropy_angle
-from .angle import degrees
 from .constants import J2000
 
 class Equatorial:
@@ -48,15 +46,14 @@ class Galactic:
             else:
                 ra = args[0].a_ra
                 dec = args[0].a_dec
-            fk5 = SkyCoord(ra=ra.astropy_angle, dec=dec.astropy_angle,
-                    frame='icrs')
+            fk5 = SkyCoord(ra=ra, dec=dec, frame='icrs')
             lonlat = fk5.transform_to('galactic')
-            self.lon = astropy_angle(lonlat.l)
-            self.lat = astropy_angle(lonlat.b)
+            self.lon = lonlat.l
+            self.lat = lonlat.b
         elif len(args) == 2:
-            # Parameters are a pair of floats.
-            self.lon = degrees(args[0])
-            self.lat = degrees(args[1])
+            # Parameters are a pair of angles.
+            self.lon = args[0]
+            self.lat = args[1]
         else:
             raise runtimeError("wrong number of arguments")
 
@@ -64,9 +61,8 @@ class Galactic:
         return self.lon, self.lat
 
     def to_radec(self):
-        g = SkyCoord(l=self.lon.astropy_angle, b=self.lat.astropy_angle,
-                frame='galactic')
+        g = SkyCoord(l=self.lon, b=self.lat, frame='galactic')
         radec = g.transform_to(ICRS)
-        return astropy_angle(radec.ra, 'h'), astropy_angle(radec.dec)
+        return radec.ra, radec.dec
 
 
