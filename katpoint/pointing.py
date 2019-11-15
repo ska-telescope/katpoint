@@ -57,7 +57,7 @@ class PointingModel(Model):
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
         def angle_to_string(a):
-            return str(angle_from_degrees(a).znorm) if a else '0'
+            return str(angle_from_degrees(a).wrap_at('180d')) if a else '0'
 
         def angle_param(name, doc):
             """Create angle-valued parameter."""

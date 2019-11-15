@@ -87,6 +87,10 @@ class TestAntennaConstruction(unittest.TestCase):
         sid1 = ant.local_sidereal_time(self.timestamp)
         sid2 = ant.local_sidereal_time(utc_secs)
         self.assertAlmostEqual(sid1, sid2, places=10, msg='Sidereal time differs for float and date/time string')
+        print("***********************")
+        print([self.timestamp, self.timestamp])
+        print("***********************")
         sid3 = ant.local_sidereal_time([self.timestamp, self.timestamp])
         sid4 = ant.local_sidereal_time([utc_secs, utc_secs])
-        assert_angles_almost_equal(sid3, sid4, decimal=12)
+        assert_angles_almost_equal(np.array([a.rad for a in sid3]),
+                np.array([a.rad for a in sid4]), decimal=12)

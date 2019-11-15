@@ -1,12 +1,13 @@
 """Tests for the body module."""
 
 import unittest
+import numpy as np
 from sgp4.io import twoline2rv
 from sgp4.earth_gravity import wgs84
 from astropy.time import Time
+from astropy import coordinates
+from astropy import units
 
-from ephem import degrees
-from ephem import hours
 from ephem import FixedBody
 from ephem import Mars
 from ephem import Moon
@@ -19,20 +20,21 @@ class TestFixedBody(unittest.TestCase):
     def test_compute(self):
         """Test compute method"""
         obs = Observer()
-        obs.lat = degrees('10:00:00.000')
-        obs.lon = degrees('80:00:00.000')
+        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
         obs.date = Time('2020-01-01 00:00:00.000')
         obs.pressure = 0.0
 
-        ra = hours('10:10:40.123')
-        dec = degrees('40:20:50.567')
+        ra = coordinates.Longitude('10:10:40.123', unit=units.hour)
+        dec = coordinates.Latitude('40:20:50.567', unit=units.deg)
         body = FixedBody()
         body._ra = ra
         body._dec = dec
         body.compute(obs)
 
-        self.assertEqual(str(body.a_ra), '10:10:40.12')
-        self.assertEqual(str(body.a_dec), '40:20:50.6')
+        self.assertEqual(body.a_ra.to_string(sep=':', unit=units.hour),
+                '10:10:40.123')
+        self.assertEqual(body.a_dec.to_string(sep=':'), '40:20:50.567')
 
         #self.assertEqual(str(body.ra), '10:11:51.77')
         #self.assertEqual(str(body.dec), '40:14:47.3')
@@ -40,14 +42,14 @@ class TestFixedBody(unittest.TestCase):
         #self.assertEqual(str(body.dec), '40:14:47.181')
 
         #self.assertEqual(str(body.az), '326:05:54.8')
-        self.assertEqual(str(body.az), '326:05:57.4')
+        self.assertEqual(body.az.to_string(sep=':'), '326:05:57.4649')
         #self.assertEqual(str(body.alt), '51:21:18.5')
-        self.assertEqual(str(body.alt), '51:21:19.9')
+        self.assertEqual(body.alt.to_string(sep=':'), '51:21:19.9572')
 
     def test_planet(self):
         obs = Observer()
-        obs.lat = degrees('10:00:00.000')
-        obs.lon = degrees('80:00:00.000')
+        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
         obs.date = Time('2020-01-01 00:00:00.000')
         obs.pressure = 0.0
 
@@ -59,13 +61,13 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '118:10:06.1')
         #self.assertEqual(str(body.alt), '27:23:13.3')
-        self.assertEqual(str(body.az), '118:10:05.2')
-        self.assertEqual(str(body.alt), '27:23:13.0')
+        self.assertEqual(body.az.to_string(sep=':'), '118:10:05.1449')
+        self.assertEqual(body.alt.to_string(sep=':'), '27:23:12.9314')
 
     def test_moon(self):
         obs = Observer()
-        obs.lat = degrees('10:00:00.000')
-        obs.lon = degrees('80:00:00.000')
+        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
         obs.date = Time('2020-01-01 10:00:00.000')
         obs.pressure = 0.0
 
@@ -77,13 +79,13 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '127:15:23.6')
         #self.assertEqual(str(body.alt), '60:05:13.7')
-        self.assertEqual(str(body.az), '127:15:46.5')
-        self.assertEqual(str(body.alt), '60:05:18.7')
+        self.assertEqual(body.az.to_string(sep=':'), '127:15:46.5021')
+        self.assertEqual(body.alt.to_string(sep=':'), '60:05:18.702')
 
     def test_sun(self):
         obs = Observer()
-        obs.lat = degrees('10:00:00.000')
-        obs.lon = degrees('80:00:00.000')
+        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
         obs.date = Time('2020-01-01 10:00:00.000')
         obs.pressure = 0.0
 
@@ -95,8 +97,8 @@ class TestFixedBody(unittest.TestCase):
 
         #self.assertEqual(str(body.az), '234:53:20.8')
         #self.assertEqual(str(body.alt), '31:38:09.4')
-        self.assertEqual(str(body.az), '234:53:19.5')
-        self.assertEqual(str(body.alt), '31:38:11.3')
+        self.assertEqual(body.az.to_string(sep=':'), '234:53:19.5316')
+        self.assertEqual(body.alt.to_string(sep=':'), '31:38:11.3409')
 
     def test_earth_satellite(self):
         name = ' GPS BIIA-21 (PRN 09) '
@@ -105,11 +107,11 @@ class TestFixedBody(unittest.TestCase):
         et = readtle(name, line1, line2)
 
         self.assertEqual(str(et._epoch), '2019-09-23 07:45:35.842')
-        self.assertEqual(str(et._inc), '55:26:26.9')
-        self.assertEqual(str(et._raan), '61:22:44.4')
+        self.assertEqual(et._inc, np.deg2rad(55.4408))
+        self.assertEqual(et._raan, np.deg2rad(61.3790))
         self.assertEqual(et._e, 0.0191986)
-        self.assertEqual(str(et._ap), '78:10:48.7')
-        self.assertEqual(str(et._M), '283:59:36.6')
+        self.assertEqual(et._ap, np.deg2rad(78.1802))
+        self.assertEqual(et._M, np.deg2rad(283.9935))
         self.assertEqual(et._n, 2.0056172)
         self.assertEqual(et._decay, 1.2e-07)
         self.assertEqual(et._orbit, 10428)
@@ -138,8 +140,8 @@ class TestFixedBody(unittest.TestCase):
 
         # Test compute
         obs = Observer()
-        obs.lat = degrees('10:00:00.000')
-        obs.lon = degrees('80:00:00.000')
+        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
         obs.date = Time('2019-09-23 07:45:36.000')
         obs.elevation = 4200.0
         obs.pressure = 0.0
@@ -162,7 +164,8 @@ class TestFixedBody(unittest.TestCase):
         #self.assertEqual(str(et.a_dec), '-2:04:36.3')
         #self.assertEqual(str(et.az), '280:32:07.2')
         #self.assertEqual(str(et.alt), '-54:06:14.4')
-        self.assertEqual(str(et.a_ra), '3:32:57.74')
-        self.assertEqual(str(et.a_dec), '-2:04:45.4')
-        self.assertEqual(str(et.az), '280:32:29.7')
-        self.assertEqual(str(et.alt), '-54:06:50.7')
+        self.assertEqual(et.a_ra.to_string(sep=':', unit=units.hour),
+                '3:32:57.7407')
+        self.assertEqual(et.a_dec.to_string(sep=':'), '-2:04:45.4303')
+        self.assertEqual(et.az.to_string(sep=':'), '280:32:29.675')
+        self.assertEqual(et.alt.to_string(sep=':'), '-54:06:50.7456')

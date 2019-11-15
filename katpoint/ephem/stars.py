@@ -112,9 +112,9 @@ stars = {}
 
 import numpy as np
 from astropy.time import Time
+from astropy import units
+import astropy.coordinates
 
-from .angle import hours
-from .angle import degrees
 from .body import FixedBody
 from .body import EarthSatellite
 
@@ -134,8 +134,8 @@ def readdb(line):
         dec = fields[3].split('|')[0]
         s = FixedBody()
         s.name = name
-        s._ra = hours(ra)
-        s._dec = degrees(dec)
+        s._ra = astropy.coordinates.Longitude(ra, unit=units.hour)
+        s._dec = astropy.coordinates.Latitude(dec, unit=units.deg)
         return s
 
     elif fields[1][0] == 'E':
@@ -158,11 +158,11 @@ def readdb(line):
         s = s * 60.0
         e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr,mon,day,
                 h,m,s), scale='utc')
-        e._inc = degrees(np.deg2rad(float(fields[3])))
-        e._raan = degrees(np.deg2rad(float(fields[4])))
+        e._inc = np.deg2rad(float(fields[3]))
+        e._raan = np.deg2rad(float(fields[4]))
         e._e = float(fields[5])
-        e._ap = degrees(np.deg2rad(float(fields[6])))
-        e._M = degrees(np.deg2rad(float(fields[7])))
+        e._ap = np.deg2rad(float(fields[6]))
+        e._M = np.deg2rad(float(fields[7]))
         e._n = float(fields[8])
         e._decay = float(fields[9])
         e._orbit = int(fields[10])

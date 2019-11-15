@@ -20,6 +20,8 @@ from builtins import object
 from past.builtins import basestring
 
 import numpy as np
+from astropy.coordinates import Angle
+from astropy import units
 import ephem
 
 # --------------------------------------------------------------------------------------------------
@@ -71,20 +73,30 @@ def angle_from_degrees(s):
     """Creates angle object from sexagesimal string in degrees or number in radians."""
     try:
         # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
-        return ephem.degrees(s)
+        if type(s) == str:
+            return Angle(s, unit=units.deg)
+        elif type(s) == tuple:
+            return Angle(s, unit=units.deg)
+        else:
+            return Angle(s, unit=units.rad)
     except TypeError:
         # If input is neither, assume that it really wants to be a string
-        return ephem.degrees(_just_gimme_an_ascii_string(s))
+        return Angle(_just_gimme_an_ascii_string(s), unit=units.deg)
 
 
 def angle_from_hours(s):
     """Creates angle object from sexagesimal string in hours or number in radians."""
     try:
         # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
-        return ephem.hours(s)
+        if type(s) == str:
+            return Angle(s, unit=units.hour)
+        elif type(s) == tuple:
+            return Angle(s, unit=units.hour)
+        else:
+            return Angle(s, unit=units.rad)
     except TypeError:
         # If input is neither, assume that it really wants to be a string
-        return ephem.hours(_just_gimme_an_ascii_string(s))
+        return Angle(_just_gimme_an_ascii_string(s), unit=units.hour)
 
 
 def wrap_angle(angle, period=2.0 * np.pi):

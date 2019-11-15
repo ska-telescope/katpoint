@@ -55,7 +55,12 @@ class TestPointingModel(unittest.TestCase):
         self.assertEqual(pm4.description, pm.description, 'Saving pointing model to string and loading it again failed')
         self.assertEqual(pm4, pm, 'Pointing models should be equal')
         self.assertNotEqual(pm2, pm, 'Pointing models should be inequal')
-        np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
+        #np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
+        for (v4, v) in zip(pm4.values(), pm.values()):
+            if type(v4) == float:
+                np.testing.assert_almost_equal(v4, v, decimal=6)
+            else:
+                np.testing.assert_almost_equal(v4.rad, v, decimal=6)
         try:
             self.assertEqual(hash(pm4), hash(pm), 'Pointing model hashes not equal')
         except TypeError:

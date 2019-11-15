@@ -271,7 +271,7 @@ def ecef_to_enu(ref_lat_rad, ref_long_rad, ref_alt_m, x_m, y_m, z_m):
 # --------------------------------------------------------------------------------------------------
 
 
-def azel_to_enu(az_rad, el_rad):
+def azel_to_enu(az, el):
     """Convert (az, el) spherical coordinates to unit vector in ENU coordinates.
 
     This converts horizontal spherical coordinates (azimuth and elevation angle)
@@ -289,8 +289,8 @@ def azel_to_enu(az_rad, el_rad):
         East, North, Up coordinates of unit vector
 
     """
-    sin_az, cos_az = np.sin(az_rad), np.cos(az_rad)
-    sin_el, cos_el = np.sin(el_rad), np.cos(el_rad)
+    sin_az, cos_az = np.sin(az.rad), np.cos(az.rad)
+    sin_el, cos_el = np.sin(el.rad), np.cos(el.rad)
     return sin_az * cos_el, cos_az * cos_el, sin_el
 
 
