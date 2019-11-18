@@ -652,9 +652,9 @@ class Target(object):
         # Obtain direction vector(s) from reference antenna to target
         az, el = self.azel(timestamp, antenna)
         # w axis points toward target
-        w = np.array(azel_to_enu(az, el))
+        w = np.array(azel_to_enu(np.array([a.rad for a in az]), np.array([a.rad for a in el])))
         # enu vector pointing from reference antenna to offset point
-        z = np.array(azel_to_enu(offset_az, offset_el))
+        z = np.array(azel_to_enu(np.array([a.rad for a in offset_az]), np.array([a.rad for a in offset_el])))
         # u axis is orthogonal to z and w, and row_stack makes it 2-D array of column vectors
         u = np.row_stack(np.cross(z, w, axis=0)) * offset_sign
         u_norm = np.sqrt(np.sum(u ** 2, axis=0))
