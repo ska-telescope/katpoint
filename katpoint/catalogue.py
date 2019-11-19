@@ -883,13 +883,13 @@ class Catalogue(object):
         if key == 'name':
             index = [target.name for target in self.targets]
         elif key == 'ra':
-            index = [target.radec(timestamp, antenna)[0] for target in self.targets]
+            index = [target.radec(timestamp, antenna)[0].rad for target in self.targets]
         elif key == 'dec':
-            index = [target.radec(timestamp, antenna)[1] for target in self.targets]
+            index = [target.radec(timestamp, antenna)[1].rad for target in self.targets]
         elif key == 'az':
-            index = [target.azel(timestamp, antenna)[0] for target in self.targets]
+            index = [target.azel(timestamp, antenna)[0].rad for target in self.targets]
         elif key == 'el':
-            index = [target.azel(timestamp, antenna)[1] for target in self.targets]
+            index = [target.azel(timestamp, antenna)[1].rad for target in self.targets]
         elif key == 'flux':
             index = [target.flux_density(flux_freq_MHz) for target in self.targets]
         else:
@@ -950,7 +950,7 @@ class Catalogue(object):
         print('------                        -------    --------- -    ---- -------------')
         for target in self.sort('el', timestamp=timestamp, antenna=antenna, ascending=False):
             az, el = target.azel(timestamp, antenna)
-            delta_el = rad2deg(target.azel(timestamp + 30.0, antenna)[1] - target.azel(timestamp - 30.0, antenna)[1])
+            delta_el = target.azel(timestamp + 30.0, antenna)[1].deg - target.azel(timestamp - 30.0, antenna)[1].deg
             el_code = '-' if (np.abs(delta_el) < 1.0 / 60.0) else ('/' if delta_el > 0.0 else '\\')
             # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
             flux = target.flux_density(flux_freq_MHz) if flux_freq_MHz is not None else np.nan
@@ -963,7 +963,7 @@ class Catalogue(object):
                 # Draw horizon line
                 print('--------------------------------------------------------------------------')
                 above_horizon = False
-            line = '%-24s %12s %12s %c' % (target.name, az.znorm, el, el_code)
+            line = '%-24s %12s %12s %c' % (target.name, az.rad, el.rad, el_code)
             line = line + ' %7.1f' % (flux,) if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
                 line += '    %10.2f' % (fringe_period,)
