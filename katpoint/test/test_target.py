@@ -22,6 +22,8 @@ import time
 import pickle
 
 import numpy as np
+from astropy import coordinates
+from astropy import units
 
 import katpoint
 
@@ -260,7 +262,7 @@ class TestTargetCalculations(unittest.TestCase):
         self.assertEqual(sep, 0.0, 'Separation between target and itself is bigger than 0.0')
         sep = azel.separation(sun, self.ts, self.ant1)
         self.assertEqual(sep, 0.0, 'Separation between target and itself is bigger than 0.0')
-        azel2 = katpoint.construct_azel_target(az, el + 0.01)
+        azel2 = katpoint.construct_azel_target(az, el + coordinates.Angle(0.01, unit=units.rad))
         sep = azel.separation(azel2, self.ts, self.ant1)
         np.testing.assert_almost_equal(sep, 0.01, decimal=12)
 

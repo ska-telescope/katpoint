@@ -25,6 +25,8 @@ except ImportError:
     from io import StringIO  # python3
 
 import numpy as np
+from astropy import coordinates
+from astropy import units
 
 import katpoint
 
@@ -116,9 +118,10 @@ class TestDelayCorrection(unittest.TestCase):
         """Test target offset."""
         az, el = self.target1.azel(self.ts, self.ant1)
         offset = dict(projection_type='SIN')
-        target3 = katpoint.construct_azel_target(az - katpoint.deg2rad(1.0),
-                                                 el - katpoint.deg2rad(1.0))
-        x, y = target3.sphere_to_plane(az, el, self.ts, self.ant1, **offset)
+        target3 = katpoint.construct_azel_target(
+                az - coordinates.Angle(1.0, unit=units.deg),
+                el - coordinates.Angle(1.0, unit=units.deg))
+        x, y = target3.sphere_to_plane(az.rad, el.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
         extra_delay = self.delays.extra_delay
@@ -135,9 +138,9 @@ class TestDelayCorrection(unittest.TestCase):
         # Now try (ra, dec) coordinate system
         ra, dec = self.target1.radec(self.ts, self.ant1)
         offset = dict(projection_type='ARC', coord_system='radec')
-        target4 = katpoint.construct_radec_target(ra - katpoint.deg2rad(1.0),
-                                                  dec - katpoint.deg2rad(1.0))
-        x, y = target4.sphere_to_plane(ra, dec, self.ts, self.ant1, **offset)
+        target4 = katpoint.construct_radec_target(ra - coordinates.Angle(1.0, unit=units.deg),
+                                                  dec - coordinates.Angle(1.0, unit=units.deg))
+        x, y = target4.sphere_to_plane(ra.rad, dec.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
         extra_delay = self.delays.extra_delay

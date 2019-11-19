@@ -584,7 +584,7 @@ class Target(object):
         baseline_m = antenna.baseline_toward(antenna2)
         # Obtain direction vector(s) from reference antenna to target
         az, el = self.azel(timestamp, antenna)
-        targetdir = azel_to_enu(az, el)
+        targetdir = azel_to_enu(az.rad, el.rad)
         # Dot product of vectors is w coordinate, and delay is time taken by EM wave to traverse this
         delay = - np.dot(baseline_m, targetdir) / lightspeed
         # Numerically estimate delay rate from difference across 1-second interval spanning timestamp(s)
@@ -651,10 +651,26 @@ class Target(object):
         offset_az, offset_el = offset.azel(timestamp, antenna)
         # Obtain direction vector(s) from reference antenna to target
         az, el = self.azel(timestamp, antenna)
+        if type(az) == np.ndarray:
+            az = np.array([a.rad for a in az])
+        else:
+            az = az.rad
+        if type(el) == np.ndarray:
+            el = np.array([a.rad for a in el])
+        else:
+            el = el.rad
         # w axis points toward target
-        w = np.array(azel_to_enu(np.array([a.rad for a in az]), np.array([a.rad for a in el])))
+        w = np.array(azel_to_enu(az, el))
         # enu vector pointing from reference antenna to offset point
-        z = np.array(azel_to_enu(np.array([a.rad for a in offset_az]), np.array([a.rad for a in offset_el])))
+        if type(offset_az) == np.ndarray:
+            offset_az = np.array([a.rad for a in offset_az])
+        else:
+            offset_az = offset_az.rad
+        if type(offset_el) == np.ndarray:
+            offset_el = np.array([a.rad for a in offset_el])
+        else:
+            offset_el = offset_el.rad
+        z = np.array(azel_to_enu(offset_az, offset_el))
         # u axis is orthogonal to z and w, and row_stack makes it 2-D array of column vectors
         u = np.row_stack(np.cross(z, w, axis=0)) * offset_sign
         u_norm = np.sqrt(np.sum(u ** 2, axis=0))
@@ -847,7 +863,11 @@ class Target(object):
 
         def _scalar_separation(t):
             """Calculate angular separation for a single time instant."""
-            return self.azel(t, antenna).separation(other_target.azel(t, antenna))
+            azel1 = self.azel(t, antenna)
+            p1 = coordinates.SkyCoord(azel1[0], azel1[1])
+            azel2 = other_target.azel(t, antenna)
+            p2 = coordinates.SkyCoord(azel2[0], azel2[1])
+            return p1.separation(p2).rad
         if is_iterable(timestamp):
             return np.array([_scalar_separation(t) for t in timestamp])
         else:
@@ -929,11 +949,11 @@ class Target(object):
         if coord_system == 'radec':
             # The target (ra, dec) coordinates will serve as reference point on the sphere
             ref_ra, ref_dec = self.radec(timestamp, antenna)
-            return plane_to_sphere[projection_type](ref_ra, ref_dec, x, y)
+            return plane_to_sphere[projection_type](ref_ra.rad, ref_dec.rad, x, y)
         else:
             # The target (az, el) coordinates will serve as reference point on the sphere
             ref_az, ref_el = self.azel(timestamp, antenna)
-            return plane_to_sphere[projection_type](ref_az, ref_el, x, y)
+            return plane_to_sphere[projection_type](ref_az.rad, ref_el.rad, x, y)
 
 # --------------------------------------------------------------------------------------------------
 # --- FUNCTION :  construct_target_params

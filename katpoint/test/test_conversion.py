@@ -20,6 +20,8 @@ from __future__ import print_function, division, absolute_import
 import unittest
 
 import numpy as np
+from astropy import coordinates
+from astropy import units
 
 import katpoint
 
@@ -69,12 +71,12 @@ class TestSpherical(unittest.TestCase):
     """Closure tests for spherical coordinate transformations."""
     def setUp(self):
         N = 1000
-        self.az = 2.0 * np.pi * np.random.rand(N)
-        self.el = 0.999 * np.pi * (np.random.rand(N) - 0.5)
+        self.az = coordinates.Angle(2.0 * np.pi * np.random.rand(N), unit=units.rad)
+        self.el = coordinates.Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=units.rad)
 
     def test_azel_to_enu(self):
         """Closure tests for (az, el) to ENU conversion and vice versa."""
-        e, n, u = katpoint.azel_to_enu(self.az, self.el)
+        e, n, u = katpoint.azel_to_enu(self.az.rad, self.el.rad)
         new_az, new_el = katpoint.enu_to_azel(e, n, u)
-        assert_angles_almost_equal(new_az, self.az, decimal=15)
-        assert_angles_almost_equal(new_el, self.el, decimal=15)
+        assert_angles_almost_equal(new_az, self.az.rad, decimal=15)
+        assert_angles_almost_equal(new_el, self.el.rad, decimal=15)
