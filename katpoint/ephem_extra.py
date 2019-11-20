@@ -29,7 +29,7 @@ import ephem
 # --------------------------------------------------------------------------------------------------
 
 # The speed of light, in metres per second
-lightspeed = ephem.c
+lightspeed = 299792458.0
 
 
 def is_iterable(x):

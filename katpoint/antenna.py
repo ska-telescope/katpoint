@@ -27,6 +27,7 @@ from builtins import object
 import numpy as np
 from astropy import coordinates
 from astropy import units
+from astropy.time import Time
 import ephem
 
 from .timestamp import Timestamp
@@ -210,7 +211,7 @@ class Antenna(object):
                     unit=units.rad)
         self.ref_observer.elevation = float(altitude)
         # All astrometric ra/dec coordinates will be in J2000 epoch
-        self.ref_observer.epoch = ephem.J2000
+        self.ref_observer.epoch = Time(2000.0, format='jyear')
         # Disable ephem's built-in refraction model, since it's for optical wavelengths
         self.ref_observer.pressure = 0.0
         self.ref_position_wgs84 = self.ref_observer.lat.rad, self.ref_observer.long.rad, self.ref_observer.elevation
@@ -226,7 +227,7 @@ class Antenna(object):
             self.observer.lat  = coordinates.Latitude(lat, unit=units.rad)
             self.observer.long = coordinates.Longitude(long, unit=units.rad)
             self.observer.elevation = elevation
-            self.observer.epoch = ephem.J2000
+            self.observer.epoch = Time(2000.0, format='jyear')
             self.observer.pressure = 0.0
             self.position_wgs84 = self.observer.lat.rad, self.observer.long.rad, self.observer.elevation
         else:

@@ -32,11 +32,9 @@ from sgp4.propagation import sgp4init
 import pyorbital.geoloc
 import pyorbital.astronomy
 
-from .constants import J2000
-
 class Body(object):
     def __init__(self):
-        self._epoch = J2000
+        self._epoch = Time(2000.0, format='jyear')
 
     def _compute(self, obs, icrs):
 

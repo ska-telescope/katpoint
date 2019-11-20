@@ -22,6 +22,7 @@ from past.builtins import basestring
 import numpy as np
 from astropy import coordinates
 from astropy import units
+from astropy.time import Time
 import ephem
 
 from .timestamp import Timestamp
@@ -430,7 +431,7 @@ class Target(object):
         if self.body_type == 'radec':
             # Convert to J2000 equatorial coordinates
             original_radec = ephem.Equatorial(self.body._ra, self.body._dec, epoch=self.body._epoch)
-            ra, dec = ephem.Equatorial(original_radec, epoch=ephem.J2000).get()
+            ra, dec = ephem.Equatorial(original_radec, epoch=Time(2000.0, format='jyear')).get()
             if is_iterable(timestamp):
                 return np.tile(ra, len(timestamp)), np.tile(dec, len(timestamp))
             else:
@@ -1042,11 +1043,11 @@ def construct_target_params(description):
             body.name = "Ra: %s Dec: %s" % (ra, dec)
         # Extract epoch info from tags
         if ('B1900' in tags) or ('b1900' in tags):
-            body._epoch = ephem.B1900
+            body._epoch = Time(1900.0, format='byear')
         elif ('B1950' in tags) or ('b1950' in tags):
-            body._epoch = ephem.B1950
+            body._epoch = Time(1950.0, format='byear')
         else:
-            body._epoch = ephem.J2000
+            body._epoch = Time(2000.0, format='jyear')
         body._ra = ra
         body._dec = dec
 
@@ -1061,7 +1062,7 @@ def construct_target_params(description):
             body.name = preferred_name
         else:
             body.name = "Galactic l: %.4f b: %.4f" % (l, b)
-        body._epoch = ephem.J2000
+        body._epoch = Time(2000.0, format='jyear')
         body._ra = ra
         body._dec = dec
 
@@ -1193,7 +1194,7 @@ def construct_radec_target(ra, dec):
             pass
     ra, dec = angle_from_hours(ra), angle_from_degrees(dec)
     body.name = "Ra: %s Dec: %s" % (ra, dec)
-    body._epoch = ephem.J2000
+    body._epoch = Time(2000.0, format='jyear')
     body._ra = ra
     body._dec = dec
     return Target(body, 'radec')

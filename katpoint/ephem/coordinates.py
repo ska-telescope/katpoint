@@ -7,11 +7,10 @@ from astropy.coordinates import ICRS
 from astropy.coordinates import Galactic
 from astropy import units
 from astropy import coordinates
-
-from .constants import J2000
+from astropy.time import Time
 
 class Equatorial:
-    def __init__(self, *args, epoch=J2000):
+    def __init__(self, *args, epoch=Time(2000.0, format='jyear')):
         if len(args) == 1:
             # Parameters are a body or an Equatorial or a Galactic.
             if type(args[0]) == Equatorial:

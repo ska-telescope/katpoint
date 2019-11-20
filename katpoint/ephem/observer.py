@@ -9,14 +9,12 @@ from astropy.coordinates import EarthLocation
 from astropy import coordinates
 from astropy import units
 
-from .constants import J2000
-
 class Observer(object):
     """Represents a location
     """
     def __init__(self):
         self.date = Time(Time.now(), scale='utc')
-        self.epoch = J2000
+        self.epoch = Time(2000.0, format='jyear')
         self._lon = coordinates.Longitude(0.0, unit='deg')
         self._lat = coordinates.Latitude(0.0, unit='deg')
         self.elevation = 0.0
