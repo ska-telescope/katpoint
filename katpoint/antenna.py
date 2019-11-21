@@ -35,6 +35,7 @@ from .ephem_extra import is_iterable
 from .conversion import enu_to_ecef, ecef_to_lla, lla_to_ecef, ecef_to_enu
 from .pointing import PointingModel
 from .delay import DelayModel
+from .observer import Observer
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  Antenna
@@ -44,8 +45,9 @@ from .delay import DelayModel
 class Antenna(object):
     """An antenna that can point at a target.
 
-    This is a wrapper around a PyEphem :class:`ephem.Observer` that adds a dish
-    diameter and other parameters related to pointing and delay calculations.
+    This is a wrapper around a Observer (modeled after ephem.Observer that
+    adds a dish diameter and other parameters related to pointing and delay
+    calculations.
     It has two variants: a stand-alone single dish, or an antenna that is part
     of an array. The first variant is initialised with the antenna location in
     WGS84 (lat-long-alt) form, while the second variant is initialised with the
@@ -196,7 +198,7 @@ class Antenna(object):
         self.beamwidth = float(beamwidth)
 
         # Set up reference observer first
-        self.ref_observer = ephem.Observer()
+        self.ref_observer = Observer()
         if type(latitude) == str:
             self.ref_observer.lat = coordinates.Latitude(latitude,
                     unit=units.deg)
@@ -222,7 +224,7 @@ class Antenna(object):
             # Convert ENU offset to ECEF coordinates of antenna, and then to WGS84 coordinates
             self.position_ecef = enu_to_ecef(self.ref_observer.lat.rad, self.ref_observer.long.rad,
                                              self.ref_observer.elevation, *self.position_enu)
-            self.observer = ephem.Observer()
+            self.observer = Observer()
             lat, long, elevation = ecef_to_lla(*self.position_ecef)
             self.observer.lat  = coordinates.Latitude(lat, unit=units.rad)
             self.observer.long = coordinates.Longitude(long, unit=units.rad)

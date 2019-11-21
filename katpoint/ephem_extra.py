@@ -22,7 +22,7 @@ from past.builtins import basestring
 import numpy as np
 from astropy.coordinates import Angle
 from astropy import units
-import ephem
+from .observer import Observer
 
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
@@ -141,7 +141,7 @@ class StationaryBody(object):
         given *observer*, while its (az, el) coordinates remain unchanged.
 
         """
-        if isinstance(observer, ephem.Observer):
+        if isinstance(observer, Observer):
             ra, dec = observer.radec_of(self.az, self.el)
             self.ra = ra
             self.dec = dec

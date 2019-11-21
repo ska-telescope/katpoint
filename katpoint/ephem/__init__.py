@@ -1,4 +1,3 @@
-from .observer import Observer
 from .body import FixedBody
 from .body import Sun
 from .body import Moon
@@ -14,3 +13,4 @@ from .body import EarthSatellite
 from .body import readtle
 from .stars import star
 from .stars import readdb
+

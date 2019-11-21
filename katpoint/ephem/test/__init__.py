@@ -5,7 +5,6 @@ import sys
 import unittest
 
 from ephem.test import test_body
-from ephem.test import test_observer
 
 def suite():
     loader = unittest.TestLoader()

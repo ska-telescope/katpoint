@@ -7,13 +7,13 @@ from sgp4.earth_gravity import wgs84
 from astropy.time import Time
 from astropy import coordinates
 from astropy import units
+from katpoint import Observer
 
 from ephem import FixedBody
 from ephem import Mars
 from ephem import Moon
 from ephem import Sun
 from ephem import readtle
-from ephem import Observer
 
 class TestFixedBody(unittest.TestCase):
     """Test for the FixedBody class."""

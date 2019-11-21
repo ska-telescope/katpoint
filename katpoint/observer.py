@@ -15,10 +15,10 @@ class Observer(object):
     def __init__(self):
         self.date = Time(Time.now(), scale='utc')
         self.epoch = Time(2000.0, format='jyear')
-        self._lon = coordinates.Longitude(0.0, unit='deg')
-        self._lat = coordinates.Latitude(0.0, unit='deg')
+        self._lon = coordinates.Longitude(0.0, unit=units.deg)
+        self._lat = coordinates.Latitude(0.0, unit=units.deg)
         self.elevation = 0.0
-        self.horizon = coordinates.Angle(0.0, unit='deg')
+        self.horizon = coordinates.Angle(0.0, unit=units.deg)
         self.temp = 15.0
         self.pressure = 0.0
 

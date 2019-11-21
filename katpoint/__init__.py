@@ -42,6 +42,7 @@ from .model import Parameter, Model, BadModelFile
 from .pointing import PointingModel
 from .refraction import RefractionCorrection
 from .delay import DelayModel, DelayCorrection
+from .observer import Observer
 
 # Hide submodules in module namespace, to avoid confusion with corresponding class names
 # If the module is reloaded, this will fail - ignore the resulting NameError
