@@ -4,7 +4,7 @@ import logging
 import sys
 import unittest
 
-from ephem.test import test_body
+from ephem.test import test_stars
 
 def suite():
     loader = unittest.TestLoader()

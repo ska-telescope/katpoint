@@ -30,6 +30,8 @@ from katpoint.test import test_conversion
 from katpoint.test import test_pointing
 from katpoint.test import test_refraction
 from katpoint.test import test_delay
+from katpoint.test import test_body
+from katpoint.test import test_observer
 
 # Enable verbose logging to stdout for katpoint module - see output via nosetests -s flag
 logger = logging.getLogger("katpoint")

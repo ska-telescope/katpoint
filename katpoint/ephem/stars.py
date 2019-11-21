@@ -115,13 +115,13 @@ from astropy.time import Time
 from astropy import units
 import astropy.coordinates
 
-from .body import FixedBody
-from .body import EarthSatellite
+from katpoint.bodies import FixedBody
+from katpoint.bodies import EarthSatellite
 
 def readdb(line):
-    """Unpacks a line of an xephem catalogue and creates Body.
+    """Unpacks a line of an xephem catalogue and creates Body object.
 
-    Only stars and Earth satellites have been implemented.
+    Only fixed positions and earth satellites have been implemented.
     """
     # Split line to fields
     fields = line.split(',')

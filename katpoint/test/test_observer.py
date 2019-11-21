@@ -7,8 +7,6 @@ from astropy import units
 
 import katpoint
 
-from ephem import FixedBody
-
 class TestObserver(unittest.TestCase):
     """Test for the Observer class."""
     def test_radec_of(self):

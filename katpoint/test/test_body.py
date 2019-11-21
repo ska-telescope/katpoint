@@ -9,11 +9,11 @@ from astropy import coordinates
 from astropy import units
 from katpoint import Observer
 
-from ephem import FixedBody
-from ephem import Mars
-from ephem import Moon
-from ephem import Sun
-from ephem import readtle
+from katpoint.bodies import FixedBody
+from katpoint.bodies import Mars
+from katpoint.bodies import Moon
+from katpoint.bodies import Sun
+from katpoint.bodies import readtle
 
 class TestFixedBody(unittest.TestCase):
     """Test for the FixedBody class."""

@@ -34,6 +34,8 @@ from .ephem_extra import (StationaryBody, NullBody, is_iterable, lightspeed,
                           deg2rad, rad2deg, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
+from . import bodies
+from .bodies import FixedBody, readtle, Sun
 
 
 class NonAsciiError(ValueError):
@@ -1034,7 +1036,7 @@ def construct_target_params(description):
         if len(fields) < 4:
             raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
                              % description)
-        body = ephem.FixedBody()
+        body = FixedBody()
         try:
             ra = deg2rad(float(fields[2]))
         except ValueError:
@@ -1059,7 +1061,7 @@ def construct_target_params(description):
             raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
                              % description)
         l, b = float(fields[2]), float(fields[3])
-        body = ephem.FixedBody()
+        body = FixedBody()
         radec = coordinates.SkyCoord(l=coordinates.Longitude(l, unit=units.deg), b=coordinates.Latitude(b, unit=units.deg), frame=Galactic).transform_to(ICRS)
         if preferred_name:
             body.name = preferred_name
@@ -1080,14 +1082,14 @@ def construct_target_params(description):
         if tle_name != preferred_name:
             aliases.append(tle_name)
         try:
-            body = ephem.readtle(preferred_name, lines[1], lines[2])
+            body = readtle(preferred_name, lines[1], lines[2])
         except ValueError:
             raise ValueError("Target description '%s' contains malformed *tle* body" % description)
 
     elif body_type == 'special':
         special_name = preferred_name.capitalize()
         try:
-            body = getattr(ephem, special_name)() if special_name != 'Nothing' else NullBody()
+            body = getattr(bodies, special_name)() if special_name != 'Nothing' else NullBody()
         except AttributeError:
             raise ValueError("Target description '%s' contains unknown *special* body '%s'"
                              % (description, special_name))
@@ -1188,7 +1190,7 @@ def construct_radec_target(ra, dec):
         Constructed target object
 
     """
-    body = ephem.FixedBody()
+    body = FixedBody()
     # First try to interpret the string as decimal degrees
     if isinstance(ra, basestring):
         try:
