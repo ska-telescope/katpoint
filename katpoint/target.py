@@ -21,6 +21,9 @@ from past.builtins import basestring
 
 import numpy as np
 from astropy import coordinates
+from astropy.coordinates.builtin_frames import ICRS
+from astropy.coordinates.builtin_frames import FK5
+from astropy.coordinates.builtin_frames import Galactic
 from astropy import units
 from astropy.time import Time
 import ephem
@@ -147,8 +150,8 @@ class Target(object):
             descr += ', %s %s' % (self.body.az.to_string(unit=units.deg),
                     self.body.el.to_string(unit=units.deg))
         if self.body_type == 'gal':
-            l, b = ephem.Galactic(ephem.Equatorial(self.body._ra, self.body._dec)).get()
-            descr += ', %.4f %.4f' % (l.deg, b.deg)
+            gal = coordinates.SkyCoord(self.body._ra, self.body._dec, frame=ICRS).transform_to(Galactic)
+            descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
         if self.flux_model is None:
             descr += ', no flux info'
         else:
@@ -256,8 +259,8 @@ class Target(object):
             # Check if it's an unnamed target with a default name
             if names.startswith('Galactic l:'):
                 fields = [tags]
-            l, b = ephem.Galactic(ephem.Equatorial(self.body._ra, self.body._dec)).get()
-            fields += ['%.4f' % (l.deg,), '%.4f' % (b.deg,)]
+            gal = coordinates.SkyCoord(self.body._ra, self.body._dec, frame=ICRS).transform_to(Galactic)
+            fields += ['%.4f' % (gal.l.deg,), '%.4f' % (gal.b.deg,)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -430,12 +433,12 @@ class Target(object):
         """
         if self.body_type == 'radec':
             # Convert to J2000 equatorial coordinates
-            original_radec = ephem.Equatorial(self.body._ra, self.body._dec, epoch=self.body._epoch)
-            ra, dec = ephem.Equatorial(original_radec, epoch=Time(2000.0, format='jyear')).get()
+            radec = coordinates.SkyCoord(ra=self.body._ra, dec=self.body._dec,
+                    frame=FK5(equinox=self.body._epoch)).transform_to(ICRS)
             if is_iterable(timestamp):
-                return np.tile(ra, len(timestamp)), np.tile(dec, len(timestamp))
+                return np.tile(radec.ra, len(timestamp)), np.tile(radec.dec, len(timestamp))
             else:
-                return ra, dec
+                return radec.ra, radec.dec
         timestamp, antenna = self._set_timestamp_antenna_defaults(timestamp, antenna)
 
         def _scalar_radec(t):
@@ -480,18 +483,18 @@ class Target(object):
 
         """
         if self.body_type == 'gal':
-            l, b = ephem.Galactic(ephem.Equatorial(self.body._ra, self.body._dec)).get()
+            gal = coordinates.SkyCoord(self.body._ra, self.body._dec, frame=ICRS).transform_to(Galactic)
             if is_iterable(timestamp):
-                return np.tile(l, len(timestamp)), np.tile(b, len(timestamp))
+                return np.tile(gal.l, len(timestamp)), np.tile(gal.b, len(timestamp))
             else:
-                return l, b
+                return gal.l, gal.b
         ra, dec = self.astrometric_radec(timestamp, antenna)
         if is_iterable(ra):
-            lb = np.array([ephem.Galactic(ephem.Equatorial(ra[n], dec[n])).get()
-                           for n in range(len(ra))])
-            return lb[:, 0], lb[:, 1]
+            lb = np.array([coordinates.SkyCoord(ra[n], dec[n], frame=ICRS).transform_to(Galactic) for n in range(len(ra))])
+            return np.array([g.l for g in lb]), np.array([g.b for g in lb])
         else:
-            return ephem.Galactic(ephem.Equatorial(ra, dec)).get()
+            gal = coordinates.SkyCoord(ra, dec, frame=ICRS).transform_to(Galactic)
+            return gal.l, gal.b
 
     def parallactic_angle(self, timestamp=None, antenna=None):
         """Calculate parallactic angle on target as seen from antenna at time(s).
@@ -1057,14 +1060,14 @@ def construct_target_params(description):
                              % description)
         l, b = float(fields[2]), float(fields[3])
         body = ephem.FixedBody()
-        ra, dec = ephem.Galactic(coordinates.Longitude(l, unit=units.deg), coordinates.Latitude(b, unit=units.deg)).to_radec()
+        radec = coordinates.SkyCoord(l=coordinates.Longitude(l, unit=units.deg), b=coordinates.Latitude(b, unit=units.deg), frame=Galactic).transform_to(ICRS)
         if preferred_name:
             body.name = preferred_name
         else:
             body.name = "Galactic l: %.4f b: %.4f" % (l, b)
         body._epoch = Time(2000.0, format='jyear')
-        body._ra = ra
-        body._dec = dec
+        body._ra = radec.ra
+        body._dec = radec.dec
 
     elif body_type == 'tle':
         lines = fields[-1].split('\n')

@@ -13,6 +13,4 @@ from .body import Uranus
 from .body import EarthSatellite
 from .body import readtle
 from .stars import star
-from .coordinates import Equatorial
-from .coordinates import Galactic
 from .stars import readdb
