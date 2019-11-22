@@ -1,9 +1,12 @@
-"""Tests for the body module."""
+"""Tests for the body module.
+
+The values in the comments are the results from the same tests run on the
+pyephem package.
+
+"""
 
 import unittest
 import numpy as np
-from sgp4.io import twoline2rv
-from sgp4.earth_gravity import wgs84
 from astropy.time import Time
 from astropy import coordinates
 from astropy import units
@@ -36,14 +39,8 @@ class TestFixedBody(unittest.TestCase):
                 '10:10:40.123')
         self.assertEqual(body.a_dec.to_string(sep=':'), '40:20:50.567')
 
-        #self.assertEqual(str(body.ra), '10:11:51.77')
-        #self.assertEqual(str(body.dec), '40:14:47.3')
-        #self.assertEqual(str(body.ra), '10:11:51.2981')
-        #self.assertEqual(str(body.dec), '40:14:47.181')
-
-        #self.assertEqual(str(body.az), '326:05:54.8')
+        # 326:05:54.8 51:21:18.5
         self.assertEqual(body.az.to_string(sep=':'), '326:05:57.4649')
-        #self.assertEqual(str(body.alt), '51:21:18.5')
         self.assertEqual(body.alt.to_string(sep=':'), '51:21:19.9572')
 
     def test_planet(self):
@@ -56,11 +53,7 @@ class TestFixedBody(unittest.TestCase):
         body = Mars()
         body.compute(obs)
 
-        #self.assertEqual(str(body.a_ra), '15:43:47.22')
-        #self.assertEqual(str(body.a_dec), '-19:23:07.0')
-
-        #self.assertEqual(str(body.az), '118:10:06.1')
-        #self.assertEqual(str(body.alt), '27:23:13.3')
+        # '118:10:06.1' '27:23:13.3'
         self.assertEqual(body.az.to_string(sep=':'), '118:10:05.1449')
         self.assertEqual(body.alt.to_string(sep=':'), '27:23:12.9314')
 
@@ -74,11 +67,7 @@ class TestFixedBody(unittest.TestCase):
         body = Moon()
         body.compute(obs)
 
-        #self.assertEqual(str(body.a_ra), '15:43:47.22')
-        #self.assertEqual(str(body.a_dec), '-19:23:07.0')
-
-        #self.assertEqual(str(body.az), '127:15:23.6')
-        #self.assertEqual(str(body.alt), '60:05:13.7')
+        # 127:15:23.6 60:05:13.7'
         self.assertEqual(body.az.to_string(sep=':'), '127:15:46.5021')
         self.assertEqual(body.alt.to_string(sep=':'), '60:05:18.702')
 
@@ -92,11 +81,7 @@ class TestFixedBody(unittest.TestCase):
         body = Sun()
         body.compute(obs)
 
-        #self.assertEqual(str(body.a_ra), '15:43:47.22')
-        #self.assertEqual(str(body.a_dec), '-19:23:07.0')
-
-        #self.assertEqual(str(body.az), '234:53:20.8')
-        #self.assertEqual(str(body.alt), '31:38:09.4')
+        # 234:53:20.8 '31:38:09.4'
         self.assertEqual(body.az.to_string(sep=':'), '234:53:19.5316')
         self.assertEqual(body.alt.to_string(sep=':'), '31:38:11.3409')
 
@@ -104,39 +89,60 @@ class TestFixedBody(unittest.TestCase):
         name = ' GPS BIIA-21 (PRN 09) '
         line1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
         line2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
-        et = readtle(name, line1, line2)
+        sat = readtle(name, line1, line2)
 
-        self.assertEqual(str(et._epoch), '2019-09-23 07:45:35.842')
-        self.assertEqual(et._inc, np.deg2rad(55.4408))
-        self.assertEqual(et._raan, np.deg2rad(61.3790))
-        self.assertEqual(et._e, 0.0191986)
-        self.assertEqual(et._ap, np.deg2rad(78.1802))
-        self.assertEqual(et._M, np.deg2rad(283.9935))
-        self.assertEqual(et._n, 2.0056172)
-        self.assertEqual(et._decay, 1.2e-07)
-        self.assertEqual(et._orbit, 10428)
-        self.assertEqual(et._drag, 1.e-04)
+        # Check that the EarthSatellite object has the expect attribute
+        # values.
+        self.assertEqual(str(sat._epoch), '2019-09-23 07:45:35.842')
+        self.assertEqual(sat._inc, np.deg2rad(55.4408))
+        self.assertEqual(sat._raan, np.deg2rad(61.3790))
+        self.assertEqual(sat._e, 0.0191986)
+        self.assertEqual(sat._ap, np.deg2rad(78.1802))
+        self.assertEqual(sat._M, np.deg2rad(283.9935))
+        self.assertEqual(sat._n, 2.0056172)
+        self.assertEqual(sat._decay, 1.2e-07)
+        self.assertEqual(sat._orbit, 10428)
+        self.assertEqual(sat._drag, 1.e-04)
 
+        # This is xephem database record that pyephem generates
         xephem = ' GPS BIIA-21 (PRN 09) ,E,9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,55.4408,61.379002,0.0191986,78.180199,283.9935,2.0056172,1.2e-07,10428,9.9999997e-05'
 
-        self.assertEqual(et.writedb().split(',')[0], xephem.split(',')[0])
-        self.assertEqual(et.writedb().split(',')[1], xephem.split(',')[1])
-        #self.assertEqual(et.writedb().split(',')[2].split('|')[0],
-        #        xephem.split(',')[2].split('|')[0])
-        #self.assertEqual(et.writedb().split(',')[2].split('|')[1],
-        #        xephem.split(',')[2].split('|')[1])
-        #self.assertEqual(et.writedb().split(',')[3].split('|')[2],
-        #        xephem.split(',')[2].split('|')[2])
-        self.assertEqual(et.writedb().split(',')[3], xephem.split(',')[3])
+        rec = sat.writedb()
+        self.assertEqual(rec.split(',')[0], xephem.split(',')[0])
+        self.assertEqual(rec.split(',')[1], xephem.split(',')[1])
+
+        self.assertEqual(rec.split(',')[2].split('|')[0].split('/')[0],
+                xephem.split(',')[2].split('|')[0].split('/')[0])
+        self.assertAlmostEqual(float(rec.split(',')[2].split('|')[0].split('/')[1]),
+                float(xephem.split(',')[2].split('|')[0].split('/')[1]))
+        self.assertEqual(rec.split(',')[2].split('|')[0].split('/')[2],
+                xephem.split(',')[2].split('|')[0].split('/')[2])
+
+        self.assertEqual(rec.split(',')[2].split('|')[1].split('/')[0],
+                xephem.split(',')[2].split('|')[1].split('/')[0])
+        self.assertAlmostEqual(float(rec.split(',')[2].split('|')[1].split('/')[1]),
+                float(xephem.split(',')[2].split('|')[1].split('/')[1]), places=2)
+        self.assertEqual(rec.split(',')[2].split('|')[1].split('/')[2],
+                xephem.split(',')[2].split('|')[1].split('/')[2])
+
+        self.assertEqual(rec.split(',')[2].split('|')[2].split('/')[0],
+                xephem.split(',')[2].split('|')[2].split('/')[0])
+        self.assertAlmostEqual(float(rec.split(',')[2].split('|')[2].split('/')[1]),
+                float(xephem.split(',')[2].split('|')[2].split('/')[1]), places=2)
+        self.assertEqual(rec.split(',')[2].split('|')[2].split('/')[2],
+                xephem.split(',')[2].split('|')[2].split('/')[2])
+
+        self.assertEqual(rec.split(',')[3], xephem.split(',')[3])
 
         # pyephem adds spurious precision to these 3 fields
-        self.assertEqual(et.writedb().split(',')[4], xephem.split(',')[4][:6])
-        self.assertEqual(et.writedb().split(',')[5][:7], xephem.split(',')[5][:7])
-        self.assertEqual(et.writedb().split(',')[6], xephem.split(',')[6][:5])
-        self.assertEqual(et.writedb().split(',')[7], xephem.split(',')[7])
-        self.assertEqual(et.writedb().split(',')[8], xephem.split(',')[8])
-        self.assertEqual(et.writedb().split(',')[9], xephem.split(',')[9])
-        self.assertEqual(et.writedb().split(',')[10], xephem.split(',')[10])
+        self.assertEqual(rec.split(',')[4], xephem.split(',')[4][:6])
+        self.assertEqual(rec.split(',')[5][:7], xephem.split(',')[5][:7])
+        self.assertEqual(rec.split(',')[6], xephem.split(',')[6][:5])
+
+        self.assertEqual(rec.split(',')[7], xephem.split(',')[7])
+        self.assertEqual(rec.split(',')[8], xephem.split(',')[8])
+        self.assertEqual(rec.split(',')[9], xephem.split(',')[9])
+        self.assertEqual(rec.split(',')[10], xephem.split(',')[10])
 
         # Test compute
         obs = Observer()
@@ -145,27 +151,13 @@ class TestFixedBody(unittest.TestCase):
         obs.date = Time('2019-09-23 07:45:36.000')
         obs.elevation = 4200.0
         obs.pressure = 0.0
-        et.compute(obs)
+        sat.compute(obs)
 
-        # Create an sgp4 objec
-        sgp = twoline2rv(line1, line2, wgs84)
-
-        self.assertEqual(sgp.epochyr, et._sat.epochyr)
-        self.assertAlmostEqual(sgp.epochdays, et._sat.epochdays)
-        self.assertEqual(sgp.bstar, et._sat.bstar)
-        self.assertEqual(sgp.inclo, et._sat.inclo)
-        self.assertEqual(sgp.nodeo, et._sat.nodeo)
-        self.assertEqual(sgp.ecco, et._sat.ecco)
-        self.assertEqual(sgp.argpo, et._sat.argpo)
-        self.assertEqual(sgp.mo, et._sat.mo)
-        self.assertAlmostEqual(sgp.no, et._sat.no)
-
-        #self.assertEqual(str(et.a_ra), '3:32:59.21')
-        #self.assertEqual(str(et.a_dec), '-2:04:36.3')
-        #self.assertEqual(str(et.az), '280:32:07.2')
-        #self.assertEqual(str(et.alt), '-54:06:14.4')
-        self.assertEqual(et.a_ra.to_string(sep=':', unit=units.hour),
+        # 3:32:59.21' '-2:04:36.3'
+        self.assertEqual(sat.a_ra.to_string(sep=':', unit=units.hour),
                 '3:32:57.7407')
-        self.assertEqual(et.a_dec.to_string(sep=':'), '-2:04:45.4303')
-        self.assertEqual(et.az.to_string(sep=':'), '280:32:29.675')
-        self.assertEqual(et.alt.to_string(sep=':'), '-54:06:50.7456')
+        self.assertEqual(sat.a_dec.to_string(sep=':'), '-2:04:45.4303')
+
+        # 280:32:07.2 -54:06:14.4
+        self.assertEqual(sat.az.to_string(sep=':'), '280:32:29.675')
+        self.assertEqual(sat.alt.to_string(sep=':'), '-54:06:50.7456')

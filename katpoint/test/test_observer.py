@@ -1,4 +1,7 @@
-"""Tests for the observer module."""
+"""Tests for the observer module.
+
+The values in the comments are those produced by the real pyephem
+"""
 
 import unittest
 from astropy.time import Time
@@ -21,8 +24,7 @@ class TestObserver(unittest.TestCase):
         alt = coordinates.Latitude('40:20:50.567', unit=units.deg)
         radec = obs.radec_of(az, alt)
 
-        #self.assertEqual(str(radec[0]), '12:59:07.12')
-        #self.assertEqual(str(radec[1]), '58:26:58.6')
+        # 12:59:07.12 58:26:58.6
         self.assertEqual(radec[0].to_string(sep=':', unit=units.hour),
                 '12:59:06.2339')
         self.assertEqual(radec[1].to_string(sep=':'), '58:26:47.0623')
@@ -36,6 +38,5 @@ class TestObserver(unittest.TestCase):
 
         st = obs.sidereal_time()
 
-        #self.assertEqual(str(st), '22:02:06.79')
-        self.assertEqual(st.to_string(sep=':', unit=units.hour),
-                '22:02:06.6175')
+        # 22:02:06.79
+        self.assertEqual(st.to_string(sep=':', unit=units.hour), '22:02:06.6175')
