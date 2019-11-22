@@ -1,3 +1,5 @@
 future
 numpy
-pyephem
+astroppy
+sgp4
+pyorbital
