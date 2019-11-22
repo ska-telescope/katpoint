@@ -115,7 +115,7 @@ def wrap_angle(angle, period=2.0 * np.pi):
 class StationaryBody(object):
     """Stationary body with fixed (az, el) coordinates.
 
-    This is a simplified :class:`ephem.Body` that is useful to specify targets
+    This is a simplified :class:`Body` that is useful to specify targets
     such as zenith and geostationary satellites.
 
     Parameters

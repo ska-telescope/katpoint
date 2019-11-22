@@ -26,7 +26,6 @@ from functools import total_ordering
 
 import numpy as np
 from astropy.time import Time
-import ephem
 
 
 @total_ordering
@@ -35,8 +34,7 @@ class Timestamp(object):
 
     This is loosely based on :class:`ephem.Date`. Its base representation
     of time is UTC seconds since the Unix epoch, i.e. the standard Posix
-    timestamp (:class:`ephem.Date` uses UTC days since noon on 1899/12/31, or
-    the *Dublin Julian Day*). Fractional seconds are allowed, as the basic data
+    timestamp. Fractional seconds are allowed, as the basic data
     type is a Python (double-precision) float.
 
     The following input formats are accepted for a timestamp:
@@ -50,12 +48,11 @@ class Timestamp(object):
       or any prefix thereof. Examples are '1999-12-31 12:34:56.789', '1999-12-31',
       '1999-12-31 12:34:56' and even '1999'. The input string is always in UTC.
 
-    - A :class:`ephem.Date` object, which is the standard time representation
-      in PyEphem.
+    - A :class:`astropy.Time.time` object.
 
     Parameters
     ----------
-    timestamp : float, string, :class:`ephem.Date` object or None
+    timestamp : float, string, :class:`astropy.Time.time` object or None
         Timestamp, in various formats (if None, defaults to now)
 
     Arguments
@@ -188,7 +185,6 @@ class Timestamp(object):
 
     def to_mjd(self):
         """Convert timestamp to Modified Julian Day (MJD)."""
-        # Ephem dates are in Dublin Julian Days
         djd = self.to_ephem_date()
         return djd.mjd
 

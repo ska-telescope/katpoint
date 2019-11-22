@@ -28,7 +28,6 @@ import numpy as np
 from astropy import coordinates
 from astropy import units
 from astropy.time import Time
-import ephem
 
 from .timestamp import Timestamp
 from .ephem_extra import is_iterable
@@ -128,9 +127,9 @@ class Antenna(object):
     ref_position_wgs84 : tuple of 3 floats
         WGS84 reference position (latitude and longitude in radians, and
         altitude in metres)
-    observer : :class:`ephem.Observer` object
+    observer : :class:`Observer` object
         Underlying object used for pointing calculations
-    ref_observer : :class:`ephem.Observer` object
+    ref_observer : :class:`Observer` object
         Array reference location for antenna in an array (same as *observer*
         for a stand-alone antenna)
 
@@ -141,11 +140,11 @@ class Antenna(object):
 
     Notes
     -----
-    The :class:`ephem.Observer` objects are abused for their ability to convert
+    The :class:`Observer` objects are abused for their ability to convert
     latitude and longitude to and from string representations via
-    :class:`ephem.Angle`. The only reason for the existence of *ref_observer*
-    is that it is a nice container for the reference latitude, longitude and
-    altitude.
+    :class:`astropy.coordinate.Angle`. The only reason for the existence of
+    *ref_observer* is that it is a nice container for the reference latitude,
+    longitude and altitude.
 
     It is a bad idea to edit the coordinates of the antenna in-place, as the
     various position tuples will not be updated - reconstruct a new antenna
@@ -214,7 +213,7 @@ class Antenna(object):
         self.ref_observer.elevation = float(altitude)
         # All astrometric ra/dec coordinates will be in J2000 epoch
         self.ref_observer.epoch = Time(2000.0, format='jyear')
-        # Disable ephem's built-in refraction model, since it's for optical wavelengths
+        # Disable astropy's built-in refraction model.
         self.ref_observer.pressure = 0.0
         self.ref_position_wgs84 = self.ref_observer.lat.rad, self.ref_observer.long.rad, self.ref_observer.elevation
 
@@ -328,7 +327,7 @@ class Antenna(object):
 
         Returns
         -------
-        lst : :class:`ephem.Angle` object, or sequence of objects
+        lst : :class:`astropy.coordinates.Angle` object, or sequence of objects
             Local sidereal time(s), in radians
 
         """

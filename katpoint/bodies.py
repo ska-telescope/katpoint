@@ -1,3 +1,19 @@
+################################################################################
+# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+#
+# Licensed under the BSD 3-Clause License (the "License"); you may not use
+# this file except in compliance with the License. You may obtain a copy
+# of the License at
+#
+#   https://opensource.org/licenses/BSD-3-Clause
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
 """Replacement for the pyephem body classes.
 
 We only implement ra, dec (CIRS), a_ra, a_dec (ICRS RA/dec) and alt, az
@@ -33,35 +49,70 @@ import pyorbital.geoloc
 import pyorbital.astronomy
 
 class Body(object):
+    """Base class for all Body classes.
+
+    Attributes
+    ----------
+    _epoch : astropy.Time
+        Epoch of position
+    """
     def __init__(self):
         self._epoch = Time(2000.0, format='jyear')
 
-    def _compute(self, obs, icrs):
+    def _compute(self, obs, icrs_radec):
+        """Calculates the RA/Dec and Az/El of the body.
+
+        Parameters
+        ----------
+        obs : katpoint.observer
+            Location and date of observation
+
+        icrs_radec : astropy.coordinates.SkyCoord
+            Position of the body in the ICRS
+
+        Attributes
+        ----------
+        a_ra : astropy.coordinates.Angle
+            Astrometric (ICRS) RA at date of observation
+
+        a_dec : astropy.coordinates.Angle
+            Astrometric (ICRS) Declination at date of observation
+
+        alt : astropy.coordinates.Angle
+            Topocentric altitude of body at date of observation
+
+        az : astropy.coordinates.Angle
+            Topocentric azimuth of body at date of observation
+
+        """
 
         # Earth location
         loc = EarthLocation(lon=obs.lon, lat=obs.lat, height=obs.elevation)
 
-        # ICRS
-        self.a_ra = icrs.ra
-        self.a_dec = icrs.dec
-
-        # ICRS to CIRS
-        appt = icrs.transform_to(CIRS(obstime=obs.date))
-        self.ra = appt.ra
-        self.dec = appt.dec
+        # Store the astrometric (ICRS) position
+        self.a_ra = icrs_radec.ra
+        self.a_dec = icrs_radec.dec
 
         # ICRS to Az/El
-        altaz = icrs.transform_to(AltAz(location=loc,
+        altaz = icrs_radec.transform_to(AltAz(location=loc,
                 obstime=obs.date, pressure=obs.pressure))
         self.az = altaz.az
         self.alt = altaz.alt
 
 
 class FixedBody(Body):
+    """A body with a fixed (on the celestial sphere) position."""
     def __init__(self):
         Body.__init__(self)
 
     def compute(self, obs):
+        """Compute alt/az of body.
+
+        Parameters
+        ----------
+        obs : katpoint.observer
+            Location and date of observation
+        """
         icrs = SkyCoord(ra=self._ra, dec=self._dec, frame='icrs')
         Body._compute(self, obs, icrs)
 
@@ -71,6 +122,7 @@ class FixedBody(Body):
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
         return '{0},f,{1},{2}'.format(self.name, self._ra.hour, self._dec.deg)
+
 
 class Sun(Body):
     def __init__(self):
@@ -153,6 +205,7 @@ class Neptune(Planet):
         self.name = 'Neptune'
 
 class EarthSatellite(Body):
+    """Body orbiting the earth."""
     def __init__(self):
         Body.__init__(self)
 
@@ -267,8 +320,7 @@ class EarthSatellite(Body):
 
 
 def _tle_to_float(tle_float):
-    """ Convert a TLE formatted float to a float
-    """
+    """ Convert a TLE formatted float to a float."""
     dash = tle_float.find('-')
     if dash == -1:
         return float(tle_float)
@@ -276,10 +328,20 @@ def _tle_to_float(tle_float):
         return float(tle_float[:dash] + "e-" + tle_float[dash+1:])
 
 def readtle(name, line1, line2):
-    """ Create an EarthSatellite from a two line element description of
-    an orbit.
+    """Create an EarthSatellite object from a TLE description of an orbit.
 
     See https://en.wikipedia.org/wiki/Two-line_element_set
+
+    Parameters
+    ----------
+    name : str
+        Satellite name
+
+    line1 : str
+        Line 1 of TLE
+
+    line2 : str
+        Line 2 of TLE
     """
     line1 = line1.lstrip()
     line2 = line2.lstrip()
@@ -318,12 +380,22 @@ def readtle(name, line1, line2):
 
 def get_observer_look(sat_lon, sat_lat, sat_alt, utc_time, lon, lat, alt):
     """Calculate observers look angle to a satellite.
+
     http://celestrak.com/columns/v02n02/
 
-    utc_time: Observation time (datetime object)
-    lon: Longitude of observer position on ground in degrees east
-    lat: Latitude of observer position on ground in degrees north
-    alt: Altitude above sea-level (geoid) of observer position on ground in km
+    Parameters
+    ----------
+    utc_time: datetime.datetime
+        Observation time
+
+    lon: float
+        Longitude of observer position on ground in degrees east
+
+    lat: float
+        Latitude of observer position on ground in degrees north
+
+    alt: float
+        Altitude above sea-level (geoid) of observer position on ground in km
 
     Return: (Azimuth, Elevation)
     """
@@ -363,5 +435,4 @@ def get_observer_look(sat_lon, sat_lat, sat_alt, utc_time, lon, lat, alt):
     el_ = np.arcsin(top_z / rg_)
 
     return np.rad2deg(az_), np.rad2deg(el_)
-
 

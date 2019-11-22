@@ -1,6 +1,22 @@
+################################################################################
+# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+#
+# Licensed under the BSD 3-Clause License (the "License"); you may not use
+# this file except in compliance with the License. You may obtain a copy
+# of the License at
+#
+#   https://opensource.org/licenses/BSD-3-Clause
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
 """A Catalog of 94 Bright Stars
 
-The function star() will create and return a PyEphem Body representing
+The function star() will create and return a Body object representing
 the star whose name you provide.
 
 >>> star('Aldebaran')
@@ -119,7 +135,7 @@ from katpoint.bodies import FixedBody
 from katpoint.bodies import EarthSatellite
 
 def readdb(line):
-    """Unpacks a line of an xephem catalogue and creates Body object.
+    """Unpacks a line of an xephem catalogue and creates a Body object.
 
     Only fixed positions and earth satellites have been implemented.
     """
@@ -172,8 +188,10 @@ def readdb(line):
     else:
         raise ValueError('Bogus: ' + line)
 
-def build_stars():
-    """ Builds the default catalogue
+def _build_stars():
+    """ Builds the default catalogue.
+
+    The catalogue is loaded into a global array "stars"
     """
     global stars
     for line in db.strip().split('\n'):
@@ -185,6 +203,10 @@ def star(name):
     """
     return stars[name]
 
-build_stars()
-del build_stars
+# Build catalogue
+_build_stars()
+
+# Remove the function for creating the default catalogue as it is no longer
+# needed.
+del _build_stars
 
