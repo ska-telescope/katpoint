@@ -3,7 +3,7 @@
 import unittest
 import numpy as np
 
-from ephem.stars import readdb
+from katpoint.stars import readdb
 
 class test_stars(unittest.TestCase):
     def test_earth_satellite(self):

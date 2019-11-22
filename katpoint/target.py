@@ -36,6 +36,7 @@ from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from . import bodies
 from .bodies import FixedBody, readtle, Sun
+from .stars import star, readdb
 
 
 class NonAsciiError(ValueError):
@@ -1097,7 +1098,7 @@ def construct_target_params(description):
     elif body_type == 'star':
         star_name = ' '.join([w.capitalize() for w in preferred_name.split()])
         try:
-            body = ephem.star(star_name)
+            body = star(star_name)
         except KeyError:
             raise ValueError("Target description '%s' contains unknown *star* '%s'"
                              % (description, star_name))
@@ -1116,7 +1117,7 @@ def construct_target_params(description):
             if not (extra_name in aliases) and not (extra_name == preferred_name):
                 aliases.append(extra_name)
         try:
-            body = ephem.readdb(edb_string)
+            body = readdb(edb_string)
         except ValueError:
             raise ValueError("Target description '%s' contains malformed *xephem* body" % description)
         # Add xephem body type as an extra tag, right after the main 'xephem' tag

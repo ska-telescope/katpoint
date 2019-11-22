@@ -22,12 +22,12 @@ from past.builtins import basestring
 import logging
 from collections import defaultdict
 
-import ephem.stars
 import numpy as np
 
 from .target import Target
 from .timestamp import Timestamp
 from .ephem_extra import rad2deg
+from .stars import stars
 
 logger = logging.getLogger(__name__)
 
@@ -308,7 +308,7 @@ class Catalogue(object):
             self.add(['%s, special' % (name,) for name in specials], tags)
             self.add('Zenith, azel, 0, 90', tags)
         if add_stars:
-            self.add(['%s, star' % (name,) for name in sorted(ephem.stars.stars.keys())], tags)
+            self.add(['%s, star' % (name,) for name in sorted(stars.keys())], tags)
         if targets is None:
             targets = []
         self.add(targets, tags)
