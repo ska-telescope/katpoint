@@ -155,8 +155,8 @@ class TestFixedBody(unittest.TestCase):
 
         # 3:32:59.21' '-2:04:36.3'
         self.assertEqual(sat.a_ra.to_string(sep=':', unit=units.hour),
-                '3:32:57.7407')
-        self.assertEqual(sat.a_dec.to_string(sep=':'), '-2:04:45.4303')
+                '3:32:56.7813')
+        self.assertEqual(sat.a_dec.to_string(sep=':'), '-2:04:35.4329')
 
         # 280:32:07.2 -54:06:14.4
         self.assertEqual(sat.az.to_string(sep=':'), '280:32:29.675')

@@ -26,8 +26,8 @@ class TestObserver(unittest.TestCase):
 
         # 12:59:07.12 58:26:58.6
         self.assertEqual(radec[0].to_string(sep=':', unit=units.hour),
-                '12:59:06.2339')
-        self.assertEqual(radec[1].to_string(sep=':'), '58:26:47.0623')
+                '12:59:06.9264')
+        self.assertEqual(radec[1].to_string(sep=':'), '58:26:58.6368')
 
     def test_sidereal_time(self):
         """Test sidereal_time method"""

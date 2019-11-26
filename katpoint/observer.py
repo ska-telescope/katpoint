@@ -19,7 +19,7 @@
 import numpy as np
 
 from astropy.time import Time
-from astropy.coordinates import CIRS
+from astropy.coordinates import ICRS
 from astropy.coordinates import AltAz
 from astropy.coordinates import EarthLocation
 from astropy import coordinates
@@ -88,10 +88,10 @@ class Observer(object):
         return time.sidereal_time('apparent')
 
     def radec_of(self, az, alt):
-        """Returns topocentric apparent RA, Dec as astropy.coordinate.Angle.
+        """Returns ICRS RA, Dec as astropy.coordinate.Angle.
         """
         loc = EarthLocation(lat=self._lat, lon=self._lon, height=self.elevation)
         altaz = AltAz(alt=alt, az=az, location=loc,
                 obstime=self.date, pressure=self.pressure)
-        radec = altaz.transform_to(CIRS)
+        radec = altaz.transform_to(ICRS)
         return radec.ra, radec.dec
