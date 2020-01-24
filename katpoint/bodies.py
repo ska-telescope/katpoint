@@ -262,7 +262,7 @@ class EarthSatellite(Body):
 
         # Convert to alt, az at observer
         az, alt = get_observer_look(lon, lat, alt, utc_time,
-                loc.lon.deg, loc.lat.deg, loc.height.value / 1000)
+                loc.lon.deg, loc.lat.deg, loc.height.to(units.kilometer).value)
 
         self.az = coordinates.Longitude(az, unit=units.deg)
         self.alt = coordinates.Latitude(alt, unit=units.deg)

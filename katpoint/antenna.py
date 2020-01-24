@@ -206,15 +206,16 @@ class Antenna(object):
             long = coordinates.Longitude(longitude, unit=units.deg)
         else:
             long = coordinates.Longitude(longitude, unit=units.rad)
-        elevation = float(altitude) * units.meter
-        # All astrometric ra/dec coordinates will be in J2000 epoch
-        self.ref_earth_location_epoch = Time(2000.0, format='jyear')
+        if isinstance(altitude, units.Quantity):
+            height = altitude
+        else:
+            height = float(altitude) * units.meter
         # Disable astropy's built-in refraction model.
         self.ref_pressure = 0.0 * units.bar
         self.ref_earth_location = coordinates.EarthLocation(lat=lat,
-                lon=long, height=elevation)
+                lon=long, height=height)
 
-        self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.value
+        self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.to(units.meter).value
 
         if self.delay_model:
             dm = self.delay_model
@@ -222,21 +223,20 @@ class Antenna(object):
             # Convert ENU offset to ECEF coordinates of antenna, and then to WGS84 coordinates
             self.position_ecef = enu_to_ecef(self.ref_earth_location.lat.rad,
                     self.ref_earth_location.lon.rad,
-                    self.ref_earth_location.height.value, *self.position_enu)
+                    self.ref_earth_location.height.to(units.meter).value,
+                    *self.position_enu)
             lat, long, elevation = ecef_to_lla(*self.position_ecef)
             lat  = coordinates.Latitude(lat, unit=units.rad)
             long = coordinates.Longitude(long, unit=units.rad)
-            elevation = elevation
-            self.earth_location_epoch = Time(2000.0, format='jyear')
             self.pressure = 0.0
             self.earth_location = coordinates.EarthLocation(lat=lat,
-                    lon=long, height=elevation)
-            self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.value
+                    lon=long, height=height)
+            self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
         else:
             self.earth_location = self.ref_earth_location
             self.pressure = self.ref_pressure
             self.position_enu = (0.0, 0.0, 0.0)
-            self.position_wgs84 = lat, lon, alt = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.value
+            self.position_wgs84 = lat, lon, alt = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
             self.position_ecef = enu_to_ecef(lat, lon, alt, *self.position_enu)
 
     def __str__(self):
