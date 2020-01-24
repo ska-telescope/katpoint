@@ -21,8 +21,9 @@ from past.builtins import basestring
 
 import numpy as np
 from astropy.coordinates import Angle
+from astropy.coordinates import AltAz
+from astropy.coordinates import ICRS
 from astropy import units
-from .observer import Observer
 
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
@@ -134,21 +135,22 @@ class StationaryBody(object):
             name = "Az: %s El: %s" % (self.az, self.el)
         self.name = name
 
-    def compute(self, observer):
+    def compute(self, loc, date, pressure):
         """Update target coordinates for given observer.
 
         This updates the (ra, dec) coordinates of the target, as seen from the
         given *observer*, while its (az, el) coordinates remain unchanged.
 
         """
-        if isinstance(observer, Observer):
-            ra, dec = observer.radec_of(self.az, self.el)
-            self.ra = ra
-            self.dec = dec
-            # This is a kludge, as XEphem provides no way to convert apparent
-            # (ra, dec) back to astrometric (ra, dec)
-            self.a_ra = ra
-            self.a_dec = dec
+        altaz = AltAz(alt=self.el, az=self.az, location=loc,
+                obstime=date, pressure=pressure)
+        radec = altaz.transform_to(ICRS)
+        self.ra = radec.ra
+        self.dec = radec.dec
+        # This is a kludge, as XEphem provides no way to convert apparent
+        # (ra, dec) back to astrometric (ra, dec)
+        self.a_ra = radec.ra
+        self.a_dec = radec.dec
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  NullBody
@@ -168,5 +170,5 @@ class NullBody(object):
         self.az = self.alt = self.el = np.nan
         self.ra = self.dec = self.a_ra = self.a_dec = np.nan
 
-    def compute(self, observer):
+    def compute(self, loc, date, pressure):
         pass

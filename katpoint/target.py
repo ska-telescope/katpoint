@@ -352,8 +352,8 @@ class Target(object):
 
         def _scalar_azel(t):
             """Calculate (az, el) coordinates for a single time instant."""
-            antenna.observer.date = Timestamp(t).to_ephem_date()
-            self.body.compute(antenna.observer)
+            self.body.compute(antenna.earth_location,
+                    Timestamp(t).to_ephem_date(), antenna.pressure)
             return self.body.az, self.body.alt
         if is_iterable(timestamp):
             azel = np.array([_scalar_azel(t) for t in timestamp], dtype=object)
@@ -398,8 +398,8 @@ class Target(object):
 
         def _scalar_radec(t):
             """Calculate (ra, dec) coordinates for a single time instant."""
-            antenna.observer.date = Timestamp(t).to_ephem_date()
-            self.body.compute(antenna.observer)
+            date = Timestamp(t).to_ephem_date()
+            self.body.compute(antenna.earth_location, date, antenna.pressure)
             return self.body.ra, self.body.dec
         if is_iterable(timestamp):
             radec = np.array([_scalar_radec(t) for t in timestamp])
@@ -446,8 +446,9 @@ class Target(object):
 
         def _scalar_radec(t):
             """Calculate (ra, dec) coordinates for a single time instant."""
-            antenna.observer.date = Timestamp(t).to_ephem_date()
-            self.body.compute(antenna.observer)
+            date = Timestamp(t).to_ephem_date()
+            self.body.compute(antenna.earth_location, date, antenna.pressure)
+
             return self.body.a_ra, self.body.a_dec
         if is_iterable(timestamp):
             radec = np.array([_scalar_radec(t) for t in timestamp])
@@ -541,7 +542,7 @@ class Target(object):
         # Get apparent hour angle and declination
         ra, dec = self.apparent_radec(timestamp, antenna)
         ha = antenna.local_sidereal_time(timestamp) - ra
-        return np.arctan2(np.sin(ha), np.tan(antenna.observer.lat.rad) * np.cos(dec) - np.sin(dec) * np.cos(ha))
+        return np.arctan2(np.sin(ha), np.tan(antenna.earth_location.lat.rad) * np.cos(dec) - np.sin(dec) * np.cos(ha))
 
     def geometric_delay(self, antenna2, timestamp=None, antenna=None):
         """Calculate geometric delay between two antennas pointing at target.

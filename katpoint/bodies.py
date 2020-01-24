@@ -59,13 +59,19 @@ class Body(object):
     def __init__(self):
         self._epoch = Time(2000.0, format='jyear')
 
-    def _compute(self, obs, icrs_radec):
+    def _compute(self, loc, date, pressure, icrs_radec):
         """Calculates the RA/Dec and Az/El of the body.
 
         Parameters
         ----------
-        obs : katpoint.observer
-            Location and date of observation
+        loc : astropy.coordinates.EarthLocation
+            Location of observation
+
+        date : astropy.Time
+            Date of observation
+
+        pressure : float
+            Atmospheric pressure
 
         icrs_radec : astropy.coordinates.SkyCoord
             Position of the body in the ICRS
@@ -86,16 +92,13 @@ class Body(object):
 
         """
 
-        # Earth location
-        loc = EarthLocation(lon=obs.lon, lat=obs.lat, height=obs.elevation)
-
         # Store the astrometric (ICRS) position
         self.a_ra = icrs_radec.ra
         self.a_dec = icrs_radec.dec
 
         # ICRS to Az/El
         altaz = icrs_radec.transform_to(AltAz(location=loc,
-                obstime=obs.date, pressure=obs.pressure))
+                obstime=date, pressure=pressure))
         self.az = altaz.az
         self.alt = altaz.alt
 
@@ -105,16 +108,22 @@ class FixedBody(Body):
     def __init__(self):
         Body.__init__(self)
 
-    def compute(self, obs):
+    def compute(self, loc, date, pressure):
         """Compute alt/az of body.
 
         Parameters
         ----------
-        obs : katpoint.observer
-            Location and date of observation
+        loc : astropy.coordinates.EarthLocation
+            Location of observation
+
+        date : astropy.Time
+            Date of observation
+
+        pressure : float
+            Atmospheric pressure
         """
         icrs = SkyCoord(ra=self._ra, dec=self._dec, frame='icrs')
-        Body._compute(self, obs, icrs)
+        Body._compute(self, loc, date, pressure, icrs)
 
     def writedb(self):
         """ Create an XEphem catalogue entry.
@@ -129,12 +138,10 @@ class Sun(Body):
         Body.__init__(self)
         self.name = 'Sun'
 
-    def compute(self, obs):
-        loc = EarthLocation(lon=obs._lon,
-                lat=obs._lat, height=obs.elevation)
-        sun = get_sun(obs.date)
+    def compute(self, loc, date, pressure):
+        sun = get_sun(date)
         icrs = sun.transform_to(ICRS)
-        Body._compute(self, obs, icrs)
+        Body._compute(self, loc, date, pressure, icrs)
 
 
 class Moon(Body):
@@ -142,12 +149,10 @@ class Moon(Body):
         Body.__init__(self)
         self.name = 'Moon'
 
-    def compute(self, obs):
-        loc = EarthLocation(lon=obs._lon,
-                lat=obs._lat, height=obs.elevation)
-        moon = get_moon(obs.date, loc)
+    def compute(self, loc, date, pressure):
+        moon = get_moon(date, loc)
         icrs = moon.transform_to(ICRS)
-        Body._compute(self, obs, icrs)
+        Body._compute(self, loc, date, pressure, icrs)
 
 class Earth(Body):
     def __init__(self):
@@ -161,13 +166,11 @@ class Planet(Body):
         Body.__init__(self)
         self._name = name
 
-    def compute(self, obs):
-        loc = EarthLocation(lon=obs._lon,
-                lat=obs._lat, height=obs.elevation)
+    def compute(self, loc, date, pressure):
         with solar_system_ephemeris.set('builtin'):
-            planet = get_body(self._name, obs.date, loc)
+            planet = get_body(self._name, date, loc)
         icrs = planet.transform_to(ICRS)
-        Body._compute(self, obs, icrs)
+        Body._compute(self, loc, date, pressure, icrs)
 
 class Mercury(Planet):
     def __init__(self):
@@ -209,7 +212,7 @@ class EarthSatellite(Body):
     def __init__(self):
         Body.__init__(self)
 
-    def compute(self, obs):
+    def compute(self, loc, date, pressure):
 
         # Create an SGP4 satellite object
         self._sat = sgp4.io.Satellite()
@@ -237,7 +240,7 @@ class EarthSatellite(Body):
         self._sat.no = self._n / (24.0 *60.0) * (2.0 * np.pi)
 
         # Compute position and velocity
-        date = obs.date.iso
+        date = date.iso
         yr = int(date[:4])
         mon = int(date[5:7])
         day = int(date[8:10])
@@ -259,11 +262,15 @@ class EarthSatellite(Body):
 
         # Convert to alt, az at observer
         az, alt = get_observer_look(lon, lat, alt, utc_time,
-                obs.lon.deg, obs.lat.deg, obs.elevation / 1000)
+                loc.lon.deg, loc.lat.deg, loc.height.value / 1000)
 
         self.az = coordinates.Longitude(az, unit=units.deg)
         self.alt = coordinates.Latitude(alt, unit=units.deg)
-        self.a_ra, self.a_dec = obs.radec_of(self.az, self.alt)
+        altaz = AltAz(alt=self.alt, az=self.az, location=loc,
+                obstime=date, pressure=pressure)
+        radec = altaz.transform_to(ICRS)
+        self.a_ra = radec.ra
+        self.a_dec = radec.dec
 
     def writedb(self):
         """ Create an XEphem catalogue entry.

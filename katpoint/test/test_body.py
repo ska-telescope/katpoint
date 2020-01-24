@@ -10,7 +10,6 @@ import numpy as np
 from astropy.time import Time
 from astropy import coordinates
 from astropy import units
-from katpoint import Observer
 
 from katpoint.bodies import FixedBody
 from katpoint.bodies import Mars
@@ -22,18 +21,16 @@ class TestFixedBody(unittest.TestCase):
     """Test for the FixedBody class."""
     def test_compute(self):
         """Test compute method"""
-        obs = Observer()
-        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
-        obs.date = Time('2020-01-01 00:00:00.000')
-        obs.pressure = 0.0
+        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        date = Time('2020-01-01 00:00:00.000')
 
         ra = coordinates.Longitude('10:10:40.123', unit=units.hour)
         dec = coordinates.Latitude('40:20:50.567', unit=units.deg)
         body = FixedBody()
         body._ra = ra
         body._dec = dec
-        body.compute(obs)
+        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         self.assertEqual(body.a_ra.to_string(sep=':', unit=units.hour),
                 '10:10:40.123')
@@ -44,42 +41,36 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(body.alt.to_string(sep=':'), '51:21:20.0121')
 
     def test_planet(self):
-        obs = Observer()
-        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
-        obs.date = Time('2020-01-01 00:00:00.000')
-        obs.pressure = 0.0
+        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        date = Time('2020-01-01 00:00:00.000')
 
         body = Mars()
-        body.compute(obs)
+        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # '118:10:06.1' '27:23:13.3'
         self.assertEqual(body.az.to_string(sep=':'), '118:10:05.1129')
         self.assertEqual(body.alt.to_string(sep=':'), '27:23:12.8494')
 
     def test_moon(self):
-        obs = Observer()
-        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
-        obs.date = Time('2020-01-01 10:00:00.000')
-        obs.pressure = 0.0
+        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        date = Time('2020-01-01 10:00:00.000')
 
         body = Moon()
-        body.compute(obs)
+        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 127:15:23.6 60:05:13.7'
         self.assertEqual(body.az.to_string(sep=':'), '127:15:46.3993')
         self.assertEqual(body.alt.to_string(sep=':'), '60:05:18.6244')
 
     def test_sun(self):
-        obs = Observer()
-        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
-        obs.date = Time('2020-01-01 10:00:00.000')
-        obs.pressure = 0.0
+        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        date = Time('2020-01-01 10:00:00.000')
 
         body = Sun()
-        body.compute(obs)
+        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 234:53:20.8 '31:38:09.4'
         self.assertEqual(body.az.to_string(sep=':'), '234:53:19.4833')
@@ -145,13 +136,11 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(rec.split(',')[10], xephem.split(',')[10])
 
         # Test compute
-        obs = Observer()
-        obs.lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        obs.lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
-        obs.date = Time('2019-09-23 07:45:36.000')
-        obs.elevation = 4200.0
-        obs.pressure = 0.0
-        sat.compute(obs)
+        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
+        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        date = Time('2019-09-23 07:45:36.000')
+        elevation = 4200.0
+        sat.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=elevation), date, 0.0)
 
         # 3:32:59.21' '-2:04:36.3'
         self.assertEqual(sat.a_ra.to_string(sep=':', unit=units.hour),
