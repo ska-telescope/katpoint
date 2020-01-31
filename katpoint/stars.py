@@ -181,6 +181,7 @@ def readdb(line):
         e._M = np.deg2rad(float(fields[7]))
         e._n = float(fields[8])
         e._decay = float(fields[9])
+        e._nddot = 0.0
         e._orbit = int(fields[10])
         e._drag = float(fields[11])
         return e

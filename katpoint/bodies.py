@@ -41,7 +41,7 @@ from astropy.time import TimeDelta
 from astropy import coordinates
 from astropy import units
 
-import sgp4.io
+import sgp4.model
 import sgp4.earth_gravity
 from sgp4.propagation import sgp4init
 
@@ -212,7 +212,7 @@ class EarthSatellite(Body):
     def compute(self, obs):
 
         # Create an SGP4 satellite object
-        self._sat = sgp4.io.Satellite()
+        self._sat = sgp4.model.Satellite()
         self._sat.whichconst = sgp4.earth_gravity.wgs84
         self._sat.satnum = 1
 
@@ -229,12 +229,14 @@ class EarthSatellite(Body):
         ep.format = 'jd'
         self._sat.jdsatepoch = ep.value
         self._sat.bstar = self._drag
+        self._sat.ndot = self._decay
+        self._sat.nddot = self._nddot
         self._sat.inclo = float(self._inc)
         self._sat.nodeo = float(self._raan)
         self._sat.ecco = self._e
         self._sat.argpo = self._ap
         self._sat.mo = self._M
-        self._sat.no = self._n / (24.0 *60.0) * (2.0 * np.pi)
+        self._sat.no_kozai = self._n / (24.0 *60.0) * (2.0 * np.pi)
 
         # Compute position and velocity
         date = obs.date.iso
@@ -246,6 +248,7 @@ class EarthSatellite(Body):
         s = float(date[17:])
         sgp4init(sgp4.earth_gravity.wgs84, False, self._sat.satnum,
                 self._sat.jdsatepoch-2433281.5, self._sat.bstar,
+                self._sat.ndot, self._sat.nddot,
                 self._sat.ecco, self._sat.argpo, self._sat.inclo,
                 self._sat.mo, self._sat.no,
                 self._sat.nodeo, self._sat)
@@ -373,6 +376,7 @@ def readtle(name, line1, line2):
     s._M = np.deg2rad(_tle_to_float(line2[43:51]))
     s._n = _tle_to_float(line2[52:63])
     s._decay = _tle_to_float(line1[33:43])
+    s._nddot = _tle_to_float(line1[44:52])
     s._orbit = int(line2[63:68])
     s._drag = _tle_to_float('0.' + line1[53:61].strip())
 
