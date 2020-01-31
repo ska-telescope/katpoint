@@ -68,8 +68,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(obs)
 
         # 127:15:23.6 60:05:13.7'
-        self.assertEqual(body.az.to_string(sep=':'), '127:15:46.3993')
-        self.assertEqual(body.alt.to_string(sep=':'), '60:05:18.6244')
+        self.assertEqual(body.az.to_string(sep=':'), '127:15:17.1374')
+        self.assertEqual(body.alt.to_string(sep=':'), '60:05:10.2433')
 
     def test_sun(self):
         obs = Observer()
