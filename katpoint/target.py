@@ -23,7 +23,9 @@ import numpy as np
 from astropy import coordinates
 from astropy.coordinates.builtin_frames import ICRS
 from astropy.coordinates.builtin_frames import FK5
+from astropy.coordinates.builtin_frames import FK4
 from astropy.coordinates.builtin_frames import Galactic
+from astropy.coordinates import SkyCoord
 from astropy import units
 from astropy.time import Time
 import ephem
@@ -147,13 +149,13 @@ class Target(object):
             descr += ' (%s)' % (', '.join(self.aliases),)
         descr += ', tags=%s' % (' '.join(self.tags),)
         if 'radec' in self.tags:
-            descr += ', %s %s' % (self.body._ra.to_string(unit=units.hour),
-                    self.body._dec.to_string(unit=units.deg))
+            descr += ', %s %s' % (self.body._radec.ra.to_string(unit=units.hour),
+                    self.body._radec.dec.to_string(unit=units.deg))
         if self.body_type == 'azel':
-            descr += ', %s %s' % (self.body.az.to_string(unit=units.deg),
-                    self.body.el.to_string(unit=units.deg))
+            descr += ', %s %s' % (self.body.altaz.az.to_string(unit=units.deg),
+                    self.body.altaz.alt.to_string(unit=units.deg))
         if self.body_type == 'gal':
-            gal = coordinates.SkyCoord(self.body._ra, self.body._dec, frame=ICRS).transform_to(Galactic)
+            gal = self.body._radec.transform_to(Galactic)
             descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
         if self.flux_model is None:
             descr += ', no flux info'
@@ -244,7 +246,7 @@ class Target(object):
             # Check if it's an unnamed target with a default name
             if names.startswith('Az:'):
                 fields = [tags]
-            fields += [str(self.body.az), str(self.body.el)]
+            fields += [str(self.body.altaz.az), str(self.body.altaz.alt)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -252,9 +254,8 @@ class Target(object):
             # Check if it's an unnamed target with a default name
             if names.startswith('Ra:'):
                 fields = [tags]
-            #fields += [str(self.body._ra), str(self.body._dec)]
-            fields += [self.body._ra.to_string(unit=units.hour),
-                    self.body._dec.to_string(unit=units.deg)]
+            fields += [self.body._radec.dec.to_string(unit=units.hour),
+                    self.body._radec.dec.to_string(unit=units.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -262,7 +263,7 @@ class Target(object):
             # Check if it's an unnamed target with a default name
             if names.startswith('Galactic l:'):
                 fields = [tags]
-            gal = coordinates.SkyCoord(self.body._ra, self.body._dec, frame=ICRS).transform_to(Galactic)
+            gal = self.body._radec.transform_to(Galactic)
             fields += ['%.4f' % (gal.l.deg,), '%.4f' % (gal.b.deg,)]
             if fluxinfo:
                 fields += [fluxinfo]
@@ -345,16 +346,16 @@ class Target(object):
         """
         if self.body_type == 'azel':
             if is_iterable(timestamp):
-                return np.tile(self.body.az, len(timestamp)), np.tile(self.body.el, len(timestamp))
+                return np.tile(self.body.altaz.az, len(timestamp)), np.tile(self.body.altaz.alt, len(timestamp))
             else:
-                return self.body.az, self.body.el
+                return self.body.altaz.az, self.body.altaz.alt
         timestamp, antenna = self._set_timestamp_antenna_defaults(timestamp, antenna)
 
         def _scalar_azel(t):
             """Calculate (az, el) coordinates for a single time instant."""
             self.body.compute(antenna.earth_location,
                     Timestamp(t).to_ephem_date(), antenna.pressure)
-            return self.body.az, self.body.alt
+            return self.body.altaz.az, self.body.altaz.alt
         if is_iterable(timestamp):
             azel = np.array([_scalar_azel(t) for t in timestamp], dtype=object)
             return azel[:, 0], azel[:, 1]
@@ -400,7 +401,7 @@ class Target(object):
             """Calculate (ra, dec) coordinates for a single time instant."""
             date = Timestamp(t).to_ephem_date()
             self.body.compute(antenna.earth_location, date, antenna.pressure)
-            return self.body.ra, self.body.dec
+            return self.body.radec.ra, self.body.radec.dec
         if is_iterable(timestamp):
             radec = np.array([_scalar_radec(t) for t in timestamp])
             return radec[:, 0], radec[:, 1]
@@ -435,9 +436,7 @@ class Target(object):
 
         """
         if self.body_type == 'radec':
-            # Convert to J2000 equatorial coordinates
-            radec = coordinates.SkyCoord(ra=self.body._ra, dec=self.body._dec,
-                    frame=FK5(equinox=self.body._epoch)).transform_to(ICRS)
+            radec = self.body._radec.transform_to(ICRS)
             if is_iterable(timestamp):
                 return np.tile(radec.ra, len(timestamp)), np.tile(radec.dec, len(timestamp))
             else:
@@ -449,7 +448,7 @@ class Target(object):
             date = Timestamp(t).to_ephem_date()
             self.body.compute(antenna.earth_location, date, antenna.pressure)
 
-            return self.body.a_ra, self.body.a_dec
+            return self.body.a_radec.ra, self.body.a_radec.dec
         if is_iterable(timestamp):
             radec = np.array([_scalar_radec(t) for t in timestamp])
             return radec[:, 0], radec[:, 1]
@@ -487,7 +486,7 @@ class Target(object):
 
         """
         if self.body_type == 'gal':
-            gal = coordinates.SkyCoord(self.body._ra, self.body._dec, frame=ICRS).transform_to(Galactic)
+            gal = self.body._radec.transform_to(Galactic)
             if is_iterable(timestamp):
                 return np.tile(gal.l, len(timestamp)), np.tile(gal.b, len(timestamp))
             else:
@@ -1050,13 +1049,15 @@ def construct_target_params(description):
             body.name = "Ra: %s Dec: %s" % (ra, dec)
         # Extract epoch info from tags
         if ('B1900' in tags) or ('b1900' in tags):
-            body._epoch = Time(1900.0, format='byear')
+            epoch = Time(1900.0, format='byear')
+            frame = FK4(equinox=epoch)
         elif ('B1950' in tags) or ('b1950' in tags):
-            body._epoch = Time(1950.0, format='byear')
+            epoch = Time(1950.0, format='byear')
+            frame = FK4(equinox=epoch)
         else:
-            body._epoch = Time(2000.0, format='jyear')
-        body._ra = ra
-        body._dec = dec
+            epoch = Time(2000.0, format='jyear')
+            frame = FK5(equinox=epoch)
+        body._radec = SkyCoord(ra=ra, dec=dec, frame=frame)
 
     elif body_type == 'gal':
         if len(fields) < 4:
@@ -1064,14 +1065,13 @@ def construct_target_params(description):
                              % description)
         l, b = float(fields[2]), float(fields[3])
         body = FixedBody()
-        radec = coordinates.SkyCoord(l=coordinates.Longitude(l, unit=units.deg), b=coordinates.Latitude(b, unit=units.deg), frame=Galactic).transform_to(ICRS)
+        #radec = coordinates.SkyCoord(l=coordinates.Longitude(l, unit=units.deg), b=coordinates.Latitude(b, unit=units.deg), frame=Galactic).transform_to(ICRS)
         if preferred_name:
             body.name = preferred_name
         else:
             body.name = "Galactic l: %.4f b: %.4f" % (l, b)
         body._epoch = Time(2000.0, format='jyear')
-        body._ra = radec.ra
-        body._dec = radec.dec
+        body._radec = coordinates.SkyCoord(l=coordinates.Longitude(l, unit=units.deg), b=coordinates.Latitude(b, unit=units.deg), frame=Galactic)
 
     elif body_type == 'tle':
         lines = fields[-1].split('\n')
@@ -1201,7 +1201,5 @@ def construct_radec_target(ra, dec):
             pass
     ra, dec = angle_from_hours(ra), angle_from_degrees(dec)
     body.name = "Ra: %s Dec: %s" % (ra, dec)
-    body._epoch = Time(2000.0, format='jyear')
-    body._ra = ra
-    body._dec = dec
+    body._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
     return Target(body, 'radec')

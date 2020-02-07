@@ -17,6 +17,9 @@ from katpoint.bodies import Moon
 from katpoint.bodies import Sun
 from katpoint.bodies import readtle
 
+from astropy.coordinates import SkyCoord
+from astropy.coordinates import ICRS
+
 class TestFixedBody(unittest.TestCase):
     """Test for the FixedBody class."""
     def test_compute(self):
@@ -28,17 +31,16 @@ class TestFixedBody(unittest.TestCase):
         ra = coordinates.Longitude('10:10:40.123', unit=units.hour)
         dec = coordinates.Latitude('40:20:50.567', unit=units.deg)
         body = FixedBody()
-        body._ra = ra
-        body._dec = dec
+        body._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
-        self.assertEqual(body.a_ra.to_string(sep=':', unit=units.hour),
+        self.assertEqual(body.a_radec.ra.to_string(sep=':', unit=units.hour),
                 '10:10:40.123')
-        self.assertEqual(body.a_dec.to_string(sep=':'), '40:20:50.567')
+        self.assertEqual(body.a_radec.dec.to_string(sep=':'), '40:20:50.567')
 
         # 326:05:54.8 51:21:18.5
-        self.assertEqual(body.az.to_string(sep=':'), '326:05:57.5415')
-        self.assertEqual(body.alt.to_string(sep=':'), '51:21:20.0121')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '326:05:57.5415')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '51:21:20.0121')
 
     def test_planet(self):
         lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
@@ -49,8 +51,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # '118:10:06.1' '27:23:13.3'
-        self.assertEqual(body.az.to_string(sep=':'), '118:10:05.1129')
-        self.assertEqual(body.alt.to_string(sep=':'), '27:23:12.8494')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '118:10:05.1129')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '27:23:12.8494')
 
     def test_moon(self):
         lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
@@ -61,8 +63,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 127:15:23.6 60:05:13.7'
-        self.assertEqual(body.az.to_string(sep=':'), '127:15:17.1374')
-        self.assertEqual(body.alt.to_string(sep=':'), '60:05:10.2433')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '127:15:17.1374')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '60:05:10.2433')
 
     def test_sun(self):
         lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
@@ -73,8 +75,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 234:53:20.8 '31:38:09.4'
-        self.assertEqual(body.az.to_string(sep=':'), '234:53:19.4833')
-        self.assertEqual(body.alt.to_string(sep=':'), '31:38:11.4125')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '234:53:19.4833')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '31:38:11.4125')
 
     def test_earth_satellite(self):
         name = ' GPS BIIA-21 (PRN 09) '
@@ -143,10 +145,10 @@ class TestFixedBody(unittest.TestCase):
         sat.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=elevation), date, 0.0)
 
         # 3:32:59.21' '-2:04:36.3'
-        self.assertEqual(sat.a_ra.to_string(sep=':', unit=units.hour),
+        self.assertEqual(sat.a_radec.ra.to_string(sep=':', unit=units.hour),
                 '3:32:56.7813')
-        self.assertEqual(sat.a_dec.to_string(sep=':'), '-2:04:35.4329')
+        self.assertEqual(sat.a_radec.dec.to_string(sep=':'), '-2:04:35.4329')
 
         # 280:32:07.2 -54:06:14.4
-        self.assertEqual(sat.az.to_string(sep=':'), '280:32:29.675')
-        self.assertEqual(sat.alt.to_string(sep=':'), '-54:06:50.7456')
+        self.assertEqual(sat.altaz.az.to_string(sep=':'), '280:32:29.675')
+        self.assertEqual(sat.altaz.alt.to_string(sep=':'), '-54:06:50.7456')

@@ -53,8 +53,12 @@ class Body(object):
 
     Attributes
     ----------
-    _epoch : astropy.Time
-        Epoch of position
+
+    a_radec : astropy.coordinates.SkyCoord
+        Astrometric (ICRS) position at date of observation
+
+    altaz : astropy.coordinates.AltAz
+        Topocentric alt/az of body at date of observation
     """
     def __init__(self):
         self._epoch = Time(2000.0, format='jyear')
@@ -75,36 +79,25 @@ class Body(object):
 
         icrs_radec : astropy.coordinates.SkyCoord
             Position of the body in the ICRS
-
-        Attributes
-        ----------
-        a_ra : astropy.coordinates.Angle
-            Astrometric (ICRS) RA at date of observation
-
-        a_dec : astropy.coordinates.Angle
-            Astrometric (ICRS) Declination at date of observation
-
-        alt : astropy.coordinates.Angle
-            Topocentric altitude of body at date of observation
-
-        az : astropy.coordinates.Angle
-            Topocentric azimuth of body at date of observation
-
         """
 
         # Store the astrometric (ICRS) position
-        self.a_ra = icrs_radec.ra
-        self.a_dec = icrs_radec.dec
+        self.a_radec = icrs_radec
 
         # ICRS to Az/El
-        altaz = icrs_radec.transform_to(AltAz(location=loc,
+        self.altaz = icrs_radec.transform_to(AltAz(location=loc,
                 obstime=date, pressure=pressure))
-        self.az = altaz.az
-        self.alt = altaz.alt
 
 
 class FixedBody(Body):
-    """A body with a fixed (on the celestial sphere) position."""
+    """A body with a fixed (on the celestial sphere) position.
+
+    Attributes
+    ----------
+
+    _radec : astropy.coordinates.SkyCoord
+        Position of body in some RA/Dec frame
+    """
     def __init__(self):
         Body.__init__(self)
 
@@ -122,7 +115,7 @@ class FixedBody(Body):
         pressure : float
             Atmospheric pressure
         """
-        icrs = SkyCoord(ra=self._ra, dec=self._dec, frame='icrs')
+        icrs = self._radec.transform_to(ICRS)
         Body._compute(self, loc, date, pressure, icrs)
 
     def writedb(self):
@@ -130,7 +123,9 @@ class FixedBody(Body):
 
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
-        return '{0},f,{1},{2}'.format(self.name, self._ra.hour, self._dec.deg)
+        icrs = self._radec.transform_to(ICRS)
+        return '{0},f,{1},{2}'.format(self.name, icrs.ra.hour,
+                icrs.dec.deg)
 
 
 class Sun(Body):
@@ -267,13 +262,9 @@ class EarthSatellite(Body):
         az, alt = get_observer_look(lon, lat, alt, utc_time,
                 loc.lon.deg, loc.lat.deg, loc.height.to(units.kilometer).value)
 
-        self.az = coordinates.Longitude(az, unit=units.deg)
-        self.alt = coordinates.Latitude(alt, unit=units.deg)
-        altaz = AltAz(alt=self.alt, az=self.az, location=loc,
+        self.altaz = AltAz(alt=alt*units.deg, az=az*units.deg, location=loc,
                 obstime=date, pressure=pressure)
-        radec = altaz.transform_to(ICRS)
-        self.a_ra = radec.ra
-        self.a_dec = radec.dec
+        self.a_radec = self.altaz.transform_to(ICRS)
 
     def writedb(self):
         """ Create an XEphem catalogue entry.

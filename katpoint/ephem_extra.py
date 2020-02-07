@@ -23,6 +23,7 @@ import numpy as np
 from astropy.coordinates import Angle
 from astropy.coordinates import AltAz
 from astropy.coordinates import ICRS
+from astropy.coordinates import CIRS
 from astropy import units
 
 # --------------------------------------------------------------------------------------------------
@@ -128,11 +129,9 @@ class StationaryBody(object):
 
     """
     def __init__(self, az, el, name=None):
-        self.az = angle_from_degrees(az)
-        self.el = angle_from_degrees(el)
-        self.alt = self.el  # alternative terminology
+        self.altaz = AltAz(angle_from_degrees(az), angle_from_degrees(el))
         if not name:
-            name = "Az: %s El: %s" % (self.az, self.el)
+            name = "Az: %s El: %s" % (self.altaz.az, self.altaz.alt)
         self.name = name
 
     def compute(self, loc, date, pressure):
@@ -142,15 +141,14 @@ class StationaryBody(object):
         given *observer*, while its (az, el) coordinates remain unchanged.
 
         """
-        altaz = AltAz(alt=self.el, az=self.az, location=loc,
+        altaz = AltAz(alt=self.altaz.alt, az=self.altaz.az, location=loc,
                 obstime=date, pressure=pressure)
-        radec = altaz.transform_to(ICRS)
-        self.ra = radec.ra
-        self.dec = radec.dec
-        # This is a kludge, as XEphem provides no way to convert apparent
-        # (ra, dec) back to astrometric (ra, dec)
-        self.a_ra = radec.ra
-        self.a_dec = radec.dec
+
+        # Store the ICRS position
+        self.a_radec = altaz.transform_to(ICRS)
+
+        # Store the apparent (CIRS) position
+        self.radec = self.a_radec.transform_to(CIRS(obstime=date))
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  NullBody
@@ -167,8 +165,10 @@ class NullBody(object):
     """
     def __init__(self):
         self.name = 'Nothing'
-        self.az = self.alt = self.el = np.nan
-        self.ra = self.dec = self.a_ra = self.a_dec = np.nan
+        self.altaz = None
+        self.a_radec = None
+        self.radec = None
+        #self.ra = self.dec = self.a_ra = self.a_dec = np.nan
 
     def compute(self, loc, date, pressure):
         pass

@@ -129,7 +129,10 @@ stars = {}
 import numpy as np
 from astropy.time import Time
 from astropy import units
-import astropy.coordinates
+from astropy.coordinates import SkyCoord
+from astropy.coordinates import Longitude
+from astropy.coordinates import Latitude
+from astropy.coordinates import ICRS
 
 from katpoint.bodies import FixedBody
 from katpoint.bodies import EarthSatellite
@@ -137,7 +140,8 @@ from katpoint.bodies import EarthSatellite
 def readdb(line):
     """Unpacks a line of an xephem catalogue and creates a Body object.
 
-    Only fixed positions and earth satellites have been implemented.
+    Only fixed positions without proper motions and earth satellites have
+    been implemented.
     """
     # Split line to fields
     fields = line.split(',')
@@ -150,8 +154,9 @@ def readdb(line):
         dec = fields[3].split('|')[0]
         s = FixedBody()
         s.name = name
-        s._ra = astropy.coordinates.Longitude(ra, unit=units.hour)
-        s._dec = astropy.coordinates.Latitude(dec, unit=units.deg)
+        ra = Longitude(ra, unit=units.hour)
+        dec = Latitude(dec, unit=units.deg)
+        s._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
         return s
 
     elif fields[1][0] == 'E':
