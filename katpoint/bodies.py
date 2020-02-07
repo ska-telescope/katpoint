@@ -57,6 +57,9 @@ class Body(object):
     a_radec : astropy.coordinates.SkyCoord
         Astrometric (ICRS) position at date of observation
 
+    radec : astropy.coordinates.SkyCoord
+        Apparent (CIRS) position at date of observation
+
     altaz : astropy.coordinates.AltAz
         Topocentric alt/az of body at date of observation
     """
@@ -84,8 +87,11 @@ class Body(object):
         # Store the astrometric (ICRS) position
         self.a_radec = icrs_radec
 
+        # Store apparent (CIRS) position
+        self.radec = self.a_radec.transform_to(CIRS(obstime=date))
+
         # ICRS to Az/El
-        self.altaz = icrs_radec.transform_to(AltAz(location=loc,
+        self.altaz = self.radec.transform_to(AltAz(location=loc,
                 obstime=date, pressure=pressure))
 
 
