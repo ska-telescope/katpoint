@@ -20,11 +20,12 @@ from builtins import object, range
 from past.builtins import basestring
 
 import numpy as np
-from astropy import coordinates
-from astropy.coordinates.builtin_frames import ICRS
-from astropy.coordinates.builtin_frames import FK5
-from astropy.coordinates.builtin_frames import FK4
-from astropy.coordinates.builtin_frames import Galactic
+from astropy.coordinates import ICRS
+from astropy.coordinates import FK5
+from astropy.coordinates import FK4
+from astropy.coordinates import Galactic
+from astropy.coordinates import Longitude
+from astropy.coordinates import Latitude
 from astropy.coordinates import SkyCoord
 from astropy import units
 from astropy.time import Time
@@ -493,10 +494,10 @@ class Target(object):
                 return gal.l, gal.b
         ra, dec = self.astrometric_radec(timestamp, antenna)
         if is_iterable(ra):
-            lb = np.array([coordinates.SkyCoord(ra[n], dec[n], frame=ICRS).transform_to(Galactic) for n in range(len(ra))])
+            lb = np.array([SkyCoord(ra[n], dec[n], frame=ICRS).transform_to(Galactic) for n in range(len(ra))])
             return np.array([g.l for g in lb]), np.array([g.b for g in lb])
         else:
-            gal = coordinates.SkyCoord(ra, dec, frame=ICRS).transform_to(Galactic)
+            gal = SkyCoord(ra, dec, frame=ICRS).transform_to(Galactic)
             return gal.l, gal.b
 
     def parallactic_angle(self, timestamp=None, antenna=None):
@@ -871,9 +872,9 @@ class Target(object):
         def _scalar_separation(t):
             """Calculate angular separation for a single time instant."""
             azel1 = self.azel(t, antenna)
-            p1 = coordinates.SkyCoord(azel1[0], azel1[1])
+            p1 = SkyCoord(azel1[0], azel1[1])
             azel2 = other_target.azel(t, antenna)
-            p2 = coordinates.SkyCoord(azel2[0], azel2[1])
+            p2 = SkyCoord(azel2[0], azel2[1])
             return p1.separation(p2).rad
         if is_iterable(timestamp):
             return np.array([_scalar_separation(t) for t in timestamp])
@@ -1065,13 +1066,12 @@ def construct_target_params(description):
                              % description)
         l, b = float(fields[2]), float(fields[3])
         body = FixedBody()
-        #radec = coordinates.SkyCoord(l=coordinates.Longitude(l, unit=units.deg), b=coordinates.Latitude(b, unit=units.deg), frame=Galactic).transform_to(ICRS)
         if preferred_name:
             body.name = preferred_name
         else:
             body.name = "Galactic l: %.4f b: %.4f" % (l, b)
         body._epoch = Time(2000.0, format='jyear')
-        body._radec = coordinates.SkyCoord(l=coordinates.Longitude(l, unit=units.deg), b=coordinates.Latitude(b, unit=units.deg), frame=Galactic)
+        body._radec = SkyCoord(l=Longitude(l, unit=units.deg), b=Latitude(b, unit=units.deg), frame=Galactic)
 
     elif body_type == 'tle':
         lines = fields[-1].split('\n')

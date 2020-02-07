@@ -25,7 +25,9 @@ from __future__ import print_function, division, absolute_import
 from builtins import object
 
 import numpy as np
-from astropy import coordinates
+from astropy.coordinates import Latitude
+from astropy.coordinates import Longitude
+from astropy.coordinates import EarthLocation
 from astropy import units
 from astropy.time import Time
 
@@ -199,20 +201,20 @@ class Antenna(object):
 
         # Set up reference earth location first
         if type(latitude) == str:
-            lat = coordinates.Latitude(latitude, unit=units.deg)
+            lat = Latitude(latitude, unit=units.deg)
         else:
-            lat = coordinates.Latitude(latitude, unit=units.rad)
+            lat = Latitude(latitude, unit=units.rad)
         if type(longitude) == str:
-            long = coordinates.Longitude(longitude, unit=units.deg)
+            long = Longitude(longitude, unit=units.deg)
         else:
-            long = coordinates.Longitude(longitude, unit=units.rad)
+            long = Longitude(longitude, unit=units.rad)
         if isinstance(altitude, units.Quantity):
             height = altitude
         else:
             height = float(altitude) * units.meter
         # Disable astropy's built-in refraction model.
         self.ref_pressure = 0.0 * units.bar
-        self.ref_earth_location = coordinates.EarthLocation(lat=lat,
+        self.ref_earth_location = EarthLocation(lat=lat,
                 lon=long, height=height)
 
         self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.to(units.meter).value
@@ -226,10 +228,10 @@ class Antenna(object):
                     self.ref_earth_location.height.to(units.meter).value,
                     *self.position_enu)
             lat, long, elevation = ecef_to_lla(*self.position_ecef)
-            lat  = coordinates.Latitude(lat, unit=units.rad)
-            long = coordinates.Longitude(long, unit=units.rad)
+            lat  = Latitude(lat, unit=units.rad)
+            long = Longitude(long, unit=units.rad)
             self.pressure = 0.0
-            self.earth_location = coordinates.EarthLocation(lat=lat,
+            self.earth_location = EarthLocation(lat=lat,
                     lon=long, height=height)
             self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
         else:
