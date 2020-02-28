@@ -39,8 +39,8 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(body.a_radec.dec.to_string(sep=':'), '40:20:50.567')
 
         # 326:05:54.8 51:21:18.5
-        self.assertEqual(body.altaz.az.to_string(sep=':'), '326:05:57.5415')
-        self.assertEqual(body.altaz.alt.to_string(sep=':'), '51:21:20.0121')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '326:05:57.541')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '51:21:20.0119')
 
     def test_planet(self):
         lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
@@ -52,7 +52,7 @@ class TestFixedBody(unittest.TestCase):
 
         # '118:10:06.1' '27:23:13.3'
         self.assertEqual(body.altaz.az.to_string(sep=':'), '118:10:05.1129')
-        self.assertEqual(body.altaz.alt.to_string(sep=':'), '27:23:12.8494')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '27:23:12.8499')
 
     def test_moon(self):
         lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
@@ -63,8 +63,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 127:15:23.6 60:05:13.7'
-        self.assertEqual(body.altaz.az.to_string(sep=':'), '127:15:17.1374')
-        self.assertEqual(body.altaz.alt.to_string(sep=':'), '60:05:10.2433')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '127:15:17.1377')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '60:05:10.2436')
 
     def test_sun(self):
         lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
@@ -75,8 +75,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 234:53:20.8 '31:38:09.4'
-        self.assertEqual(body.altaz.az.to_string(sep=':'), '234:53:19.4833')
-        self.assertEqual(body.altaz.alt.to_string(sep=':'), '31:38:11.4125')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '234:53:19.4834')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '31:38:11.4123')
 
     def test_earth_satellite(self):
         name = ' GPS BIIA-21 (PRN 09) '

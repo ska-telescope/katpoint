@@ -116,12 +116,12 @@ class TestDelayCorrection(unittest.TestCase):
 
     def test_offset(self):
         """Test target offset."""
-        az, el = self.target1.azel(self.ts, self.ant1)
+        azel = self.target1.azel(self.ts, self.ant1)
         offset = dict(projection_type='SIN')
         target3 = katpoint.construct_azel_target(
-                az - coordinates.Angle(1.0, unit=units.deg),
-                el - coordinates.Angle(1.0, unit=units.deg))
-        x, y = target3.sphere_to_plane(az.rad, el.rad, self.ts, self.ant1, **offset)
+                azel.az - coordinates.Angle(1.0, unit=units.deg),
+                azel.alt - coordinates.Angle(1.0, unit=units.deg))
+        x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
         extra_delay = self.delays.extra_delay
@@ -136,11 +136,11 @@ class TestDelayCorrection(unittest.TestCase):
         self.assertEqual(delay1['A2h'][1], 0.0, 'Delay rate for ant2h should be zero')
         self.assertEqual(delay1['A2v'][1], 0.0, 'Delay rate for ant2v should be zero')
         # Now try (ra, dec) coordinate system
-        ra, dec = self.target1.radec(self.ts, self.ant1)
+        radec = self.target1.radec(self.ts, self.ant1)
         offset = dict(projection_type='ARC', coord_system='radec')
-        target4 = katpoint.construct_radec_target(ra - coordinates.Angle(1.0, unit=units.deg),
-                                                  dec - coordinates.Angle(1.0, unit=units.deg))
-        x, y = target4.sphere_to_plane(ra.rad, dec.rad, self.ts, self.ant1, **offset)
+        target4 = katpoint.construct_radec_target(radec.ra - coordinates.Angle(1.0, unit=units.deg),
+                                                  radec.dec - coordinates.Angle(1.0, unit=units.deg))
+        x, y = target4.sphere_to_plane(radec.ra.rad, radec.dec.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
         extra_delay = self.delays.extra_delay

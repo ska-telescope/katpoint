@@ -25,6 +25,7 @@ from astropy.coordinates import AltAz
 from astropy.coordinates import ICRS
 from astropy.coordinates import CIRS
 from astropy import units
+from .bodies import Body
 
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
@@ -114,7 +115,7 @@ def wrap_angle(angle, period=2.0 * np.pi):
 # --------------------------------------------------------------------------------------------------
 
 
-class StationaryBody(object):
+class StationaryBody(Body):
     """Stationary body with fixed (az, el) coordinates.
 
     This is a simplified :class:`Body` that is useful to specify targets
@@ -129,9 +130,11 @@ class StationaryBody(object):
 
     """
     def __init__(self, az, el, name=None):
-        self.altaz = AltAz(angle_from_degrees(az), angle_from_degrees(el))
+        self._azel = AltAz(az=angle_from_degrees(az),
+                alt=angle_from_degrees(el))
         if not name:
-            name = "Az: %s El: %s" % (self.altaz.az, self.altaz.alt)
+            name = "Az: %s El: %s" % (self._azel.az.to_string(unit=units.deg),
+                    self._azel.alt.to_string(unit=units.deg))
         self.name = name
 
     def compute(self, loc, date, pressure):
@@ -141,14 +144,11 @@ class StationaryBody(object):
         given *observer*, while its (az, el) coordinates remain unchanged.
 
         """
-        altaz = AltAz(alt=self.altaz.alt, az=self.altaz.az, location=loc,
+        altaz = AltAz(az=self._azel.az, alt=self._azel.alt, location=loc,
                 obstime=date, pressure=pressure)
+        icrs = altaz.transform_to(ICRS)
+        Body._compute(self, loc, date, pressure, icrs)
 
-        # Store the ICRS position
-        self.a_radec = altaz.transform_to(ICRS)
-
-        # Store the apparent (CIRS) position
-        self.radec = self.a_radec.transform_to(CIRS(obstime=date))
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  NullBody

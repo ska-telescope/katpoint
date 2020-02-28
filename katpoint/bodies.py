@@ -268,8 +268,8 @@ class EarthSatellite(Body):
         az, alt = get_observer_look(lon, lat, alt, utc_time,
                 loc.lon.deg, loc.lat.deg, loc.height.to(units.kilometer).value)
 
-        self.altaz = AltAz(alt=alt*units.deg, az=az*units.deg, location=loc,
-                obstime=date, pressure=pressure)
+        self.altaz = SkyCoord(az*units.deg, alt*units.deg, location=loc,
+                obstime=date, pressure=pressure, frame=AltAz)
         self.a_radec = self.altaz.transform_to(ICRS)
 
     def writedb(self):

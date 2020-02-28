@@ -233,18 +233,18 @@ class DelayCorrection(object):
 
         """
         if not offset:
-            az, el = target.azel(timestamp, self.ref_ant)
-            az = az.rad
-            el = el.rad
+            azel = target.azel(timestamp, self.ref_ant)
+            az = azel.az.rad
+            el = azel.alt.rad
         else:
             coord_system = offset.get('coord_system', 'azel')
             if coord_system == 'radec':
                 ra, dec = target.plane_to_sphere(timestamp=timestamp,
                                                  antenna=self.ref_ant, **offset)
                 offset_target = construct_radec_target(ra, dec)
-                az, el = offset_target.azel(timestamp, self.ref_ant)
-                az = az.rad
-                el = el.rad
+                azel = offset_target.azel(timestamp, self.ref_ant)
+                az = azel.az.rad
+                el = azel.alt.rad
             else:
                 az, el = target.plane_to_sphere(timestamp=timestamp,
                                                 antenna=self.ref_ant, **offset)

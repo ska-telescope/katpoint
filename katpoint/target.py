@@ -27,6 +27,7 @@ from astropy.coordinates import Galactic
 from astropy.coordinates import Longitude
 from astropy.coordinates import Latitude
 from astropy.coordinates import SkyCoord
+from astropy.coordinates import AltAz
 from astropy import units
 from astropy.time import Time
 import ephem
@@ -153,8 +154,8 @@ class Target(object):
             descr += ', %s %s' % (self.body._radec.ra.to_string(unit=units.hour),
                     self.body._radec.dec.to_string(unit=units.deg))
         if self.body_type == 'azel':
-            descr += ', %s %s' % (self.body.altaz.az.to_string(unit=units.deg),
-                    self.body.altaz.alt.to_string(unit=units.deg))
+            descr += ', %s %s' % (self.body._azel.az.to_string(unit=units.deg),
+                    self.body._azel.alt.to_string(unit=units.deg))
         if self.body_type == 'gal':
             gal = self.body._radec.transform_to(Galactic)
             descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
@@ -247,7 +248,8 @@ class Target(object):
             # Check if it's an unnamed target with a default name
             if names.startswith('Az:'):
                 fields = [tags]
-            fields += [str(self.body.altaz.az), str(self.body.altaz.alt)]
+            fields += [self.body._azel.az.to_string(unit=units.deg),
+                    self.body._azel.alt.to_string(unit=units.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -334,10 +336,8 @@ class Target(object):
 
         Returns
         -------
-        az : :class:`ephem.Angle` object, or array of same shape as *timestamp*
-            Azimuth angle(s), in radians
-        el : :class:`ephem.Angle` object, or array of same shape as *timestamp*
-            Elevation angle(s), in radians
+        azel : :class:`astropy.coordinates.AzEl` object, or array of same shape as *timestamp*
+            AzEl(s), in radians
 
         Raises
         ------
@@ -345,21 +345,21 @@ class Target(object):
             If no antenna is specified, and no default antenna was set either
 
         """
-        if self.body_type == 'azel':
-            if is_iterable(timestamp):
-                return np.tile(self.body.altaz.az, len(timestamp)), np.tile(self.body.altaz.alt, len(timestamp))
-            else:
-                return self.body.altaz.az, self.body.altaz.alt
+        #if self.body_type == 'azel':
+        #    if is_iterable(timestamp):
+        #        return np.tile(self.body._azel, len(timestamp))
+        #    else:
+        #        return self.body._azel
         timestamp, antenna = self._set_timestamp_antenna_defaults(timestamp, antenna)
 
         def _scalar_azel(t):
             """Calculate (az, el) coordinates for a single time instant."""
             self.body.compute(antenna.earth_location,
                     Timestamp(t).to_ephem_date(), antenna.pressure)
-            return self.body.altaz.az, self.body.altaz.alt
+            return self.body.altaz
         if is_iterable(timestamp):
             azel = np.array([_scalar_azel(t) for t in timestamp], dtype=object)
-            return azel[:, 0], azel[:, 1]
+            return azel
         else:
             return _scalar_azel(timestamp)
 
@@ -371,10 +371,7 @@ class Target(object):
         *not* the "star-atlas" position of the target, but the position as is
         actually seen from the antenna at the given times. The difference is on
         the order of a few arcminutes. These are the coordinates that a telescope
-        with an equatorial mount would use to track the target. Some targets are
-        unable to provide this (due to a limitation of pyephem), notably
-        stationary (*azel*) targets, and provide the *astrometric geocentric
-        position* instead.
+        with an equatorial mount would use to track the target.
 
         Parameters
         ----------
@@ -402,7 +399,7 @@ class Target(object):
             """Calculate (ra, dec) coordinates for a single time instant."""
             date = Timestamp(t).to_ephem_date()
             self.body.compute(antenna.earth_location, date, antenna.pressure)
-            return self.body.radec.ra, self.body.radec.dec
+            return self.body.radec
         if is_iterable(timestamp):
             radec = np.array([_scalar_radec(t) for t in timestamp])
             return radec[:, 0], radec[:, 1]
@@ -439,9 +436,9 @@ class Target(object):
         if self.body_type == 'radec':
             radec = self.body._radec.transform_to(ICRS)
             if is_iterable(timestamp):
-                return np.tile(radec.ra, len(timestamp)), np.tile(radec.dec, len(timestamp))
+                return np.tile(radec, len(timestamp))
             else:
-                return radec.ra, radec.dec
+                return radec
         timestamp, antenna = self._set_timestamp_antenna_defaults(timestamp, antenna)
 
         def _scalar_radec(t):
@@ -449,10 +446,10 @@ class Target(object):
             date = Timestamp(t).to_ephem_date()
             self.body.compute(antenna.earth_location, date, antenna.pressure)
 
-            return self.body.a_radec.ra, self.body.a_radec.dec
+            return self.body.a_radec
         if is_iterable(timestamp):
             radec = np.array([_scalar_radec(t) for t in timestamp])
-            return radec[:, 0], radec[:, 1]
+            return radec
         else:
             return _scalar_radec(timestamp)
 
@@ -489,16 +486,16 @@ class Target(object):
         if self.body_type == 'gal':
             gal = self.body._radec.transform_to(Galactic)
             if is_iterable(timestamp):
-                return np.tile(gal.l, len(timestamp)), np.tile(gal.b, len(timestamp))
+                return np.tile(gal.l, len(timestamp))
             else:
-                return gal.l, gal.b
-        ra, dec = self.astrometric_radec(timestamp, antenna)
-        if is_iterable(ra):
-            lb = np.array([SkyCoord(ra[n], dec[n], frame=ICRS).transform_to(Galactic) for n in range(len(ra))])
+                return gal
+        radec = self.astrometric_radec(timestamp, antenna)
+        if is_iterable(radec):
+            lb = np.array([SkyCoord(ra[n], dec[n], frame=ICRS).transform_to(Galactic) for n in range(len(radec))])
             return np.array([g.l for g in lb]), np.array([g.b for g in lb])
         else:
-            gal = SkyCoord(ra, dec, frame=ICRS).transform_to(Galactic)
-            return gal.l, gal.b
+            gal = SkyCoord(radec, frame=ICRS).transform_to(Galactic)
+            return gal
 
     def parallactic_angle(self, timestamp=None, antenna=None):
         """Calculate parallactic angle on target as seen from antenna at time(s).
@@ -540,9 +537,9 @@ class Target(object):
         """
         timestamp, antenna = self._set_timestamp_antenna_defaults(timestamp, antenna)
         # Get apparent hour angle and declination
-        ra, dec = self.apparent_radec(timestamp, antenna)
-        ha = antenna.local_sidereal_time(timestamp) - ra
-        return np.arctan2(np.sin(ha), np.tan(antenna.earth_location.lat.rad) * np.cos(dec) - np.sin(dec) * np.cos(ha))
+        radec = self.apparent_radec(timestamp, antenna)
+        ha = antenna.local_sidereal_time(timestamp) - radec.ra
+        return np.arctan2(np.sin(ha), np.tan(antenna.earth_location.lat.rad) * np.cos(radec.dec) - np.sin(radec.dec) * np.cos(ha))
 
     def geometric_delay(self, antenna2, timestamp=None, antenna=None):
         """Calculate geometric delay between two antennas pointing at target.
@@ -591,13 +588,36 @@ class Target(object):
         # Obtain baseline vector from reference antenna to second antenna
         baseline_m = antenna.baseline_toward(antenna2)
         # Obtain direction vector(s) from reference antenna to target
-        az, el = self.azel(timestamp, antenna)
-        targetdir = azel_to_enu(az.rad, el.rad)
+        azel = self.azel(timestamp, antenna)
+        if is_iterable(azel):
+            az = np.array([i.az.rad for i in azel])
+            el = np.array([i.alt.rad for i in azel])
+        else:
+            az = azel.az.rad
+            el = azel.alt.rad
+        targetdir = azel_to_enu(az, el)
+        #targetdir = azel_to_enu(azel.az.rad, azel.alt.rad)
         # Dot product of vectors is w coordinate, and delay is time taken by EM wave to traverse this
         delay = - np.dot(baseline_m, targetdir) / lightspeed
         # Numerically estimate delay rate from difference across 1-second interval spanning timestamp(s)
-        targetdir_before = azel_to_enu(*self.azel(np.array(timestamp) - 0.5, antenna))
-        targetdir_after = azel_to_enu(*self.azel(np.array(timestamp) + 0.5, antenna))
+        azel = self.azel(np.array(timestamp) - 0.5, antenna)
+        if is_iterable(azel):
+            az = np.array([i.az.rad for i in azel])
+            el = np.array([i.alt.rad for i in azel])
+        else:
+            az = azel.az.rad
+            el = azel.alt.rad
+        targetdir_before = azel_to_enu(az, el)
+        #targetdir_before = azel_to_enu(*self.azel(np.array(timestamp) - 0.5, antenna))
+        if is_iterable(azel):
+            az = np.array([i.az.rad for i in azel])
+            el = np.array([i.alt.rad for i in azel])
+        else:
+            az = azel.az.rad
+            el = azel.alt.rad
+        azel = self.azel(np.array(timestamp) + 0.5, antenna)
+        targetdir_after = azel_to_enu(az, el)
+        #targetdir_after = azel_to_enu(*self.azel(np.array(timestamp) + 0.5, antenna))
         delay_rate = - (np.dot(baseline_m, targetdir_after) - np.dot(baseline_m, targetdir_before)) / lightspeed
         return delay, delay_rate
 
@@ -650,34 +670,30 @@ class Target(object):
         if is_iterable(timestamp):
             # Due to the test above, this is a radec target and so timestamp
             # doesn't matter. But we want a scalar.
-            ra, dec = self.radec(None, antenna)
+            radec = self.radec(None, antenna)
         else:
-            ra, dec = self.radec(timestamp, antenna)
-        offset_sign = -1 if dec > 0 else 1
-        offset = construct_radec_target(ra.rad, dec.rad + 0.03 * offset_sign)
+            radec = self.radec(timestamp, antenna)
+        offset_sign = -1 if radec.dec > 0 else 1
+        offset = construct_radec_target(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
         # Get offset az-el vector at current epoch pointed to by reference antenna
-        offset_az, offset_el = offset.azel(timestamp, antenna)
+        offset_azel = offset.azel(timestamp, antenna)
         # Obtain direction vector(s) from reference antenna to target
-        az, el = self.azel(timestamp, antenna)
-        if type(az) == np.ndarray:
-            az = np.array([a.rad for a in az])
+        azel = self.azel(timestamp, antenna)
+        if type(azel) == np.ndarray:
+            az = np.array([a.az.rad for a in azel])
+            el = np.array([a.alt.rad for a in azel])
         else:
-            az = az.rad
-        if type(el) == np.ndarray:
-            el = np.array([a.rad for a in el])
-        else:
-            el = el.rad
+            az = azel.az.rad
+            el = azel.alt.rad
         # w axis points toward target
         w = np.array(azel_to_enu(az, el))
         # enu vector pointing from reference antenna to offset point
-        if type(offset_az) == np.ndarray:
-            offset_az = np.array([a.rad for a in offset_az])
+        if type(offset_azel) == np.ndarray:
+            offset_az = np.array([a.az.rad for a in offset_azel])
+            offset_el = np.array([a.alt.rad for a in offset_azel])
         else:
-            offset_az = offset_az.rad
-        if type(offset_el) == np.ndarray:
-            offset_el = np.array([a.rad for a in offset_el])
-        else:
-            offset_el = offset_el.rad
+            offset_az = offset_azel.az.rad
+            offset_el = offset_azel.alt.rad
         z = np.array(azel_to_enu(offset_az, offset_el))
         # u axis is orthogonal to z and w, and row_stack makes it 2-D array of column vectors
         u = np.row_stack(np.cross(z, w, axis=0)) * offset_sign
@@ -760,8 +776,8 @@ class Target(object):
         l,m,n : float, or array of same length as `ra`, `dec`, `timestamps`
             (l, m, n) coordinates of target(s).
         """
-        ref_ra, ref_dec = self.radec(timestamp, antenna)
-        return sphere_to_ortho(ref_ra.rad, ref_dec.rad, ra, dec)
+        ref_radec = self.radec(timestamp, antenna)
+        return sphere_to_ortho(ref_radec.ra.rad, ref_radec.dec.rad, ra, dec)
 
     def flux_density(self, flux_freq_MHz=None):
         """Calculate flux density for given observation frequency (or frequencies).
@@ -872,10 +888,8 @@ class Target(object):
         def _scalar_separation(t):
             """Calculate angular separation for a single time instant."""
             azel1 = self.azel(t, antenna)
-            p1 = SkyCoord(azel1[0], azel1[1])
             azel2 = other_target.azel(t, antenna)
-            p2 = SkyCoord(azel2[0], azel2[1])
-            return p1.separation(p2).rad
+            return azel1.separation(azel2).rad
         if is_iterable(timestamp):
             return np.array([_scalar_separation(t) for t in timestamp])
         else:
@@ -915,12 +929,12 @@ class Target(object):
         """
         if coord_system == 'radec':
             # The target (ra, dec) coordinates will serve as reference point on the sphere
-            ref_ra, ref_dec = self.radec(timestamp, antenna)
-            return sphere_to_plane[projection_type](ref_ra.rad, ref_dec.rad, az, el)
+            ref_radec = self.radec(timestamp, antenna)
+            return sphere_to_plane[projection_type](ref_radec.ra.rad, ref_radec.dec.rad, az, el)
         else:
             # The target (az, el) coordinates will serve as reference point on the sphere
-            ref_az, ref_el = self.azel(timestamp, antenna)
-            return sphere_to_plane[projection_type](ref_az.rad, ref_el.rad, az, el)
+            ref_azel = self.azel(timestamp, antenna)
+            return sphere_to_plane[projection_type](ref_azel.az.rad, ref_azel.alt.rad, az, el)
 
     def plane_to_sphere(self, x, y, timestamp=None, antenna=None, projection_type='ARC', coord_system='azel'):
         """Deproject plane coordinates to sphere with target position as reference.
@@ -956,12 +970,12 @@ class Target(object):
         """
         if coord_system == 'radec':
             # The target (ra, dec) coordinates will serve as reference point on the sphere
-            ref_ra, ref_dec = self.radec(timestamp, antenna)
-            return plane_to_sphere[projection_type](ref_ra.rad, ref_dec.rad, x, y)
+            ref_radec = self.radec(timestamp, antenna)
+            return plane_to_sphere[projection_type](ref_radec.ra.rad, ref_radec.dec.rad, x, y)
         else:
             # The target (az, el) coordinates will serve as reference point on the sphere
-            ref_az, ref_el = self.azel(timestamp, antenna)
-            return plane_to_sphere[projection_type](ref_az.rad, ref_el.rad, x, y)
+            ref_azel = self.azel(timestamp, antenna)
+            return plane_to_sphere[projection_type](ref_azel.az.rad, ref_azel.alt.rad, x, y)
 
 # --------------------------------------------------------------------------------------------------
 # --- FUNCTION :  construct_target_params

@@ -750,7 +750,8 @@ class Catalogue(object):
             # Iterate over targets until one is found that satisfies dynamic criteria
             for n, target in enumerate(targets):
                 if azimuth_filter:
-                    az_deg = target.azel(latest_timestamp, antenna)[0].deg
+                    az_deg = target.azel(latest_timestamp, antenna).az.deg
+                    el_deg = target.azel(latest_timestamp, antenna).alt.deg
                     if az_limit_deg[1] > az_limit_deg[0]:
                         if (az_deg < az_limit_deg[0]) or (az_deg > az_limit_deg[1]):
                             continue
@@ -758,7 +759,7 @@ class Catalogue(object):
                         if (az_deg > az_limit_deg[1]) and (az_deg < az_limit_deg[0]):
                             continue
                 if elevation_filter:
-                    el_deg = target.azel(latest_timestamp, antenna)[1].deg
+                    el_deg = target.azel(latest_timestamp, antenna).alt.deg
                     if (el_deg < el_limit_deg[0]) or (el_deg > el_limit_deg[1]):
                         continue
                 if proximity_filter:
@@ -883,13 +884,13 @@ class Catalogue(object):
         if key == 'name':
             index = [target.name for target in self.targets]
         elif key == 'ra':
-            index = [target.radec(timestamp, antenna)[0].rad for target in self.targets]
+            index = [target.radec(timestamp, antenna).ra.rad for target in self.targets]
         elif key == 'dec':
-            index = [target.radec(timestamp, antenna)[1].rad for target in self.targets]
+            index = [target.radec(timestamp, antenna).dec.rad for target in self.targets]
         elif key == 'az':
-            index = [target.azel(timestamp, antenna)[0].rad for target in self.targets]
+            index = [target.azel(timestamp, antenna).az.rad for target in self.targets]
         elif key == 'el':
-            index = [target.azel(timestamp, antenna)[1].rad for target in self.targets]
+            index = [target.azel(timestamp, antenna).alt.rad for target in self.targets]
         elif key == 'flux':
             index = [target.flux_density(flux_freq_MHz) for target in self.targets]
         else:
@@ -949,8 +950,8 @@ class Catalogue(object):
         print('Target                        Azimuth    Elevation <    Flux Fringe period')
         print('------                        -------    --------- -    ---- -------------')
         for target in self.sort('el', timestamp=timestamp, antenna=antenna, ascending=False):
-            az, el = target.azel(timestamp, antenna)
-            delta_el = target.azel(timestamp + 30.0, antenna)[1].deg - target.azel(timestamp - 30.0, antenna)[1].deg
+            azel = target.azel(timestamp, antenna)
+            delta_el = target.azel(timestamp + 30.0, antenna).alt.deg - target.azel(timestamp - 30.0, antenna).alt.deg
             el_code = '-' if (np.abs(delta_el) < 1.0 / 60.0) else ('/' if delta_el > 0.0 else '\\')
             # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
             flux = target.flux_density(flux_freq_MHz) if flux_freq_MHz is not None else np.nan
@@ -959,11 +960,11 @@ class Catalogue(object):
                 fringe_period = 1. / (delay_rate * flux_freq_MHz * 1e6)
             else:
                 fringe_period = None
-            if above_horizon and el < 0.0:
+            if above_horizon and azel.alt < 0.0:
                 # Draw horizon line
                 print('--------------------------------------------------------------------------')
                 above_horizon = False
-            line = '%-24s %12s %12s %c' % (target.name, az.rad, el.rad, el_code)
+            line = '%-24s %12s %12s %c' % (target.name, azel.az.rad, azel.alt.rad, el_code)
             line = line + ' %7.1f' % (flux,) if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
                 line += '    %10.2f' % (fringe_period,)
