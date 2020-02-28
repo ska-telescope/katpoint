@@ -344,11 +344,6 @@ class Target(object):
             If no antenna is specified, and no default antenna was set either
 
         """
-        #if self.body_type == 'azel':
-        #    if is_iterable(timestamp):
-        #        return np.tile(self.body._azel, len(timestamp))
-        #    else:
-        #        return self.body._azel
         timestamp, antenna = self._set_timestamp_antenna_defaults(timestamp, antenna)
 
         def _scalar_azel(t):
@@ -595,7 +590,6 @@ class Target(object):
             az = azel.az.rad
             el = azel.alt.rad
         targetdir = azel_to_enu(az, el)
-        #targetdir = azel_to_enu(azel.az.rad, azel.alt.rad)
         # Dot product of vectors is w coordinate, and delay is time taken by EM wave to traverse this
         delay = - np.dot(baseline_m, targetdir) / lightspeed
         # Numerically estimate delay rate from difference across 1-second interval spanning timestamp(s)
@@ -607,7 +601,6 @@ class Target(object):
             az = azel.az.rad
             el = azel.alt.rad
         targetdir_before = azel_to_enu(az, el)
-        #targetdir_before = azel_to_enu(*self.azel(np.array(timestamp) - 0.5, antenna))
         if is_iterable(azel):
             az = np.array([i.az.rad for i in azel])
             el = np.array([i.alt.rad for i in azel])
