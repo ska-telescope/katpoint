@@ -48,6 +48,8 @@ from sgp4.propagation import sgp4init
 import pyorbital.geoloc
 import pyorbital.astronomy
 
+from .ephem_extra import angle_from_degrees
+
 class Body(object):
     """Base class for all Body classes.
 
@@ -444,3 +446,54 @@ def get_observer_look(sat_lon, sat_lat, sat_alt, utc_time, lon, lat, alt):
 
     return np.rad2deg(az_), np.rad2deg(el_)
 
+class StationaryBody(Body):
+    """Stationary body with fixed (az, el) coordinates.
+
+    This is a simplified :class:`Body` that is useful to specify targets
+    such as zenith and geostationary satellites.
+
+    Parameters
+    ----------
+    az, el : string or float
+        Azimuth and elevation, either in 'D:M:S' string format, or float in rads
+    name : string, optional
+        Name of body
+
+    """
+    def __init__(self, az, el, name=None):
+        self._azel = AltAz(az=angle_from_degrees(az),
+                alt=angle_from_degrees(el))
+        if not name:
+            name = "Az: %s El: %s" % (self._azel.az.to_string(unit=units.deg),
+                    self._azel.alt.to_string(unit=units.deg))
+        self.name = name
+
+    def compute(self, loc, date, pressure):
+        """Update target coordinates for given observer.
+
+        This updates the (ra, dec) coordinates of the target, as seen from the
+        given *observer*, while its (az, el) coordinates remain unchanged.
+
+        """
+        altaz = AltAz(az=self._azel.az, alt=self._azel.alt, location=loc,
+                obstime=date, pressure=pressure)
+        icrs = altaz.transform_to(ICRS)
+        Body._compute(self, loc, date, pressure, icrs)
+
+
+class NullBody(object):
+    """Body with no position, used as a placeholder.
+
+    This body has the expected methods of :class:`Body`, but always returns NaNs
+    for all coordinates. It is intended for use as a placeholder when no proper
+    target object is available, i.e. as a dummy target.
+
+    """
+    def __init__(self):
+        self.name = 'Nothing'
+        self.altaz = None
+        self.a_radec = None
+        self.radec = None
+
+    def compute(self, loc, date, pressure):
+        pass

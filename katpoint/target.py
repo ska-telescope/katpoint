@@ -34,12 +34,11 @@ import ephem
 
 from .timestamp import Timestamp
 from .flux import FluxDensityModel
-from .ephem_extra import (StationaryBody, NullBody, is_iterable, lightspeed,
-                          deg2rad, rad2deg, angle_from_degrees, angle_from_hours)
+from .ephem_extra import (is_iterable, lightspeed, deg2rad, rad2deg, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from . import bodies
-from .bodies import FixedBody, readtle, Sun
+from .bodies import FixedBody, readtle, Sun, StationaryBody, NullBody
 from .stars import star, readdb
 
 

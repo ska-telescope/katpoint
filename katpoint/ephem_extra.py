@@ -21,11 +21,7 @@ from past.builtins import basestring
 
 import numpy as np
 from astropy.coordinates import Angle
-from astropy.coordinates import AltAz
-from astropy.coordinates import ICRS
-from astropy.coordinates import CIRS
 from astropy import units
-from .bodies import Body
 
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
@@ -109,66 +105,3 @@ def wrap_angle(angle, period=2.0 * np.pi):
 
     """
     return (angle + 0.5 * period) % period - 0.5 * period
-
-# --------------------------------------------------------------------------------------------------
-# --- CLASS :  StationaryBody
-# --------------------------------------------------------------------------------------------------
-
-
-class StationaryBody(Body):
-    """Stationary body with fixed (az, el) coordinates.
-
-    This is a simplified :class:`Body` that is useful to specify targets
-    such as zenith and geostationary satellites.
-
-    Parameters
-    ----------
-    az, el : string or float
-        Azimuth and elevation, either in 'D:M:S' string format, or float in rads
-    name : string, optional
-        Name of body
-
-    """
-    def __init__(self, az, el, name=None):
-        self._azel = AltAz(az=angle_from_degrees(az),
-                alt=angle_from_degrees(el))
-        if not name:
-            name = "Az: %s El: %s" % (self._azel.az.to_string(unit=units.deg),
-                    self._azel.alt.to_string(unit=units.deg))
-        self.name = name
-
-    def compute(self, loc, date, pressure):
-        """Update target coordinates for given observer.
-
-        This updates the (ra, dec) coordinates of the target, as seen from the
-        given *observer*, while its (az, el) coordinates remain unchanged.
-
-        """
-        altaz = AltAz(az=self._azel.az, alt=self._azel.alt, location=loc,
-                obstime=date, pressure=pressure)
-        icrs = altaz.transform_to(ICRS)
-        Body._compute(self, loc, date, pressure, icrs)
-
-
-# --------------------------------------------------------------------------------------------------
-# --- CLASS :  NullBody
-# --------------------------------------------------------------------------------------------------
-
-
-class NullBody(object):
-    """Body with no position, used as a placeholder.
-
-    This body has the expected methods of :class:`Body`, but always returns NaNs
-    for all coordinates. It is intended for use as a placeholder when no proper
-    target object is available, i.e. as a dummy target.
-
-    """
-    def __init__(self):
-        self.name = 'Nothing'
-        self.altaz = None
-        self.a_radec = None
-        self.radec = None
-        #self.ra = self.dec = self.a_ra = self.a_dec = np.nan
-
-    def compute(self, loc, date, pressure):
-        pass
