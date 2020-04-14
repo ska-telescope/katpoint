@@ -21,6 +21,7 @@ from numpy import pi as PI   # Unorthodox but shortens those parametrization lin
 import pytest
 
 import katpoint
+from katpoint.projection import OutOfRange, ProjectionInputsOutOfRangeError
 
 from .helper import assert_angles_almost_equal
 
@@ -29,6 +30,59 @@ try:
     HAS_AIPS = True
 except ImportError:
     HAS_AIPS = False
+
+
+@pytest.fixture(name='restore_treatment')
+def fixture_restore_treatment():
+    """Backup existing OutOfRange treatment and restore afterwards."""
+    old_treatment = OutOfRange.get_treatment()
+    yield old_treatment
+    OutOfRange.set_treatment(old_treatment)
+
+
+def test_treatment_setup(restore_treatment):
+    """Check that we can set out-of-range treatment appropriately."""
+    OutOfRange.set_treatment('raise')
+    assert OutOfRange.get_treatment() == 'raise'
+    OutOfRange.set_treatment('clip')
+    assert OutOfRange.get_treatment() == 'clip'
+    with pytest.raises(ValueError):
+        OutOfRange.set_treatment('bad treatment')
+    with OutOfRange.set_treatment('raise'):
+        assert OutOfRange.get_treatment() == 'raise'
+    assert OutOfRange.get_treatment() == 'clip'
+
+
+def test_out_of_range_handling_scalar(restore_treatment):
+    """Test out-of-range handling for a scalar value."""
+    x = 2
+    y = OutOfRange.treat(x, 'Should not happen', lower=0, upper=5)
+    np.testing.assert_array_equal(y, x)
+    with OutOfRange.set_treatment('raise'):
+        with pytest.raises(ProjectionInputsOutOfRangeError):
+            y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+    with OutOfRange.set_treatment('nan'):
+        y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+        np.testing.assert_array_equal(y, np.nan)
+    with OutOfRange.set_treatment('clip'):
+        y = OutOfRange.treat(x, 'Out of range', upper=1.1)
+        np.testing.assert_array_equal(y, 1.1)
+
+
+def test_out_of_range_handling_array(restore_treatment):
+    """Test out-of-range handling for an array of values."""
+    x = [1, 2, 3, 4]
+    y = OutOfRange.treat(x, 'Should not happen', lower=0, upper=5)
+    np.testing.assert_array_equal(y, x)
+    with OutOfRange.set_treatment('raise'):
+        with pytest.raises(ProjectionInputsOutOfRangeError):
+            y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+    with OutOfRange.set_treatment('nan'):
+        y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+        np.testing.assert_array_equal(y, [np.nan, np.nan, 3.0, 4.0])
+    with OutOfRange.set_treatment('clip'):
+        y = OutOfRange.treat(x, 'Out of range', upper=1.1)
+        np.testing.assert_array_equal(y, [1.0, 1.1, 1.1, 1.1])
 
 
 def random_sphere(N, include_poles=False):
