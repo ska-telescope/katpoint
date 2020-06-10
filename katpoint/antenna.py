@@ -50,7 +50,7 @@ class Antenna(object):
     calculations.
     It has two variants: a stand-alone single dish, or an antenna that is part
     of an array. The first variant is initialised with the antenna location in
-    WGS84 (lat-long-alt) form, while the second variant is initialised with the
+    WGS84 (lat-lon-alt) form, while the second variant is initialised with the
     array reference location in WGS84 form and an ENU (east-north-up) offset
     for the specific antenna which also doubles as the first part of a broader
     delay model for the antenna.
@@ -65,9 +65,9 @@ class Antenna(object):
      name, latitude (D:M:S), longitude (D:M:S), altitude (m), diameter (m),
      east-north-up offset (m) / delay model, pointing model, beamwidth
 
-    A stand-alone dish has the antenna location as lat-long-alt and the ENU
+    A stand-alone dish has the antenna location as lat-lon-alt and the ENU
     offset as an empty string, while an antenna that is part of an array has
-    the array reference location as lat-long-alt and the ENU offset as a
+    the array reference location as lat-lon-alt and the ENU offset as a
     space-separated string of 3 numbers (followed by any additional delay model
     terms). The pointing model is a space-separated string of model parameters
     (or empty string if there is no pointing model). The beamwidth is a single
@@ -205,9 +205,9 @@ class Antenna(object):
         else:
             lat = Latitude(latitude, unit=units.rad)
         if type(longitude) == str:
-            long = Longitude(longitude, unit=units.deg)
+            lon = Longitude(longitude, unit=units.deg)
         else:
-            long = Longitude(longitude, unit=units.rad)
+            lon = Longitude(longitude, unit=units.rad)
         if isinstance(altitude, units.Quantity):
             height = altitude
         else:
@@ -215,7 +215,7 @@ class Antenna(object):
         # Disable astropy's built-in refraction model.
         self.ref_pressure = 0.0 * units.bar
         self.ref_earth_location = EarthLocation(lat=lat,
-                lon=long, height=height)
+                lon=lon, height=height)
 
         self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.to(units.meter).value
 
@@ -227,12 +227,12 @@ class Antenna(object):
                     self.ref_earth_location.lon.rad,
                     self.ref_earth_location.height.to(units.meter).value,
                     *self.position_enu)
-            lat, long, elevation = ecef_to_lla(*self.position_ecef)
+            lat, lon, elevation = ecef_to_lla(*self.position_ecef)
             lat  = Latitude(lat, unit=units.rad)
-            long = Longitude(long, unit=units.rad)
+            lon = Longitude(lon, unit=units.rad)
             self.pressure = 0.0
             self.earth_location = EarthLocation(lat=lat,
-                    lon=long, height=height)
+                    lon=lon, height=height)
             self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
         else:
             self.earth_location = self.ref_earth_location
@@ -244,10 +244,10 @@ class Antenna(object):
     def __str__(self):
         """Verbose human-friendly string representation of antenna object."""
         if np.any(self.position_enu):
-            return "%s: %d-m dish at ENU offset %s m from lat %s, long %s, alt %s m" % \
+            return "%s: %d-m dish at ENU offset %s m from lat %s, lon %s, alt %s m" % \
                    tuple([self.name, self.diameter, np.array(self.position_enu)] + list(self.ref_position_wgs84))
         else:
-            return "%s: %d-m dish at lat %s, long %s, alt %s m" % \
+            return "%s: %d-m dish at lat %s, lon %s, alt %s m" % \
                    tuple([self.name, self.diameter] + list(self.position_wgs84))
 
     def __repr__(self):

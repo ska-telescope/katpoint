@@ -24,7 +24,7 @@ import numpy as np
 # --------------------------------------------------------------------------------------------------
 
 
-def lla_to_ecef(lat_rad, long_rad, alt_m):
+def lla_to_ecef(lat_rad, lon_rad, alt_m):
     """Convert WGS84 spherical coordinates to ECEF cartesian coordinates.
 
     This converts a position on the Earth specified in geodetic latitude,
@@ -36,7 +36,7 @@ def lla_to_ecef(lat_rad, long_rad, alt_m):
     ----------
     lat_rad : float or array
         Latitude (customary geodetic, not geocentric), in radians
-    long_rad : float or array
+    lon_rad : float or array
         Longitude, in radians
     alt_m : float or array
         Altitude, in metres above WGS84 ellipsoid
@@ -65,8 +65,8 @@ def lla_to_ecef(lat_rad, long_rad, alt_m):
     # (normal, or prime vertical radius of curvature)
     R = a / np.sqrt(1.0 - e2 * np.sin(lat_rad) ** 2)
 
-    x_m = (R + alt_m) * np.cos(lat_rad) * np.cos(long_rad)
-    y_m = (R + alt_m) * np.cos(lat_rad) * np.sin(long_rad)
+    x_m = (R + alt_m) * np.cos(lat_rad) * np.cos(lon_rad)
+    y_m = (R + alt_m) * np.cos(lat_rad) * np.sin(lon_rad)
     z_m = ((1.0 - e2) * R + alt_m) * np.sin(lat_rad)
 
     return x_m, y_m, z_m
@@ -88,7 +88,7 @@ def ecef_to_lla(x_m, y_m, z_m):
     -------
     lat_rad : float or array
         Latitude (customary geodetic, not geocentric), in radians
-    long_rad : float or array
+    lon_rad : float or array
         Longitude, in radians
     alt_m : float or array
         Altitude, in metres above WGS84 ellipsoid
@@ -134,9 +134,9 @@ def ecef_to_lla(x_m, y_m, z_m):
     z0 = (b2 * z_m) / (a * V)
     alt_m = U * (1.0 - b2 / (a * V))
     lat_rad = np.arctan2(z_m + ep2 * z0, r)
-    long_rad = np.arctan2(y_m, x_m)
+    lon_rad = np.arctan2(y_m, x_m)
 
-    return lat_rad, long_rad, alt_m
+    return lat_rad, lon_rad, alt_m
 
 
 def ecef_to_lla2(x_m, y_m, z_m):
@@ -155,7 +155,7 @@ def ecef_to_lla2(x_m, y_m, z_m):
     -------
     lat_rad : float or array
         Latitude (customary geodetic, not geocentric), in radians
-    long_rad : float or array
+    lon_rad : float or array
         Longitude, in radians
     alt_m : float or array
         Altitude, in metres above WGS84 ellipsoid
@@ -163,7 +163,7 @@ def ecef_to_lla2(x_m, y_m, z_m):
     Notes
     -----
     This is a copy of the algorithm in the CONRAD codebase (from conradmisclib).
-    It's nearly identical to :func:`ecef_to_lla`, but returns long/lat in
+    It's nearly identical to :func:`ecef_to_lla`, but returns lon/lat in
     different ranges.
 
     """
@@ -175,13 +175,13 @@ def ecef_to_lla2(x_m, y_m, z_m):
     ep = np.sqrt((a**2 - b**2) / b**2)
     p = np.sqrt(x_m**2 + y_m**2)
     th = np.arctan2(a * z_m, b * p)
-    long_rad = np.arctan2(y_m, x_m)
+    lon_rad = np.arctan2(y_m, x_m)
     lat_rad = np.arctan2((z_m + ep**2 * b * np.sin(th)**3), (p - e**2 * a * np.cos(th)**3))
     N = a / np.sqrt(1.0 - e**2 * np.sin(lat_rad)**2)
     alt_m = p / np.cos(lat_rad) - N
 
-    # Return long_rad in range [0, 2*pi)
-    long_rad = np.mod(long_rad, 2.0 * np.pi)
+    # Return lon_rad in range [0, 2*pi)
+    lon_rad = np.mod(lon_rad, 2.0 * np.pi)
 
     # Correct for numerical instability in altitude near exact poles
     # (after this correction, error is about 2 millimeters, which is about
@@ -193,10 +193,10 @@ def ecef_to_lla2(x_m, y_m, z_m):
         near_poles = (np.abs(x_m) < 1.0) & (np.abs(y_m) < 1.0)
         alt_m[near_poles] = np.abs(z_m[near_poles]) - b
 
-    return lat_rad, long_rad, alt_m
+    return lat_rad, lon_rad, alt_m
 
 
-def enu_to_ecef(ref_lat_rad, ref_long_rad, ref_alt_m, e_m, n_m, u_m):
+def enu_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m, e_m, n_m, u_m):
     """Convert ENU coordinates relative to reference location to ECEF coordinates.
 
     This converts local east-north-up (ENU) coordinates relative to a given
@@ -206,7 +206,7 @@ def enu_to_ecef(ref_lat_rad, ref_long_rad, ref_alt_m, e_m, n_m, u_m):
 
     Parameters
     ----------
-    ref_lat_rad, ref_long_rad : float or array
+    ref_lat_rad, ref_lon_rad : float or array
         Geodetic latitude and longitude of reference position, in radians
     ref_alt_m : float or array
         Geodetic altitude of reference position, in metres above WGS84 ellipsoid
@@ -220,18 +220,18 @@ def enu_to_ecef(ref_lat_rad, ref_long_rad, ref_alt_m, e_m, n_m, u_m):
 
     """
     # ECEF coordinates of reference point
-    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_long_rad, ref_alt_m)
+    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m)
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
-    sin_long, cos_long = np.sin(ref_long_rad), np.cos(ref_long_rad)
+    sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
-    x_m = ref_x_m - sin_long*e_m - sin_lat*cos_long*n_m + cos_lat*cos_long*u_m
-    y_m = ref_y_m + cos_long*e_m - sin_lat*sin_long*n_m + cos_lat*sin_long*u_m
+    x_m = ref_x_m - sin_lon*e_m - sin_lat*cos_lon*n_m + cos_lat*cos_lon*u_m
+    y_m = ref_y_m + cos_lon*e_m - sin_lat*sin_lon*n_m + cos_lat*sin_lon*u_m
     z_m = ref_z_m + cos_lat*n_m + sin_lat*u_m
 
     return x_m, y_m, z_m
 
 
-def ecef_to_enu(ref_lat_rad, ref_long_rad, ref_alt_m, x_m, y_m, z_m):
+def ecef_to_enu(ref_lat_rad, ref_lon_rad, ref_alt_m, x_m, y_m, z_m):
     """Convert ECEF coordinates to ENU coordinates relative to reference location.
 
     This converts earth-centered, earth-fixed (ECEF) cartesian coordinates to
@@ -241,7 +241,7 @@ def ecef_to_enu(ref_lat_rad, ref_long_rad, ref_alt_m, x_m, y_m, z_m):
 
     Parameters
     ----------
-    ref_lat_rad, ref_long_rad : float or array
+    ref_lat_rad, ref_lon_rad : float or array
         Geodetic latitude and longitude of reference position, in radians
     ref_alt_m : float or array
         Geodetic altitude of reference position, in metres above WGS84 ellipsoid
@@ -255,14 +255,14 @@ def ecef_to_enu(ref_lat_rad, ref_long_rad, ref_alt_m, x_m, y_m, z_m):
 
     """
     # ECEF coordinates of reference point
-    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_long_rad, ref_alt_m)
+    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m)
     delta_x_m, delta_y_m, delta_z_m = x_m - ref_x_m, y_m - ref_y_m, z_m - ref_z_m
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
-    sin_long, cos_long = np.sin(ref_long_rad), np.cos(ref_long_rad)
+    sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
-    e_m = -sin_long*delta_x_m + cos_long*delta_y_m
-    n_m = -sin_lat*cos_long*delta_x_m - sin_lat*sin_long*delta_y_m + cos_lat*delta_z_m
-    u_m = cos_lat*cos_long*delta_x_m + cos_lat*sin_long*delta_y_m + sin_lat*delta_z_m
+    e_m = -sin_lon*delta_x_m + cos_lon*delta_y_m
+    n_m = -sin_lat*cos_lon*delta_x_m - sin_lat*sin_lon*delta_y_m + cos_lat*delta_z_m
+    u_m = cos_lat*cos_lon*delta_x_m + cos_lat*sin_lon*delta_y_m + sin_lat*delta_z_m
 
     return e_m, n_m, u_m
 
