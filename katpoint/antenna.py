@@ -279,10 +279,13 @@ class Antenna(object):
         """Complete string representation of antenna object, sufficient to reconstruct it."""
         # These fields are used to build up the antenna description string
         fields = [self.name]
-        pos = self.ref_position_wgs84 if self.delay_model else self.position_wgs84
-        fields += [str(np.rad2deg(pos[0]))]
-        fields += [str(np.rad2deg(pos[1]))]
-        fields += [str(pos[2])]
+        location = self.ref_earth_location if self.delay_model else self.earth_location
+        fields += [location.lat.to_string(sep=':', unit=units.deg)]
+        fields += [location.lon.to_string(sep=':', unit=units.deg)]
+        # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
+        # using poor man's {:.6g} that avoids scientific notation for very small heights
+        height_m = location.height.to(units.meter).value
+        fields += ['{:.6f}'.format(height_m).rstrip('0').rstrip('.')]
         fields += [str(self.diameter)]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
