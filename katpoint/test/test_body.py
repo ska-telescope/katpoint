@@ -63,8 +63,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 127:15:23.6 60:05:13.7'
-        self.assertEqual(body.altaz.az.to_string(sep=':'), '127:15:17.1377')
-        self.assertEqual(body.altaz.alt.to_string(sep=':'), '60:05:10.2436')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '127:15:17.1381')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '60:05:10.2438')
 
     def test_sun(self):
         lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
@@ -75,8 +75,8 @@ class TestFixedBody(unittest.TestCase):
         body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 234:53:20.8 '31:38:09.4'
-        self.assertEqual(body.altaz.az.to_string(sep=':'), '234:53:19.4834')
-        self.assertEqual(body.altaz.alt.to_string(sep=':'), '31:38:11.4123')
+        self.assertEqual(body.altaz.az.to_string(sep=':'), '234:53:19.4835')
+        self.assertEqual(body.altaz.alt.to_string(sep=':'), '31:38:11.412')
 
     def test_earth_satellite(self):
         name = ' GPS BIIA-21 (PRN 09) '
