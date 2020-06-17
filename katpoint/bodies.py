@@ -132,8 +132,8 @@ class FixedBody(Body):
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
         icrs = self._radec.transform_to(ICRS)
-        return '{0},f,{1},{2}'.format(self.name, icrs.ra.hour,
-                icrs.dec.deg)
+        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=units.hour),
+                                   icrs.dec.to_string(sep=':', unit=units.deg))
 
 
 class Sun(Body):
@@ -464,8 +464,8 @@ class StationaryBody(Body):
         self._azel = AltAz(az=angle_from_degrees(az),
                 alt=angle_from_degrees(el))
         if not name:
-            name = "Az: %s El: %s" % (self._azel.az.to_string(unit=units.deg),
-                    self._azel.alt.to_string(unit=units.deg))
+            name = "Az: {} El: {}".format(self._azel.az.to_string(sep=':', unit=units.deg),
+                                          self._azel.alt.to_string(sep=':', unit=units.deg))
         self.name = name
 
     def compute(self, loc, date, pressure):
