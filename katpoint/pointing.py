@@ -25,6 +25,7 @@ from builtins import range
 import logging
 
 import numpy as np
+from astropy import units
 
 from .model import Parameter, Model
 from .ephem_extra import rad2deg, deg2rad, angle_from_degrees
@@ -57,7 +58,7 @@ class PointingModel(Model):
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
         def angle_to_string(a):
-            return str(angle_from_degrees(a).wrap_at('180d')) if a else '0'
+            return angle_from_degrees(a).to_string(sep=':', unit=units.deg) if a != 0 else '0'
 
         def angle_param(name, doc):
             """Create angle-valued parameter."""
