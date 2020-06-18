@@ -26,7 +26,7 @@
 #
 
 # Obtain AIPS source files (keep URL up to date!)
-aips_src=ftp.aoc.nrao.edu::31DEC16
+aips_src=ftp.aoc.nrao.edu::31DEC19
 rsync -auvz --timeout=120 --files-from=aips_files.lst --no-relative $aips_src .
 for f in *.FOR; do mv $f ${f/.FOR/.F}; done
 # Add f2py icing and comment out troublesome AIPS calls
