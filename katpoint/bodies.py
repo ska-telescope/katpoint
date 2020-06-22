@@ -475,10 +475,12 @@ class StationaryBody(Body):
         given *observer*, while its (az, el) coordinates remain unchanged.
 
         """
-        altaz = AltAz(az=self._azel.az, alt=self._azel.alt, location=loc,
-                obstime=date, pressure=pressure)
-        icrs = altaz.transform_to(ICRS)
-        Body._compute(self, loc, date, pressure, icrs)
+        self.altaz = AltAz(az=self._azel.az, alt=self._azel.alt,
+                           location=loc, obstime=date, pressure=pressure)
+        # Store the astrometric (ICRS) position
+        self.a_radec = self.altaz.transform_to(ICRS)
+        # Store apparent (CIRS) position
+        self.radec = self.a_radec.transform_to(CIRS(obstime=date))
 
 
 class NullBody(object):
