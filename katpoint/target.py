@@ -601,15 +601,14 @@ class Target(object):
             az = azel.az.rad
             el = azel.alt.rad
         targetdir_before = azel_to_enu(az, el)
+        azel = self.azel(np.array(timestamp) + 0.5, antenna)
         if is_iterable(azel):
             az = np.array([i.az.rad for i in azel])
             el = np.array([i.alt.rad for i in azel])
         else:
             az = azel.az.rad
             el = azel.alt.rad
-        azel = self.azel(np.array(timestamp) + 0.5, antenna)
         targetdir_after = azel_to_enu(az, el)
-        #targetdir_after = azel_to_enu(*self.azel(np.array(timestamp) + 0.5, antenna))
         delay_rate = - (np.dot(baseline_m, targetdir_after) - np.dot(baseline_m, targetdir_before)) / lightspeed
         return delay, delay_rate
 
