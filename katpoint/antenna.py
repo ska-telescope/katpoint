@@ -25,7 +25,11 @@ from __future__ import print_function, division, absolute_import
 from builtins import object
 
 import numpy as np
-import ephem
+from astropy.coordinates import Latitude
+from astropy.coordinates import Longitude
+from astropy.coordinates import EarthLocation
+from astropy import units
+from astropy.time import Time
 
 from .timestamp import Timestamp
 from .ephem_extra import is_iterable
@@ -41,11 +45,12 @@ from .delay import DelayModel
 class Antenna(object):
     """An antenna that can point at a target.
 
-    This is a wrapper around a PyEphem :class:`ephem.Observer` that adds a dish
-    diameter and other parameters related to pointing and delay calculations.
+    This is a wrapper around an Astropy earth location
+    adds a dish diameter and other parameters related to pointing and delay
+    calculations.
     It has two variants: a stand-alone single dish, or an antenna that is part
     of an array. The first variant is initialised with the antenna location in
-    WGS84 (lat-long-alt) form, while the second variant is initialised with the
+    WGS84 (lat-lon-alt) form, while the second variant is initialised with the
     array reference location in WGS84 form and an ENU (east-north-up) offset
     for the specific antenna which also doubles as the first part of a broader
     delay model for the antenna.
@@ -60,9 +65,9 @@ class Antenna(object):
      name, latitude (D:M:S), longitude (D:M:S), altitude (m), diameter (m),
      east-north-up offset (m) / delay model, pointing model, beamwidth
 
-    A stand-alone dish has the antenna location as lat-long-alt and the ENU
+    A stand-alone dish has the antenna location as lat-lon-alt and the ENU
     offset as an empty string, while an antenna that is part of an array has
-    the array reference location as lat-long-alt and the ENU offset as a
+    the array reference location as lat-lon-alt and the ENU offset as a
     space-separated string of 3 numbers (followed by any additional delay model
     terms). The pointing model is a space-separated string of model parameters
     (or empty string if there is no pointing model). The beamwidth is a single
@@ -123,11 +128,15 @@ class Antenna(object):
     ref_position_wgs84 : tuple of 3 floats
         WGS84 reference position (latitude and longitude in radians, and
         altitude in metres)
-    observer : :class:`ephem.Observer` object
+    earth_location :class:`astropy.coordinates.EarthLocation` object
         Underlying object used for pointing calculations
-    ref_observer : :class:`ephem.Observer` object
-        Array reference location for antenna in an array (same as *observer*
-        for a stand-alone antenna)
+    pressure :class:`astropy.units.Quantity
+        Atrmospheric pressure used to refraction calculations
+    ref_earth_location :class:`astropy.coordinates.EarthLocation` object
+        Array reference location for antenna in an array (same as
+        *earth_location* for a stand-alone antenna)
+    ref_pressure :class:`astropy.units.Quantity
+        Atrmospheric pressure used to refraction calculations
 
     Raises
     ------
@@ -136,11 +145,9 @@ class Antenna(object):
 
     Notes
     -----
-    The :class:`ephem.Observer` objects are abused for their ability to convert
-    latitude and longitude to and from string representations via
-    :class:`ephem.Angle`. The only reason for the existence of *ref_observer*
-    is that it is a nice container for the reference latitude, longitude and
-    altitude.
+    The only reason for the existence of
+    *ref_observer* is that it is a nice container for the reference latitude,
+    longitude and altitude.
 
     It is a bad idea to edit the coordinates of the antenna in-place, as the
     various position tuples will not be updated - reconstruct a new antenna
@@ -192,41 +199,55 @@ class Antenna(object):
         self.pointing_model = PointingModel(pointing_model)
         self.beamwidth = float(beamwidth)
 
-        # Set up reference observer first
-        self.ref_observer = ephem.Observer()
-        self.ref_observer.lat = latitude
-        self.ref_observer.long = longitude
-        self.ref_observer.elevation = float(altitude)
-        # All astrometric ra/dec coordinates will be in J2000 epoch
-        self.ref_observer.epoch = ephem.J2000
-        # Disable ephem's built-in refraction model, since it's for optical wavelengths
-        self.ref_observer.pressure = 0.0
-        self.ref_position_wgs84 = self.ref_observer.lat, self.ref_observer.long, self.ref_observer.elevation
+        # Set up reference earth location first
+        if type(latitude) == str:
+            lat = Latitude(latitude, unit=units.deg)
+        else:
+            lat = Latitude(latitude, unit=units.rad)
+        if type(longitude) == str:
+            lon = Longitude(longitude, unit=units.deg)
+        else:
+            lon = Longitude(longitude, unit=units.rad)
+        if isinstance(altitude, units.Quantity):
+            height = altitude
+        else:
+            height = float(altitude) * units.meter
+        # Disable astropy's built-in refraction model.
+        self.ref_pressure = 0.0 * units.bar
+        self.ref_earth_location = EarthLocation(lat=lat,
+                lon=lon, height=height)
+
+        self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.to(units.meter).value
 
         if self.delay_model:
             dm = self.delay_model
             self.position_enu = (dm['POS_E'], dm['POS_N'], dm['POS_U'])
             # Convert ENU offset to ECEF coordinates of antenna, and then to WGS84 coordinates
-            self.position_ecef = enu_to_ecef(self.ref_observer.lat, self.ref_observer.long,
-                                             self.ref_observer.elevation, *self.position_enu)
-            self.observer = ephem.Observer()
-            self.observer.lat, self.observer.long, self.observer.elevation = ecef_to_lla(*self.position_ecef)
-            self.observer.epoch = ephem.J2000
-            self.observer.pressure = 0.0
-            self.position_wgs84 = self.observer.lat, self.observer.long, self.observer.elevation
+            self.position_ecef = enu_to_ecef(self.ref_earth_location.lat.rad,
+                    self.ref_earth_location.lon.rad,
+                    self.ref_earth_location.height.to(units.meter).value,
+                    *self.position_enu)
+            lat, lon, elevation = ecef_to_lla(*self.position_ecef)
+            lat  = Latitude(lat, unit=units.rad)
+            lon = Longitude(lon, unit=units.rad)
+            self.pressure = 0.0
+            self.earth_location = EarthLocation(lat=lat,
+                    lon=lon, height=height)
+            self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
         else:
-            self.observer = self.ref_observer
+            self.earth_location = self.ref_earth_location
+            self.pressure = self.ref_pressure
             self.position_enu = (0.0, 0.0, 0.0)
-            self.position_wgs84 = lat, lon, alt = self.observer.lat, self.observer.long, self.observer.elevation
+            self.position_wgs84 = lat, lon, alt = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
             self.position_ecef = enu_to_ecef(lat, lon, alt, *self.position_enu)
 
     def __str__(self):
         """Verbose human-friendly string representation of antenna object."""
         if np.any(self.position_enu):
-            return "%s: %d-m dish at ENU offset %s m from lat %s, long %s, alt %s m" % \
+            return "%s: %d-m dish at ENU offset %s m from lat %s, lon %s, alt %s m" % \
                    tuple([self.name, self.diameter, np.array(self.position_enu)] + list(self.ref_position_wgs84))
         else:
-            return "%s: %d-m dish at lat %s, long %s, alt %s m" % \
+            return "%s: %d-m dish at lat %s, lon %s, alt %s m" % \
                    tuple([self.name, self.diameter] + list(self.position_wgs84))
 
     def __repr__(self):
@@ -258,8 +279,13 @@ class Antenna(object):
         """Complete string representation of antenna object, sufficient to reconstruct it."""
         # These fields are used to build up the antenna description string
         fields = [self.name]
-        pos = self.ref_position_wgs84 if self.delay_model else self.position_wgs84
-        fields += [str(coord) for coord in pos]
+        location = self.ref_earth_location if self.delay_model else self.earth_location
+        fields += [location.lat.to_string(sep=':', unit=units.deg)]
+        fields += [location.lon.to_string(sep=':', unit=units.deg)]
+        # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
+        # using poor man's {:.6g} that avoids scientific notation for very small heights
+        height_m = location.height.to(units.meter).value
+        fields += ['{:.6f}'.format(height_m).rstrip('0').rstrip('.')]
         fields += [str(self.diameter)]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
@@ -308,16 +334,17 @@ class Antenna(object):
 
         Returns
         -------
-        lst : :class:`ephem.Angle` object, or sequence of objects
+        lst : :class:`astropy.coordinates.Angle` object, or sequence of objects
             Local sidereal time(s), in radians
 
         """
         def _scalar_local_sidereal_time(t):
             """Calculate local sidereal time at a single time instant."""
-            self.observer.date = Timestamp(t).to_ephem_date()
-            return self.observer.sidereal_time()
+            time = Time(Timestamp(t).to_ephem_date(), location=self.earth_location)
+            return time.sidereal_time('apparent')
+
         if is_iterable(timestamp):
-            return np.array([_scalar_local_sidereal_time(t) for t in timestamp])
+            return np.array([_scalar_local_sidereal_time(t) for t in timestamp], dtype=object)
         else:
             return _scalar_local_sidereal_time(timestamp)
 

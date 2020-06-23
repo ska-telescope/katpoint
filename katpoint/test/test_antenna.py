@@ -85,13 +85,15 @@ class TestAntenna(unittest.TestCase):
         utc_secs = time.mktime(time.strptime(self.timestamp, '%Y/%m/%d %H:%M:%S')) - time.timezone
         sid1 = ant.local_sidereal_time(self.timestamp)
         sid2 = ant.local_sidereal_time(utc_secs)
-        self.assertAlmostEqual(sid1, sid2, places=10, msg='Sidereal time differs for float and date/time string')
+        self.assertAlmostEqual(sid1.rad, sid2.rad, places=10,
+                               msg='Sidereal time differs for float and date/time string')
         sid3 = ant.local_sidereal_time([self.timestamp, self.timestamp])
         sid4 = ant.local_sidereal_time([utc_secs, utc_secs])
-        assert_angles_almost_equal(sid3, sid4, decimal=12)
+        assert_angles_almost_equal(np.array([a.rad for a in sid3]),
+                                   np.array([a.rad for a in sid4]), decimal=12)
 
     def test_array_reference_antenna(self):
         ant = katpoint.Antenna(self.valid_antennas[2])
         ref_ant = ant.array_reference_antenna()
         self.assertEqual(ref_ant.description,
-                         'array, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, , , 1.16')
+                         'array, -30:43:17.3, 21:24:38.5, 1038, 12.0, , , 1.16')

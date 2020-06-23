@@ -60,7 +60,9 @@ setup(name="katpoint",
       install_requires=[
           "future",
           "numpy",
-          "pyephem",
+          "astropy",
+          "sgp4",
+          "pyorbital",
       ],
       tests_require=[
           "nose",

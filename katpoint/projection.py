@@ -18,7 +18,7 @@
 
 This module provides a basic set of routines that projects spherical coordinates
 onto a plane and deprojects the plane coordinates back to the sphere. It
-complements the ephem module, which focuses on transformations between various
+complements the astropy module, which focuses on transformations between various
 spherical coordinate systems instead. The routines are derived from AIPS, as
 documented in [Gre1993a]_ and [Gre1993b]_ and implemented in the DIRCOS and
 NEWPOS routines in the 31DEC08 release, with minor improvements. The projections
