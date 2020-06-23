@@ -14,7 +14,7 @@
 # limitations under the License.
 ################################################################################
 
-"""A Catalog of 94 Bright Stars
+"""A Catalog of 115 Bright Stars
 
 The function star() will create and return a Body object representing
 the star whose name you provide.
@@ -26,6 +26,19 @@ ftp://adc.gsfc.nasa.gov/pub/adc/archives/catalogs/1/1239/hip_main.dat.gz
 Of the thousand brighest Hipparcos stars, those with proper names
 registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 """
+
+
+import numpy as np
+from astropy.time import Time
+from astropy import units
+from astropy.coordinates import SkyCoord
+from astropy.coordinates import Longitude
+from astropy.coordinates import Latitude
+from astropy.coordinates import ICRS
+
+from katpoint.bodies import FixedBody
+from katpoint.bodies import EarthSatellite
+
 
 db = """\
 Sirrah,f|S|B9,0:08:23.2|135.68,29:05:27|-162.95,2.07,2000,0
@@ -122,20 +135,31 @@ Alnair,f|S|B7,22:08:13.9|127.6,-46:57:38|-147.91,1.73,2000,0
 Fomalhaut,f|S|A3,22:57:38.8|329.22,-29:37:19|-164.22,1.17,2000,0
 Scheat,f|S|M2,23:03:46.3|187.76,28:04:57|137.61,2.44,2000,0
 Markab,f|S|B9,23:04:45.6|61.1,15:12:19|-42.56,2.49,2000,0
+Acamar,f|S|A4,02 58 15.7156|-53.53,-40 18 17.046|25.71,2.88,2000,0
+Acrux,f|S|B0,12 26 35.9414|-35.37,-63 05 56.601|-14.73,0.77,2000,0
+Adhara,f|S|B2,06 58 37.5467|2.63,-28 58 19.522|2.29,1.50,2000,0
+Alkaid,f|S|B3,13 47 32.5461|-121.23,+49 18 47.890|-15.56,1.85,2000,0
+Alpheratz,f|S|B9,00 08 23.1680|135.68,+29 05 26.981|-162.95,2.07,2000,0
+Ankaa,f|S|K0,00 26 16.8674|232.76,-42 18 18.439|-353.64,2.40,2000,0
+Atria,f|S|K2,16 48 39.8658|17.85,-69 01 39.486|-32.92,1.91,2000,0
+Avior,f|S|K3,08 22 30.8647|-25.34,-59 30 34.338|22.72,1.86,2000,0
+Diphda,f|S|K0,00 43 35.2283|232.79,-17 59 12.063|32.71,2.04,2000,0
+Eltanin,f|S|K5,17 56 36.3779|-8.52,+51 29 20.224|-23.05,2.24,2000,0
+Formalhaut,f|S|A3,22 57 38.8256|329.22,-29 37 18.613|-164.22,1.17,2000,0
+Gacrux,f|S|M4,12 31 09.9293|27.94,-57 06 45.249|-264.33,1.59,2000,0
+Gienah,f|S|B8,12 15 48.4678|-159.58,-17 32 31.141|22.31,2.58,2000,0
+Hadar,f|S|B1,14 03 49.4446|-33.96,-60 22 22.722|-25.06,0.61,2000,0
+Menkent,f|S|K0,14 06 41.3247|-519.29,-36 22 07.305|-517.87,2.06,2000,0
+Miaplacidus,f|S|A2,09 13 12.2408|-157.66,-69 43 02.901|108.91,1.67,2000,0
+Mirfak,f|S|F5,03 24 19.3485|24.11,+49 51 40.474|-26.01,1.79,2000,0
+Rigil Kentaurus,f|S|G2,14 39 36.4958|-3678.19,-60 50 02.310|481.84,-0.01,2000,0
+Sabik,f|S|A2,17 10 22.6624|41.16,-15 43 30.531|97.65,2.43,2000,0
+Suhail,f|S|K4,09 07 59.7771|-23.21,-43 25 57.447|14.28,2.23,2000,0
+Zubenelgenubi,f|S|A3,14 50 52.7773|-105.69,-16 02 29.798|-69.00,2.75,2000,0
 """
 
 stars = {}
 
-import numpy as np
-from astropy.time import Time
-from astropy import units
-from astropy.coordinates import SkyCoord
-from astropy.coordinates import Longitude
-from astropy.coordinates import Latitude
-from astropy.coordinates import ICRS
-
-from katpoint.bodies import FixedBody
-from katpoint.bodies import EarthSatellite
 
 def readdb(line):
     """Unpacks a line of an xephem catalogue and creates a Body object.
@@ -215,4 +239,3 @@ _build_stars()
 # Remove the function for creating the default catalogue as it is no longer
 # needed.
 del _build_stars
-
