@@ -6,35 +6,30 @@ pyephem package.
 """
 
 import unittest
+
 import numpy as np
+import astropy.units as u
+from astropy.coordinates import SkyCoord, ICRS, EarthLocation, Latitude, Longitude
 from astropy.time import Time
-from astropy import coordinates
-from astropy import units
 
-from katpoint.bodies import FixedBody
-from katpoint.bodies import Mars
-from katpoint.bodies import Moon
-from katpoint.bodies import Sun
-from katpoint.bodies import readtle
+from katpoint.bodies import FixedBody, Sun, Moon, Mars, readtle
 
-from astropy.coordinates import SkyCoord
-from astropy.coordinates import ICRS
 
 class TestFixedBody(unittest.TestCase):
     """Test for the FixedBody class."""
     def test_compute(self):
         """Test compute method"""
-        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        lat = Latitude('10:00:00.000', unit=u.deg)
+        lon = Longitude('80:00:00.000', unit=u.deg)
         date = Time('2020-01-01 00:00:00.000')
 
-        ra = coordinates.Longitude('10:10:40.123', unit=units.hour)
-        dec = coordinates.Latitude('40:20:50.567', unit=units.deg)
+        ra = Longitude('10:10:40.123', unit=u.hour)
+        dec = Latitude('40:20:50.567', unit=u.deg)
         body = FixedBody()
         body._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
-        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
+        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
-        self.assertEqual(body.a_radec.ra.to_string(sep=':', unit=units.hour),
+        self.assertEqual(body.a_radec.ra.to_string(sep=':', unit=u.hour),
                 '10:10:40.123')
         self.assertEqual(body.a_radec.dec.to_string(sep=':'), '40:20:50.567')
 
@@ -43,36 +38,36 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(body.altaz.alt.to_string(sep=':'), '51:21:20.0119')
 
     def test_planet(self):
-        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        lat = Latitude('10:00:00.000', unit=u.deg)
+        lon = Longitude('80:00:00.000', unit=u.deg)
         date = Time('2020-01-01 00:00:00.000')
 
         body = Mars()
-        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
+        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # '118:10:06.1' '27:23:13.3'
         self.assertEqual(body.altaz.az.to_string(sep=':'), '118:10:05.1129')
         self.assertEqual(body.altaz.alt.to_string(sep=':'), '27:23:12.8499')
 
     def test_moon(self):
-        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        lat = Latitude('10:00:00.000', unit=u.deg)
+        lon = Longitude('80:00:00.000', unit=u.deg)
         date = Time('2020-01-01 10:00:00.000')
 
         body = Moon()
-        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
+        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 127:15:23.6 60:05:13.7'
         self.assertEqual(body.altaz.az.to_string(sep=':'), '127:15:17.1381')
         self.assertEqual(body.altaz.alt.to_string(sep=':'), '60:05:10.2438')
 
     def test_sun(self):
-        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        lat = Latitude('10:00:00.000', unit=u.deg)
+        lon = Longitude('80:00:00.000', unit=u.deg)
         date = Time('2020-01-01 10:00:00.000')
 
         body = Sun()
-        body.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
+        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
         # 234:53:20.8 '31:38:09.4'
         self.assertEqual(body.altaz.az.to_string(sep=':'), '234:53:19.4835')
@@ -138,14 +133,14 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(rec.split(',')[10], xephem.split(',')[10])
 
         # Test compute
-        lat = coordinates.Latitude('10:00:00.000', unit=units.deg)
-        lon = coordinates.Longitude('80:00:00.000', unit=units.deg)
+        lat = Latitude('10:00:00.000', unit=u.deg)
+        lon = Longitude('80:00:00.000', unit=u.deg)
         date = Time('2019-09-23 07:45:36.000')
         elevation = 4200.0
-        sat.compute(coordinates.EarthLocation(lat=lat, lon=lon, height=elevation), date, 0.0)
+        sat.compute(EarthLocation(lat=lat, lon=lon, height=elevation), date, 0.0)
 
         # 3:32:59.21' '-2:04:36.3'
-        self.assertEqual(sat.a_radec.ra.to_string(sep=':', unit=units.hour),
+        self.assertEqual(sat.a_radec.ra.to_string(sep=':', unit=u.hour),
                 '3:32:56.7813')
         self.assertEqual(sat.a_radec.dec.to_string(sep=':'), '-2:04:35.4329')
 

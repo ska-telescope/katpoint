@@ -18,9 +18,8 @@
 from __future__ import print_function, division, absolute_import
 
 import unittest
-from astropy.time import Time
 
-import ephem
+from astropy.time import Time
 
 import katpoint
 

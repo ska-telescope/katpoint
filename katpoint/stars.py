@@ -29,15 +29,11 @@ registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 
 
 import numpy as np
+import astropy.units as u
+from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
-from astropy import units
-from astropy.coordinates import SkyCoord
-from astropy.coordinates import Longitude
-from astropy.coordinates import Latitude
-from astropy.coordinates import ICRS
 
-from katpoint.bodies import FixedBody
-from katpoint.bodies import EarthSatellite
+from katpoint.bodies import FixedBody, EarthSatellite
 
 
 db = """\
@@ -178,8 +174,8 @@ def readdb(line):
         dec = fields[3].split('|')[0]
         s = FixedBody()
         s.name = name
-        ra = Longitude(ra, unit=units.hour)
-        dec = Latitude(dec, unit=units.deg)
+        ra = Longitude(ra, unit=u.hour)
+        dec = Latitude(dec, unit=u.deg)
         s._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
         return s
 

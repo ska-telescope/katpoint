@@ -27,19 +27,10 @@ import copy
 import datetime
 import numpy as np
 
-from astropy.coordinates import get_moon
-from astropy.coordinates import get_body
-from astropy.coordinates import get_sun
-from astropy.coordinates import EarthLocation
-from astropy.coordinates import solar_system_ephemeris
-from astropy.coordinates import CIRS
-from astropy.coordinates import ICRS
-from astropy.coordinates import AltAz
-from astropy.coordinates import SkyCoord
-from astropy.time import Time
-from astropy.time import TimeDelta
-from astropy import coordinates
-from astropy import units
+import astropy.units as u
+from astropy.coordinates import solar_system_ephemeris, get_body, get_sun, get_moon
+from astropy.coordinates import CIRS, ICRS, SkyCoord, AltAz
+from astropy.time import Time, TimeDelta
 
 import sgp4.model
 import sgp4.earth_gravity
@@ -132,8 +123,8 @@ class FixedBody(Body):
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
         icrs = self._radec.transform_to(ICRS)
-        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=units.hour),
-                                   icrs.dec.to_string(sep=':', unit=units.deg))
+        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
+                                   icrs.dec.to_string(sep=':', unit=u.deg))
 
 
 class Sun(Body):
@@ -268,9 +259,9 @@ class EarthSatellite(Body):
 
         # Convert to alt, az at observer
         az, alt = get_observer_look(lon, lat, alt, utc_time,
-                loc.lon.deg, loc.lat.deg, loc.height.to(units.kilometer).value)
+                loc.lon.deg, loc.lat.deg, loc.height.to(u.kilometer).value)
 
-        self.altaz = SkyCoord(az*units.deg, alt*units.deg, location=loc,
+        self.altaz = SkyCoord(az*u.deg, alt*u.deg, location=loc,
                 obstime=date, pressure=pressure, frame=AltAz)
         self.a_radec = self.altaz.transform_to(ICRS)
 
@@ -464,8 +455,8 @@ class StationaryBody(Body):
         self._azel = AltAz(az=angle_from_degrees(az),
                 alt=angle_from_degrees(el))
         if not name:
-            name = "Az: {} El: {}".format(self._azel.az.to_string(sep=':', unit=units.deg),
-                                          self._azel.alt.to_string(sep=':', unit=units.deg))
+            name = "Az: {} El: {}".format(self._azel.az.to_string(sep=':', unit=u.deg),
+                                          self._azel.alt.to_string(sep=':', unit=u.deg))
         self.name = name
 
     def compute(self, loc, date, pressure):

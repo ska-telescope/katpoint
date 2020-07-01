@@ -25,10 +25,8 @@ from __future__ import print_function, division, absolute_import
 from builtins import object
 
 import numpy as np
-from astropy.coordinates import Latitude
-from astropy.coordinates import Longitude
-from astropy.coordinates import EarthLocation
-from astropy import units
+import astropy.units as u
+from astropy.coordinates import Latitude, Longitude, EarthLocation
 from astropy.time import Time
 
 from .timestamp import Timestamp
@@ -130,12 +128,12 @@ class Antenna(object):
         altitude in metres)
     earth_location :class:`astropy.coordinates.EarthLocation` object
         Underlying object used for pointing calculations
-    pressure :class:`astropy.units.Quantity
+    pressure :class:`astropy.units.Quantity`
         Atrmospheric pressure used to refraction calculations
     ref_earth_location :class:`astropy.coordinates.EarthLocation` object
         Array reference location for antenna in an array (same as
         *earth_location* for a stand-alone antenna)
-    ref_pressure :class:`astropy.units.Quantity
+    ref_pressure :class:`astropy.units.Quantity`
         Atrmospheric pressure used to refraction calculations
 
     Raises
@@ -201,23 +199,23 @@ class Antenna(object):
 
         # Set up reference earth location first
         if type(latitude) == str:
-            lat = Latitude(latitude, unit=units.deg)
+            lat = Latitude(latitude, unit=u.deg)
         else:
-            lat = Latitude(latitude, unit=units.rad)
+            lat = Latitude(latitude, unit=u.rad)
         if type(longitude) == str:
-            lon = Longitude(longitude, unit=units.deg)
+            lon = Longitude(longitude, unit=u.deg)
         else:
-            lon = Longitude(longitude, unit=units.rad)
-        if isinstance(altitude, units.Quantity):
+            lon = Longitude(longitude, unit=u.rad)
+        if isinstance(altitude, u.Quantity):
             height = altitude
         else:
-            height = float(altitude) * units.meter
+            height = float(altitude) * u.meter
         # Disable astropy's built-in refraction model.
-        self.ref_pressure = 0.0 * units.bar
+        self.ref_pressure = 0.0 * u.bar
         self.ref_earth_location = EarthLocation(lat=lat,
                 lon=lon, height=height)
 
-        self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.to(units.meter).value
+        self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.to(u.meter).value
 
         if self.delay_model:
             dm = self.delay_model
@@ -225,20 +223,20 @@ class Antenna(object):
             # Convert ENU offset to ECEF coordinates of antenna, and then to WGS84 coordinates
             self.position_ecef = enu_to_ecef(self.ref_earth_location.lat.rad,
                     self.ref_earth_location.lon.rad,
-                    self.ref_earth_location.height.to(units.meter).value,
+                    self.ref_earth_location.height.to(u.meter).value,
                     *self.position_enu)
             lat, lon, elevation = ecef_to_lla(*self.position_ecef)
-            lat  = Latitude(lat, unit=units.rad)
-            lon = Longitude(lon, unit=units.rad)
+            lat  = Latitude(lat, unit=u.rad)
+            lon = Longitude(lon, unit=u.rad)
             self.pressure = 0.0
             self.earth_location = EarthLocation(lat=lat,
                     lon=lon, height=height)
-            self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
+            self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(u.meter).value
         else:
             self.earth_location = self.ref_earth_location
             self.pressure = self.ref_pressure
             self.position_enu = (0.0, 0.0, 0.0)
-            self.position_wgs84 = lat, lon, alt = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(units.meter).value
+            self.position_wgs84 = lat, lon, alt = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(u.meter).value
             self.position_ecef = enu_to_ecef(lat, lon, alt, *self.position_enu)
 
     def __str__(self):
@@ -280,11 +278,11 @@ class Antenna(object):
         # These fields are used to build up the antenna description string
         fields = [self.name]
         location = self.ref_earth_location if self.delay_model else self.earth_location
-        fields += [location.lat.to_string(sep=':', unit=units.deg)]
-        fields += [location.lon.to_string(sep=':', unit=units.deg)]
+        fields += [location.lat.to_string(sep=':', unit=u.deg)]
+        fields += [location.lon.to_string(sep=':', unit=u.deg)]
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        height_m = location.height.to(units.meter).value
+        height_m = location.height.to(u.meter).value
         fields += ['{:.6f}'.format(height_m).rstrip('0').rstrip('.')]
         fields += [str(self.diameter)]
         fields += [self.delay_model.description]

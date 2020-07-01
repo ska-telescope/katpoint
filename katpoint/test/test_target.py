@@ -22,8 +22,8 @@ import time
 import pickle
 
 import numpy as np
-from astropy import coordinates
-from astropy import units
+import astropy.units as u
+from astropy.coordinates import Angle
 
 import katpoint
 
@@ -266,7 +266,7 @@ class TestTargetCalculations(unittest.TestCase):
         np.testing.assert_almost_equal(sep, 0.0)
         sep = azel.separation(sun, self.ts, self.ant1)
         np.testing.assert_almost_equal(sep, 0.0)
-        azel2 = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt + coordinates.Angle(0.01, unit=units.rad))
+        azel2 = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt + Angle(0.01, unit=u.rad))
         sep = azel.separation(azel2, self.ts, self.ant1)
         np.testing.assert_almost_equal(sep, 0.01, decimal=7)
 

@@ -25,8 +25,8 @@ except ImportError:
     from io import StringIO  # python3
 
 import numpy as np
-from astropy import coordinates
-from astropy import units
+import astropy.units as u
+from astropy.coordinates import Angle
 
 import katpoint
 
@@ -119,8 +119,8 @@ class TestDelayCorrection(unittest.TestCase):
         azel = self.target1.azel(self.ts, self.ant1)
         offset = dict(projection_type='SIN')
         target3 = katpoint.construct_azel_target(
-                azel.az - coordinates.Angle(1.0, unit=units.deg),
-                azel.alt - coordinates.Angle(1.0, unit=units.deg))
+                azel.az - Angle(1.0, unit=u.deg),
+                azel.alt - Angle(1.0, unit=u.deg))
         x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
@@ -138,8 +138,8 @@ class TestDelayCorrection(unittest.TestCase):
         # Now try (ra, dec) coordinate system
         radec = self.target1.radec(self.ts, self.ant1)
         offset = dict(projection_type='ARC', coord_system='radec')
-        target4 = katpoint.construct_radec_target(radec.ra - coordinates.Angle(1.0, unit=units.deg),
-                                                  radec.dec - coordinates.Angle(1.0, unit=units.deg))
+        target4 = katpoint.construct_radec_target(radec.ra - Angle(1.0, unit=u.deg),
+                                                  radec.dec - Angle(1.0, unit=u.deg))
         x, y = target4.sphere_to_plane(radec.ra.rad, radec.dec.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y

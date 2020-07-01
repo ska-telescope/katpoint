@@ -20,25 +20,20 @@ from builtins import object, range
 from past.builtins import basestring
 
 import numpy as np
-from astropy.coordinates import ICRS
-from astropy.coordinates import FK5
-from astropy.coordinates import FK4
-from astropy.coordinates import Galactic
-from astropy.coordinates import Longitude
-from astropy.coordinates import Latitude
-from astropy.coordinates import SkyCoord
-from astropy.coordinates import AltAz
-from astropy import units
+
+import astropy.units as u
+from astropy.coordinates import SkyCoord  # High-level coordinates
+from astropy.coordinates import ICRS, Galactic, FK4, FK5  # Low-level frames
+from astropy.coordinates import Latitude, Longitude  # Angles
 from astropy.time import Time
-import ephem
 
 from .timestamp import Timestamp
 from .flux import FluxDensityModel
-from .ephem_extra import (is_iterable, lightspeed, deg2rad, rad2deg, angle_from_degrees, angle_from_hours)
+from .ephem_extra import (is_iterable, lightspeed, deg2rad, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from . import bodies
-from .bodies import FixedBody, readtle, Sun, StationaryBody, NullBody
+from .bodies import FixedBody, readtle, StationaryBody, NullBody
 from .stars import star, readdb
 
 
@@ -150,11 +145,11 @@ class Target(object):
             descr += ' (%s)' % (', '.join(self.aliases),)
         descr += ', tags=%s' % (' '.join(self.tags),)
         if 'radec' in self.tags:
-            descr += ', %s %s' % (self.body._radec.ra.to_string(unit=units.hour),
-                    self.body._radec.dec.to_string(unit=units.deg))
+            descr += ', %s %s' % (self.body._radec.ra.to_string(unit=u.hour),
+                    self.body._radec.dec.to_string(unit=u.deg))
         if self.body_type == 'azel':
-            descr += ', %s %s' % (self.body._azel.az.to_string(unit=units.deg),
-                    self.body._azel.alt.to_string(unit=units.deg))
+            descr += ', %s %s' % (self.body._azel.az.to_string(unit=u.deg),
+                    self.body._azel.alt.to_string(unit=u.deg))
         if self.body_type == 'gal':
             gal = self.body._radec.transform_to(Galactic)
             descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
@@ -247,8 +242,8 @@ class Target(object):
             # Check if it's an unnamed target with a default name
             if names.startswith('Az:'):
                 fields = [tags]
-            fields += [self.body._azel.az.to_string(unit=units.deg),
-                    self.body._azel.alt.to_string(unit=units.deg)]
+            fields += [self.body._azel.az.to_string(unit=u.deg),
+                    self.body._azel.alt.to_string(unit=u.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -256,8 +251,8 @@ class Target(object):
             # Check if it's an unnamed target with a default name
             if names.startswith('Ra:'):
                 fields = [tags]
-            fields += [self.body._radec.dec.to_string(unit=units.hour),
-                    self.body._radec.dec.to_string(unit=units.deg)]
+            fields += [self.body._radec.dec.to_string(unit=u.hour),
+                    self.body._radec.dec.to_string(unit=u.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -1076,7 +1071,7 @@ def construct_target_params(description):
         else:
             body.name = "Galactic l: %.4f b: %.4f" % (l, b)
         body._epoch = Time(2000.0, format='jyear')
-        body._radec = SkyCoord(l=Longitude(l, unit=units.deg), b=Latitude(b, unit=units.deg), frame=Galactic)
+        body._radec = SkyCoord(l=Longitude(l, unit=u.deg), b=Latitude(b, unit=u.deg), frame=Galactic)
 
     elif body_type == 'tle':
         lines = fields[-1].split('\n')

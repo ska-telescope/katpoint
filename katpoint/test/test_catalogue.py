@@ -20,8 +20,6 @@ from __future__ import print_function, division, absolute_import
 import unittest
 import time
 
-import ephem.stars
-
 import katpoint
 
 
@@ -93,7 +91,7 @@ class TestCatalogueConstruction(unittest.TestCase):
         """Test construction of catalogues."""
         cat = katpoint.Catalogue(add_specials=True, add_stars=True, antenna=self.antenna)
         num_targets_original = len(cat)
-        self.assertEqual(num_targets_original, len(katpoint.specials) + 1 + len(ephem.stars.stars),
+        self.assertEqual(num_targets_original, len(katpoint.specials) + 1 + len(katpoint.stars.stars),
                          'Number of targets incorrect')
         # Add target already in catalogue - no action
         cat.add(katpoint.Target('Sun, special'))
@@ -174,11 +172,10 @@ class TestCatalogueFilterSort(unittest.TestCase):
     def test_sort_catalogue(self):
         """Test sorting of catalogues."""
         cat = katpoint.Catalogue(add_specials=True, add_stars=True)
-        self.assertEqual(len(cat.targets), len(katpoint.specials) + 1 + len(ephem.stars.stars),
+        self.assertEqual(len(cat.targets), len(katpoint.specials) + 1 + len(katpoint.stars.stars),
                          'Number of targets incorrect')
         cat1 = cat.sort(key='name')
         self.assertEqual(cat1, cat, 'Catalogue equality failed')
-        # Ephem 3.7.7.0 added new stars
         self.assertIn(cat1.targets[0].name, {'Acamar', 'Achernar'}, 'Sorting on name failed')
         cat2 = cat.sort(key='ra', timestamp=self.timestamp, antenna=self.antenna)
         self.assertIn(cat2.targets[0].name, {'Alpheratz', 'Sirrah'}, 'Sorting on ra failed')

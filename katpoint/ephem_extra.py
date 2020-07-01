@@ -20,8 +20,8 @@ from builtins import object
 from past.builtins import basestring
 
 import numpy as np
+import astropy.units as u
 from astropy.coordinates import Angle
-from astropy import units
 
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
@@ -73,14 +73,14 @@ def angle_from_degrees(s):
     try:
         # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
         if type(s) == str:
-            return Angle(s, unit=units.deg)
+            return Angle(s, unit=u.deg)
         elif type(s) == tuple:
-            return Angle(s, unit=units.deg)
+            return Angle(s, unit=u.deg)
         else:
-            return Angle(s, unit=units.rad)
+            return Angle(s, unit=u.rad)
     except TypeError:
         # If input is neither, assume that it really wants to be a string
-        return Angle(_just_gimme_an_ascii_string(s), unit=units.deg)
+        return Angle(_just_gimme_an_ascii_string(s), unit=u.deg)
 
 
 def angle_from_hours(s):
@@ -88,14 +88,14 @@ def angle_from_hours(s):
     try:
         # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
         if type(s) == str:
-            return Angle(s, unit=units.hour)
+            return Angle(s, unit=u.hour)
         elif type(s) == tuple:
-            return Angle(s, unit=units.hour)
+            return Angle(s, unit=u.hour)
         else:
-            return Angle(s, unit=units.rad)
+            return Angle(s, unit=u.rad)
     except TypeError:
         # If input is neither, assume that it really wants to be a string
-        return Angle(_just_gimme_an_ascii_string(s), unit=units.hour)
+        return Angle(_just_gimme_an_ascii_string(s), unit=u.hour)
 
 
 def wrap_angle(angle, period=2.0 * np.pi):
