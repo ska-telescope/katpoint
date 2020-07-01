@@ -59,8 +59,8 @@ class Timestamp(object):
     ---------
     secs : float
         Timestamp as UTC seconds since Unix epoch
-
     """
+
     def __init__(self, timestamp=None):
         if isinstance(timestamp, basestring):
             try:
@@ -191,14 +191,13 @@ class Timestamp(object):
         int_secs = math.floor(self.secs)
         timetuple = list(time.gmtime(int_secs)[:6])
         timetuple[5] += self.secs - int_secs
-        return Time('{0}-{1:02}-{2:02} {3:02}:{4:02}:{5:02}'.format(timetuple[0],
-                timetuple[1], timetuple[2], timetuple[3],
-                timetuple[4], timetuple[5]))
+        return Time('{0}-{1:02}-{2:02} {3:02}:{4:02}:{5:02}'.format(*timetuple))
 
     def to_mjd(self):
         """Convert timestamp to Modified Julian Day (MJD)."""
         djd = self.to_ephem_date()
         return djd.mjd
+
 
 def decode(s):
     """Decodes a date string
@@ -216,22 +215,22 @@ def decode(s):
     # time without fractional seconds
     try:
         d = time.strptime(s, '%Y-%m-%d %H:%M:%S')
-    except:
+    except ValueError:
         try:
             d = time.strptime(s, '%Y-%m-%d %H:%M')
-        except:
+        except ValueError:
             try:
                 d = time.strptime(s, '%Y-%m-%d %H')
-            except:
+            except ValueError:
                 try:
                     d = time.strptime(s, '%Y-%m-%d')
-                except:
+                except ValueError:
                     try:
                         d = time.strptime(s, '%Y-%m')
-                    except:
+                    except ValueError:
                         try:
                             d = time.strptime(s, '%Y')
-                        except:
+                        except ValueError:
                             raise ValueError('unable to decode date string')
 
     # Convert to a unix time and add the fractional seconds
@@ -240,7 +239,7 @@ def decode(s):
     # Back to a tuple
     d = time.localtime(u)
 
-    return time.strftime('%Y-%m-%d %H:%M:%S',d) + f
+    return time.strftime('%Y-%m-%d %H:%M:%S', d) + f
 
 
 def now():

@@ -123,8 +123,8 @@ Alternatively they can be called directly::
    1993.
 .. [CB2002] Calabretta, Greisen, "Representations of celestial coordinates in
    FITS. II," Astronomy & Astrophysics, vol. 395, pp. 1077-1122, 2002.
-
 """
+
 from __future__ import print_function, division, absolute_import
 
 import numpy as np
@@ -199,7 +199,6 @@ def sphere_to_plane_sin(az0, el0, az, el):
     -----
     This implements the original SIN projection as in AIPS, not the generalised
     'slant orthographic' projection as in WCSLIB.
-
     """
     ortho_x, ortho_y, cos_theta = sphere_to_ortho(az0, el0, az, el)
     if np.any(cos_theta < 0.0):
@@ -251,7 +250,6 @@ def plane_to_sphere_sin(az0, el0, x, y):
     -----
     This implements the original SIN projection as in AIPS, not the generalised
     'slant orthographic' projection as in WCSLIB.
-
     """
     if np.any(np.abs(el0) > np.pi / 2.0):
         raise ValueError('Elevation angle outside range of +- pi/2 radians')
@@ -305,7 +303,6 @@ def sphere_to_plane_tan(az0, el0, az, el):
     ------
     ValueError
         If input values are out of range, or target is too far from reference
-
     """
     ortho_x, ortho_y, cos_theta = sphere_to_ortho(az0, el0, az, el)
     if np.any(cos_theta <= 0.0):
@@ -345,7 +342,6 @@ def plane_to_sphere_tan(az0, el0, x, y):
     ------
     ValueError
         If input values are out of range
-
     """
     if np.any(np.abs(el0) > np.pi / 2.0):
         raise ValueError('Elevation angle outside range of +- pi/2 radians')
@@ -393,7 +389,6 @@ def sphere_to_plane_arc(az0, el0, az, el):
     ------
     ValueError
         If input values are out of range
-
     """
     ortho_x, ortho_y, cos_theta = sphere_to_ortho(az0, el0, az, el)
     # Safeguard the arccos, as over-ranging happens occasionally due to round-off error
@@ -443,7 +438,6 @@ def plane_to_sphere_arc(az0, el0, x, y):
     ------
     ValueError
         If input values are out of range, or the radius of (x, y) > pi
-
     """
     if np.any(np.abs(el0) > np.pi / 2.0):
         raise ValueError('Elevation angle outside range of +- pi/2 radians')
@@ -508,7 +502,6 @@ def sphere_to_plane_stg(az0, el0, az, el):
     ------
     ValueError
         If input values are out of range, or target point opposite to reference
-
     """
     ortho_x, ortho_y, cos_theta = sphere_to_ortho(az0, el0, az, el)
     den = 1.0 + cos_theta
@@ -549,7 +542,6 @@ def plane_to_sphere_stg(az0, el0, x, y):
     ------
     ValueError
         If input values are out of range
-
     """
     if np.any(np.abs(el0) > np.pi / 2.0):
         raise ValueError('Elevation angle outside range of +- pi/2 radians')
@@ -602,7 +594,6 @@ def sphere_to_plane_car(az0, el0, az, el):
         Azimuth-like coordinate(s) on plane, in radians
     y : float or array
         Elevation-like coordinate(s) on plane, in radians
-
     """
     return az - az0, el - el0
 
@@ -633,7 +624,6 @@ def plane_to_sphere_car(az0, el0, x, y):
         Azimuth / right ascension / longitude of target point(s), in radians
     el : float or array
         Elevation / declination / latitude of target point(s), in radians
-
     """
     return az0 + x, el0 + y
 
@@ -688,7 +678,6 @@ def sphere_to_plane_ssn(az0, el0, az, el):
     -----
     This projection was originally introduced by Mattieu de Villiers for use
     in holography experiments.
-
     """
     return sphere_to_plane_sin(az, el, az0, el0)
 
@@ -747,7 +736,6 @@ def plane_to_sphere_ssn(az0, el0, x, y):
     -----
     This projection was originally introduced by Mattieu de Villiers for use
     in holography experiments.
-
     """
     if np.any(np.abs(el0) > np.pi / 2.0):
         raise ValueError('Elevation angle outside range of +- pi/2 radians')

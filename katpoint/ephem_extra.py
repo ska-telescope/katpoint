@@ -16,7 +16,6 @@
 
 """Enhancements to PyEphem."""
 from __future__ import print_function, division, absolute_import
-from builtins import object
 from past.builtins import basestring
 
 import numpy as np
@@ -59,7 +58,6 @@ def _just_gimme_an_ascii_string(s):
     ------
     UnicodeEncodeError, UnicodeDecodeError
         If the conversion fails due to the presence of non-ASCII characters
-
     """
     if isinstance(s, bytes) and not isinstance(s, str):
         # Only encoded bytes on Python 3 will end up here
@@ -102,6 +100,5 @@ def wrap_angle(angle, period=2.0 * np.pi):
     """Wrap angle into interval centred on zero.
 
     This wraps the *angle* into the interval -*period* / 2 ... *period* / 2.
-
     """
     return (angle + 0.5 * period) % period - 0.5 * period

@@ -33,6 +33,7 @@ import katpoint
 
 class TestDelayModel(unittest.TestCase):
     """Test antenna delay model."""
+
     def test_construct_save_load(self):
         """Test construction / save / load of delay model."""
         m = katpoint.DelayModel('1.0, -2.0, -3.0, 4.123, 5.0, 6.0')
@@ -60,6 +61,7 @@ class TestDelayModel(unittest.TestCase):
 
 class TestDelayCorrection(unittest.TestCase):
     """Test correlator delay corrections."""
+
     def setUp(self):
         self.target1 = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
         self.target2 = katpoint.Target('Sun, special')
@@ -118,16 +120,14 @@ class TestDelayCorrection(unittest.TestCase):
         """Test target offset."""
         azel = self.target1.azel(self.ts, self.ant1)
         offset = dict(projection_type='SIN')
-        target3 = katpoint.construct_azel_target(
-                azel.az - Angle(1.0, unit=u.deg),
-                azel.alt - Angle(1.0, unit=u.deg))
+        target3 = katpoint.construct_azel_target(azel.az - Angle(1.0, unit=u.deg),
+                                                 azel.alt - Angle(1.0, unit=u.deg))
         x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
         extra_delay = self.delays.extra_delay
         delay0, phase0 = self.delays.corrections(target3, self.ts, offset=offset)
-        delay1, phase1 = self.delays.corrections(target3, self.ts,
-                                                 self.ts + 1.0, offset)
+        delay1, phase1 = self.delays.corrections(target3, self.ts, self.ts + 1.0, offset)
         # Conspire to return to special target1
         self.assertEqual(delay0['A2h'], extra_delay, 'Delay for ant2h should be zero')
         self.assertEqual(delay0['A2v'], extra_delay, 'Delay for ant2v should be zero')
@@ -145,12 +145,11 @@ class TestDelayCorrection(unittest.TestCase):
         offset['y'] = y
         extra_delay = self.delays.extra_delay
         delay0, phase0 = self.delays.corrections(target4, self.ts, offset=offset)
-        delay1, phase1 = self.delays.corrections(target4, self.ts,
-                                                 self.ts + 1.0, offset)
+        delay1, phase1 = self.delays.corrections(target4, self.ts, self.ts + 1.0, offset)
         # Conspire to return to special target1
-        #np.testing.assert_almost_equal(delay0['A2h'], extra_delay, decimal=15)
-        #np.testing.assert_almost_equal(delay0['A2v'], extra_delay, decimal=15)
-        #np.testing.assert_almost_equal(delay1['A2h'][0], extra_delay, decimal=15)
-        #np.testing.assert_almost_equal(delay1['A2v'][0], extra_delay, decimal=15)
-        #np.testing.assert_almost_equal(delay1['A2h'][1], 0.0, decimal=15)
-        #np.testing.assert_almost_equal(delay1['A2v'][1], 0.0, decimal=15)
+        # np.testing.assert_almost_equal(delay0['A2h'], extra_delay, decimal=15)
+        # np.testing.assert_almost_equal(delay0['A2v'], extra_delay, decimal=15)
+        # np.testing.assert_almost_equal(delay1['A2h'][0], extra_delay, decimal=15)
+        # np.testing.assert_almost_equal(delay1['A2v'][0], extra_delay, decimal=15)
+        # np.testing.assert_almost_equal(delay1['A2h'][1], 0.0, decimal=15)
+        # np.testing.assert_almost_equal(delay1['A2v'][1], 0.0, decimal=15)

@@ -17,8 +17,8 @@
 """Refraction correction.
 
 This implements correction for refractive bending in the atmosphere.
-
 """
+
 from __future__ import print_function, division, absolute_import
 from builtins import object, range
 
@@ -125,8 +125,8 @@ class RefractionCorrection(object):
     ------
     ValueError
         If the specified refraction model is unknown
-
     """
+
     def __init__(self, model='VLBI Field System'):
         self.models = {'VLBI Field System': refraction_offset_vlbi}
         try:
@@ -173,7 +173,6 @@ class RefractionCorrection(object):
         -------
         refracted_el : float or array
             Elevation angle(s), corrected for refraction, in radians
-
         """
         return el + self.offset(el, temperature_C, pressure_hPa, humidity_percent)
 
@@ -198,7 +197,6 @@ class RefractionCorrection(object):
         -------
         el : float or array
             Elevation angle(s) before refraction correction, in radians
-
         """
         # Maximum difference between input elevation and refraction-corrected version of final output elevation
         tolerance = deg2rad(0.01 / 3600)

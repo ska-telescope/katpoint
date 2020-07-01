@@ -47,6 +47,7 @@ def assert_angles_almost_equal(x, y, decimal):
 
 class TestProjectionSIN(unittest.TestCase):
     """Test orthographic projection."""
+
     def setUp(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['SIN']
         self.sphere_to_plane = katpoint.sphere_to_plane['SIN']
@@ -148,6 +149,7 @@ class TestProjectionSIN(unittest.TestCase):
 
 class TestProjectionTAN(unittest.TestCase):
     """Test gnomonic projection."""
+
     def setUp(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['TAN']
         self.sphere_to_plane = katpoint.sphere_to_plane['TAN']
@@ -251,6 +253,7 @@ class TestProjectionTAN(unittest.TestCase):
 
 class TestProjectionARC(unittest.TestCase):
     """Test zenithal equidistant projection."""
+
     def setUp(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['ARC']
         self.sphere_to_plane = katpoint.sphere_to_plane['ARC']
@@ -364,6 +367,7 @@ class TestProjectionARC(unittest.TestCase):
 
 class TestProjectionSTG(unittest.TestCase):
     """Test stereographic projection."""
+
     def setUp(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['STG']
         self.sphere_to_plane = katpoint.sphere_to_plane['STG']
@@ -465,6 +469,7 @@ class TestProjectionSTG(unittest.TestCase):
 
 class TestProjectionCAR(unittest.TestCase):
     """Test plate carree projection."""
+
     def setUp(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['CAR']
         self.sphere_to_plane = katpoint.sphere_to_plane['CAR']
@@ -506,6 +511,7 @@ def plane_to_sphere_original_ssn(target_az, target_el, ll, mm):
 
 class TestProjectionSSN(unittest.TestCase):
     """Test swapped orthographic projection."""
+
     def setUp(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['SSN']
         self.sphere_to_plane = katpoint.sphere_to_plane['SSN']

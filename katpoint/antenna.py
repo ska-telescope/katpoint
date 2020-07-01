@@ -19,8 +19,8 @@
 An *antenna* is considered to be a steerable parabolic dish containing multiple
 feeds. The :class:`Antenna` object wraps the antenna's location, dish diameter
 and other parameters that affect pointing and delay calculations.
-
 """
+
 from __future__ import print_function, division, absolute_import
 from builtins import object
 
@@ -157,8 +157,8 @@ class Antenna(object):
     internally. Generally the latitude and longitude should be specified up to
     0.1 arcsecond precision, while altitude should be in metres and East, North
     and Up offsets are generally specified up to millimetres.
-
     """
+
     def __init__(self, name, latitude=None, longitude=None, altitude=None,
                  diameter=0.0, delay_model=None, pointing_model=None,
                  beamwidth=1.22):
@@ -212,38 +212,43 @@ class Antenna(object):
             height = float(altitude) * u.meter
         # Disable astropy's built-in refraction model.
         self.ref_pressure = 0.0 * u.bar
-        self.ref_earth_location = EarthLocation(lat=lat,
-                lon=lon, height=height)
+        self.ref_earth_location = EarthLocation(lat=lat, lon=lon, height=height)
 
-        self.ref_position_wgs84 = self.ref_earth_location.lat.rad, self.ref_earth_location.lon.rad, self.ref_earth_location.height.to(u.meter).value
+        self.ref_position_wgs84 = (self.ref_earth_location.lat.rad,
+                                   self.ref_earth_location.lon.rad,
+                                   self.ref_earth_location.height.to(u.meter).value)
 
         if self.delay_model:
             dm = self.delay_model
             self.position_enu = (dm['POS_E'], dm['POS_N'], dm['POS_U'])
             # Convert ENU offset to ECEF coordinates of antenna, and then to WGS84 coordinates
             self.position_ecef = enu_to_ecef(self.ref_earth_location.lat.rad,
-                    self.ref_earth_location.lon.rad,
-                    self.ref_earth_location.height.to(u.meter).value,
-                    *self.position_enu)
+                                             self.ref_earth_location.lon.rad,
+                                             self.ref_earth_location.height.to(u.meter).value,
+                                             *self.position_enu)
             lat, lon, elevation = ecef_to_lla(*self.position_ecef)
-            lat  = Latitude(lat, unit=u.rad)
+            lat = Latitude(lat, unit=u.rad)
             lon = Longitude(lon, unit=u.rad)
             self.pressure = 0.0
-            self.earth_location = EarthLocation(lat=lat,
-                    lon=lon, height=height)
-            self.position_wgs84 = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(u.meter).value
+            self.earth_location = EarthLocation(lat=lat, lon=lon, height=height)
+            self.position_wgs84 = (self.earth_location.lat.rad,
+                                   self.earth_location.lon.rad,
+                                   self.earth_location.height.to(u.meter).value)
         else:
             self.earth_location = self.ref_earth_location
             self.pressure = self.ref_pressure
             self.position_enu = (0.0, 0.0, 0.0)
-            self.position_wgs84 = lat, lon, alt = self.earth_location.lat.rad, self.earth_location.lon.rad, self.earth_location.height.to(u.meter).value
+            self.position_wgs84 = lat, lon, alt = (self.earth_location.lat.rad,
+                                                   self.earth_location.lon.rad,
+                                                   self.earth_location.height.to(u.meter).value)
             self.position_ecef = enu_to_ecef(lat, lon, alt, *self.position_enu)
 
     def __str__(self):
         """Verbose human-friendly string representation of antenna object."""
         if np.any(self.position_enu):
             return "%s: %d-m dish at ENU offset %s m from lat %s, lon %s, alt %s m" % \
-                   tuple([self.name, self.diameter, np.array(self.position_enu)] + list(self.ref_position_wgs84))
+                   tuple([self.name, self.diameter, np.array(self.position_enu)]
+                         + list(self.ref_position_wgs84))
         else:
             return "%s: %d-m dish at lat %s, lon %s, alt %s m" % \
                    tuple([self.name, self.diameter] + list(self.position_wgs84))
@@ -310,7 +315,6 @@ class Antenna(object):
         -------
         e_m, n_m, u_m : float or array
             East, North, Up coordinates of baseline vector, in metres
-
         """
         # If this antenna is at reference position of second antenna, simply return its ENU offset
         if self.position_wgs84 == antenna2.ref_position_wgs84:
@@ -334,7 +338,6 @@ class Antenna(object):
         -------
         lst : :class:`astropy.coordinates.Angle` object, or sequence of objects
             Local sidereal time(s), in radians
-
         """
         def _scalar_local_sidereal_time(t):
             """Calculate local sidereal time at a single time instant."""

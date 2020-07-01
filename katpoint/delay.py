@@ -19,8 +19,8 @@
 This implements the basic delay model used to calculate the delay
 contribution from each antenna, as well as a class that performs
 delay correction for a correlator.
-
 """
+
 from __future__ import print_function, division, absolute_import
 from builtins import object, zip
 from past.builtins import basestring
@@ -61,8 +61,8 @@ class DelayModel(Model):
         string, interpret it as a comma-separated (or whitespace-separated)
         sequence of parameters in their string form (i.e. a description
         string). The default is an empty model.
-
     """
+
     def __init__(self, model=None):
         # Instantiate the relevant model parameters and register with base class
         params = []
@@ -89,7 +89,6 @@ class DelayModel(Model):
         ----------
         delays : sequence of floats
             Model parameters in delay form (i.e. in seconds)
-
         """
         self.fromlist(delays * self._speeds)
 
@@ -132,7 +131,6 @@ class DelayCorrection(object):
     ValueError
         If all antennas do not share the same reference position as `ref_ant`
         or `ref_ant` was not specified, or description string is invalid
-
     """
 
     # Maximum size for delay cache
@@ -230,7 +228,6 @@ class DelayCorrection(object):
         -------
         delays : sequence of *2M* floats
             Delays (one per correlator input) in seconds
-
         """
         if not offset:
             azel = target.azel(timestamp, self.ref_ant)
@@ -264,7 +261,6 @@ class DelayCorrection(object):
 
         See :meth:`_calculate_delays` for parameter and return lists,
         as these two methods can be used interchangeably.
-
         """
         delays = self._cache.pop(timestamp, None)
         if delays is None:
@@ -319,7 +315,6 @@ class DelayCorrection(object):
             fringe rate value (in radians per second). If a sequence of *T*
             timestamps are provided, each input maps to an array of shape
             (*T*, 2).
-
         """
         if is_iterable(timestamp):
             # Append one more timestamp to get a slope for the last timestamp

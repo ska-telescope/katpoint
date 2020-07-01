@@ -17,6 +17,7 @@ from katpoint.bodies import FixedBody, Sun, Moon, Mars, readtle
 
 class TestFixedBody(unittest.TestCase):
     """Test for the FixedBody class."""
+
     def test_compute(self):
         """Test compute method"""
         lat = Latitude('10:00:00.000', unit=u.deg)
@@ -29,8 +30,7 @@ class TestFixedBody(unittest.TestCase):
         body._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
         body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
 
-        self.assertEqual(body.a_radec.ra.to_string(sep=':', unit=u.hour),
-                '10:10:40.123')
+        self.assertEqual(body.a_radec.ra.to_string(sep=':', unit=u.hour), '10:10:40.123')
         self.assertEqual(body.a_radec.dec.to_string(sep=':'), '40:20:50.567')
 
         # 326:05:54.8 51:21:18.5
@@ -93,32 +93,33 @@ class TestFixedBody(unittest.TestCase):
         self.assertEqual(sat._drag, 1.e-04)
 
         # This is xephem database record that pyephem generates
-        xephem = ' GPS BIIA-21 (PRN 09) ,E,9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,55.4408,61.379002,0.0191986,78.180199,283.9935,2.0056172,1.2e-07,10428,9.9999997e-05'
+        xephem = ' GPS BIIA-21 (PRN 09) ,E,9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,' \
+                 '55.4408,61.379002,0.0191986,78.180199,283.9935,2.0056172,1.2e-07,10428,9.9999997e-05'
 
         rec = sat.writedb()
         self.assertEqual(rec.split(',')[0], xephem.split(',')[0])
         self.assertEqual(rec.split(',')[1], xephem.split(',')[1])
 
         self.assertEqual(rec.split(',')[2].split('|')[0].split('/')[0],
-                xephem.split(',')[2].split('|')[0].split('/')[0])
+                         xephem.split(',')[2].split('|')[0].split('/')[0])
         self.assertAlmostEqual(float(rec.split(',')[2].split('|')[0].split('/')[1]),
-                float(xephem.split(',')[2].split('|')[0].split('/')[1]))
+                               float(xephem.split(',')[2].split('|')[0].split('/')[1]))
         self.assertEqual(rec.split(',')[2].split('|')[0].split('/')[2],
-                xephem.split(',')[2].split('|')[0].split('/')[2])
+                         xephem.split(',')[2].split('|')[0].split('/')[2])
 
         self.assertEqual(rec.split(',')[2].split('|')[1].split('/')[0],
-                xephem.split(',')[2].split('|')[1].split('/')[0])
+                         xephem.split(',')[2].split('|')[1].split('/')[0])
         self.assertAlmostEqual(float(rec.split(',')[2].split('|')[1].split('/')[1]),
-                float(xephem.split(',')[2].split('|')[1].split('/')[1]), places=2)
+                               float(xephem.split(',')[2].split('|')[1].split('/')[1]), places=2)
         self.assertEqual(rec.split(',')[2].split('|')[1].split('/')[2],
-                xephem.split(',')[2].split('|')[1].split('/')[2])
+                         xephem.split(',')[2].split('|')[1].split('/')[2])
 
         self.assertEqual(rec.split(',')[2].split('|')[2].split('/')[0],
-                xephem.split(',')[2].split('|')[2].split('/')[0])
+                         xephem.split(',')[2].split('|')[2].split('/')[0])
         self.assertAlmostEqual(float(rec.split(',')[2].split('|')[2].split('/')[1]),
-                float(xephem.split(',')[2].split('|')[2].split('/')[1]), places=2)
+                               float(xephem.split(',')[2].split('|')[2].split('/')[1]), places=2)
         self.assertEqual(rec.split(',')[2].split('|')[2].split('/')[2],
-                xephem.split(',')[2].split('|')[2].split('/')[2])
+                         xephem.split(',')[2].split('|')[2].split('/')[2])
 
         self.assertEqual(rec.split(',')[3], xephem.split(',')[3])
 
@@ -140,8 +141,7 @@ class TestFixedBody(unittest.TestCase):
         sat.compute(EarthLocation(lat=lat, lon=lon, height=elevation), date, 0.0)
 
         # 3:32:59.21' '-2:04:36.3'
-        self.assertEqual(sat.a_radec.ra.to_string(sep=':', unit=u.hour),
-                '3:32:56.7813')
+        self.assertEqual(sat.a_radec.ra.to_string(sep=':', unit=u.hour), '3:32:56.7813')
         self.assertEqual(sat.a_radec.dec.to_string(sep=':'), '-2:04:35.4329')
 
         # 280:32:07.2 -54:06:14.4

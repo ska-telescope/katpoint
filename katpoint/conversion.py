@@ -52,7 +52,6 @@ def lla_to_ecef(lat_rad, lon_rad, alt_m):
     .. [NIMA2004] National Imagery and Mapping Agency, "Department of Defense
        World Geodetic System 1984," NIMA TR8350.2, Page 4-4, last updated
        June, 2004.
-
     """
     # WGS84 Defining Parameters
     a = 6378137.0                           # semi-major axis of Earth in m
@@ -104,7 +103,6 @@ def ecef_to_lla(x_m, y_m, z_m):
     .. [kaplan] Kaplan, "Understanding GPS: principles and applications," 1 ed.,
        Norwood, MA 02062, USA: Artech House, Inc, 1996.
     .. [geo] Wikipedia entry, "Geodetic system", 2009.
-
     """
     # WGS84 Defining Parameters
     a = 6378137.0                           # semi-major axis of Earth in m
@@ -165,7 +163,6 @@ def ecef_to_lla2(x_m, y_m, z_m):
     This is a copy of the algorithm in the CONRAD codebase (from conradmisclib).
     It's nearly identical to :func:`ecef_to_lla`, but returns lon/lat in
     different ranges.
-
     """
     # WGS84 ellipsoid constants
     a = 6378137.0                    # semi-major axis of Earth in m
@@ -217,7 +214,6 @@ def enu_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m, e_m, n_m, u_m):
     -------
     x_m, y_m, z_m : float or array
         X, Y, Z coordinates, in metres
-
     """
     # ECEF coordinates of reference point
     ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m)
@@ -252,7 +248,6 @@ def ecef_to_enu(ref_lat_rad, ref_lon_rad, ref_alt_m, x_m, y_m, z_m):
     -------
     e_m, n_m, u_m : float or array
         East, North, Up coordinates, in metres
-
     """
     # ECEF coordinates of reference point
     ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m)
@@ -287,7 +282,6 @@ def azel_to_enu(az_rad, el_rad):
     -------
     e, n, u : float or array
         East, North, Up coordinates of unit vector
-
     """
     sin_az, cos_az = np.sin(az_rad), np.cos(az_rad)
     sin_el, cos_el = np.sin(el_rad), np.cos(el_rad)
@@ -311,7 +305,6 @@ def enu_to_azel(e, n, u):
     -------
     az_rad, el_rad : float or array
         Azimuth and elevation angle, in radians
-
     """
     return np.arctan2(e, n), np.arctan2(u, np.sqrt(e * e + n * n))
 
@@ -332,7 +325,6 @@ def hadec_to_enu(ha_rad, dec_rad, lat_rad):
     -------
     e, n, u : float or array
         East, North, Up coordinates of unit vector
-
     """
     sin_ha, cos_ha = np.sin(ha_rad), np.cos(ha_rad)
     sin_dec, cos_dec = np.sin(dec_rad), np.cos(dec_rad)
@@ -370,7 +362,6 @@ def enu_to_xyz(e, n, u, lat_rad):
     ----------
     .. [TMS] Thompson, Moran, Swenson, "Interferometry and Synthesis in Radio
        Astronomy," 2nd ed., Wiley-VCH, 2004, pp. 86-89.
-
     """
     sin_lat, cos_lat = np.sin(lat_rad), np.cos(lat_rad)
     return -sin_lat * n + cos_lat * u, e, cos_lat * n + sin_lat * u

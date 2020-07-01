@@ -94,7 +94,6 @@ class FluxDensityModel(object):
     .. [KWP+1981] H. Kuehr, A. Witzel, I.I.K. Pauliny-Toth, U. Nauber,
        "A catalogue of extragalactic radio sources having flux densities greater
        than 1 Jy at 5 GHz," Astron. Astrophys. Suppl. Ser., 45, 367-430, 1981.
-
     """
     # Coefficients are zero by default, except for I
     _DEFAULT_COEFS = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0,    # a, b, c, d, e, f
@@ -175,7 +174,6 @@ class FluxDensityModel(object):
         -------
         flux_density : float, or array of floats of same shape as *freq_MHz*
             Flux density in Jy, or np.nan if the frequency is out of range
-
         """
         flux = self._flux_density_raw(freq_MHz) * self.iquv_scale[0]
         if is_iterable(freq_MHz):

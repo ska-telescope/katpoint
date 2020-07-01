@@ -27,7 +27,6 @@ Of the thousand brighest Hipparcos stars, those with proper names
 registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 """
 
-
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
@@ -197,8 +196,7 @@ def readdb(line):
         s, m = np.modf(m * 60.0)
         m = int(np.floor(m))
         s = s * 60.0
-        e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr,mon,day,
-                h,m,s), scale='utc')
+        e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr, mon, day, h, m, s), scale='utc')
         e._inc = np.deg2rad(float(fields[3]))
         e._raan = np.deg2rad(float(fields[4]))
         e._e = float(fields[5])
@@ -214,6 +212,7 @@ def readdb(line):
     else:
         raise ValueError('Bogus: ' + line)
 
+
 def _build_stars():
     """ Builds the default catalogue.
 
@@ -224,10 +223,12 @@ def _build_stars():
         s = readdb(line)
         stars[s.name] = s
 
+
 def star(name):
     """ Get a record from the catalogue
     """
     return stars[name]
+
 
 # Build catalogue
 _build_stars()

@@ -29,6 +29,7 @@ YY = time.localtime().tm_year % 100
 
 class TestCatalogueConstruction(unittest.TestCase):
     """Test construction of catalogues."""
+
     def setUp(self):
         self.tle_lines = ['# Comment ignored\n',
                           'GPS BIIA-21 (PRN 09)    \n',
@@ -142,6 +143,7 @@ class TestCatalogueConstruction(unittest.TestCase):
 
 class TestCatalogueFilterSort(unittest.TestCase):
     """Test filtering and sorting of catalogues."""
+
     def setUp(self):
         self.flux_target = katpoint.Target('flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)')
         self.antenna = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')

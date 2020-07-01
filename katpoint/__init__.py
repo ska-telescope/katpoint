@@ -62,6 +62,7 @@ except NameError:
 # Setup library logger and add a print-like handler used when no logging is configured
 class _NoConfigFilter(_logging.Filter):
     """Filter which only allows event if top-level logging is not configured."""
+
     def filter(self, record):
         return 1 if not _logging.root.handlers else 0
 
@@ -90,4 +91,3 @@ except ImportError:
 else:
     __version__ = _katversion.get_version(__path__[0])
 # END VERSION CHECK
-

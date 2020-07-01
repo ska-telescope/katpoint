@@ -34,6 +34,7 @@ def assert_angles_almost_equal(x, y, decimal):
 
 class TestGeodetic(unittest.TestCase):
     """Closure tests for geodetic coordinate transformations."""
+
     def setUp(self):
         N = 1000
         self.lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
@@ -69,6 +70,7 @@ class TestGeodetic(unittest.TestCase):
 
 class TestSpherical(unittest.TestCase):
     """Closure tests for spherical coordinate transformations."""
+
     def setUp(self):
         N = 1000
         self.az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)

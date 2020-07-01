@@ -41,6 +41,7 @@ import pyorbital.astronomy
 
 from .ephem_extra import angle_from_degrees
 
+
 class Body(object):
     """Base class for all Body classes.
 
@@ -56,6 +57,7 @@ class Body(object):
     altaz : astropy.coordinates.AltAz
         Topocentric alt/az of body at date of observation
     """
+
     def __init__(self):
         self._epoch = Time(2000.0, format='jyear')
 
@@ -84,8 +86,7 @@ class Body(object):
         self.radec = self.a_radec.transform_to(CIRS(obstime=date))
 
         # ICRS to Az/El
-        self.altaz = self.radec.transform_to(AltAz(location=loc,
-                obstime=date, pressure=pressure))
+        self.altaz = self.radec.transform_to(AltAz(location=loc, obstime=date, pressure=pressure))
 
 
 class FixedBody(Body):
@@ -97,6 +98,7 @@ class FixedBody(Body):
     _radec : astropy.coordinates.SkyCoord
         Position of body in some RA/Dec frame
     """
+
     def __init__(self):
         Body.__init__(self)
 
@@ -148,12 +150,14 @@ class Moon(Body):
         icrs = moon.transform_to(ICRS)
         Body._compute(self, loc, date, pressure, icrs)
 
+
 class Earth(Body):
     def __init__(self):
         Body.__init__(self)
 
     def compute(self):
         pass
+
 
 class Planet(Body):
     def __init__(self, name):
@@ -166,43 +170,52 @@ class Planet(Body):
         icrs = planet.transform_to(ICRS)
         Body._compute(self, loc, date, pressure, icrs)
 
+
 class Mercury(Planet):
     def __init__(self):
         Planet.__init__(self, 'mercury')
         self.name = 'Mercury'
+
 
 class Venus(Planet):
     def __init__(self):
         Planet.__init__(self, 'venus')
         self.name = 'Venus'
 
+
 class Mars(Planet):
     def __init__(self):
         Planet.__init__(self, 'mars')
         self.name = 'Mars'
+
 
 class Jupiter(Planet):
     def __init__(self):
         Planet.__init__(self, 'jupiter')
         self.name = 'Jupiter'
 
+
 class Saturn(Planet):
     def __init__(self):
         Planet.__init__(self, 'saturn')
         self.name = 'Saturn'
+
 
 class Uranus(Planet):
     def __init__(self):
         Planet.__init__(self, 'uranus')
         self.name = 'Uranus'
 
+
 class Neptune(Planet):
     def __init__(self):
         Planet.__init__(self, 'neptune')
         self.name = 'Neptune'
 
+
 class EarthSatellite(Body):
     """Body orbiting the earth."""
+
     def __init__(self):
         Body.__init__(self)
 
@@ -233,7 +246,7 @@ class EarthSatellite(Body):
         self._sat.ecco = self._e
         self._sat.argpo = self._ap
         self._sat.mo = self._M
-        self._sat.no_kozai = self._n / (24.0 *60.0) * (2.0 * np.pi)
+        self._sat.no_kozai = self._n / (24.0 * 60.0) * (2.0 * np.pi)
 
         # Compute position and velocity
         date = date.iso
@@ -244,25 +257,24 @@ class EarthSatellite(Body):
         m = int(date[14:16])
         s = float(date[17:])
         sgp4init(sgp4.earth_gravity.wgs84, False, self._sat.satnum,
-                self._sat.jdsatepoch-2433281.5, self._sat.bstar,
-                self._sat.ndot, self._sat.nddot,
-                self._sat.ecco, self._sat.argpo, self._sat.inclo,
-                self._sat.mo, self._sat.no,
-                self._sat.nodeo, self._sat)
+                 self._sat.jdsatepoch-2433281.5, self._sat.bstar,
+                 self._sat.ndot, self._sat.nddot,
+                 self._sat.ecco, self._sat.argpo, self._sat.inclo,
+                 self._sat.mo, self._sat.no,
+                 self._sat.nodeo, self._sat)
         p, v = self._sat.propagate(yr, mon, day, h, m, s)
 
         # Convert to lon/lat/alt
-        utc_time = datetime.datetime(yr, mon, day, h, m, int(s),
-                int(s - int(s)) * 1000000)
+        utc_time = datetime.datetime(yr, mon, day, h, m, int(s), int(s - int(s)) * 1000000)
         pos = np.array(p)
         lon, lat, alt = pyorbital.geoloc.get_lonlatalt(pos, utc_time)
 
         # Convert to alt, az at observer
         az, alt = get_observer_look(lon, lat, alt, utc_time,
-                loc.lon.deg, loc.lat.deg, loc.height.to(u.kilometer).value)
+                                    loc.lon.deg, loc.lat.deg, loc.height.to(u.kilometer).value)
 
         self.altaz = SkyCoord(az*u.deg, alt*u.deg, location=loc,
-                obstime=date, pressure=pressure, frame=AltAz)
+                              obstime=date, pressure=pressure, frame=AltAz)
         self.a_radec = self.altaz.transform_to(ICRS)
 
     def writedb(self):
@@ -280,8 +292,7 @@ class EarthSatellite(Body):
 
         # The epoch field contains 3 dates, the actual epoch and the range
         # of valid dates which xepehm sets to +/- 100 days.
-        epoch0 = '{0}/{1:.9}/{2}'.format(mon,
-                day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
+        epoch0 = '{0}/{1:.9}/{2}'.format(mon, day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
         e = self._epoch + TimeDelta(-100, format='jd')
         dt = str(e)
         yr = int(dt[:4])
@@ -290,8 +301,7 @@ class EarthSatellite(Body):
         h = int(dt[11:13])
         m = int(dt[14:16])
         s = float(dt[17:])
-        epoch1 = '{0}/{1:.6}/{2}'.format(mon,
-                day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
+        epoch1 = '{0}/{1:.6}/{2}'.format(mon, day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
         e = e + TimeDelta(200, format='jd')
         dt = str(e)
         yr = int(dt[:4])
@@ -300,23 +310,22 @@ class EarthSatellite(Body):
         h = int(dt[11:13])
         m = int(dt[14:16])
         s = float(dt[17:])
-        epoch2 = '{0}/{1:.6}/{2}'.format(mon,
-                day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
+        epoch2 = '{0}/{1:.6}/{2}'.format(mon, day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
 
         epoch = '{0}| {1}| {2}'.format(epoch0, epoch1, epoch2)
 
         return '{0},{1},{2},{3},{4},{5:0.6f},{6:0.2f},{7},{8},{9},{10},{11}'.\
             format(self.name, 'E',
-                epoch,
-                np.rad2deg(float(self._inc)),
-                np.rad2deg(float(self._raan)),
-                self._e,
-                np.rad2deg(float(self._ap)),
-                np.rad2deg(float(self._M)),
-                self._n,
-                self._decay,
-                self._orbit,
-                self._drag)
+                   epoch,
+                   np.rad2deg(float(self._inc)),
+                   np.rad2deg(float(self._raan)),
+                   self._e,
+                   np.rad2deg(float(self._ap)),
+                   np.rad2deg(float(self._M)),
+                   self._n,
+                   self._decay,
+                   self._orbit,
+                   self._drag)
 
 
 def _tle_to_float(tle_float):
@@ -326,6 +335,7 @@ def _tle_to_float(tle_float):
         return float(tle_float)
     else:
         return float(tle_float[:dash] + "e-" + tle_float[dash+1:])
+
 
 def readtle(name, line1, line2):
     """Create an EarthSatellite object from a TLE description of an orbit.
@@ -355,11 +365,10 @@ def readtle(name, line1, line2):
     d = int(ed)
     f = ed - d
     h = int(f * 24.0)
-    f = (f * 24.0  - h)
+    f = (f * 24.0 - h)
     m = int(f * 60.0)
     sec = (f * 60.0 - m) * 60.0
-    date = '{0:04d}:{1:03d}:{2:02d}:{3:02d}:{4:02}'.format(epochyr, d, h, m ,
-            sec)
+    date = '{0:04d}:{1:03d}:{2:02d}:{3:02d}:{4:02}'.format(epochyr, d, h, m, sec)
 
     s._epoch = Time('2000-01-01 00:00:00.000')
 
@@ -378,6 +387,7 @@ def readtle(name, line1, line2):
     s._drag = _tle_to_float('0.' + line1[53:61].strip())
 
     return s
+
 
 def get_observer_look(sat_lon, sat_lat, sat_alt, utc_time, lon, lat, alt):
     """Calculate observers look angle to a satellite.
@@ -437,6 +447,7 @@ def get_observer_look(sat_lon, sat_lat, sat_alt, utc_time, lon, lat, alt):
 
     return np.rad2deg(az_), np.rad2deg(el_)
 
+
 class StationaryBody(Body):
     """Stationary body with fixed (az, el) coordinates.
 
@@ -449,11 +460,10 @@ class StationaryBody(Body):
         Azimuth and elevation, either in 'D:M:S' string format, or float in rads
     name : string, optional
         Name of body
-
     """
+
     def __init__(self, az, el, name=None):
-        self._azel = AltAz(az=angle_from_degrees(az),
-                alt=angle_from_degrees(el))
+        self._azel = AltAz(az=angle_from_degrees(az), alt=angle_from_degrees(el))
         if not name:
             name = "Az: {} El: {}".format(self._azel.az.to_string(sep=':', unit=u.deg),
                                           self._azel.alt.to_string(sep=':', unit=u.deg))
@@ -480,8 +490,8 @@ class NullBody(object):
     This body has the expected methods of :class:`Body`, but always returns NaNs
     for all coordinates. It is intended for use as a placeholder when no proper
     target object is available, i.e. as a dummy target.
-
     """
+
     def __init__(self):
         self.name = 'Nothing'
         self.altaz = None

@@ -26,6 +26,7 @@ import katpoint
 
 class TestFluxDensityModel(unittest.TestCase):
     """Test flux density model calculation."""
+
     def setUp(self):
         self.unit_model = katpoint.FluxDensityModel(100., 200., [0.])
         self.unit_model2 = katpoint.FluxDensityModel(100., 200., [0.])

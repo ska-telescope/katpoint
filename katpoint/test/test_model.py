@@ -28,6 +28,7 @@ import katpoint
 
 class TestModel(unittest.TestCase):
     """Test generic model."""
+
     def new_params(self):
         """Generate fresh set of parameters (otherwise models share the same ones)."""
         params = []

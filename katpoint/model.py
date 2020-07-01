@@ -18,8 +18,8 @@
 
 This provides a base class for pointing and delay models, handling the loading,
 saving and display of parameters.
-
 """
+
 from __future__ import print_function, division, absolute_import
 import future.utils
 from builtins import object, zip
@@ -61,8 +61,8 @@ class Parameter(object):
     Attributes
     ----------
     value_str
-
     """
+
     def __init__(self, name, units, doc, from_str=float, to_str=str,
                  value=None, default_value=0.0):
         self.name = name
@@ -120,8 +120,8 @@ class Model(object):
     ----------
     params : sequence of :class:`Parameter` objects
         Full set of model parameters in the expected order
-
     """
+
     def __init__(self, params):
         self.header = {}
         self.params = OrderedDict((p.name, p) for p in params)
@@ -229,7 +229,6 @@ class Model(object):
         ----------
         file-like : object
             File-like object with write() method representing config file
-
         """
         cfg = configparser.ConfigParser()
         cfg.add_section('header')
@@ -247,7 +246,6 @@ class Model(object):
         ----------
         file-like : object
             File-like object with readline() method representing config file
-
         """
         defaults = dict((p.name, p._to_str(p.default_value)) for p in self)
         if future.utils.PY2:
@@ -283,7 +281,6 @@ class Model(object):
             string, interpret it as a comma-separated (or whitespace-
             separated) sequence of parameters in their string form (i.e. a
             description string). The default is an empty model.
-
         """
         if isinstance(model, Model):
             if not isinstance(model, type(self)):

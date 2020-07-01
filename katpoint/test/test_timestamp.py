@@ -26,6 +26,7 @@ import katpoint
 
 class TestTimestamp(unittest.TestCase):
     """Test timestamp creation and conversion."""
+
     def setUp(self):
         self.valid_timestamps = [(1248186982.3980861, '2009-07-21 14:36:22.398'),
                                  (Time('2009-07-21 02:52:12.34'), '2009-07-21 02:52:12.340'),
@@ -71,7 +72,7 @@ class TestTimestamp(unittest.TestCase):
         self.assertEqual(t, eval('katpoint.' + repr(t)))
         self.assertEqual(float(t), self.valid_timestamps[0][0])
         t = katpoint.Timestamp(self.valid_timestamps[1][0])
-        #self.assertAlmostEqual(t.to_ephem_date(), self.valid_timestamps[1][0], places=9)
+        # self.assertAlmostEqual(t.to_ephem_date(), self.valid_timestamps[1][0], places=9)
         self.assertEqual(t.to_ephem_date().value, self.valid_timestamps[1][0])
         try:
             self.assertEqual(hash(t), hash(t + 0.0), 'Timestamp hashes not equal')

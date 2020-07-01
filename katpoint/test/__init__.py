@@ -55,6 +55,8 @@ def suite():
     testsuite.addTests(loader.loadTestsFromModule(test_pointing))
     testsuite.addTests(loader.loadTestsFromModule(test_refraction))
     testsuite.addTests(loader.loadTestsFromModule(test_delay))
+    testsuite.addTests(loader.loadTestsFromModule(test_body))
+    testsuite.addTests(loader.loadTestsFromModule(test_stars))
     return testsuite
 
 

@@ -15,6 +15,7 @@
 ################################################################################
 
 """Target catalogue."""
+
 from __future__ import print_function, division, absolute_import
 from builtins import object
 from past.builtins import basestring
@@ -298,6 +299,7 @@ class Catalogue(object):
     the *same* catalogue. It also allows us to preserve the order in which the
     catalogue was assembled, which seems the most natural.
     """
+
     def __init__(self, targets=None, tags=None, add_specials=False, add_stars=False,
                  antenna=None, flux_freq_MHz=None):
         self.lookup = defaultdict(list)
@@ -369,7 +371,6 @@ class Catalogue(object):
         -------
         target : :class:`Target` object, or None
             Associated target object, or None if no target was found
-
         """
         try:
             return self._targets_with_name(name)[-1]
@@ -432,7 +433,6 @@ class Catalogue(object):
         >>> cat.add('Sun, special')
         >>> cat2 = Catalogue()
         >>> cat2.add(cat.targets)
-
         """
         if isinstance(targets, basestring) or isinstance(targets, Target):
             targets = [targets]
@@ -490,7 +490,6 @@ class Catalogue(object):
                      '1 33442U 98067BL  09195.86837279  .00241454  37518-4  34022-3 0  3424\n',
                      '2 33442  51.6315 144.2681 0003376 120.1747 240.0135 16.05240536 37575\n']
         >>> cat2.add_tle(lines)
-
         """
         targets, tle = [], []
         for line in lines:
@@ -579,7 +578,6 @@ class Catalogue(object):
         ----------
         name : string
             Name of target to remove (may also be an alternate name of target)
-
         """
         target = self[name]
         if target is not None:
@@ -597,7 +595,6 @@ class Catalogue(object):
         ----------
         filename : string
             Name of file to write catalogue to (overwriting existing contents)
-
         """
         open(filename, 'w').writelines([t.description + '\n' for t in self.targets])
 
@@ -624,7 +621,6 @@ class Catalogue(object):
             catalogue is empty
         min_dist : float
             Angular separation between *target* and *closest_target*, in degrees
-
         """
         if len(self.targets) == 0:
             return None, 180.0
@@ -699,7 +695,6 @@ class Catalogue(object):
         >>> for t in cat.iterfilter(el_limit_deg=10):
                 # Observe target t
                 pass
-
         """
         tag_filter = tags is not None
         flux_filter = flux_limit_Jy is not None
@@ -842,7 +837,6 @@ class Catalogue(object):
         >>> cat3 = cat.filter(flux_limit_Jy=10)
         >>> cat4 = cat.filter(tags='special ~radec')
         >>> cat5 = cat.filter(dist_limit_deg=5, proximity_targets=cat['Sun'])
-
         """
         return Catalogue([target for target in
                           self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg, el_limit_deg,
@@ -878,7 +872,6 @@ class Catalogue(object):
         ------
         ValueError
             If some required parameters are missing or key is unknown
-
         """
         # Set up index list that will be sorted
         if key == 'name':
@@ -930,7 +923,6 @@ class Catalogue(object):
             Second antenna of baseline pair (baseline vector points from
             *antenna* to *antenna2*), used to calculate delays and fringe rates
             per target
-
         """
         above_horizon = True
         timestamp = Timestamp(timestamp)
