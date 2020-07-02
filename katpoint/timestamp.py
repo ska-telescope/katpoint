@@ -15,13 +15,9 @@
 ################################################################################
 
 """A Timestamp object."""
-from __future__ import print_function, division, absolute_import
-from builtins import object
-from past.builtins import basestring
 
 import time
 import math
-
 from functools import total_ordering
 
 import numpy as np
@@ -29,7 +25,7 @@ from astropy.time import Time
 
 
 @total_ordering
-class Timestamp(object):
+class Timestamp:
     """Basic representation of time, in UTC seconds since Unix epoch.
 
     This is loosely based on :class:`ephem.Date`. Its base representation
@@ -62,7 +58,7 @@ class Timestamp(object):
     """
 
     def __init__(self, timestamp=None):
-        if isinstance(timestamp, basestring):
+        if isinstance(timestamp, str):
             try:
                 timestamp = timestamp.strip().replace('/', '-')
                 timestamp = Time(decode(timestamp))

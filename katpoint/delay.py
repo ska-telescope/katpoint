@@ -21,10 +21,6 @@ contribution from each antenna, as well as a class that performs
 delay correction for a correlator.
 """
 
-from __future__ import print_function, division, absolute_import
-from builtins import object, zip
-from past.builtins import basestring
-
 import logging
 import json
 
@@ -93,7 +89,7 @@ class DelayModel(Model):
         self.fromlist(delays * self._speeds)
 
 
-class DelayCorrection(object):
+class DelayCorrection:
     """Calculate delay corrections for a set of correlator inputs / antennas.
 
     This uses delay models from multiple antennas connected to a correlator to
@@ -138,7 +134,7 @@ class DelayCorrection(object):
 
     def __init__(self, ants, ref_ant=None, sky_centre_freq=0.0, extra_delay=None):
         # Unpack JSON-encoded description string
-        if isinstance(ants, basestring):
+        if isinstance(ants, str):
             try:
                 descr = json.loads(ants)
             except ValueError:

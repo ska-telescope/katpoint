@@ -25,8 +25,8 @@ pressure to zero so we compute apparent places instead.
 
 import copy
 import datetime
-import numpy as np
 
+import numpy as np
 import astropy.units as u
 from astropy.coordinates import solar_system_ephemeris, get_body, get_sun, get_moon
 from astropy.coordinates import CIRS, ICRS, SkyCoord, AltAz
@@ -42,7 +42,7 @@ import pyorbital.astronomy
 from .ephem_extra import angle_from_degrees
 
 
-class Body(object):
+class Body:
     """Base class for all Body classes.
 
     Attributes
@@ -484,7 +484,7 @@ class StationaryBody(Body):
         self.radec = self.a_radec.transform_to(CIRS(obstime=date))
 
 
-class NullBody(object):
+class NullBody:
     """Body with no position, used as a placeholder.
 
     This body has the expected methods of :class:`Body`, but always returns NaNs

@@ -15,13 +15,9 @@
 ################################################################################
 
 """Tests for the model module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
-try:
-    from StringIO import StringIO  # python2
-except ImportError:
-    from io import StringIO  # python3
+from io import StringIO
 
 import katpoint
 

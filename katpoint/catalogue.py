@@ -16,10 +16,6 @@
 
 """Target catalogue."""
 
-from __future__ import print_function, division, absolute_import
-from builtins import object
-from past.builtins import basestring
-
 import logging
 from collections import defaultdict
 
@@ -44,7 +40,7 @@ def _normalised(name):
 # --------------------------------------------------------------------------------------------------
 
 
-class Catalogue(object):
+class Catalogue:
     """A searchable and filterable catalogue of targets.
 
     Overview
@@ -434,10 +430,10 @@ class Catalogue(object):
         >>> cat2 = Catalogue()
         >>> cat2.add(cat.targets)
         """
-        if isinstance(targets, basestring) or isinstance(targets, Target):
+        if isinstance(targets, str) or isinstance(targets, Target):
             targets = [targets]
         for target in targets:
-            if isinstance(target, basestring):
+            if isinstance(target, str):
                 # Ignore strings starting with a hash (assumed to be comments)
                 # or only containing whitespace
                 if (len(target.strip()) == 0) or (target[0] == '#'):
@@ -706,7 +702,7 @@ class Catalogue(object):
 
         # First apply static criteria (tags, flux) which do not depend on timestamp
         if tag_filter:
-            if isinstance(tags, basestring):
+            if isinstance(tags, str):
                 tags = tags.split()
             desired_tags = set([tag for tag in tags if tag[0] != '~'])
             undesired_tags = set([tag[1:] for tag in tags if tag[0] == '~'])

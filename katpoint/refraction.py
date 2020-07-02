@@ -19,9 +19,6 @@
 This implements correction for refractive bending in the atmosphere.
 """
 
-from __future__ import print_function, division, absolute_import
-from builtins import object, range
-
 import logging
 
 import numpy as np
@@ -107,7 +104,7 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     return deg2rad(bphi * sn - aphi)
 
 
-class RefractionCorrection(object):
+class RefractionCorrection:
     """Correct pointing for refractive bending in atmosphere.
 
     This uses the specified refraction model to calculate a correction to a

@@ -15,7 +15,6 @@
 ################################################################################
 
 """Coordinate conversions not found in PyEphem."""
-from __future__ import print_function, division, absolute_import
 
 import numpy as np
 

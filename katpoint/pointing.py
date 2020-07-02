@@ -19,9 +19,6 @@
 This implements a pointing model for a non-ideal antenna mount.
 """
 
-from __future__ import print_function, division, absolute_import
-from builtins import range
-
 import logging
 
 import numpy as np

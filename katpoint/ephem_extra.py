@@ -15,8 +15,6 @@
 ################################################################################
 
 """Enhancements to PyEphem."""
-from __future__ import print_function, division, absolute_import
-from past.builtins import basestring
 
 import numpy as np
 import astropy.units as u
@@ -32,7 +30,7 @@ lightspeed = 299792458.0
 
 def is_iterable(x):
     """Checks if object is iterable (but not a string or 0-dimensional array)."""
-    return hasattr(x, '__iter__') and not isinstance(x, basestring) and \
+    return hasattr(x, '__iter__') and not isinstance(x, str) and \
         not (getattr(x, 'shape', None) == ())
 
 

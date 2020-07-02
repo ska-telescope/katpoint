@@ -15,9 +15,8 @@
 ################################################################################
 
 """Tests for the flux module."""
-from __future__ import print_function, division, absolute_import
 
-import unittest2 as unittest
+import unittest
 
 import numpy as np
 

@@ -20,21 +20,13 @@ This provides a base class for pointing and delay models, handling the loading,
 saving and display of parameters.
 """
 
-from __future__ import print_function, division, absolute_import
-import future.utils
-from builtins import object, zip
-from past.builtins import basestring
-
-try:
-    import ConfigParser as configparser  # python2
-except ImportError:
-    import configparser  # python3
+import configparser
 from collections import OrderedDict
 
 import numpy as np
 
 
-class Parameter(object):
+class Parameter:
     """Generic model parameter.
 
     This represents a single model parameter, bundling together its attributes
@@ -100,7 +92,7 @@ class BadModelFile(Exception):
     pass
 
 
-class Model(object):
+class Model:
     """Base class for models (e.g. pointing and delay models).
 
     The base class handles the construction / loading, saving, display and
@@ -248,10 +240,7 @@ class Model(object):
             File-like object with readline() method representing config file
         """
         defaults = dict((p.name, p._to_str(p.default_value)) for p in self)
-        if future.utils.PY2:
-            cfg = configparser.ConfigParser(defaults)
-        else:
-            cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(';', '#'))
+        cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(';', '#'))
         try:
             cfg.read_file(file_like)
             if cfg.sections() != ['header', 'params']:
@@ -289,7 +278,7 @@ class Model(object):
                                     model.__class__.__name__))
             self.fromlist(model.values())
             self.header = dict(model.header)
-        elif isinstance(model, basestring):
+        elif isinstance(model, str):
             self.fromstring(model)
         else:
             array = np.atleast_1d(model)

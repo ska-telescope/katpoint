@@ -16,12 +16,7 @@
 
 """Target object used for pointing and flux density calculation."""
 
-from __future__ import print_function, division, absolute_import
-from builtins import object, range
-from past.builtins import basestring
-
 import numpy as np
-
 import astropy.units as u
 from astropy.coordinates import SkyCoord  # High-level coordinates
 from astropy.coordinates import ICRS, Galactic, FK4, FK5  # Low-level frames
@@ -43,7 +38,7 @@ class NonAsciiError(ValueError):
     pass
 
 
-class Target(object):
+class Target:
     """A target which can be pointed at by an antenna.
 
     This is a wrapper around a PyEphem :class:`ephem.Body` that adds flux
@@ -125,7 +120,7 @@ class Target(object):
         if isinstance(body, Target):
             body = body.description
         # If the first parameter is a description string, extract the relevant target parameters from it
-        if isinstance(body, basestring):
+        if isinstance(body, str):
             body, tags, aliases, flux_model = construct_target_params(body)
         self.body = body
         self.name = self.body.name
@@ -309,7 +304,7 @@ class Target(object):
         """
         if tags is None:
             tags = []
-        if isinstance(tags, basestring):
+        if isinstance(tags, str):
             tags = [tags]
         for tag_str in tags:
             for tag in tag_str.split():
@@ -1180,7 +1175,7 @@ def construct_radec_target(ra, dec):
     """
     body = FixedBody()
     # First try to interpret the string as decimal degrees
-    if isinstance(ra, basestring):
+    if isinstance(ra, str):
         try:
             ra = deg2rad(float(ra))
         except ValueError:

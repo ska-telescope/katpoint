@@ -15,9 +15,6 @@
 ################################################################################
 
 """Flux density model."""
-from __future__ import print_function, division, absolute_import
-from builtins import object
-from past.builtins import basestring
 
 import warnings
 
@@ -31,7 +28,7 @@ class FluxError(ValueError):
     pass
 
 
-class FluxDensityModel(object):
+class FluxDensityModel:
     """Spectral flux density model.
 
     This models the spectral flux density (or spectral energy distribtion - SED)
@@ -101,7 +98,7 @@ class FluxDensityModel(object):
 
     def __init__(self, min_freq_MHz, max_freq_MHz=None, coefs=None):
         # If the first parameter is a description string, extract the relevant flux parameters from it
-        if isinstance(min_freq_MHz, basestring):
+        if isinstance(min_freq_MHz, str):
             # Cannot have other parameters if description string is given - this is a safety check
             if not (max_freq_MHz is None and coefs is None):
                 raise ValueError("First parameter '%s' is description string - cannot have other parameters" %
