@@ -236,9 +236,3 @@ def decode(s):
     d = time.localtime(u)
 
     return time.strftime('%Y-%m-%d %H:%M:%S', d) + f
-
-
-def now():
-    """ Create a Date representing 'now'
-    """
-    return Date(Time.now().mjd - _djd)

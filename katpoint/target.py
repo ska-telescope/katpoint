@@ -465,12 +465,13 @@ class Target:
         if self.body_type == 'gal':
             gal = self.body._radec.transform_to(Galactic)
             if is_iterable(timestamp):
-                return np.tile(gal.l, len(timestamp))
+                return np.tile(gal.l, len(timestamp)), np.tile(gal.b, len(timestamp))
             else:
                 return gal
         radec = self.astrometric_radec(timestamp, antenna)
         if is_iterable(radec):
-            lb = np.array([SkyCoord(ra[n], dec[n], frame=ICRS).transform_to(Galactic) for n in range(len(radec))])
+            lb = np.array([SkyCoord(radec[n], frame=ICRS).transform_to(Galactic)
+                           for n in range(len(radec))])
             return np.array([g.l for g in lb]), np.array([g.b for g in lb])
         else:
             gal = SkyCoord(radec, frame=ICRS).transform_to(Galactic)
