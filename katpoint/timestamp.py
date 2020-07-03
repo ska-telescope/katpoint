@@ -196,8 +196,7 @@ class Timestamp:
 
 
 def decode(s):
-    """Decodes a date string
-    """
+    """Decode a date string like PyEphem does."""
     # Look for a dot
     dot = s.find('.')
     if dot > 0:
