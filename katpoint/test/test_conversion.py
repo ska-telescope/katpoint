@@ -16,8 +16,6 @@
 
 """Tests for the conversion module."""
 
-import unittest
-
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import Angle
@@ -31,10 +29,10 @@ def assert_angles_almost_equal(x, y, decimal):
     np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), decimal=decimal)
 
 
-class TestGeodetic(unittest.TestCase):
+class TestGeodetic:
     """Closure tests for geodetic coordinate transformations."""
 
-    def setUp(self):
+    def setup(self):
         N = 1000
         self.lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
         self.lon = 2.0 * np.pi * np.random.rand(N)
@@ -67,10 +65,10 @@ class TestGeodetic(unittest.TestCase):
         np.testing.assert_almost_equal(new_z, z, decimal=8)
 
 
-class TestSpherical(unittest.TestCase):
+class TestSpherical:
     """Closure tests for spherical coordinate transformations."""
 
-    def setUp(self):
+    def setup(self):
         N = 1000
         self.az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
         self.el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)

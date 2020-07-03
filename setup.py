@@ -64,7 +64,6 @@ setup(name="katpoint",
           "sgp4",
       ],
       tests_require=[
-          "nose",
-          "coverage",
-          "nosexcover",
+          "pytest",
+          "pytest-cov",
       ])

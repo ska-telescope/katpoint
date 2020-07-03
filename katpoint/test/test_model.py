@@ -16,13 +16,14 @@
 
 """Tests for the model module."""
 
-import unittest
 from io import StringIO
+
+import pytest
 
 import katpoint
 
 
-class TestModel(unittest.TestCase):
+class TestModel:
     """Test generic model."""
 
     def new_params(self):
@@ -44,7 +45,8 @@ class TestModel(unittest.TestCase):
         print('%r %s %r' % (m, m, m.params['POS_E']))
         # An empty file should lead to a BadModelFile exception
         cfg_file = StringIO()
-        self.assertRaises(katpoint.BadModelFile, m.fromfile, cfg_file)
+        with pytest.raises(katpoint.BadModelFile):
+            m.fromfile(cfg_file)
         m.tofile(cfg_file)
         cfg_str = cfg_file.getvalue()
         cfg_file.close()
@@ -52,43 +54,44 @@ class TestModel(unittest.TestCase):
         cfg_file = StringIO(cfg_str)
         m2 = katpoint.Model(self.new_params())
         m2.fromfile(cfg_file)
-        self.assertEqual(m, m2, 'Saving model to file and loading it again failed')
+        assert m == m2, 'Saving model to file and loading it again failed'
         cfg_file = StringIO(cfg_str)
         m2.set(cfg_file)
-        self.assertEqual(m, m2, 'Saving model to file and loading it again failed')
+        assert m == m2, 'Saving model to file and loading it again failed'
         # Build model from description string
         m3 = katpoint.Model(self.new_params())
         m3.fromstring(m.description)
-        self.assertEqual(m, m3, 'Saving model to string and loading it again failed')
+        assert m == m3, 'Saving model to string and loading it again failed'
         m3.set(m.description)
-        self.assertEqual(m, m3, 'Saving model to string and loading it again failed')
+        assert m == m3, 'Saving model to string and loading it again failed'
         # Build model from sequence of floats
         m4 = katpoint.Model(self.new_params())
         m4.fromlist(m.values())
-        self.assertEqual(m, m4, 'Saving model to list and loading it again failed')
+        assert m == m4, 'Saving model to list and loading it again failed'
         m4.set(m.values())
-        self.assertEqual(m, m4, 'Saving model to list and loading it again failed')
+        assert m == m4, 'Saving model to list and loading it again failed'
         # Empty model
         cfg_file = StringIO('[header]\n[params]\n')
         m5 = katpoint.Model(self.new_params())
         m5.fromfile(cfg_file)
         print(m5)
-        self.assertNotEqual(m, m5, 'Model should not be equal to an empty one')
+        assert m != m5, 'Model should not be equal to an empty one'
         m6 = katpoint.Model(self.new_params())
         m6.set()
-        self.assertEqual(m6, m5, 'Setting empty model failed')
+        assert m6 == m5, 'Setting empty model failed'
         m7 = katpoint.Model(self.new_params())
         m7.set(m)
-        self.assertEqual(m, m7, 'Construction from model object failed')
+        assert m == m7, 'Construction from model object failed'
 
         class OtherModel(katpoint.Model):
             pass
         m8 = OtherModel(self.new_params())
-        self.assertRaises(katpoint.BadModelFile, m8.set, m)
+        with pytest.raises(katpoint.BadModelFile):
+            m8.set(m)
         try:
-            self.assertEqual(hash(m), hash(m4), 'Model hashes not equal')
+            assert hash(m) == hash(m4), 'Model hashes not equal'
         except TypeError:
-            self.fail('Model object not hashable')
+            pytest.fail('Model object not hashable')
 
     def test_dict_interface(self):
         """Test dict interface of generic model."""
@@ -96,8 +99,8 @@ class TestModel(unittest.TestCase):
         names = [p.name for p in params]
         values = [p.value for p in params]
         m = katpoint.Model(params)
-        self.assertEqual(len(m), 6, 'Unexpected model length')
-        self.assertEqual(list(m.keys()), names, 'Parameter names do not match')
-        self.assertEqual(list(m.values()), values, 'Parameter values do not match')
+        assert len(m) == 6, 'Unexpected model length'
+        assert list(m.keys()) == names, 'Parameter names do not match'
+        assert list(m.values()) == values, 'Parameter values do not match'
         m['NIAO'] = 6789.0
-        self.assertEqual(m['NIAO'], 6789.0, 'Parameter setting via dict interface failed')
+        assert m['NIAO'] == 6789.0, 'Parameter setting via dict interface failed'

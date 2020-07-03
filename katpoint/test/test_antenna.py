@@ -16,11 +16,11 @@
 
 """Tests for the antenna module."""
 
-import unittest
 import time
 import pickle
 
 import numpy as np
+import pytest
 
 import katpoint
 
@@ -31,10 +31,10 @@ def assert_angles_almost_equal(x, y, decimal):
     np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), decimal=decimal)
 
 
-class TestAntenna(unittest.TestCase):
+class TestAntenna:
     """Test :class:`katpoint.antenna.Antenna`."""
 
-    def setUp(self):
+    def setup(self):
         self.valid_antennas = [
             'XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0',
             'FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0',
@@ -54,28 +54,30 @@ class TestAntenna(unittest.TestCase):
         for descr in valid_strings:
             ant = katpoint.Antenna(descr)
             print('%s %s' % (str(ant), repr(ant)))
-            self.assertEqual(descr, ant.description, 'Antenna description differs from original string')
-            self.assertEqual(ant.description, ant.format_katcp(), 'Antenna description differs from KATCP format')
+            assert descr == ant.description, 'Antenna description differs from original string'
+            assert ant.description == ant.format_katcp(), 'Antenna description differs from KATCP format'
         for descr in self.invalid_antennas:
-            self.assertRaises(ValueError, katpoint.Antenna, descr)
+            with pytest.raises(ValueError):
+                katpoint.Antenna(descr)
         descr = valid_antennas[0].description
-        self.assertEqual(descr, katpoint.Antenna(*descr.split(', ')).description)
-        self.assertRaises(ValueError, katpoint.Antenna, descr, *descr.split(', ')[1:])
+        assert descr == katpoint.Antenna(*descr.split(', ')).description
+        with pytest.raises(ValueError):
+            katpoint.Antenna(descr, *descr.split(', ')[1:])
         # Check that description string updates when object is updated
         a1 = katpoint.Antenna('FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0')
         a2 = katpoint.Antenna('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 13.0, 18.4 -8.7 0.0, 0.1, 1.22')
-        self.assertNotEqual(a1, a2, 'Antennas should be inequal')
+        assert a1 != a2, 'Antennas should be inequal'
         a1.name = 'FF2'
         a1.diameter = 13.0
         a1.pointing_model = katpoint.PointingModel('0.1')
         a1.beamwidth = 1.22
-        self.assertEqual(a1.description, a2.description, 'Antenna description string not updated')
-        self.assertEqual(a1, a2.description, 'Antenna not equal to description string')
-        self.assertEqual(a1, a2, 'Antennas not equal')
-        self.assertEqual(a1, katpoint.Antenna(a2), 'Construction with antenna object failed')
-        self.assertEqual(a1, pickle.loads(pickle.dumps(a1)), 'Pickling failed')
+        assert a1.description == a2.description, 'Antenna description string not updated'
+        assert a1 == a2.description, 'Antenna not equal to description string'
+        assert a1 == a2, 'Antennas not equal'
+        assert a1 == katpoint.Antenna(a2), 'Construction with antenna object failed'
+        assert a1 == pickle.loads(pickle.dumps(a1)), 'Pickling failed'
         try:
-            self.assertEqual(hash(a1), hash(a2), 'Antenna hashes not equal')
+            assert hash(a1) == hash(a2), 'Antenna hashes not equal'
         except TypeError:
             self.fail('Antenna object not hashable')
 
@@ -85,8 +87,7 @@ class TestAntenna(unittest.TestCase):
         utc_secs = time.mktime(time.strptime(self.timestamp, '%Y/%m/%d %H:%M:%S')) - time.timezone
         sid1 = ant.local_sidereal_time(self.timestamp)
         sid2 = ant.local_sidereal_time(utc_secs)
-        self.assertAlmostEqual(sid1.rad, sid2.rad, places=10,
-                               msg='Sidereal time differs for float and date/time string')
+        assert sid1 == sid2, 'Sidereal time differs for float and date/time string'
         sid3 = ant.local_sidereal_time([self.timestamp, self.timestamp])
         sid4 = ant.local_sidereal_time([utc_secs, utc_secs])
         assert_angles_almost_equal(np.array([a.rad for a in sid3]),
@@ -95,5 +96,4 @@ class TestAntenna(unittest.TestCase):
     def test_array_reference_antenna(self):
         ant = katpoint.Antenna(self.valid_antennas[2])
         ref_ant = ant.array_reference_antenna()
-        self.assertEqual(ref_ant.description,
-                         'array, -30:43:17.3, 21:24:38.5, 1038, 12.0, , , 1.16')
+        assert ref_ant.description == 'array, -30:43:17.3, 21:24:38.5, 1038, 12.0, , , 1.16'

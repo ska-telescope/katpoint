@@ -16,26 +16,16 @@
 
 """Tests for the projection module."""
 
-import unittest
-
 import numpy as np
+import pytest
 
 import katpoint
 
 try:
     from .aips_projection import newpos, dircos
-    found_aips = True
+    HAS_AIPS = True
 except ImportError:
-    found_aips = False
-
-
-def skip(reason=''):
-    """Use nose to skip a test."""
-    try:
-        import nose
-        raise nose.SkipTest(reason)
-    except ImportError:
-        pass
+    HAS_AIPS = False
 
 
 def assert_angles_almost_equal(x, y, decimal):
@@ -44,10 +34,10 @@ def assert_angles_almost_equal(x, y, decimal):
     np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), decimal=decimal)
 
 
-class TestProjectionSIN(unittest.TestCase):
+class TestProjectionSIN:
     """Test orthographic projection."""
 
-    def setUp(self):
+    def setup(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['SIN']
         self.sphere_to_plane = katpoint.sphere_to_plane['SIN']
         N = 100
@@ -71,11 +61,9 @@ class TestProjectionSIN(unittest.TestCase):
         assert_angles_almost_equal(az, aa, decimal=10)
         assert_angles_almost_equal(el, ee, decimal=10)
 
+    @pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
     def test_aips_compatibility(self):
         """SIN projection: compare with original AIPS routine."""
-        if not found_aips:
-            skip("AIPS projection module not found")
-            return
         az, el = self.plane_to_sphere(self.az0, self.el0, self.x, self.y)
         xx, yy = self.sphere_to_plane(self.az0, self.el0, az, el)
         az_aips, el_aips = np.zeros(az.shape), np.zeros(el.shape)
@@ -85,7 +73,7 @@ class TestProjectionSIN(unittest.TestCase):
                 2, self.az0[n], self.el0[n], self.x[n], self.y[n])
             x_aips[n], y_aips[n], ierr = dircos(
                 2, self.az0[n], self.el0[n], az[n], el[n])
-        self.assertEqual(ierr, 0)
+        assert ierr == 0
         assert_angles_almost_equal(az, az_aips, decimal=9)
         assert_angles_almost_equal(el, el_aips, decimal=9)
         np.testing.assert_almost_equal(xx, x_aips, decimal=9)
@@ -116,8 +104,10 @@ class TestProjectionSIN(unittest.TestCase):
         xy = np.array(self.sphere_to_plane(0.0, np.pi / 2.0, -np.pi / 2.0, 0.0))
         np.testing.assert_almost_equal(xy, [-1.0, 0.0], decimal=12)
         # Points outside allowed domain on sphere
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, np.pi, 0.0)
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, 0.0, np.pi)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, np.pi, 0.0)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, 0.0, np.pi)
 
         # PLANE TO SPHERE
         # Origin
@@ -142,14 +132,16 @@ class TestProjectionSIN(unittest.TestCase):
         ae = np.array(self.plane_to_sphere(0.0,  -np.pi / 2.0, 0.0, -1.0))
         assert_angles_almost_equal(ae, [np.pi, 0.0], decimal=12)
         # Points outside allowed domain in plane
-        self.assertRaises(ValueError, self.plane_to_sphere, 0.0, 0.0, 2.0, 0.0)
-        self.assertRaises(ValueError, self.plane_to_sphere, 0.0, 0.0, 0.0, 2.0)
+        with pytest.raises(ValueError):
+            self.plane_to_sphere(0.0, 0.0, 2.0, 0.0)
+        with pytest.raises(ValueError):
+            self.plane_to_sphere(0.0, 0.0, 0.0, 2.0)
 
 
-class TestProjectionTAN(unittest.TestCase):
+class TestProjectionTAN:
     """Test gnomonic projection."""
 
-    def setUp(self):
+    def setup(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['TAN']
         self.sphere_to_plane = katpoint.sphere_to_plane['TAN']
         N = 100
@@ -174,11 +166,9 @@ class TestProjectionTAN(unittest.TestCase):
         assert_angles_almost_equal(az, aa, decimal=8)
         assert_angles_almost_equal(el, ee, decimal=8)
 
+    @pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
     def test_aips_compatibility(self):
         """TAN projection: compare with original AIPS routine."""
-        if not found_aips:
-            skip("AIPS projection module not found")
-            return
         # AIPS TAN only deprojects (x, y) coordinates within unit circle
         r = self.x * self.x + self.y * self.y
         az0, el0 = self.az0[r <= 1.0], self.el0[r <= 1.0]
@@ -192,7 +182,7 @@ class TestProjectionTAN(unittest.TestCase):
                 3, az0[n], el0[n], x[n], y[n])
             x_aips[n], y_aips[n], ierr = dircos(
                 3, az0[n], el0[n], az[n], el[n])
-        self.assertEqual(ierr, 0)
+        assert ierr == 0
         assert_angles_almost_equal(az, az_aips, decimal=10)
         assert_angles_almost_equal(el, el_aips, decimal=10)
         np.testing.assert_almost_equal(xx, x_aips, decimal=10)
@@ -223,8 +213,10 @@ class TestProjectionTAN(unittest.TestCase):
         xy = np.array(self.sphere_to_plane(0.0, np.pi / 2.0, -np.pi / 2.0, np.pi / 4.0))
         np.testing.assert_almost_equal(xy, [-1.0, 0.0], decimal=12)
         # Points outside allowed domain on sphere
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, np.pi, 0.0)
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, 0.0, np.pi)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, np.pi, 0.0)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, 0.0, np.pi)
 
         # PLANE TO SPHERE
         # Origin
@@ -250,10 +242,10 @@ class TestProjectionTAN(unittest.TestCase):
         assert_angles_almost_equal(ae, [np.pi, -np.pi / 4.0], decimal=12)
 
 
-class TestProjectionARC(unittest.TestCase):
+class TestProjectionARC:
     """Test zenithal equidistant projection."""
 
-    def setUp(self):
+    def setup(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['ARC']
         self.sphere_to_plane = katpoint.sphere_to_plane['ARC']
         N = 100
@@ -278,11 +270,9 @@ class TestProjectionARC(unittest.TestCase):
         assert_angles_almost_equal(az, aa, decimal=8)
         assert_angles_almost_equal(el, ee, decimal=8)
 
+    @ pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
     def test_aips_compatibility(self):
         """ARC projection: compare with original AIPS routine."""
-        if not found_aips:
-            skip("AIPS projection module not found")
-            return
         az, el = self.plane_to_sphere(self.az0, self.el0, self.x, self.y)
         xx, yy = self.sphere_to_plane(self.az0, self.el0, az, el)
         az_aips, el_aips = np.zeros(az.shape), np.zeros(el.shape)
@@ -292,7 +282,7 @@ class TestProjectionARC(unittest.TestCase):
                 4, self.az0[n], self.el0[n], self.x[n], self.y[n])
             x_aips[n], y_aips[n], ierr = dircos(
                 4, self.az0[n], self.el0[n], az[n], el[n])
-        self.assertEqual(ierr, 0)
+        assert ierr == 0
         assert_angles_almost_equal(az, az_aips, decimal=8)
         assert_angles_almost_equal(el, el_aips, decimal=8)
         np.testing.assert_almost_equal(xx, x_aips, decimal=8)
@@ -326,7 +316,8 @@ class TestProjectionARC(unittest.TestCase):
         xy = np.array(self.sphere_to_plane(np.pi, 0.0, 0.0, 0.0))
         np.testing.assert_almost_equal(np.abs(xy), [np.pi, 0.0], decimal=12)
         # Points outside allowed domain on sphere
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, 0.0, np.pi)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, 0.0, np.pi)
 
         # PLANE TO SPHERE
         # Origin
@@ -360,14 +351,16 @@ class TestProjectionARC(unittest.TestCase):
         ae = np.array(self.plane_to_sphere(0.0,  -np.pi / 2.0, 0.0, -np.pi / 2.0))
         assert_angles_almost_equal(ae, [np.pi, 0.0], decimal=12)
         # Points outside allowed domain in plane
-        self.assertRaises(ValueError, self.plane_to_sphere, 0.0, 0.0, 4.0, 0.0)
-        self.assertRaises(ValueError, self.plane_to_sphere, 0.0, 0.0, 0.0, 4.0)
+        with pytest.raises(ValueError):
+            self.plane_to_sphere(0.0, 0.0, 4.0, 0.0)
+        with pytest.raises(ValueError):
+            self.plane_to_sphere(0.0, 0.0, 0.0, 4.0)
 
 
-class TestProjectionSTG(unittest.TestCase):
+class TestProjectionSTG:
     """Test stereographic projection."""
 
-    def setUp(self):
+    def setup(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['STG']
         self.sphere_to_plane = katpoint.sphere_to_plane['STG']
         N = 100
@@ -393,11 +386,9 @@ class TestProjectionSTG(unittest.TestCase):
         assert_angles_almost_equal(az, aa, decimal=9)
         assert_angles_almost_equal(el, ee, decimal=9)
 
+    @ pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
     def test_aips_compatibility(self):
         """STG projection: compare with original AIPS routine."""
-        if not found_aips:
-            skip("AIPS projection module not found")
-            return
         az, el = self.plane_to_sphere(self.az0, self.el0, self.x, self.y)
         xx, yy = self.sphere_to_plane(self.az0, self.el0, az, el)
         az_aips, el_aips = np.zeros(az.shape), np.zeros(el.shape)
@@ -407,7 +398,7 @@ class TestProjectionSTG(unittest.TestCase):
                 6, self.az0[n], self.el0[n], self.x[n], self.y[n])
             x_aips[n], y_aips[n], ierr = dircos(
                 6, self.az0[n], self.el0[n], az[n], el[n])
-        self.assertEqual(ierr, 0)
+        assert ierr == 0
         # AIPS NEWPOS STG has poor accuracy on azimuth angle (large closure errors by itself)
         # assert_angles_almost_equal(az, az_aips, decimal=9)
         assert_angles_almost_equal(el, el_aips, decimal=9)
@@ -439,8 +430,10 @@ class TestProjectionSTG(unittest.TestCase):
         xy = np.array(self.sphere_to_plane(0.0, np.pi / 2.0, -np.pi / 2.0, 0.0))
         np.testing.assert_almost_equal(xy, [-2.0, 0.0], decimal=12)
         # Points outside allowed domain on sphere
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, np.pi, 0.0)
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, 0.0, np.pi)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, np.pi, 0.0)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, 0.0, np.pi)
 
         # PLANE TO SPHERE
         # Origin
@@ -466,10 +459,10 @@ class TestProjectionSTG(unittest.TestCase):
         assert_angles_almost_equal(ae, [np.pi, 0.0], decimal=12)
 
 
-class TestProjectionCAR(unittest.TestCase):
+class TestProjectionCAR:
     """Test plate carree projection."""
 
-    def setUp(self):
+    def setup(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['CAR']
         self.sphere_to_plane = katpoint.sphere_to_plane['CAR']
         N = 100
@@ -508,10 +501,10 @@ def plane_to_sphere_original_ssn(target_az, target_el, ll, mm):
     return scan_az, scan_el
 
 
-class TestProjectionSSN(unittest.TestCase):
+class TestProjectionSSN:
     """Test swapped orthographic projection."""
 
-    def setUp(self):
+    def setup(self):
         self.plane_to_sphere = katpoint.plane_to_sphere['SSN']
         self.sphere_to_plane = katpoint.sphere_to_plane['SSN']
         N = 100
@@ -573,8 +566,10 @@ class TestProjectionSSN(unittest.TestCase):
         xy = np.array(self.sphere_to_plane(0.0, np.pi / 2.0, -np.pi / 2.0, 0.0))
         np.testing.assert_almost_equal(xy, [0.0, 1.0], decimal=12)
         # Points outside allowed domain on sphere
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, np.pi, 0.0)
-        self.assertRaises(ValueError, self.sphere_to_plane, 0.0, 0.0, 0.0, np.pi)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, np.pi, 0.0)
+        with pytest.raises(ValueError):
+            self.sphere_to_plane(0.0, 0.0, 0.0, np.pi)
 
         # PLANE TO SPHERE
         # Origin
@@ -600,5 +595,7 @@ class TestProjectionSSN(unittest.TestCase):
         ae = np.array(self.plane_to_sphere(0.0, -1.0, 0.0, np.cos(1.0)))
         assert_angles_almost_equal(ae, [0.0, -np.pi / 2.0], decimal=12)
         # Points outside allowed domain in plane
-        self.assertRaises(ValueError, self.plane_to_sphere, 0.0, 0.0, 2.0, 0.0)
-        self.assertRaises(ValueError, self.plane_to_sphere, 0.0, 0.0, 0.0, 2.0)
+        with pytest.raises(ValueError):
+            self.plane_to_sphere(0.0, 0.0, 2.0, 0.0)
+        with pytest.raises(ValueError):
+            self.plane_to_sphere(0.0, 0.0, 0.0, 2.0)

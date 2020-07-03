@@ -16,9 +16,8 @@
 
 """Tests for the pointing module."""
 
-import unittest
-
 import numpy as np
+import pytest
 
 import katpoint
 
@@ -29,10 +28,10 @@ def assert_angles_almost_equal(x, y, **kwargs):
     np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), **kwargs)
 
 
-class TestPointingModel(unittest.TestCase):
+class TestPointingModel:
     """Test pointing model."""
 
-    def setUp(self):
+    def setup(self):
         az_range = katpoint.deg2rad(np.arange(-185.0, 275.0, 5.0))
         el_range = katpoint.deg2rad(np.arange(0.0, 86.0, 1.0))
         mesh_az, mesh_el = np.meshgrid(az_range, el_range)
@@ -48,13 +47,15 @@ class TestPointingModel(unittest.TestCase):
         pm = katpoint.PointingModel(params[:-1])
         print('%r %s' % (pm, pm))
         pm2 = katpoint.PointingModel(params[:-2])
-        self.assertEqual(pm2.values()[-1], 0.0, 'Unspecified pointing model params not zeroed')
+        assert pm2.values()[-1] == 0.0, 'Unspecified pointing model params not zeroed'
         pm3 = katpoint.PointingModel(params)
-        self.assertEqual(pm3.values()[-1], params[-2], 'Superfluous pointing model params not handled correctly')
+        assert pm3.values()[-1] == params[-2], (
+            'Superfluous pointing model params not handled correctly')
         pm4 = katpoint.PointingModel(pm.description)
-        self.assertEqual(pm4.description, pm.description, 'Saving pointing model to string and loading it again failed')
-        self.assertEqual(pm4, pm, 'Pointing models should be equal')
-        self.assertNotEqual(pm2, pm, 'Pointing models should be inequal')
+        assert pm4.description == pm.description, (
+            'Saving pointing model to string and loading it again failed')
+        assert pm4 == pm, 'Pointing models should be equal'
+        assert pm2 != pm, 'Pointing models should be inequal'
         # np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
         for (v4, v) in zip(pm4.values(), pm.values()):
             if type(v4) == float:
@@ -62,9 +63,9 @@ class TestPointingModel(unittest.TestCase):
             else:
                 np.testing.assert_almost_equal(v4.rad, v, decimal=6)
         try:
-            self.assertEqual(hash(pm4), hash(pm), 'Pointing model hashes not equal')
+            assert hash(pm4) == hash(pm), 'Pointing model hashes not equal'
         except TypeError:
-            self.fail('PointingModel object not hashable')
+            pytest.fail('PointingModel object not hashable')
 
     def test_pointing_closure(self):
         """Test closure between pointing correction and its reverse operation."""
@@ -74,8 +75,10 @@ class TestPointingModel(unittest.TestCase):
         # Test closure on (az, el) grid
         pointed_az, pointed_el = pm.apply(self.az, self.el)
         az, el = pm.reverse(pointed_az, pointed_el)
-        assert_angles_almost_equal(az, self.az, decimal=6, err_msg='Azimuth closure error for params=%s' % (params,))
-        assert_angles_almost_equal(el, self.el, decimal=7, err_msg='Elevation closure error for params=%s' % (params,))
+        assert_angles_almost_equal(az, self.az, decimal=6,
+                                   err_msg='Azimuth closure error for params=%s' % (params,))
+        assert_angles_almost_equal(el, self.el, decimal=7,
+                                   err_msg='Elevation closure error for params=%s' % (params,))
 
     def test_pointing_fit(self):
         """Test fitting of pointing model."""

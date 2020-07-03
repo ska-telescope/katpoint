@@ -16,9 +16,8 @@
 
 """Tests for the refraction module."""
 
-import unittest
-
 import numpy as np
+import pytest
 
 import katpoint
 
@@ -29,23 +28,24 @@ def assert_angles_almost_equal(x, y, **kwargs):
     np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), **kwargs)
 
 
-class TestRefractionCorrection(unittest.TestCase):
+class TestRefractionCorrection:
     """Test refraction correction."""
 
-    def setUp(self):
+    def setup(self):
         self.rc = katpoint.RefractionCorrection()
         self.el = katpoint.deg2rad(np.arange(0.0, 90.1, 0.1))
 
     def test_refraction_basic(self):
         """Test basic refraction correction properties."""
         print(repr(self.rc))
-        self.assertRaises(ValueError, katpoint.RefractionCorrection, 'unknown')
+        with pytest.raises(ValueError):
+            katpoint.RefractionCorrection('unknown')
         rc2 = katpoint.RefractionCorrection()
-        self.assertEqual(self.rc, rc2, 'Refraction models should be equal')
+        assert self.rc == rc2, 'Refraction models should be equal'
         try:
-            self.assertEqual(hash(self.rc), hash(rc2), 'Refraction model hashes should be equal')
+            assert hash(self.rc) == hash(rc2), 'Refraction model hashes should be equal'
         except TypeError:
-            self.fail('RefractionCorrection object not hashable')
+            pytest.fail('RefractionCorrection object not hashable')
 
     def test_refraction_closure(self):
         """Test closure between refraction correction and its reverse operation."""
