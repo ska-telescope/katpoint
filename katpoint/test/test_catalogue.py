@@ -18,7 +18,6 @@
 
 import time
 
-import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
@@ -114,7 +113,7 @@ class TestCatalogueConstruction:
         assert cat != cat2, 'Catalogues should not be equal'
         test_target = cat.targets[-1]
         assert test_target.description == cat[test_target.name].description, 'Lookup failed'
-        assert cat['Non-existent'] == None, 'Lookup of non-existent target failed'
+        assert cat['Non-existent'] is None, 'Lookup of non-existent target failed'
         cat.add_tle(self.tle_lines, 'tle')
         cat.add_edb(self.edb_lines, 'edb')
         assert len(cat.targets) == num_targets + 2, 'Number of targets incorrect'
@@ -179,11 +178,11 @@ class TestCatalogueFilterSort:
         assert len(cat.targets) == len(katpoint.specials) + 1 + len(katpoint.stars.stars)
         cat1 = cat.sort(key='name')
         assert cat1 == cat, 'Catalogue equality failed'
-        assert cat1.targets[0].name in {'Acamar', 'Achernar'}, 'Sorting on name failed'
+        assert cat1.targets[0].name == 'Acamar', 'Sorting on name failed'
         cat2 = cat.sort(key='ra', timestamp=self.timestamp, antenna=self.antenna)
-        assert cat2.targets[0].name in {'Alpheratz', 'Sirrah'}, 'Sorting on ra failed'
+        assert cat2.targets[0].name == 'Alpheratz', 'Sorting on ra failed'
         cat3 = cat.sort(key='dec', timestamp=self.timestamp, antenna=self.antenna)
-        assert cat3.targets[0].name in {'Miaplacidus', 'Agena'}, 'Sorting on dec failed'
+        assert cat3.targets[0].name == 'Miaplacidus', 'Sorting on dec failed'
         cat4 = cat.sort(key='az', timestamp=self.timestamp, antenna=self.antenna, ascending=False)
         assert cat4.targets[0].name == 'Polaris', 'Sorting on az failed'  # az: 359:25:07.3
         cat5 = cat.sort(key='el', timestamp=self.timestamp, antenna=self.antenna)
