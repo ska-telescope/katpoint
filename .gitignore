@@ -4,13 +4,13 @@
 *.so
 *.so.dSYM
 
-# Packages
+# Packages / virtual envs
 *.egg
 *.egg-info
 dist
 build
 eggs
-.eggs
+*.eggs
 parts
 bin
 var
@@ -19,7 +19,10 @@ develop-eggs
 .installed.cfg
 lib
 lib64
+.cache
 __pycache__
+.ipynb_checkpoints
+Pipfile.lock
 
 # Installer logs
 pip-log.txt
@@ -28,10 +31,21 @@ pip-log.txt
 .coverage
 .tox
 nosetests.xml
+htmlcov
+coverage.xml
+.pytest_cache
+*,cover
 
-# Developer tools
+# Documentation
+docs/_build
+docs/apidocs
+
+# Developer tools / IDEs
 *~
 .ropeproject
+.idea
+.eclipse
+.vscode
 
 # Downloaded AIPS source files
 katpoint/test/aips_projection/*.F
