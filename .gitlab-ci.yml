@@ -1,36 +1,17 @@
-# GitLab CI in conjunction with GitLab Runner can use Docker Engine to test and build any application.
-# Docker, when used with GitLab CI, runs each job in a separate and isolated container using the predefined image that is set up in .gitlab-ci.yml.
-# In this case we use the latest python docker image to build and test this project.
 image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
 
-# cache is used to specify a list of files and directories which should be cached between jobs. You can only use paths that are within the project workspace.
-# If cache is defined outside the scope of jobs, it means it is set globally and all jobs will use that definition
-cache:
-  paths:
-# before_script is used to define the command that should be run before all jobs, including deploy jobs, but after the restoration of artifacts.
-# This can be an array or a multi-line string.
 before_script:
   - python3 -m pip install -r gitlab-ci-requirements.txt
-
 
 stages:
   - test
   - linting
   - deploy
 
-# The YAML file defines a set of jobs with constraints stating when they should be run.
-# You can specify an unlimited number of jobs which are defined as top-level elements with an arbitrary name and always
-#  have to contain at least the script clause.
-# In this case we have only the test job which produces a coverage report and the unittest output (see setup.cfg), and
-#  the coverage xml report is moved to the reports directory while the html output is persisted for use by the pages
-#  job. TODO: possibly a candidate for refactor / renaming later on.
 test:
   stage: test
   script:
-  #  - pipenv run python setup.py test
-  #  - python3 setup.py test
-   - pytest --cov katpoint --json-report --json-report-file=htmlcov/report.json --cov-report term --cov-report html --cov-report xml --junitxml=./build/reports/unit-tests.xml
-   - mv coverage.xml ./build/reports/code-coverage.xml
+   - pytest --cov katpoint --cov-branch --cov-report term --cov-report html --cov-report xml:./build/reports/code-coverage.xml --junitxml=./build/reports/unit-tests.xml
   artifacts:
     paths:
     - ./build
@@ -39,7 +20,6 @@ test:
 list_dependencies:
   stage: test
   script:
-    # - pipenv graph >> pipenv_deps.txt
     - pipdeptree --json >> pip_deps.json
     - pipdeptree >> pip_deps.txt
     - dpkg -l >> system_deps.txt
@@ -57,8 +37,7 @@ list_dependencies:
 linting:
   stage: linting
   script:
-    - pylint --exit-zero --output-format=pylint_junit.JUnitReporter katpoint > linting.xml
-    - mv linting.xml ./build/reports/linting.xml
+    - pylint --exit-zero --output-format=pylint_junit.JUnitReporter katpoint > ./build/reports/linting.xml
     - pylint --exit-zero --output-format=parseable katpoint
   when: always
   artifacts:
@@ -85,8 +64,6 @@ create ci metrics:
   when: always
   script:
     # Gitlab CI badges creation: START
-    - apt-get -y update
-    - apt-get install -y curl --no-install-recommends
     - curl -s https://gitlab.com/ska-telescope/ci-metrics-utilities/raw/master/scripts/ci-badges-func.sh | sh
     # Gitlab CI badges creation: END
   artifacts:

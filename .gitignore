@@ -5,24 +5,12 @@
 *.so.dSYM
 
 # Packages / virtual envs
-*.egg
-*.egg-info
-dist
 build
-eggs
+dist
 *.eggs
-parts
-bin
-var
-sdist
-develop-eggs
-.installed.cfg
-lib
-lib64
+*.egg-info
 .cache
 __pycache__
-.ipynb_checkpoints
-Pipfile.lock
 
 # Installer logs
 pip-log.txt
@@ -30,11 +18,9 @@ pip-log.txt
 # Unit test / coverage reports
 .coverage
 .tox
-nosetests.xml
 htmlcov
 coverage.xml
 .pytest_cache
-*,cover
 
 # Documentation
 docs/_build

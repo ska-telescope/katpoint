@@ -11,8 +11,6 @@ pytest
 pytest-cov
 pytest-pylint
 python-dotenv>=0.5.1
-requests   # from pyorbital
-scipy      # from pyorbital
 setuptools
 sgp4
 sphinx
