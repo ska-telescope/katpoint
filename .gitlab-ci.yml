@@ -26,16 +26,12 @@ stages:
 #  job. TODO: possibly a candidate for refactor / renaming later on.
 test:
   stage: test
-#  tags:
-#   - docker-executor
   script:
   #  - pipenv run python setup.py test
   #  - python3 setup.py test
-   - pytest --cov katpoint --json-report --json-report-file=htmlcov/report.json --cov-report term --cov-report html --cov-report xml --junitxml=./build/reports/unit-tests.xml
-   - mv coverage.xml ./build/reports/code-coverage.xml
+   - pytest --cov katpoint --json-report --json-report-file=htmlcov/report.json --cov-report term --cov-report html --cov-report xml --junitxml=unit-tests.xml
   artifacts:
     paths:
-    - ./build
     - htmlcov
 
 list_dependencies:
@@ -58,21 +54,14 @@ list_dependencies:
 
 linting:
   image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
-  tags:
-    - docker-executor
   stage: linting
   script:
     - pylint --exit-zero --output-format=pylint_junit.JUnitReporter katpoint > linting.xml
     - pylint --exit-zero --output-format=parseable katpoint
   when: always
-  artifacts:
-    paths:
-      - ./build
 
 pages:
   stage: deploy
-  tags:
-   - docker-executor
   dependencies:
     - test
   script:
@@ -90,8 +79,11 @@ create ci metrics:
   stage: .post
   image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
   when: always
-  tags:
-    - docker-executor
+  before_script:
+    - mkdir -p build/reports
+    - mv coverage.xml ./build/reports/code-coverage.xml
+    - mv linting.xml ./build/reports/linting.xml
+    - mv unit-tests.xml ./build/reports/unit-tests.xml
   script:
     # Gitlab CI badges creation: START
     - apt-get -y update
