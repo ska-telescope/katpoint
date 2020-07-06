@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,13 +15,10 @@
 ################################################################################
 
 """Enhancements to PyEphem."""
-from __future__ import print_function, division, absolute_import
-from builtins import object
-from past.builtins import basestring
 
 import numpy as np
+import astropy.units as u
 from astropy.coordinates import Angle
-from astropy import units
 
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
@@ -33,7 +30,7 @@ lightspeed = 299792458.0
 
 def is_iterable(x):
     """Checks if object is iterable (but not a string or 0-dimensional array)."""
-    return hasattr(x, '__iter__') and not isinstance(x, basestring) and \
+    return hasattr(x, '__iter__') and not isinstance(x, str) and \
         not (getattr(x, 'shape', None) == ())
 
 
@@ -59,7 +56,6 @@ def _just_gimme_an_ascii_string(s):
     ------
     UnicodeEncodeError, UnicodeDecodeError
         If the conversion fails due to the presence of non-ASCII characters
-
     """
     if isinstance(s, bytes) and not isinstance(s, str):
         # Only encoded bytes on Python 3 will end up here
@@ -73,14 +69,14 @@ def angle_from_degrees(s):
     try:
         # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
         if type(s) == str:
-            return Angle(s, unit=units.deg)
+            return Angle(s, unit=u.deg)
         elif type(s) == tuple:
-            return Angle(s, unit=units.deg)
+            return Angle(s, unit=u.deg)
         else:
-            return Angle(s, unit=units.rad)
+            return Angle(s, unit=u.rad)
     except TypeError:
         # If input is neither, assume that it really wants to be a string
-        return Angle(_just_gimme_an_ascii_string(s), unit=units.deg)
+        return Angle(_just_gimme_an_ascii_string(s), unit=u.deg)
 
 
 def angle_from_hours(s):
@@ -88,20 +84,19 @@ def angle_from_hours(s):
     try:
         # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
         if type(s) == str:
-            return Angle(s, unit=units.hour)
+            return Angle(s, unit=u.hour)
         elif type(s) == tuple:
-            return Angle(s, unit=units.hour)
+            return Angle(s, unit=u.hour)
         else:
-            return Angle(s, unit=units.rad)
+            return Angle(s, unit=u.rad)
     except TypeError:
         # If input is neither, assume that it really wants to be a string
-        return Angle(_just_gimme_an_ascii_string(s), unit=units.hour)
+        return Angle(_just_gimme_an_ascii_string(s), unit=u.hour)
 
 
 def wrap_angle(angle, period=2.0 * np.pi):
     """Wrap angle into interval centred on zero.
 
     This wraps the *angle* into the interval -*period* / 2 ... *period* / 2.
-
     """
     return (angle + 0.5 * period) % period - 0.5 * period

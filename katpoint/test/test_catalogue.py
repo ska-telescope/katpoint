@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,12 +15,9 @@
 ################################################################################
 
 """Tests for the catalogue module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
 import time
-
-import ephem.stars
 
 import katpoint
 
@@ -31,6 +28,7 @@ YY = time.localtime().tm_year % 100
 
 class TestCatalogueConstruction(unittest.TestCase):
     """Test construction of catalogues."""
+
     def setUp(self):
         self.tle_lines = ['# Comment ignored\n',
                           'GPS BIIA-21 (PRN 09)    \n',
@@ -93,7 +91,7 @@ class TestCatalogueConstruction(unittest.TestCase):
         """Test construction of catalogues."""
         cat = katpoint.Catalogue(add_specials=True, add_stars=True, antenna=self.antenna)
         num_targets_original = len(cat)
-        self.assertEqual(num_targets_original, len(katpoint.specials) + 1 + len(ephem.stars.stars),
+        self.assertEqual(num_targets_original, len(katpoint.specials) + 1 + len(katpoint.stars.stars),
                          'Number of targets incorrect')
         # Add target already in catalogue - no action
         cat.add(katpoint.Target('Sun, special'))
@@ -144,6 +142,7 @@ class TestCatalogueConstruction(unittest.TestCase):
 
 class TestCatalogueFilterSort(unittest.TestCase):
     """Test filtering and sorting of catalogues."""
+
     def setUp(self):
         self.flux_target = katpoint.Target('flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)')
         self.antenna = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')
@@ -174,11 +173,10 @@ class TestCatalogueFilterSort(unittest.TestCase):
     def test_sort_catalogue(self):
         """Test sorting of catalogues."""
         cat = katpoint.Catalogue(add_specials=True, add_stars=True)
-        self.assertEqual(len(cat.targets), len(katpoint.specials) + 1 + len(ephem.stars.stars),
+        self.assertEqual(len(cat.targets), len(katpoint.specials) + 1 + len(katpoint.stars.stars),
                          'Number of targets incorrect')
         cat1 = cat.sort(key='name')
         self.assertEqual(cat1, cat, 'Catalogue equality failed')
-        # Ephem 3.7.7.0 added new stars
         self.assertIn(cat1.targets[0].name, {'Acamar', 'Achernar'}, 'Sorting on name failed')
         cat2 = cat.sort(key='ra', timestamp=self.timestamp, antenna=self.antenna)
         self.assertIn(cat2.targets[0].name, {'Alpheratz', 'Sirrah'}, 'Sorting on ra failed')

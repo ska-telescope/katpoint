@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,6 @@
 ################################################################################
 
 """Tests for the antenna module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
 import time
@@ -34,17 +33,18 @@ def assert_angles_almost_equal(x, y, decimal):
 
 class TestAntenna(unittest.TestCase):
     """Test :class:`katpoint.antenna.Antenna`."""
+
     def setUp(self):
         self.valid_antennas = [
             'XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0',
             'FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0',
             ('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, '
              '-0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16')
-            ]
+        ]
         self.invalid_antennas = [
             'XDM, -25:53:23.05075, 27:41:03.0',
             '',
-            ]
+        ]
         self.timestamp = '2009/07/07 08:36:20'
 
     def test_construct_antenna(self):

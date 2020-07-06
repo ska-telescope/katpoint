@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -53,20 +53,18 @@ setup(name="katpoint",
       platforms=["OS Independent"],
       keywords="meerkat ska",
       zip_safe=False,
-      python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
+      python_requires='>=3.5, <4',
       setup_requires=['katversion'],
       use_katversion=True,
       test_suite="nose.collector",
       install_requires=[
-          "future",
-          "numpy",
           "astropy",
-          "sgp4",
+          "numpy",
           "pyorbital",
+          "sgp4",
       ],
       tests_require=[
           "nose",
           "coverage",
           "nosexcover",
-          "unittest2",
       ])

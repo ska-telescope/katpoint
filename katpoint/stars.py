@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -27,17 +27,12 @@ Of the thousand brighest Hipparcos stars, those with proper names
 registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 """
 
-
 import numpy as np
+import astropy.units as u
+from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
-from astropy import units
-from astropy.coordinates import SkyCoord
-from astropy.coordinates import Longitude
-from astropy.coordinates import Latitude
-from astropy.coordinates import ICRS
 
-from katpoint.bodies import FixedBody
-from katpoint.bodies import EarthSatellite
+from katpoint.bodies import FixedBody, EarthSatellite
 
 
 db = """\
@@ -178,8 +173,8 @@ def readdb(line):
         dec = fields[3].split('|')[0]
         s = FixedBody()
         s.name = name
-        ra = Longitude(ra, unit=units.hour)
-        dec = Latitude(dec, unit=units.deg)
+        ra = Longitude(ra, unit=u.hour)
+        dec = Latitude(dec, unit=u.deg)
         s._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
         return s
 
@@ -201,8 +196,7 @@ def readdb(line):
         s, m = np.modf(m * 60.0)
         m = int(np.floor(m))
         s = s * 60.0
-        e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr,mon,day,
-                h,m,s), scale='utc')
+        e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr, mon, day, h, m, s), scale='utc')
         e._inc = np.deg2rad(float(fields[3]))
         e._raan = np.deg2rad(float(fields[4]))
         e._e = float(fields[5])
@@ -218,6 +212,7 @@ def readdb(line):
     else:
         raise ValueError('Bogus: ' + line)
 
+
 def _build_stars():
     """ Builds the default catalogue.
 
@@ -228,10 +223,12 @@ def _build_stars():
         s = readdb(line)
         stars[s.name] = s
 
+
 def star(name):
     """ Get a record from the catalogue
     """
     return stars[name]
+
 
 # Build catalogue
 _build_stars()

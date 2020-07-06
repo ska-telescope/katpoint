@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -19,11 +19,7 @@
 This implements the basic delay model used to calculate the delay
 contribution from each antenna, as well as a class that performs
 delay correction for a correlator.
-
 """
-from __future__ import print_function, division, absolute_import
-from builtins import object, zip
-from past.builtins import basestring
 
 import logging
 import json
@@ -61,8 +57,8 @@ class DelayModel(Model):
         string, interpret it as a comma-separated (or whitespace-separated)
         sequence of parameters in their string form (i.e. a description
         string). The default is an empty model.
-
     """
+
     def __init__(self, model=None):
         # Instantiate the relevant model parameters and register with base class
         params = []
@@ -89,12 +85,11 @@ class DelayModel(Model):
         ----------
         delays : sequence of floats
             Model parameters in delay form (i.e. in seconds)
-
         """
         self.fromlist(delays * self._speeds)
 
 
-class DelayCorrection(object):
+class DelayCorrection:
     """Calculate delay corrections for a set of correlator inputs / antennas.
 
     This uses delay models from multiple antennas connected to a correlator to
@@ -132,7 +127,6 @@ class DelayCorrection(object):
     ValueError
         If all antennas do not share the same reference position as `ref_ant`
         or `ref_ant` was not specified, or description string is invalid
-
     """
 
     # Maximum size for delay cache
@@ -140,7 +134,7 @@ class DelayCorrection(object):
 
     def __init__(self, ants, ref_ant=None, sky_centre_freq=0.0, extra_delay=None):
         # Unpack JSON-encoded description string
-        if isinstance(ants, basestring):
+        if isinstance(ants, str):
             try:
                 descr = json.loads(ants)
             except ValueError:
@@ -230,7 +224,6 @@ class DelayCorrection(object):
         -------
         delays : sequence of *2M* floats
             Delays (one per correlator input) in seconds
-
         """
         if not offset:
             azel = target.azel(timestamp, self.ref_ant)
@@ -264,7 +257,6 @@ class DelayCorrection(object):
 
         See :meth:`_calculate_delays` for parameter and return lists,
         as these two methods can be used interchangeably.
-
         """
         delays = self._cache.pop(timestamp, None)
         if delays is None:
@@ -319,7 +311,6 @@ class DelayCorrection(object):
             fringe rate value (in radians per second). If a sequence of *T*
             timestamps are provided, each input maps to an array of shape
             (*T*, 2).
-
         """
         if is_iterable(timestamp):
             # Append one more timestamp to get a slope for the last timestamp

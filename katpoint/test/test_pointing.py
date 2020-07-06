@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,6 @@
 ################################################################################
 
 """Tests for the pointing module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
 
@@ -32,6 +31,7 @@ def assert_angles_almost_equal(x, y, **kwargs):
 
 class TestPointingModel(unittest.TestCase):
     """Test pointing model."""
+
     def setUp(self):
         az_range = katpoint.deg2rad(np.arange(-185.0, 275.0, 5.0))
         el_range = katpoint.deg2rad(np.arange(0.0, 86.0, 1.0))
@@ -55,7 +55,7 @@ class TestPointingModel(unittest.TestCase):
         self.assertEqual(pm4.description, pm.description, 'Saving pointing model to string and loading it again failed')
         self.assertEqual(pm4, pm, 'Pointing models should be equal')
         self.assertNotEqual(pm2, pm, 'Pointing models should be inequal')
-        #np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
+        # np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
         for (v4, v) in zip(pm4.values(), pm.values()):
             if type(v4) == float:
                 np.testing.assert_almost_equal(v4, v, decimal=6)

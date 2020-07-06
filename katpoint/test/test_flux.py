@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,9 +15,8 @@
 ################################################################################
 
 """Tests for the flux module."""
-from __future__ import print_function, division, absolute_import
 
-import unittest2 as unittest
+import unittest
 
 import numpy as np
 
@@ -26,6 +25,7 @@ import katpoint
 
 class TestFluxDensityModel(unittest.TestCase):
     """Test flux density model calculation."""
+
     def setUp(self):
         self.unit_model = katpoint.FluxDensityModel(100., 200., [0.])
         self.unit_model2 = katpoint.FluxDensityModel(100., 200., [0.])

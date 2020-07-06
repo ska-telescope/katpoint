@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -17,10 +17,7 @@
 """Pointing model.
 
 This implements a pointing model for a non-ideal antenna mount.
-
 """
-from __future__ import print_function, division, absolute_import
-from builtins import range
 
 import logging
 
@@ -53,8 +50,8 @@ class PointingModel(Model):
         model parameters (defaults to sequence of zeroes). If it is a string,
         interpret it as a comma-separated (or whitespace-separated) sequence
         of parameters in their string form (i.e. a description string).
-
     """
+
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
         def angle_to_string(a):
@@ -133,7 +130,6 @@ class PointingModel(Model):
         ----------
         .. [Him1993] Himwich, "Pointing Model Derivation," Mark IV Field System
            Reference Manual, Version 8.2, 1 September 1993.
-
         """
         # Unpack parameters to make the code correspond to the maths
         P1, P2, P3, P4, P5, P6, P7, P8, \
@@ -171,7 +167,6 @@ class PointingModel(Model):
             Azimuth angle(s), corrected for pointing errors, in radians
         pointed_el : float or array
             Elevation angle(s), corrected for pointing errors, in radians
-
         """
         delta_az, delta_el = self.offset(az, el)
         return az + delta_az, el + delta_el
@@ -193,7 +188,6 @@ class PointingModel(Model):
         -------
         d_corraz_d_az, d_corraz_d_el, d_correl_d_az, d_correl_d_el : float or array
             Elements of Jacobian matrix (or matrices)
-
         """
         # Unpack parameters to make the code correspond to the maths
         P1, P2, P3, P4, P5, P6, P7, P8, \
@@ -234,7 +228,6 @@ class PointingModel(Model):
             Azimuth angle(s) before pointing correction, in radians
         el : float or array
             Elevation angle(s) before pointing correction, in radians
-
         """
         # Maximum difference between input az/el and pointing-corrected version of final output az/el
         tolerance = deg2rad(0.01 / 3600)
@@ -308,7 +301,6 @@ class PointingModel(Model):
         .. [PTV+1992] Press, Teukolsky, Vetterling, Flannery, "Numerical Recipes
            in C," 2nd Ed., pp. 671-681, 1992. Section 15.4: "General Linear Least
            Squares", available at `<http://www.nrbook.com/a/bookcpdf/c15-4.pdf>`_
-
         """
         # Set default inputs
         if sigma_daz is None:

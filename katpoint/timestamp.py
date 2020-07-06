@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,13 +15,9 @@
 ################################################################################
 
 """A Timestamp object."""
-from __future__ import print_function, division, absolute_import
-from builtins import object
-from past.builtins import basestring
 
 import time
 import math
-
 from functools import total_ordering
 
 import numpy as np
@@ -29,7 +25,7 @@ from astropy.time import Time
 
 
 @total_ordering
-class Timestamp(object):
+class Timestamp:
     """Basic representation of time, in UTC seconds since Unix epoch.
 
     This is loosely based on :class:`ephem.Date`. Its base representation
@@ -59,10 +55,10 @@ class Timestamp(object):
     ---------
     secs : float
         Timestamp as UTC seconds since Unix epoch
-
     """
+
     def __init__(self, timestamp=None):
-        if isinstance(timestamp, basestring):
+        if isinstance(timestamp, str):
             try:
                 timestamp = timestamp.strip().replace('/', '-')
                 timestamp = Time(decode(timestamp))
@@ -191,18 +187,16 @@ class Timestamp(object):
         int_secs = math.floor(self.secs)
         timetuple = list(time.gmtime(int_secs)[:6])
         timetuple[5] += self.secs - int_secs
-        return Time('{0}-{1:02}-{2:02} {3:02}:{4:02}:{5:02}'.format(timetuple[0],
-                timetuple[1], timetuple[2], timetuple[3],
-                timetuple[4], timetuple[5]))
+        return Time('{0}-{1:02}-{2:02} {3:02}:{4:02}:{5:02}'.format(*timetuple))
 
     def to_mjd(self):
         """Convert timestamp to Modified Julian Day (MJD)."""
         djd = self.to_ephem_date()
         return djd.mjd
 
+
 def decode(s):
-    """Decodes a date string
-    """
+    """Decode a date string like PyEphem does."""
     # Look for a dot
     dot = s.find('.')
     if dot > 0:
@@ -216,22 +210,22 @@ def decode(s):
     # time without fractional seconds
     try:
         d = time.strptime(s, '%Y-%m-%d %H:%M:%S')
-    except:
+    except ValueError:
         try:
             d = time.strptime(s, '%Y-%m-%d %H:%M')
-        except:
+        except ValueError:
             try:
                 d = time.strptime(s, '%Y-%m-%d %H')
-            except:
+            except ValueError:
                 try:
                     d = time.strptime(s, '%Y-%m-%d')
-                except:
+                except ValueError:
                     try:
                         d = time.strptime(s, '%Y-%m')
-                    except:
+                    except ValueError:
                         try:
                             d = time.strptime(s, '%Y')
-                        except:
+                        except ValueError:
                             raise ValueError('unable to decode date string')
 
     # Convert to a unix time and add the fractional seconds
@@ -240,10 +234,4 @@ def decode(s):
     # Back to a tuple
     d = time.localtime(u)
 
-    return time.strftime('%Y-%m-%d %H:%M:%S',d) + f
-
-
-def now():
-    """ Create a Date representing 'now'
-    """
-    return Date(Time.now().mjd - _djd)
+    return time.strftime('%Y-%m-%d %H:%M:%S', d) + f

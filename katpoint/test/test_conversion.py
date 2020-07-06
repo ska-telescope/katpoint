@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,13 +15,12 @@
 ################################################################################
 
 """Tests for the conversion module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
 
 import numpy as np
-from astropy import coordinates
-from astropy import units
+import astropy.units as u
+from astropy.coordinates import Angle
 
 import katpoint
 
@@ -34,6 +33,7 @@ def assert_angles_almost_equal(x, y, decimal):
 
 class TestGeodetic(unittest.TestCase):
     """Closure tests for geodetic coordinate transformations."""
+
     def setUp(self):
         N = 1000
         self.lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
@@ -69,10 +69,11 @@ class TestGeodetic(unittest.TestCase):
 
 class TestSpherical(unittest.TestCase):
     """Closure tests for spherical coordinate transformations."""
+
     def setUp(self):
         N = 1000
-        self.az = coordinates.Angle(2.0 * np.pi * np.random.rand(N), unit=units.rad)
-        self.el = coordinates.Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=units.rad)
+        self.az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
+        self.el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)
 
     def test_azel_to_enu(self):
         """Closure tests for (az, el) to ENU conversion and vice versa."""

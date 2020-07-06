@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -17,10 +17,7 @@
 """Refraction correction.
 
 This implements correction for refractive bending in the atmosphere.
-
 """
-from __future__ import print_function, division, absolute_import
-from builtins import object, range
 
 import logging
 
@@ -107,7 +104,7 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     return deg2rad(bphi * sn - aphi)
 
 
-class RefractionCorrection(object):
+class RefractionCorrection:
     """Correct pointing for refractive bending in atmosphere.
 
     This uses the specified refraction model to calculate a correction to a
@@ -125,8 +122,8 @@ class RefractionCorrection(object):
     ------
     ValueError
         If the specified refraction model is unknown
-
     """
+
     def __init__(self, model='VLBI Field System'):
         self.models = {'VLBI Field System': refraction_offset_vlbi}
         try:
@@ -173,7 +170,6 @@ class RefractionCorrection(object):
         -------
         refracted_el : float or array
             Elevation angle(s), corrected for refraction, in radians
-
         """
         return el + self.offset(el, temperature_C, pressure_hPa, humidity_percent)
 
@@ -198,7 +194,6 @@ class RefractionCorrection(object):
         -------
         el : float or array
             Elevation angle(s) before refraction correction, in radians
-
         """
         # Maximum difference between input elevation and refraction-corrected version of final output elevation
         tolerance = deg2rad(0.01 / 3600)

@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,18 +15,17 @@
 ################################################################################
 
 """Tests for the timestamp module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
-from astropy.time import Time
 
-import ephem
+from astropy.time import Time
 
 import katpoint
 
 
 class TestTimestamp(unittest.TestCase):
     """Test timestamp creation and conversion."""
+
     def setUp(self):
         self.valid_timestamps = [(1248186982.3980861, '2009-07-21 14:36:22.398'),
                                  (Time('2009-07-21 02:52:12.34'), '2009-07-21 02:52:12.340'),
@@ -72,7 +71,7 @@ class TestTimestamp(unittest.TestCase):
         self.assertEqual(t, eval('katpoint.' + repr(t)))
         self.assertEqual(float(t), self.valid_timestamps[0][0])
         t = katpoint.Timestamp(self.valid_timestamps[1][0])
-        #self.assertAlmostEqual(t.to_ephem_date(), self.valid_timestamps[1][0], places=9)
+        # self.assertAlmostEqual(t.to_ephem_date(), self.valid_timestamps[1][0], places=9)
         self.assertEqual(t.to_ephem_date().value, self.valid_timestamps[1][0])
         try:
             self.assertEqual(hash(t), hash(t + 0.0), 'Timestamp hashes not equal')

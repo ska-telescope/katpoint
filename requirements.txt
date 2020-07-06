@@ -1,5 +1,6 @@
-future
+astropy
 numpy
-astroppy
-sgp4
 pyorbital
+requests   # from pyorbital
+scipy      # from pyorbital
+sgp4

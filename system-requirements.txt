@@ -1,7 +1,6 @@
-nose
 coverage
+nose
 nosexcover
-virtualenv
-unittest2
 numpy
+virtualenv
 

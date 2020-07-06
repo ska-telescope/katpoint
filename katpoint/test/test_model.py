@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,19 +15,16 @@
 ################################################################################
 
 """Tests for the model module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
-try:
-    from StringIO import StringIO  # python2
-except ImportError:
-    from io import StringIO  # python3
+from io import StringIO
 
 import katpoint
 
 
 class TestModel(unittest.TestCase):
     """Test generic model."""
+
     def new_params(self):
         """Generate fresh set of parameters (otherwise models share the same ones)."""
         params = []

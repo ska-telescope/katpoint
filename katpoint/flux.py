@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,9 +15,6 @@
 ################################################################################
 
 """Flux density model."""
-from __future__ import print_function, division, absolute_import
-from builtins import object
-from past.builtins import basestring
 
 import warnings
 
@@ -31,7 +28,7 @@ class FluxError(ValueError):
     pass
 
 
-class FluxDensityModel(object):
+class FluxDensityModel:
     """Spectral flux density model.
 
     This models the spectral flux density (or spectral energy distribtion - SED)
@@ -94,7 +91,6 @@ class FluxDensityModel(object):
     .. [KWP+1981] H. Kuehr, A. Witzel, I.I.K. Pauliny-Toth, U. Nauber,
        "A catalogue of extragalactic radio sources having flux densities greater
        than 1 Jy at 5 GHz," Astron. Astrophys. Suppl. Ser., 45, 367-430, 1981.
-
     """
     # Coefficients are zero by default, except for I
     _DEFAULT_COEFS = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0,    # a, b, c, d, e, f
@@ -102,7 +98,7 @@ class FluxDensityModel(object):
 
     def __init__(self, min_freq_MHz, max_freq_MHz=None, coefs=None):
         # If the first parameter is a description string, extract the relevant flux parameters from it
-        if isinstance(min_freq_MHz, basestring):
+        if isinstance(min_freq_MHz, str):
             # Cannot have other parameters if description string is given - this is a safety check
             if not (max_freq_MHz is None and coefs is None):
                 raise ValueError("First parameter '%s' is description string - cannot have other parameters" %
@@ -175,7 +171,6 @@ class FluxDensityModel(object):
         -------
         flux_density : float, or array of floats of same shape as *freq_MHz*
             Flux density in Jy, or np.nan if the frequency is out of range
-
         """
         flux = self._flux_density_raw(freq_MHz) * self.iquv_scale[0]
         if is_iterable(freq_MHz):

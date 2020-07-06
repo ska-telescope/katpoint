@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,7 +15,6 @@
 ################################################################################
 
 """Tests for the refraction module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
 
@@ -32,6 +31,7 @@ def assert_angles_almost_equal(x, y, **kwargs):
 
 class TestRefractionCorrection(unittest.TestCase):
     """Test refraction correction."""
+
     def setUp(self):
         self.rc = katpoint.RefractionCorrection()
         self.el = katpoint.deg2rad(np.arange(0.0, 90.1, 0.1))

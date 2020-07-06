@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,15 +15,14 @@
 ################################################################################
 
 """Tests for the target module."""
-from __future__ import print_function, division, absolute_import
 
 import unittest
 import time
 import pickle
 
 import numpy as np
-from astropy import coordinates
-from astropy import units
+import astropy.units as u
+from astropy.coordinates import Angle
 
 import katpoint
 
@@ -33,6 +32,7 @@ YY = time.localtime().tm_year % 100
 
 class TestTargetConstruction(unittest.TestCase):
     """Test construction of targets from strings and vice versa."""
+
     def setUp(self):
         self.valid_targets = ['azel, -30.0, 90.0',
                               ', azel, 180, -45:00:00.0',
@@ -126,12 +126,12 @@ class TestTargetConstruction(unittest.TestCase):
 
     def test_constructed_coords(self):
         """Test whether calculated coordinates match those with which it is constructed."""
-        #azel = katpoint.Target(self.azel_target)
-        #calc_azel = azel.azel()
-        #calc_az = calc_azel.az;
-        #calc_el = calc_azel.alt;
-        #self.assertEqual(calc_az.deg, 10.0, 'Calculated az does not match specified value in azel target')
-        #self.assertEqual(calc_el.deg, -10.0, 'Calculated el does not match specified value in azel target')
+        # azel = katpoint.Target(self.azel_target)
+        # calc_azel = azel.azel()
+        # calc_az = calc_azel.az;
+        # calc_el = calc_azel.alt;
+        # self.assertEqual(calc_az.deg, 10.0, 'Calculated az does not match specified value in azel target')
+        # self.assertEqual(calc_el.deg, -10.0, 'Calculated el does not match specified value in azel target')
         radec = katpoint.Target(self.radec_target)
         calc_radec = radec.radec()
         calc_ra = calc_radec.ra
@@ -164,12 +164,13 @@ class TestTargetConstruction(unittest.TestCase):
 
 class TestTargetCalculations(unittest.TestCase):
     """Test various calculations involving antennas and timestamps."""
+
     def setUp(self):
         self.target = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
         self.ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
         self.ant2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
         self.ts = katpoint.Timestamp('2013-08-14 09:25')
-        #self.uvw = [10.822861713680807, -9.103057965680664, -2.220446049250313e-16]
+        # self.uvw = [10.822861713680807, -9.103057965680664, -2.220446049250313e-16]
         self.uvw = [10.820796672358002, -9.1055125816993954, -2.22044604925e-16]
 
     def test_coords(self):
@@ -246,7 +247,7 @@ class TestTargetCalculations(unittest.TestCase):
         radec = target.radec(timestamp=self.ts, antenna=self.ant1)
         l, m, n = pointing.lmn(radec.ra.rad, radec.dec.rad)
         expected_l, expected_m = pointing.sphere_to_plane(
-                radec.ra.rad, radec.dec.rad, projection_type='SIN', coord_system='radec')
+            radec.ra.rad, radec.dec.rad, projection_type='SIN', coord_system='radec')
         expected_n = np.sqrt(1.0 - expected_l**2 - expected_m**2)
         np.testing.assert_almost_equal(l, expected_l, decimal=12)
         np.testing.assert_almost_equal(m, expected_m, decimal=12)
@@ -266,7 +267,7 @@ class TestTargetCalculations(unittest.TestCase):
         np.testing.assert_almost_equal(sep, 0.0)
         sep = azel.separation(sun, self.ts, self.ant1)
         np.testing.assert_almost_equal(sep, 0.0)
-        azel2 = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt + coordinates.Angle(0.01, unit=units.rad))
+        azel2 = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt + Angle(0.01, unit=u.rad))
         sep = azel.separation(azel2, self.ts, self.ant1)
         np.testing.assert_almost_equal(sep, 0.01, decimal=7)
 
