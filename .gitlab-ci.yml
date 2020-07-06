@@ -10,15 +10,15 @@ cache:
 # before_script is used to define the command that should be run before all jobs, including deploy jobs, but after the restoration of artifacts.
 # This can be an array or a multi-line string.
 before_script:
-  - python3 -m pip install -r docker-requirements.txt
-  
+  - python3 -m pip install -r gitlab-ci-requirements.txt
+
 
 stages:
   - test
   - linting
   - deploy
 
-# The YAML file defines a set of jobs with constraints stating when they should be run. 
+# The YAML file defines a set of jobs with constraints stating when they should be run.
 # You can specify an unlimited number of jobs which are defined as top-level elements with an arbitrary name and always
 #  have to contain at least the script clause.
 # In this case we have only the test job which produces a coverage report and the unittest output (see setup.cfg), and
@@ -30,7 +30,8 @@ test:
 #   - docker-executor
   script:
   #  - pipenv run python setup.py test
-   - python3 setup.py test
+  #  - python3 setup.py test
+   - pytest --cov katpoint --json-report --json-report-file=htmlcov/report.json --cov-report term --cov-report html --cov-report xml --junitxml=./build/reports/unit-tests.xml
    - mv coverage.xml ./build/reports/code-coverage.xml
   artifacts:
     paths:
@@ -61,7 +62,8 @@ linting:
     - docker-executor
   stage: linting
   script:
-    - make lint
+    - pylint --exit-zero --output-format=pylint_junit.JUnitReporter katpoint > linting.xml
+    - pylint --exit-zero --output-format=parseable katpoint
   when: always
   artifacts:
     paths:

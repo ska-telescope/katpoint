@@ -5,7 +5,7 @@ numpy
 pipdeptree
 pygments
 pylint
-pylint_junit
+pylint-junit
 pyorbital
 pytest
 pytest-cov
