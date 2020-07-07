@@ -1,6 +1,9 @@
-coverage
-nose
-nosexcover
+astropy
 numpy
+pyorbital
+pytest
+pytest-cov
+requests
+scipy
+sgp4
 virtualenv
-
