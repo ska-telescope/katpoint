@@ -26,6 +26,7 @@ try:
     HAS_AIPS = True
 except ImportError:
     HAS_AIPS = False
+require_aips = pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
 
 
 def assert_angles_almost_equal(x, y, decimal):
@@ -61,7 +62,7 @@ class TestProjectionSIN:
         assert_angles_almost_equal(az, aa, decimal=10)
         assert_angles_almost_equal(el, ee, decimal=10)
 
-    @pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
+    @require_aips
     def test_aips_compatibility(self):
         """SIN projection: compare with original AIPS routine."""
         az, el = self.plane_to_sphere(self.az0, self.el0, self.x, self.y)
@@ -166,7 +167,7 @@ class TestProjectionTAN:
         assert_angles_almost_equal(az, aa, decimal=8)
         assert_angles_almost_equal(el, ee, decimal=8)
 
-    @pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
+    @require_aips
     def test_aips_compatibility(self):
         """TAN projection: compare with original AIPS routine."""
         # AIPS TAN only deprojects (x, y) coordinates within unit circle
@@ -270,7 +271,7 @@ class TestProjectionARC:
         assert_angles_almost_equal(az, aa, decimal=8)
         assert_angles_almost_equal(el, ee, decimal=8)
 
-    @ pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
+    @require_aips
     def test_aips_compatibility(self):
         """ARC projection: compare with original AIPS routine."""
         az, el = self.plane_to_sphere(self.az0, self.el0, self.x, self.y)
@@ -386,7 +387,7 @@ class TestProjectionSTG:
         assert_angles_almost_equal(az, aa, decimal=9)
         assert_angles_almost_equal(el, ee, decimal=9)
 
-    @ pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
+    @require_aips
     def test_aips_compatibility(self):
         """STG projection: compare with original AIPS routine."""
         az, el = self.plane_to_sphere(self.az0, self.el0, self.x, self.y)
