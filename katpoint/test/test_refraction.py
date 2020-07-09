@@ -21,11 +21,7 @@ import pytest
 
 import katpoint
 
-
-def assert_angles_almost_equal(x, y, **kwargs):
-    def primary_angle(x):
-        return x - np.round(x / (2.0 * np.pi)) * 2.0 * np.pi
-    np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), **kwargs)
+from .helper import assert_angles_almost_equal
 
 
 class TestRefractionCorrection:
