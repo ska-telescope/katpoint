@@ -28,14 +28,12 @@ class TestModel:
 
     def new_params(self):
         """Generate fresh set of parameters (otherwise models share the same ones)."""
-        params = []
-        params.append(katpoint.Parameter('POS_E', 'm', 'East', value=10.0))
-        params.append(katpoint.Parameter('POS_N', 'm', 'North', value=-9.0))
-        params.append(katpoint.Parameter('POS_U', 'm', 'Up', value=3.0))
-        params.append(katpoint.Parameter('NIAO', 'm', 'non-inter', value=0.88))
-        params.append(katpoint.Parameter('CAB_H', '', 'horizontal', value=20.2))
-        params.append(katpoint.Parameter('CAB_V', 'deg', 'vertical', value=20.3))
-        return params
+        return [katpoint.Parameter('POS_E', 'm', 'East', value=10.0),
+                katpoint.Parameter('POS_N', 'm', 'North', value=-9.0),
+                katpoint.Parameter('POS_U', 'm', 'Up', value=3.0),
+                katpoint.Parameter('NIAO', 'm', 'non-inter', value=0.88),
+                katpoint.Parameter('CAB_H', '', 'horizontal', value=20.2),
+                katpoint.Parameter('CAB_V', 'deg', 'vertical', value=20.3)]
 
     def test_construct_save_load(self):
         """Test construction / save / load of generic model."""
