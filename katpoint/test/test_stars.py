@@ -19,6 +19,7 @@
 import numpy as np
 
 from katpoint.stars import readdb
+from katpoint.bodies import EarthSatellite, FixedBody
 
 
 def test_earth_satellite():
@@ -26,6 +27,7 @@ def test_earth_satellite():
         '55.4408,61.379002,0.0191986,78.180199,283.9935,2.0056172,1.2e-07,10428,9.9999997e-05'
 
     e = readdb(record)
+    assert isinstance(e, EarthSatellite)
     assert e.name == 'GPS BIIA-21 (PR'
     assert str(e._epoch) == '2019-09-23 07:45:35.842'
     assert e._inc == np.deg2rad(55.4408)
@@ -41,4 +43,8 @@ def test_earth_satellite():
 
 def test_star():
     record = 'Sadr,f|S|F8,20:22:13.7|2.43,40:15:24|-0.93,2.23,2000,0'
-    readdb(record)
+    e = readdb(record)
+    assert isinstance(e, FixedBody)
+    assert e.name == 'Sadr'
+    assert e._radec.ra.to_string(sep=':', unit='hour') == '20:22:13.7'
+    assert e._radec.dec.to_string(sep=':', unit='deg') == '40:15:24'
