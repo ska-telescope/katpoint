@@ -26,7 +26,7 @@ from astropy.coordinates import Angle
 
 import katpoint
 
-# Use the current year in TLE epochs to avoid pyephem crash due to expired TLEs
+# Use the current year in TLE epochs to avoid potential crashes due to expired TLEs
 YY = time.localtime().tm_year % 100
 
 
@@ -34,50 +34,6 @@ class TestTargetConstruction:
     """Test construction of targets from strings and vice versa."""
 
     def setup(self):
-        self.valid_targets = ['azel, -30.0, 90.0',
-                              ', azel, 180, -45:00:00.0',
-                              'Zenith, azel, 0, 90',
-                              'radec J2000, 0, 0.0, (1000.0 2000.0 1.0 10.0)',
-                              ', radec B1950, 14:23:45.6, -60:34:21.1',
-                              'radec B1900, 14:23:45.6, -60:34:21.1',
-                              'gal, 300.0, 0.0',
-                              'Sag A, gal, 0.0, 0.0',
-                              'Zizou, radec cal, 1.4, 30.0, (1000.0 2000.0 1.0 10.0)',
-                              'Fluffy | *Dinky, radec, 12.5, -50.0, (1.0 2.0 1.0 2.0 3.0 4.0)',
-                              'tle, GPS BIIA-21 (PRN 09)    \n' +
-                              ('1 22700U 93042A   %02d266.32333151  .00000012  00000-0  10000-3 0  805%1d\n' %
-                               (YY, (YY // 10 + YY - 7 + 4) % 10)) +
-                              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n',
-                              ', tle, GPS BIIA-22 (PRN 05)    \n' +
-                              ('1 22779U 93054A   %02d266.92814765  .00000062  00000-0  10000-3 0  289%1d\n' %
-                               (YY, (YY // 10 + YY - 7 + 5) % 10)) +
-                              '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n',
-                              'Sun, special',
-                              'Nothing, special',
-                              'Moon | Luna, special solarbody',
-                              'Aldebaran, star',
-                              'Betelgeuse | Maitland, star orion',
-                              'xephem star, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
-                              'Acamar | Theta Eridani, xephem, HIC 13847~f|S|A4~2:58:16.03~-40:18:17.1~2.906~2000~0',
-                              'Kakkab | A Lupi, xephem, H71860 | S225128~f|S|B1~14:41:55.768~-47:23:17.51~2.304~2000~0']
-        self.invalid_targets = ['Sun',
-                                'Sun, ',
-                                '-30.0, 90.0',
-                                ', azel, -45:00:00.0',
-                                'Zenith, azel blah',
-                                'radec J2000, 0.3',
-                                'gal, 0.0',
-                                'Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)',
-                                'tle, GPS BIIA-21 (PRN 09)    \n' +
-                                '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n',
-                                ', tle, GPS BIIA-22 (PRN 05)    \n' +
-                                ('1 93054A   %02d266.92814765  .00000062  00000-0  10000-3 0  289%1d\n' %
-                                 (YY, (YY // 10 + YY - 7 + 5) % 10)) +
-                                '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n',
-                                'Sunny, special',
-                                'Slinky, star',
-                                'xephem star, Sadr~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
-                                'hotbody, 34.0, 45.0']
         self.azel_target = 'azel, 10.0, -10.0'
         # A floating-point RA is in degrees
         self.radec_target = 'radec, 20.0, -20.0'
@@ -88,17 +44,6 @@ class TestTargetConstruction:
 
     def test_construct_target(self):
         """Test construction of targets from strings and vice versa."""
-        valid_targets = [katpoint.Target(descr) for descr in self.valid_targets]
-        valid_strings = [t.description for t in valid_targets]
-        for descr in valid_strings:
-            t = katpoint.Target(descr)
-            assert descr == t.description, (
-                "Target description ('%s') differs from original string ('%s')"
-                % (t.description, descr))
-            print('%r %s' % (t, t))
-        for descr in self.invalid_targets:
-            with pytest.raises(ValueError):
-                katpoint.Target(descr)
         azel1 = katpoint.Target(self.azel_target)
         azel2 = katpoint.construct_azel_target('10:00:00.0', '-10:00:00.0')
         assert azel1 == azel2, 'Special azel constructor failed'
@@ -165,6 +110,78 @@ class TestTargetConstruction:
         tag_target.add_tags(['SNR', 'GPS'])
         assert tag_target.tags == ['azel', 'J2000', 'GPS', 'pulsar', 'SNR'], (
             'Added tags not correct')
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        'azel, -30.0, 90.0',
+        ', azel, 180, -45:00:00.0',
+        'Zenith, azel, 0, 90',
+        'radec J2000, 0, 0.0, (1000.0 2000.0 1.0 10.0)',
+        ', radec B1950, 14:23:45.6, -60:34:21.1',
+        'radec B1900, 14:23:45.6, -60:34:21.1',
+        'gal, 300.0, 0.0',
+        'Sag A, gal, 0.0, 0.0',
+        'Zizou, radec cal, 1.4, 30.0, (1000.0 2000.0 1.0 10.0)',
+        'Fluffy | *Dinky, radec, 12.5, -50.0, (1.0 2.0 1.0 2.0 3.0 4.0)',
+        ('tle, GPS BIIA-21 (PRN 09)    \n'
+         '1 22700U 93042A   {:02d}266.32333151  .00000012  00000-0  10000-3 0  805{:1d}\n'
+         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'
+         .format(YY, (YY // 10 + YY - 7 + 4) % 10)),
+        (', tle, GPS BIIA-22 (PRN 05)    \n'
+         '1 22779U 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
+         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
+         .format(YY, (YY // 10 + YY - 7 + 5) % 10)),
+        'Sun, special',
+        'Nothing, special',
+        'Moon | Luna, special solarbody',
+        'Aldebaran, star',
+        'Betelgeuse | Maitland, star orion',
+        'xephem star, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
+        'Acamar | Theta Eridani, xephem, HIC 13847~f|S|A4~2:58:16.03~-40:18:17.1~2.906~2000~0',
+        'Kakkab, xephem, H71860 | S225128~f|S|B1~14:41:55.768~-47:23:17.51~2.304~2000~0',
+    ]
+)
+def test_construct_valid_target(description):
+    """Test construction of valid targets from strings and vice versa."""
+    # Normalise description string through one cycle to allow comparison
+    reference_description = katpoint.Target(description).description
+    test_target = katpoint.Target(reference_description)
+    assert test_target.description == reference_description, (
+        "Target description ('{}') differs from reference ('{}')"
+        .format(test_target.description, reference_description))
+    # Exercise repr() and str()
+    print('{!r} {}'.format(test_target, test_target))
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        'Sun',
+        'Sun, ',
+        '-30.0, 90.0',
+        ', azel, -45:00:00.0',
+        'Zenith, azel blah',
+        'radec J2000, 0.3',
+        'gal, 0.0',
+        'Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)',
+        ('tle, GPS BIIA-21 (PRN 09)    \n'
+         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'),
+        (', tle, GPS BIIA-22 (PRN 05)    \n'
+         '1 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
+         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
+         .format(YY, (YY // 10 + YY - 7 + 5) % 10)),
+        'Sunny, special',
+        'Slinky, star',
+        'xephem star, Sadr~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
+        'hotbody, 34.0, 45.0',
+    ]
+)
+def test_construct_invalid_target(description):
+    """Test construction of invalid targets from strings."""
+    with pytest.raises(ValueError):
+        katpoint.Target(description)
 
 
 class TestTargetCalculations:

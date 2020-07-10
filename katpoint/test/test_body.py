@@ -26,76 +26,63 @@ from numpy.testing import assert_allclose
 import astropy.units as u
 from astropy.coordinates import SkyCoord, ICRS, EarthLocation, Latitude, Longitude
 from astropy.time import Time
+import pytest
 
-from katpoint.bodies import FixedBody, Sun, Moon, Mars, readtle
+from katpoint.bodies import FixedBody, Sun, Moon, Mars, EarthSatellite, readtle
 
 
-class TestFixedBody:
-    """Test for the FixedBody class."""
+def _get_earth_satellite():
+    name = ' GPS BIIA-21 (PRN 09) '
+    line1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
+    line2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
+    return readtle(name, line1, line2)
 
-    def test_compute(self):
+
+class TestBody:
+    """Test computing with various Bodies."""
+
+    @pytest.mark.parametrize(
+        "body, date_str, ra_str, dec_str, az_str, el_str",
+        [
+            (FixedBody(), '2020-01-01 00:00:00.000',
+             '10:10:40.123', '40:20:50.567', '326:05:57.541', '51:21:20.0119'),
+            #                                 326:05:54.8,     51:21:18.5  (PyEphem)
+            (Mars(), '2020-01-01 00:00:00.000',
+             '', '', '118:10:05.1129', '27:23:12.8499'),
+            #         118:10:06.1,      27:23:13.3  (PyEphem)
+            (Moon(), '2020-01-01 10:00:00.000',
+             '', '', '127:15:17.1381', '60:05:10.2438'),
+            #         127:15:23.6,      60:05:13.7  (PyEphem)
+            (Sun(), '2020-01-01 10:00:00.000',
+             '', '', '234:53:19.4835', '31:38:11.412'),
+            #         234:53:20.8,      31:38:09.4  (PyEphem)
+            (_get_earth_satellite(), '2019-09-23 07:45:36.000',
+             '3:32:56.7813', '-2:04:35.4329', '280:32:29.675', '-54:06:50.7456'),
+            # 3:32:59.21      -2:04:36.3       280:32:07.2      -54:06:14.4  (PyEphem)
+        ]
+    )
+    def test_compute(self, body, date_str, ra_str, dec_str, az_str, el_str):
         """Test compute method"""
         lat = Latitude('10:00:00.000', unit=u.deg)
         lon = Longitude('80:00:00.000', unit=u.deg)
-        date = Time('2020-01-01 00:00:00.000')
+        date = Time(date_str)
 
-        ra = Longitude('10:10:40.123', unit=u.hour)
-        dec = Latitude('40:20:50.567', unit=u.deg)
-        body = FixedBody()
-        body._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
-        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
+        if isinstance(body, FixedBody):
+            ra = Longitude(ra_str, unit=u.hour)
+            dec = Latitude(dec_str, unit=u.deg)
+            body._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
+        height = 4200.0 if isinstance(body, EarthSatellite) else 0.0
+        body.compute(EarthLocation(lat=lat, lon=lon, height=height), date, 0.0)
 
-        assert body.a_radec.ra.to_string(sep=':', unit=u.hour) == '10:10:40.123'
-        assert body.a_radec.dec.to_string(sep=':') == '40:20:50.567'
-
-        # 326:05:54.8 51:21:18.5
-        assert body.altaz.az.to_string(sep=':') == '326:05:57.541'
-        assert body.altaz.alt.to_string(sep=':') == '51:21:20.0119'
-
-    def test_planet(self):
-        lat = Latitude('10:00:00.000', unit=u.deg)
-        lon = Longitude('80:00:00.000', unit=u.deg)
-        date = Time('2020-01-01 00:00:00.000')
-
-        body = Mars()
-        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
-
-        # '118:10:06.1' '27:23:13.3'
-        assert body.altaz.az.to_string(sep=':') == '118:10:05.1129'
-        assert body.altaz.alt.to_string(sep=':') == '27:23:12.8499'
-
-    def test_moon(self):
-        lat = Latitude('10:00:00.000', unit=u.deg)
-        lon = Longitude('80:00:00.000', unit=u.deg)
-        date = Time('2020-01-01 10:00:00.000')
-
-        body = Moon()
-        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
-
-        # 127:15:23.6 60:05:13.7'
-        assert body.altaz.az.to_string(sep=':') == '127:15:17.1381'
-        assert body.altaz.alt.to_string(sep=':') == '60:05:10.2438'
-
-    def test_sun(self):
-        lat = Latitude('10:00:00.000', unit=u.deg)
-        lon = Longitude('80:00:00.000', unit=u.deg)
-        date = Time('2020-01-01 10:00:00.000')
-
-        body = Sun()
-        body.compute(EarthLocation(lat=lat, lon=lon, height=0.0), date, 0.0)
-
-        # 234:53:20.8 '31:38:09.4'
-        assert body.altaz.az.to_string(sep=':') == '234:53:19.4835'
-        assert body.altaz.alt.to_string(sep=':') == '31:38:11.412'
+        if ra_str and dec_str:
+            assert body.a_radec.ra.to_string(sep=':', unit=u.hour) == ra_str
+            assert body.a_radec.dec.to_string(sep=':') == dec_str
+        assert body.altaz.az.to_string(sep=':') == az_str
+        assert body.altaz.alt.to_string(sep=':') == el_str
 
     def test_earth_satellite(self):
-        name = ' GPS BIIA-21 (PRN 09) '
-        line1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
-        line2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
-        sat = readtle(name, line1, line2)
-
-        # Check that the EarthSatellite object has the expect attribute
-        # values.
+        sat = _get_earth_satellite()
+        # Check that the EarthSatellite object has the expect attribute values.
         assert str(sat._epoch) == '2019-09-23 07:45:35.842'
         assert sat._inc == np.deg2rad(55.4408)
         assert sat._raan == np.deg2rad(61.3790)
@@ -147,18 +134,3 @@ class TestFixedBody:
         assert rec.split(',')[8] == xephem.split(',')[8]
         assert rec.split(',')[9] == xephem.split(',')[9]
         assert rec.split(',')[10] == xephem.split(',')[10]
-
-        # Test compute
-        lat = Latitude('10:00:00.000', unit=u.deg)
-        lon = Longitude('80:00:00.000', unit=u.deg)
-        date = Time('2019-09-23 07:45:36.000')
-        elevation = 4200.0
-        sat.compute(EarthLocation(lat=lat, lon=lon, height=elevation), date, 0.0)
-
-        # 3:32:59.21' '-2:04:36.3'
-        assert sat.a_radec.ra.to_string(sep=':', unit=u.hour) == '3:32:56.7813'
-        assert sat.a_radec.dec.to_string(sep=':') == '-2:04:35.4329'
-
-        # 280:32:07.2 -54:06:14.4
-        assert sat.altaz.az.to_string(sep=':') == '280:32:29.675'
-        assert sat.altaz.alt.to_string(sep=':') == '-54:06:50.7456'
