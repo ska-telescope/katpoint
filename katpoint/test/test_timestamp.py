@@ -34,18 +34,12 @@ class TestTimestamp:
                                  ('2009-07-21 02:52:12.000', '2009-07-21 02:52:12'),
                                  ('2009-07-21 02:52:12', '2009-07-21 02:52:12'),
                                  ('2009-07-21 02:52', '2009-07-21 02:52:00'),
-                                 ('2009-07-21 02', '2009-07-21 02:00:00'),
                                  ('2009-07-21', '2009-07-21 00:00:00'),
-                                 ('2009-07', '2009-07-01 00:00:00'),
-                                 ('2009', '2009-01-01 00:00:00'),
                                  ('2009/07/21 02:52:12.034', '2009-07-21 02:52:12.034'),
                                  ('2009/07/21 02:52:12.000', '2009-07-21 02:52:12'),
                                  ('2009/07/21 02:52:12', '2009-07-21 02:52:12'),
                                  ('2009/07/21 02:52', '2009-07-21 02:52:00'),
-                                 ('2009/07/21 02', '2009-07-21 02:00:00'),
                                  ('2009/07/21', '2009-07-21 00:00:00'),
-                                 ('2009/07', '2009-07-01 00:00:00'),
-                                 ('2009', '2009-01-01 00:00:00'),
                                  ('2019-07-21 02:52:12', '2019-07-21 02:52:12')]
         self.invalid_timestamps = ['gielie', '03 Mar 2003']
         self.overflow_timestamps = ['2049-07-21 02:52:12']
@@ -74,8 +68,7 @@ class TestTimestamp:
         assert t == eval('katpoint.' + repr(t))
         assert float(t) == self.valid_timestamps[0][0]
         t = katpoint.Timestamp(self.valid_timestamps[1][0])
-        # self.assertAlmostEqual(t.to_ephem_date(), self.valid_timestamps[1][0], places=9)
-        assert t.to_ephem_date().value == self.valid_timestamps[1][0]
+        assert t.time == self.valid_timestamps[1][0]
         try:
             assert hash(t) == hash(t + 0.0), 'Timestamp hashes not equal'
         except TypeError:

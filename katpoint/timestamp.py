@@ -18,17 +18,18 @@
 
 import time
 import math
-from functools import total_ordering
 
 import numpy as np
+import astropy.time
 from astropy.time import Time
 
+SECONDS_PER_DAY = astropy.time.core.erfa.DAYSEC
 
-@total_ordering
+
 class Timestamp:
     """Basic representation of time, in UTC seconds since Unix epoch.
 
-    This is loosely based on :class:`ephem.Date`. Its base representation
+    This is loosely based on PyEphem's `Date` object. Its base representation
     of time is UTC seconds since the Unix epoch, i.e. the standard Posix
     timestamp. Fractional seconds are allowed, as the basic data
     type is a Python (double-precision) float.
@@ -41,14 +42,21 @@ class Timestamp:
       since the Unix epoch. Fractional seconds are allowed.
 
     - A string with format 'YYYY-MM-DD HH:MM:SS.SSS' or 'YYYY/MM/DD HH:MM:SS.SSS',
-      or any prefix thereof. Examples are '1999-12-31 12:34:56.789', '1999-12-31',
-      '1999-12-31 12:34:56' and even '1999'. The input string is always in UTC.
+      where the hours and minutes, seconds, and fractional seconds are optional.
+      The input string is always in UTC. Examples are:
 
-    - A :class:`astropy.Time.time` object.
+        '1999-12-31 12:34:56.789'
+        '1999-12-31 12:34:56'
+        '1999-12-31 12:34'
+        '1999/12/31'
+
+    - A :class:`~astropy.time.Time` object.
+
+    - A :class:`Timestamp` object, which will result in a shallow copy.
 
     Parameters
     ----------
-    timestamp : float, string, :class:`astropy.Time.time` object or None
+    timestamp : float, string, :class:`~astropy.time.Time` or :class:`Timestamp` or None
         Timestamp, in various formats (if None, defaults to now)
 
     Arguments
@@ -58,68 +66,91 @@ class Timestamp:
     """
 
     def __init__(self, timestamp=None):
-        if isinstance(timestamp, str):
-            try:
-                timestamp = timestamp.strip().replace('/', '-')
-                timestamp = Time(decode(timestamp))
-            except ValueError:
-                raise ValueError("Timestamp string '%s' not in correct format - " % (timestamp,) +
-                                 "should be 'YYYY-MM-DD HH:MM:SS' or 'YYYY/MM/DD HH:MM:SS' or prefix thereof " +
-                                 "(all UTC, fractional seconds allowed)")
+        format = None
         if timestamp is None:
-            self.secs = time.time()
-        elif isinstance(timestamp, Time):
-            iso = timestamp.iso
-            timestamp = [int(iso[:4]), int(iso[5:7]), int(iso[8:10]), int(iso[11:13]), int(iso[14:16]), float(iso[17:])]
-            timestamp = timestamp + [0, 0, 0]
-            int_secs = math.floor(timestamp[5])
-            frac_secs = timestamp[5] - int_secs
-            timestamp[5] = int(int_secs)
-            self.secs = time.mktime(tuple(timestamp)) - time.timezone + frac_secs
+            self.time = Time.now()
+        elif isinstance(timestamp, Timestamp):
+            self.time = timestamp.time
         else:
-            self.secs = float(timestamp)
+            # Use Astropy internal function to cast input to float64,
+            # string (unicode / bytes) or Time object array (0-dim for scalar)
+            val = astropy.time.core._make_array(timestamp)
+            format = None
+            if val.dtype.kind == 'U':
+                # Convert default PyEphem timestamp strings to ISO strings
+                val = np.char.replace(np.char.strip(val), '/', '-')
+                format = 'iso'
+            elif val.dtype.kind == 'S':
+                val = np.char.replace(np.char.strip(val), b'/', b'-')
+                format = 'iso'
+            elif val.dtype.kind == 'f':
+                format = 'unix'
+            self.time = Time(val, format=format, scale='utc', precision=3)
 
-    # Keep object small by using __slots__ instead of __dict__
-    __slots__ = 'secs'
+    @property
+    def secs(self):
+        return self.time.utc.unix
 
     def __repr__(self):
         """Short machine-friendly string representation of timestamp object."""
-        return 'Timestamp(%s)' % repr(self.secs)
+        t = self.secs
+        if t.shape == ():
+            return 'Timestamp({!r})'.format(t)
+        elif t.shape == (1,):
+            return 'Timestamp([{!r}])'.format(t[0])
+        elif t.shape == (2,):
+            return 'Timestamp([{!r}, {!r}])'.format(t[0], t[-1])
+        else:
+            return 'Timestamp([{!r}, ...{} more..., {!r}])'.format(t[0], len(t) - 2, t[-1])
 
     def __str__(self):
         """Verbose human-friendly string representation of timestamp object."""
         return self.to_string()
 
     def __eq__(self, other):
-        """Test for equality"""
-        return self.secs == float(other)
+        """Test for equality."""
+        return self.time == Timestamp(other).time
+
+    def __ne__(self, other):
+        """Test for inequality."""
+        return self.time != Timestamp(other).time
 
     def __lt__(self, other):
-        """Test for less than"""
-        return self.secs < float(other)
+        """Test for less than."""
+        return self.time < Timestamp(other).time
+
+    def __le__(self, other):
+        """Test for less than or equal to."""
+        return self.time <= Timestamp(other).time
+
+    def __gt__(self, other):
+        """Test for greater than."""
+        return self.time > Timestamp(other).time
+
+    def __ge__(self, other):
+        """Test for greater than or equal to."""
+        return self.time >= Timestamp(other).time
 
     def __add__(self, other):
         """Add seconds (as floating-point number) to timestamp and return result."""
-        return Timestamp(self.secs + other)
+        return Timestamp(self.time + other / SECONDS_PER_DAY)
 
     def __sub__(self, other):
-        """
-            Subtract seconds (floating-point number is treated as a time interval) from timestamp
-            and return result. If used for the difference between two (absolute time) Timestamps
-            then the result is an interval in seconds (a floating-point number).
+        """Subtract seconds (floating-point time interval) from timestamp.
+
+        If used for the difference between two (absolute time) Timestamps
+        then the result is an interval in seconds (a floating-point number).
         """
         if isinstance(other, Timestamp):
-            return self.secs - other.secs
+            return (self.time - other.time).sec
+        elif isinstance(other, Time):
+            return (self.time - other).sec
         else:
-            return Timestamp(self.secs - other)
+            return Timestamp(self.time - other / SECONDS_PER_DAY)
 
     def __mul__(self, other):
         """Multiply timestamp by numerical factor (useful for processing timestamps)."""
         return Timestamp(self.secs * other)
-
-    def __div__(self, other):
-        """Divide timestamp by numerical factor (useful for processing timestamps)."""
-        return Timestamp(self.secs / other)
 
     def __truediv__(self, other):
         """Divide timestamp by numerical factor (useful for processing timestamps)."""
@@ -127,33 +158,34 @@ class Timestamp:
 
     def __radd__(self, other):
         """Add timestamp to seconds (as floating-point number) and return result."""
-        return Timestamp(other + self.secs)
+        return Timestamp(self.time + other / SECONDS_PER_DAY)
 
     def __iadd__(self, other):
         """Add seconds (as floating-point number) to timestamp in-place."""
-        self.secs += other
+        self.time += other / SECONDS_PER_DAY
         return self
 
     def __rsub__(self, other):
+        """Subtract timestamp from seconds (as floating-point number).
+
+        Return resulting seconds (floating-point number). This is typically
+        used when calculating the interval between two absolute instants
+        of time.
         """
-            Subtract timestamp from seconds (as floating-point number) and return
-            resulting seconds (floating-point number). This is typically used when
-            calculating the interval between two absolute instants of time.
-        """
-        return other - self.secs
+        return (Timestamp(other).time - self.time).sec
 
     def __isub__(self, other):
         """Subtract seconds (as floating-point number) from timestamp in-place."""
-        self.secs -= other
+        self.time -= other / SECONDS_PER_DAY
         return self
 
     def __float__(self):
         """Convert to floating-point UTC seconds."""
-        return self.secs
+        return float(self.secs)
 
     def __hash__(self):
         """Base hash on internal timestamp, just like equality operator."""
-        return hash(self.secs)
+        return hash(self.time)
 
     def local(self):
         """Convert timestamp to local time string representation (for display only)."""
@@ -171,67 +203,11 @@ class Timestamp:
 
     def to_string(self):
         """Convert timestamp to UTC string representation."""
-        int_secs = math.floor(self.secs)
-        frac_secs = np.round(1000.0 * (self.secs - int_secs)) / 1000.0
-        if frac_secs >= 1.0:
-            int_secs += 1.0
-            frac_secs -= 1.0
-        datetime = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int_secs))
-        if frac_secs == 0.0:
-            return datetime
-        else:
-            return '%s%5.3f' % (datetime[:-1], float(datetime[-1]) + frac_secs)
-
-    def to_ephem_date(self):
-        """Convert timestamp to :class:`astropy.time.Time` object."""
-        int_secs = math.floor(self.secs)
-        timetuple = list(time.gmtime(int_secs)[:6])
-        timetuple[5] += self.secs - int_secs
-        return Time('{0}-{1:02}-{2:02} {3:02}:{4:02}:{5:02}'.format(*timetuple))
+        s = self.time.strftime('%Y-%m-%d %H:%M:%S.%f')
+        if isinstance(s, str) and s.endswith('.000'):
+            s = s[:-4]
+        return s
 
     def to_mjd(self):
         """Convert timestamp to Modified Julian Day (MJD)."""
-        djd = self.to_ephem_date()
-        return djd.mjd
-
-
-def decode(s):
-    """Decode a date string like PyEphem does."""
-    # Look for a dot
-    dot = s.find('.')
-    if dot > 0:
-        # fractional part of the seconds
-        f = s[dot:]
-        # date/time without fractional seconds
-        s = s[:dot]
-    else:
-        f = '.0'
-
-    # time without fractional seconds
-    try:
-        d = time.strptime(s, '%Y-%m-%d %H:%M:%S')
-    except ValueError:
-        try:
-            d = time.strptime(s, '%Y-%m-%d %H:%M')
-        except ValueError:
-            try:
-                d = time.strptime(s, '%Y-%m-%d %H')
-            except ValueError:
-                try:
-                    d = time.strptime(s, '%Y-%m-%d')
-                except ValueError:
-                    try:
-                        d = time.strptime(s, '%Y-%m')
-                    except ValueError:
-                        try:
-                            d = time.strptime(s, '%Y')
-                        except ValueError:
-                            raise ValueError('unable to decode date string')
-
-    # Convert to a unix time and add the fractional seconds
-    u = time.mktime(d)
-
-    # Back to a tuple
-    d = time.localtime(u)
-
-    return time.strftime('%Y-%m-%d %H:%M:%S', d) + f
+        return self.time.mjd

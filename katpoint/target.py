@@ -337,7 +337,7 @@ class Target:
         def _scalar_azel(t):
             """Calculate (az, el) coordinates for a single time instant."""
             self.body.compute(antenna.earth_location,
-                              Timestamp(t).to_ephem_date(), antenna.pressure)
+                              Timestamp(t).time, antenna.pressure)
             return self.body.altaz
         if is_iterable(timestamp):
             azel = np.array([_scalar_azel(t) for t in timestamp], dtype=object)
@@ -378,7 +378,7 @@ class Target:
 
         def _scalar_radec(t):
             """Calculate (ra, dec) coordinates for a single time instant."""
-            date = Timestamp(t).to_ephem_date()
+            date = Timestamp(t).time
             self.body.compute(antenna.earth_location, date, antenna.pressure)
             return self.body.radec
         if is_iterable(timestamp):
@@ -423,7 +423,7 @@ class Target:
 
         def _scalar_radec(t):
             """Calculate (ra, dec) coordinates for a single time instant."""
-            date = Timestamp(t).to_ephem_date()
+            date = Timestamp(t).time
             self.body.compute(antenna.earth_location, date, antenna.pressure)
 
             return self.body.a_radec
