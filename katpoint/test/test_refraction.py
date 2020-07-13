@@ -45,6 +45,7 @@ class TestRefractionCorrection:
 
     def test_refraction_closure(self):
         """Test closure between refraction correction and its reverse operation."""
+        np.random.seed(42)
         # Generate random meteorological data (hopefully sensible) - first only a single weather measurement
         temp = -10. + 50. * np.random.rand()
         pressure = 900. + 200. * np.random.rand()

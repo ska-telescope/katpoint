@@ -30,6 +30,7 @@ class TestGeodetic:
 
     def setup(self):
         N = 1000
+        np.random.seed(42)
         self.lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
         self.lon = 2.0 * np.pi * np.random.rand(N)
         self.alt = 1000.0 * np.random.randn(N)
@@ -66,6 +67,7 @@ class TestSpherical:
 
     def setup(self):
         N = 1000
+        np.random.seed(42)
         self.az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
         self.el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)
 
