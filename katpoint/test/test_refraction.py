@@ -24,45 +24,42 @@ import katpoint
 from .helper import assert_angles_almost_equal
 
 
-class TestRefractionCorrection:
-    """Test refraction correction."""
+def test_refraction_basic():
+    """Test basic refraction correction properties."""
+    rc = katpoint.RefractionCorrection()
+    print(repr(rc))
+    with pytest.raises(ValueError):
+        katpoint.RefractionCorrection('unknown')
+    rc2 = katpoint.RefractionCorrection()
+    assert rc == rc2, 'Refraction models should be equal'
+    try:
+        assert hash(rc) == hash(rc2), 'Refraction model hashes should be equal'
+    except TypeError:
+        pytest.fail('RefractionCorrection object not hashable')
 
-    def setup(self):
-        self.rc = katpoint.RefractionCorrection()
-        self.el = katpoint.deg2rad(np.arange(0.0, 90.1, 0.1))
 
-    def test_refraction_basic(self):
-        """Test basic refraction correction properties."""
-        print(repr(self.rc))
-        with pytest.raises(ValueError):
-            katpoint.RefractionCorrection('unknown')
-        rc2 = katpoint.RefractionCorrection()
-        assert self.rc == rc2, 'Refraction models should be equal'
-        try:
-            assert hash(self.rc) == hash(rc2), 'Refraction model hashes should be equal'
-        except TypeError:
-            pytest.fail('RefractionCorrection object not hashable')
-
-    def test_refraction_closure(self):
-        """Test closure between refraction correction and its reverse operation."""
-        np.random.seed(42)
-        # Generate random meteorological data (hopefully sensible) - first only a single weather measurement
-        temp = -10. + 50. * np.random.rand()
-        pressure = 900. + 200. * np.random.rand()
-        humidity = 5. + 90. * np.random.rand()
-        # Test closure on el grid
-        refracted_el = self.rc.apply(self.el, temp, pressure, humidity)
-        reversed_el = self.rc.reverse(refracted_el, temp, pressure, humidity)
-        assert_angles_almost_equal(reversed_el, self.el, decimal=7,
-                                   err_msg='Elevation closure error for temp=%f, pressure=%f, humidity=%f' %
-                                           (temp, pressure, humidity))
-        # Generate random meteorological data, now one weather measurement per elevation value
-        temp = -10. + 50. * np.random.rand(len(self.el))
-        pressure = 900. + 200. * np.random.rand(len(self.el))
-        humidity = 5. + 90. * np.random.rand(len(self.el))
-        # Test closure on el grid
-        refracted_el = self.rc.apply(self.el, temp, pressure, humidity)
-        reversed_el = self.rc.reverse(refracted_el, temp, pressure, humidity)
-        assert_angles_almost_equal(reversed_el, self.el, decimal=7,
-                                   err_msg='Elevation closure error for temp=%s, pressure=%s, humidity=%s' %
-                                           (temp, pressure, humidity))
+def test_refraction_closure():
+    """Test closure between refraction correction and its reverse operation."""
+    rc = katpoint.RefractionCorrection()
+    el = katpoint.deg2rad(np.arange(0.0, 90.1, 0.1))
+    np.random.seed(42)
+    # Generate random meteorological data (a single measurement, hopefully sensible)
+    temp = -10. + 50. * np.random.rand()
+    pressure = 900. + 200. * np.random.rand()
+    humidity = 5. + 90. * np.random.rand()
+    # Test closure on el grid
+    refracted_el = rc.apply(el, temp, pressure, humidity)
+    reversed_el = rc.reverse(refracted_el, temp, pressure, humidity)
+    assert_angles_almost_equal(reversed_el, el, decimal=7,
+                               err_msg='Elevation closure error for temp=%f, pressure=%f, humidity=%f' %
+                                       (temp, pressure, humidity))
+    # Generate random meteorological data, now one weather measurement per elevation value
+    temp = -10. + 50. * np.random.rand(len(el))
+    pressure = 900. + 200. * np.random.rand(len(el))
+    humidity = 5. + 90. * np.random.rand(len(el))
+    # Test closure on el grid
+    refracted_el = rc.apply(el, temp, pressure, humidity)
+    reversed_el = rc.reverse(refracted_el, temp, pressure, humidity)
+    assert_angles_almost_equal(reversed_el, el, decimal=7,
+                               err_msg='Elevation closure error for temp=%s, pressure=%s, humidity=%s' %
+                                       (temp, pressure, humidity))

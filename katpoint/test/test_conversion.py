@@ -16,6 +16,7 @@
 
 """Tests for the conversion module."""
 
+import pytest
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import Angle
@@ -25,55 +26,59 @@ import katpoint
 from .helper import assert_angles_almost_equal
 
 
-class TestGeodetic:
-    """Closure tests for geodetic coordinate transformations."""
-
-    def setup(self):
-        N = 1000
-        np.random.seed(42)
-        self.lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
-        self.lon = 2.0 * np.pi * np.random.rand(N)
-        self.alt = 1000.0 * np.random.randn(N)
-
-    def test_lla_to_ecef(self):
-        """Closure tests for LLA to ECEF conversion and vice versa."""
-        x, y, z = katpoint.lla_to_ecef(self.lat, self.lon, self.alt)
-        new_lat, new_lon, new_alt = katpoint.ecef_to_lla(x, y, z)
-        new_x, new_y, new_z = katpoint.lla_to_ecef(new_lat, new_lon, new_alt)
-        assert_angles_almost_equal(new_lat, self.lat, decimal=12)
-        assert_angles_almost_equal(new_lon, self.lon, decimal=12)
-        assert_angles_almost_equal(new_alt, self.alt, decimal=6)
-        np.testing.assert_almost_equal(new_x, x, decimal=8)
-        np.testing.assert_almost_equal(new_y, y, decimal=8)
-        np.testing.assert_almost_equal(new_z, z, decimal=6)
-        if hasattr(katpoint, '_conversion'):
-            new_lat2, new_lon2, new_alt2 = katpoint._conversion.ecef_to_lla2(x, y, z)
-            assert_angles_almost_equal(new_lat2, self.lat, decimal=12)
-            assert_angles_almost_equal(new_lon2, self.lon, decimal=12)
-            assert_angles_almost_equal(new_alt2, self.alt, decimal=6)
-
-    def test_ecef_to_enu(self):
-        """Closure tests for ECEF to ENU conversion and vice versa."""
-        x, y, z = katpoint.lla_to_ecef(self.lat, self.lon, self.alt)
-        e, n, u = katpoint.ecef_to_enu(self.lat[0], self.lon[0], self.alt[0], x, y, z)
-        new_x, new_y, new_z = katpoint.enu_to_ecef(self.lat[0], self.lon[0], self.alt[0], e, n, u)
-        np.testing.assert_almost_equal(new_x, x, decimal=8)
-        np.testing.assert_almost_equal(new_y, y, decimal=8)
-        np.testing.assert_almost_equal(new_z, z, decimal=8)
+@pytest.fixture
+def random_geoid():
+    N = 1000
+    np.random.seed(42)
+    lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
+    lon = 2.0 * np.pi * np.random.rand(N)
+    alt = 1000.0 * np.random.randn(N)
+    return lat, lon, alt
 
 
-class TestSpherical:
-    """Closure tests for spherical coordinate transformations."""
+def test_lla_to_ecef(random_geoid):
+    """Closure tests for LLA to ECEF conversion and vice versa."""
+    lat, lon, alt = random_geoid
+    x, y, z = katpoint.lla_to_ecef(lat, lon, alt)
+    new_lat, new_lon, new_alt = katpoint.ecef_to_lla(x, y, z)
+    new_x, new_y, new_z = katpoint.lla_to_ecef(new_lat, new_lon, new_alt)
+    assert_angles_almost_equal(new_lat, lat, decimal=12)
+    assert_angles_almost_equal(new_lon, lon, decimal=12)
+    assert_angles_almost_equal(new_alt, alt, decimal=6)
+    np.testing.assert_almost_equal(new_x, x, decimal=8)
+    np.testing.assert_almost_equal(new_y, y, decimal=8)
+    np.testing.assert_almost_equal(new_z, z, decimal=6)
+    if hasattr(katpoint, '_conversion'):
+        new_lat2, new_lon2, new_alt2 = katpoint._conversion.ecef_to_lla2(x, y, z)
+        assert_angles_almost_equal(new_lat2, lat, decimal=12)
+        assert_angles_almost_equal(new_lon2, lon, decimal=12)
+        assert_angles_almost_equal(new_alt2, alt, decimal=6)
 
-    def setup(self):
-        N = 1000
-        np.random.seed(42)
-        self.az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
-        self.el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)
 
-    def test_azel_to_enu(self):
-        """Closure tests for (az, el) to ENU conversion and vice versa."""
-        e, n, u = katpoint.azel_to_enu(self.az.rad, self.el.rad)
-        new_az, new_el = katpoint.enu_to_azel(e, n, u)
-        assert_angles_almost_equal(new_az, self.az.rad, decimal=15)
-        assert_angles_almost_equal(new_el, self.el.rad, decimal=15)
+def test_ecef_to_enu(random_geoid):
+    """Closure tests for ECEF to ENU conversion and vice versa."""
+    lat, lon, alt = random_geoid
+    x, y, z = katpoint.lla_to_ecef(lat, lon, alt)
+    e, n, u = katpoint.ecef_to_enu(lat[0], lon[0], alt[0], x, y, z)
+    new_x, new_y, new_z = katpoint.enu_to_ecef(lat[0], lon[0], alt[0], e, n, u)
+    np.testing.assert_almost_equal(new_x, x, decimal=8)
+    np.testing.assert_almost_equal(new_y, y, decimal=8)
+    np.testing.assert_almost_equal(new_z, z, decimal=8)
+
+
+@pytest.fixture
+def random_sphere():
+    N = 1000
+    np.random.seed(42)
+    az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
+    el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)
+    return az, el
+
+
+def test_azel_to_enu(random_sphere):
+    """Closure tests for (az, el) to ENU conversion and vice versa."""
+    az, el = random_sphere
+    e, n, u = katpoint.azel_to_enu(az.rad, el.rad)
+    new_az, new_el = katpoint.enu_to_azel(e, n, u)
+    assert_angles_almost_equal(new_az, az.rad, decimal=15)
+    assert_angles_almost_equal(new_el, el.rad, decimal=15)

@@ -19,41 +19,38 @@
 import json
 from io import StringIO
 
-import numpy as np
 import pytest
+import numpy as np
 import astropy.units as u
 from astropy.coordinates import Angle
 
 import katpoint
 
 
-class TestDelayModel:
-    """Test antenna delay model."""
-
-    def test_construct_save_load(self):
-        """Test construction / save / load of delay model."""
-        m = katpoint.DelayModel('1.0, -2.0, -3.0, 4.123, 5.0, 6.0')
-        m.header['date'] = '2014-01-15'
-        # An empty file should lead to a BadModelFile exception
-        cfg_file = StringIO()
-        with pytest.raises(katpoint.BadModelFile):
-            m.fromfile(cfg_file)
-        m.tofile(cfg_file)
-        cfg_str = cfg_file.getvalue()
-        cfg_file.close()
-        # Load the saved config file
-        cfg_file = StringIO(cfg_str)
-        m2 = katpoint.DelayModel()
-        m2.fromfile(cfg_file)
-        assert m == m2, 'Saving delay model to file and loading it again failed'
-        params = m.delay_params
-        m3 = katpoint.DelayModel()
-        m3.fromdelays(params)
-        assert m == m3, 'Converting delay model to delay parameters and loading it again failed'
-        try:
-            assert hash(m) == hash(m3), 'Delay model hashes not equal'
-        except TypeError:
-            pytest.fail('DelayModel object not hashable')
+def test_construct_save_load():
+    """Test construction / save / load of delay model."""
+    m = katpoint.DelayModel('1.0, -2.0, -3.0, 4.123, 5.0, 6.0')
+    m.header['date'] = '2014-01-15'
+    # An empty file should lead to a BadModelFile exception
+    cfg_file = StringIO()
+    with pytest.raises(katpoint.BadModelFile):
+        m.fromfile(cfg_file)
+    m.tofile(cfg_file)
+    cfg_str = cfg_file.getvalue()
+    cfg_file.close()
+    # Load the saved config file
+    cfg_file = StringIO(cfg_str)
+    m2 = katpoint.DelayModel()
+    m2.fromfile(cfg_file)
+    assert m == m2, 'Saving delay model to file and loading it again failed'
+    params = m.delay_params
+    m3 = katpoint.DelayModel()
+    m3.fromdelays(params)
+    assert m == m3, 'Converting delay model to delay parameters and loading it again failed'
+    try:
+        assert hash(m) == hash(m3), 'Delay model hashes not equal'
+    except TypeError:
+        pytest.fail('DelayModel object not hashable')
 
 
 class TestDelayCorrection:
