@@ -167,24 +167,8 @@ def test_aips_compatibility(projection, aips_code, decimal, N=100):
     "projection, sphere, plane",
     [
         # Reference point at pole on sphere
-        ('SIN', (0.0, PI/2, 0.0, 0.0), [0.0, -1.0]),
-        ('SIN', (0.0, PI/2, PI, 1e-8), [0.0, 1.0]),
-        ('SIN', (0.0, PI/2, PI/2, 0.0), [1.0, 0.0]),
-        ('SIN', (0.0, PI/2, -PI/2, 0.0), [-1.0, 0.0]),
-        ('TAN', (0.0, PI/2, 0.0, PI/4), [0.0, -1.0]),
-        ('TAN', (0.0, PI/2, PI, PI/4), [0.0, 1.0]),
-        ('TAN', (0.0, PI/2, PI/2, PI/4), [1.0, 0.0]),
-        ('TAN', (0.0, PI/2, -PI/2, PI/4), [-1.0, 0.0]),
-        ('ARC', (0.0, PI/2, 0.0, 0.0), [0.0, -PI/2]),
-        ('ARC', (0.0, PI/2, PI, 0.0), [0.0, PI/2]),
-        ('ARC', (0.0, PI/2, PI/2, 0.0), [PI/2, 0.0]),
-        ('ARC', (0.0, PI/2, -PI/2, 0.0), [-PI/2, 0.0]),
-        ('STG', (0.0, PI/2, 0.0, 0.0), [0.0, -2.0]),
-        ('STG', (0.0, PI/2, PI, 0.0), [0.0, 2.0]),
-        ('STG', (0.0, PI/2, PI/2, 0.0), [2.0, 0.0]),
-        ('STG', (0.0, PI/2, -PI/2, 0.0), [-2.0, 0.0]),
         ('SSN', (0.0, PI/2, 0.0, 0.0), [0.0, 1.0]),
-        ('SSN', (0.0, PI/2, PI, 1e-8), [0.0, 1.0]),
+        ('SSN', (0.0, PI/2, PI, 1e-12), [0.0, 1.0]),
         ('SSN', (0.0, PI/2, PI/2, 0.0), [0.0, 1.0]),
         ('SSN', (0.0, PI/2, -PI/2, 0.0), [0.0, 1.0]),
     ]
@@ -211,26 +195,6 @@ def test_sphere_to_plane_outside_domain(projection):
     test_sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI))
 
 
-@pytest.mark.parametrize("projection", ['SIN', 'TAN', 'ARC', 'STG', 'SSN'])
-def test_sphere_to_plane_origin(projection):
-    """Test origin (sphere -> plane)."""
-    test_sphere_to_plane(projection, (0.0, 0.0, 0.0, 0.0), [0.0, 0.0])
-
-
-@pytest.mark.parametrize("projection, offset_s, offset_p",
-                         # Points 45 degrees from reference point on sphere
-                         [('TAN', PI/4, 1.0),
-                          # Points 90 degrees from reference point on sphere
-                          ('SIN', PI/2, 1.0), ('ARC', PI/2, PI/2),
-                          ('STG', PI/2, 2.0), ('SSN', PI/2, -1.0)])
-def test_sphere_to_plane_cross(projection, offset_s, offset_p):
-    """Test four-point cross along axes, centred on origin (sphere -> plane)."""
-    test_sphere_to_plane(projection, (0.0, 0.0, +offset_s, 0.0), [+offset_p, 0.0])
-    test_sphere_to_plane(projection, (0.0, 0.0, -offset_s, 0.0), [-offset_p, 0.0])
-    test_sphere_to_plane(projection, (0.0, 0.0, 0.0, +offset_s), [0.0, +offset_p])
-    test_sphere_to_plane(projection, (0.0, 0.0, 0.0, -offset_s), [0.0, -offset_p])
-
-
 def test_sphere_to_plane_special():
     """Test special corner cases (sphere -> plane)."""
     sphere_to_plane = katpoint.sphere_to_plane['ARC']
@@ -248,10 +212,6 @@ def test_sphere_to_plane_special():
         ('ARC', (0.0, 0.0, 0.0, PI), [PI, 0.0]),
         ('ARC', (0.0, 0.0, 0.0, -PI), [PI, 0.0]),
         # Reference point at pole on sphere
-        ('TAN', (0.0, -PI/2, 1.0, 0.0), [PI/2, -PI/4]),
-        ('TAN', (0.0, -PI/2, -1.0, 0.0), [-PI/2, -PI/4]),
-        ('TAN', (0.0, -PI/2, 0.0, 1.0), [0.0, -PI/4]),
-        ('TAN', (0.0, -PI/2, 0.0, -1.0), [PI, -PI/4]),
         ('SSN', (0.0, PI/2, 0.0, 1.0), [0.0, 0.0]),
         ('SSN', (0.0, -PI/2, 0.0, -1.0), [0.0, 0.0]),
         # Test valid (x, y) domain
@@ -280,35 +240,34 @@ def test_plane_to_sphere_outside_domain(projection, offset_p):
     plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p))
 
 
-@pytest.mark.parametrize("projection", ['SIN', 'TAN', 'ARC', 'STG', 'SSN'])
-def test_plane_to_sphere_origin(projection):
-    """Test origin (plane -> sphere)."""
-    test_plane_to_sphere(projection, (0.0, 0.0, 0.0, 0.0), [0.0, 0.0])
+def sphere_to_plane_to_sphere(projection, reference, sphere, plane):
+    """Project from sphere to plane and back again and check results on both legs."""
+    test_sphere_to_plane(projection, tuple(reference) + tuple(sphere), plane)
+    test_plane_to_sphere(projection, tuple(reference) + tuple(plane), sphere)
 
 
-@pytest.mark.parametrize("projection, offset_p, offset_s",
-                         # Points on unit circle in plane
-                         [('SIN', 1.0, PI/2), ('TAN', 1.0, PI/4),
-                          ('ARC', 1.0, 1.0), ('SSN', 1.0, -PI/2),
-                          # Points on circle of radius 2.0 in plane
-                          ('STG', 2.0, PI/2)])
-def test_plane_to_sphere_cross(projection, offset_p, offset_s):
-    """Test four-point cross along axes, centred on origin (plane -> sphere)."""
-    test_plane_to_sphere(projection, (0.0, 0.0, +offset_p, 0.0), [+offset_s, 0.0])
-    test_plane_to_sphere(projection, (0.0, 0.0, -offset_p, 0.0), [-offset_s, 0.0])
-    test_plane_to_sphere(projection, (0.0, 0.0, 0.0, +offset_p), [0.0, +offset_s])
-    test_plane_to_sphere(projection, (0.0, 0.0, 0.0, -offset_p), [0.0, -offset_s])
+@pytest.mark.parametrize("projection, offset_s, offset_p",
+                         [('SIN', PI/2, 1.0), ('TAN', PI/4, 1.0), ('ARC', PI/2, PI/2),
+                          ('STG', PI/2, 2.0), ('SSN', PI/2, -1.0)])
+def test_sphere_to_plane_to_sphere_origin(projection, offset_s, offset_p):
+    """Test five-point cross along axes, centred on origin (sphere -> plane -> sphere)."""
+    sphere_to_plane_to_sphere(projection, (0.0, 0.0), (0.0, 0.0), [0.0, 0.0])
+    sphere_to_plane_to_sphere(projection, (0.0, 0.0), (+offset_s, 0.0), [+offset_p, 0.0])
+    sphere_to_plane_to_sphere(projection, (0.0, 0.0), (-offset_s, 0.0), [-offset_p, 0.0])
+    sphere_to_plane_to_sphere(projection, (0.0, 0.0), (0.0, +offset_s), [0.0, +offset_p])
+    sphere_to_plane_to_sphere(projection, (0.0, 0.0), (0.0, -offset_s), [0.0, -offset_p])
 
 
-@pytest.mark.parametrize("projection, offset_p, offset_s",
-                         # Reference point at pole on sphere
-                         [('SIN', 1.0, PI/2), ('ARC', PI/2, PI/2), ('STG', 2.0, PI/2)])
-def test_plane_to_sphere_cross_pole(projection, offset_p, offset_s):
-    """Test four-point cross along axes, centred on pole of sphere (plane -> sphere)."""
-    test_plane_to_sphere(projection, (0.0, -PI/2, +offset_p, 0.0), [+offset_s, 0.0])
-    test_plane_to_sphere(projection, (0.0, -PI/2, -offset_p, 0.0), [-offset_s, 0.0])
-    test_plane_to_sphere(projection, (0.0, -PI/2, 0.0, +offset_p), [0.0, 0.0])
-    test_plane_to_sphere(projection, (0.0, -PI/2, 0.0, -offset_p), [2 * offset_s, 0.0])
+@pytest.mark.parametrize("projection, offset_s, offset_p",
+                         [('SIN', PI/2 - 1e-12, 1.0), ('TAN', PI/4, 1.0),
+                          ('ARC', PI/2, PI/2), ('STG', PI/2, 2.0)])
+def test_sphere_to_plane_to_sphere_pole(projection, offset_s, offset_p):
+    """Test four-point cross along axes, centred on pole (sphere -> plane -> sphere)."""
+    el = PI/2 - offset_s
+    sphere_to_plane_to_sphere(projection, (0.0, PI/2), (+PI/2, el), [+offset_p, 0.0])
+    sphere_to_plane_to_sphere(projection, (0.0, PI/2), (-PI/2, el), [-offset_p, 0.0])
+    sphere_to_plane_to_sphere(projection, (0.0, PI/2), (PI, el), [0.0, +offset_p])
+    sphere_to_plane_to_sphere(projection, (0.0, PI/2), (0.0, el), [0.0, -offset_p])
 
 
 def sphere_to_plane_original_ssn(target_az, target_el, scan_az, scan_el):
