@@ -121,7 +121,6 @@ def test_random_closure(projection, decimal, N=100):
     """Do random projections and check closure."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    np.random.seed(hash(projection) & (2 ** 32 - 1))
     az0, el0, x, y = generate_data[projection](N)
     az, el = plane_to_sphere(az0, el0, x, y)
     xx, yy = sphere_to_plane(az0, el0, az, el)
@@ -141,7 +140,6 @@ def test_aips_compatibility(projection, aips_code, decimal, N=100):
     """Compare with original AIPS routine (if available)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    np.random.seed(hash(projection) & (2 ** 32 - 1))
     az0, el0, x, y = generate_data[projection](N)
     if projection == 'TAN':
         # AIPS TAN only deprojects (x, y) coordinates within unit circle
@@ -333,7 +331,6 @@ def plane_to_sphere_original_ssn(target_az, target_el, ll, mm):
 def test_vs_original_ssn(decimal=10, N=100):
     """SSN projection: compare against Mattieu's original version."""
     plane_to_sphere = katpoint.plane_to_sphere['SSN']
-    np.random.seed(hash('SSN') & (2 ** 32 - 1))
     az0, el0, x, y = generate_data['SSN'](N)
     az, el = plane_to_sphere(az0, el0, x, y)
     ll, mm = sphere_to_plane_original_ssn(az0, el0, az, el)

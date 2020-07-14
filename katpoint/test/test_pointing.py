@@ -41,7 +41,6 @@ def params():
     # Generate random parameter values with this spread
     param_stdev = katpoint.deg2rad(20. / 60.)
     num_params = len(katpoint.PointingModel())
-    np.random.seed(42)
     params = param_stdev * np.random.randn(num_params)
     return params
 

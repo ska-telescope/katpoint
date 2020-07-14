@@ -42,7 +42,6 @@ def test_refraction_closure():
     """Test closure between refraction correction and its reverse operation."""
     rc = katpoint.RefractionCorrection()
     el = katpoint.deg2rad(np.arange(0.0, 90.1, 0.1))
-    np.random.seed(42)
     # Generate random meteorological data (a single measurement, hopefully sensible)
     temp = -10. + 50. * np.random.rand()
     pressure = 900. + 200. * np.random.rand()

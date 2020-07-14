@@ -29,7 +29,6 @@ from .helper import assert_angles_almost_equal
 @pytest.fixture
 def random_geoid():
     N = 1000
-    np.random.seed(42)
     lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
     lon = 2.0 * np.pi * np.random.rand(N)
     alt = 1000.0 * np.random.randn(N)
@@ -69,7 +68,6 @@ def test_ecef_to_enu(random_geoid):
 @pytest.fixture
 def random_sphere():
     N = 1000
-    np.random.seed(42)
     az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
     el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)
     return az, el
