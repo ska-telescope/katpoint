@@ -189,19 +189,28 @@ def test_aips_compatibility(projection, aips_code, decimal, N=100):
         ('SSN', (0.0, PI/2, PI, 1e-8), [0.0, 1.0]),
         ('SSN', (0.0, PI/2, PI/2, 0.0), [0.0, 1.0]),
         ('SSN', (0.0, PI/2, -PI/2, 0.0), [0.0, 1.0]),
-        # Points outside allowed domain on sphere
-        ('ARC', (0.0, 0.0, 0.0, PI), None),
     ]
 )
 def test_sphere_to_plane(projection, sphere, plane):
     """Test specific cases (sphere -> plane)."""
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    if plane is None:
-        with pytest.raises(ValueError):
-            sphere_to_plane(*sphere)
-    else:
-        xy = np.array(sphere_to_plane(*sphere))
-        np.testing.assert_almost_equal(xy, plane, decimal=12)
+    xy = np.array(sphere_to_plane(*sphere))
+    np.testing.assert_almost_equal(xy, plane, decimal=12)
+
+
+@pytest.mark.parametrize("projection, sphere", [('ARC', (0.0, 0.0, 0.0, PI))])
+def test_sphere_to_plane_invalid(projection, sphere):
+    """Test points outside allowed domain on sphere (sphere -> plane)."""
+    sphere_to_plane = katpoint.sphere_to_plane[projection]
+    with pytest.raises(ValueError):
+        sphere_to_plane(*sphere)
+
+
+@pytest.mark.parametrize("projection", ['SIN', 'TAN', 'STG', 'SSN'])
+def test_sphere_to_plane_outside_domain(projection):
+    """Test points outside allowed domain on sphere (sphere -> plane)."""
+    test_sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0))
+    test_sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI))
 
 
 @pytest.mark.parametrize("projection", ['SIN', 'TAN', 'ARC', 'STG', 'SSN'])
@@ -222,13 +231,6 @@ def test_sphere_to_plane_cross(projection, offset_s, offset_p):
     test_sphere_to_plane(projection, (0.0, 0.0, -offset_s, 0.0), [-offset_p, 0.0])
     test_sphere_to_plane(projection, (0.0, 0.0, 0.0, +offset_s), [0.0, +offset_p])
     test_sphere_to_plane(projection, (0.0, 0.0, 0.0, -offset_s), [0.0, -offset_p])
-
-
-@pytest.mark.parametrize("projection", ['SIN', 'TAN', 'STG', 'SSN'])
-def test_sphere_to_plane_outside_domain(projection):
-    """Test points outside allowed domain on sphere (sphere -> plane)."""
-    test_sphere_to_plane(projection, (0.0, 0.0, PI, 0.0), None)
-    test_sphere_to_plane(projection, (0.0, 0.0, 0.0, PI), None)
 
 
 def test_sphere_to_plane_special():
@@ -262,12 +264,22 @@ def test_sphere_to_plane_special():
 def test_plane_to_sphere(projection, plane, sphere):
     """Test specific cases (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
-    if sphere is None:
-        with pytest.raises(ValueError):
-            plane_to_sphere(*plane)
-    else:
-        ae = np.array(plane_to_sphere(*plane))
-        assert_angles_almost_equal(ae, sphere, decimal=12)
+    ae = np.array(plane_to_sphere(*plane))
+    assert_angles_almost_equal(ae, sphere, decimal=12)
+
+
+def plane_to_sphere_invalid(projection, plane):
+    """Test points outside allowed domain in plane (plane -> sphere)."""
+    plane_to_sphere = katpoint.plane_to_sphere[projection]
+    with pytest.raises(ValueError):
+        plane_to_sphere(*plane)
+
+
+@pytest.mark.parametrize("projection, offset_p", [('SIN', 2.0), ('ARC', 4.0), ('SSN', 2.0)])
+def test_plane_to_sphere_outside_domain(projection, offset_p):
+    """Test points outside allowed domain in plane (plane -> sphere)."""
+    plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0))
+    plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p))
 
 
 @pytest.mark.parametrize("projection", ['SIN', 'TAN', 'ARC', 'STG', 'SSN'])
@@ -299,13 +311,6 @@ def test_plane_to_sphere_cross_pole(projection, offset_p, offset_s):
     test_plane_to_sphere(projection, (0.0, -PI/2, -offset_p, 0.0), [-offset_s, 0.0])
     test_plane_to_sphere(projection, (0.0, -PI/2, 0.0, +offset_p), [0.0, 0.0])
     test_plane_to_sphere(projection, (0.0, -PI/2, 0.0, -offset_p), [2 * offset_s, 0.0])
-
-
-@pytest.mark.parametrize("projection, offset_p", [('SIN', 2.0), ('ARC', 4.0), ('SSN', 2.0)])
-def test_plane_to_sphere_outside_domain(projection, offset_p):
-    """Test points outside allowed domain in plane (plane -> sphere)."""
-    test_plane_to_sphere(projection, (0.0, 0.0, offset_p, 0.0), None)
-    test_plane_to_sphere(projection, (0.0, 0.0, 0.0, offset_p), None)
 
 
 def sphere_to_plane_original_ssn(target_az, target_el, scan_az, scan_el):
