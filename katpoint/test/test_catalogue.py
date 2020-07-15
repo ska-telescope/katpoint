@@ -26,6 +26,9 @@ import katpoint
 
 # Use the current year in TLE epochs to avoid pyephem crash due to expired TLEs
 YY = time.localtime().tm_year % 100
+FLUX_TARGET = katpoint.Target('flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)')
+ANTENNA = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')
+TIMESTAMP = time.mktime(time.strptime('2009/06/14 12:34:56', '%Y/%m/%d %H:%M:%S'))
 
 
 def test_catalogue_basic():
@@ -79,8 +82,7 @@ def test_catalogue_same_name():
 
 def test_construct_catalogue():
     """Test construction of catalogues."""
-    antenna = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')
-    cat = katpoint.Catalogue(add_specials=True, add_stars=True, antenna=antenna)
+    cat = katpoint.Catalogue(add_specials=True, add_stars=True, antenna=ANTENNA)
     num_targets_original = len(cat)
     assert num_targets_original == len(katpoint.specials) + 1 + len(katpoint.stars.stars)
     # Add target already in catalogue - no action
@@ -140,54 +142,44 @@ def test_skip_empty():
     assert len(cat) == 0
 
 
-@pytest.fixture
-def filter_catalogue_parts():
-    flux_target = katpoint.Target('flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)')
-    antenna = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')
-    timestamp = time.mktime(time.strptime('2009/06/14 12:34:56', '%Y/%m/%d %H:%M:%S'))
-    return antenna, timestamp, flux_target
-
-
-def test_filter_catalogue(filter_catalogue_parts):
+def test_filter_catalogue():
     """Test filtering of catalogues."""
-    antenna, timestamp, flux_target = filter_catalogue_parts
     cat = katpoint.Catalogue(add_specials=True, add_stars=True)
     cat = cat.filter(tags=['special', '~radec'])
     assert len(cat.targets) == len(katpoint.specials), 'Number of targets incorrect'
-    cat.add(flux_target)
+    cat.add(FLUX_TARGET)
     cat2 = cat.filter(flux_limit_Jy=50.0, flux_freq_MHz=1.5)
     assert len(cat2.targets) == 1, 'Number of targets with sufficient flux should be 1'
     assert cat != cat2, 'Catalogues should be inequal'
-    cat3 = cat.filter(az_limit_deg=[0, 180], timestamp=timestamp, antenna=antenna)
+    cat3 = cat.filter(az_limit_deg=[0, 180], timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat3.targets) == 1, 'Number of targets rising should be 1'
-    cat4 = cat.filter(az_limit_deg=[180, 0], timestamp=timestamp, antenna=antenna)
+    cat4 = cat.filter(az_limit_deg=[180, 0], timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat4.targets) == 9, 'Number of targets setting should be 9'
     cat.add(katpoint.Target('Zenith, azel, 0, 90'))
-    cat5 = cat.filter(el_limit_deg=85, timestamp=timestamp, antenna=antenna)
+    cat5 = cat.filter(el_limit_deg=85, timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat5.targets) == 1, 'Number of targets close to zenith should be 1'
     sun = katpoint.Target('Sun, special')
     cat6 = cat.filter(dist_limit_deg=[0.0, 1.0], proximity_targets=sun,
-                      timestamp=timestamp, antenna=antenna)
+                      timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat6.targets) == 1, 'Number of targets close to Sun should be 1'
 
 
-def test_sort_catalogue(filter_catalogue_parts):
+def test_sort_catalogue():
     """Test sorting of catalogues."""
-    antenna, timestamp, flux_target = filter_catalogue_parts
     cat = katpoint.Catalogue(add_specials=True, add_stars=True)
     assert len(cat.targets) == len(katpoint.specials) + 1 + len(katpoint.stars.stars)
     cat1 = cat.sort(key='name')
     assert cat1 == cat, 'Catalogue equality failed'
     assert cat1.targets[0].name == 'Acamar', 'Sorting on name failed'
-    cat2 = cat.sort(key='ra', timestamp=timestamp, antenna=antenna)
+    cat2 = cat.sort(key='ra', timestamp=TIMESTAMP, antenna=ANTENNA)
     assert cat2.targets[0].name == 'Alpheratz', 'Sorting on ra failed'
-    cat3 = cat.sort(key='dec', timestamp=timestamp, antenna=antenna)
+    cat3 = cat.sort(key='dec', timestamp=TIMESTAMP, antenna=ANTENNA)
     assert cat3.targets[0].name == 'Miaplacidus', 'Sorting on dec failed'
-    cat4 = cat.sort(key='az', timestamp=timestamp, antenna=antenna, ascending=False)
+    cat4 = cat.sort(key='az', timestamp=TIMESTAMP, antenna=ANTENNA, ascending=False)
     assert cat4.targets[0].name == 'Polaris', 'Sorting on az failed'  # az: 359:25:07.3
-    cat5 = cat.sort(key='el', timestamp=timestamp, antenna=antenna)
+    cat5 = cat.sort(key='el', timestamp=TIMESTAMP, antenna=ANTENNA)
     assert cat5.targets[-1].name == 'Zenith', 'Sorting on el failed'  # el: 90:00:00.0
-    cat.add(flux_target)
+    cat.add(FLUX_TARGET)
     cat6 = cat.sort(key='flux', ascending=False, flux_freq_MHz=1.5)
     assert 'flux' in (cat6.targets[0].name, cat6.targets[-1].name), (
         'Flux target should be at start or end of catalogue after sorting')
@@ -195,15 +187,15 @@ def test_sort_catalogue(filter_catalogue_parts):
             (cat6.targets[-1].flux_density(1.5) == 100.0)), 'Sorting on flux failed'
 
 
-def test_visibility_list(filter_catalogue_parts):
+def test_visibility_list():
     """Test output of visibility list."""
-    antenna, timestamp, flux_target = filter_catalogue_parts
     antenna2 = katpoint.Antenna('XDM2, -25:53:23.05075, 27:41:03.36453, '
                                 '1406.1086, 15.0, 100.0 0.0 0.0')
     cat = katpoint.Catalogue(add_specials=True, add_stars=True)
-    cat.add(flux_target)
+    cat.add(FLUX_TARGET)
     cat.remove('Zenith')
-    cat.visibility_list(timestamp=timestamp, antenna=antenna, flux_freq_MHz=1.5, antenna2=antenna2)
-    cat.antenna = antenna
+    cat.visibility_list(timestamp=TIMESTAMP, antenna=ANTENNA,
+                        flux_freq_MHz=1.5, antenna2=antenna2)
+    cat.antenna = ANTENNA
     cat.flux_freq_MHz = 1.5
-    cat.visibility_list(timestamp=timestamp)
+    cat.visibility_list(timestamp=TIMESTAMP)
