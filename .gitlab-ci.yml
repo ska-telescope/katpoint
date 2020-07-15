@@ -1,0 +1,71 @@
+image: nexus.engageska-portugal.pt/ska-docker/ska-python-buildenv:latest
+
+before_script:
+  - python3 -m pip install -r gitlab-ci-requirements.txt
+
+stages:
+  - test
+  - linting
+  - deploy
+
+test:
+  stage: test
+  script:
+   - pytest --cov katpoint --cov-branch --cov-report term --cov-report html --cov-report xml:./build/reports/code-coverage.xml --junitxml=./build/reports/unit-tests.xml
+  artifacts:
+    paths:
+    - ./build
+    - htmlcov
+
+list_dependencies:
+  stage: test
+  script:
+    - pipdeptree --json >> pip_deps.json
+    - pipdeptree >> pip_deps.txt
+    - dpkg -l >> system_deps.txt
+    - awk 'FNR>5 {print $2 ", " $3}' system_deps.txt >> system_deps.csv
+    - mkdir .public
+    - cp pip_deps.txt .public/
+    - cp pip_deps.json .public/
+    - cp system_deps.txt .public/
+    - cp system_deps.csv .public/
+    - mv .public public
+  artifacts:
+    paths:
+      - public
+
+linting:
+  stage: linting
+  script:
+    - pylint --exit-zero --output-format=pylint_junit.JUnitReporter katpoint > ./build/reports/linting.xml
+    - pylint --exit-zero --output-format=parseable katpoint
+  when: always
+  artifacts:
+    paths:
+      - ./build
+
+pages:
+  stage: deploy
+  dependencies:
+    - test
+  script:
+   - ls -la
+   - mkdir .public
+   - cp -r htmlcov/* .public
+   - rm -rf htmlcov
+   - mv .public public
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+
+create ci metrics:
+  stage: .post
+  when: always
+  script:
+    # Gitlab CI badges creation: START
+    - curl -s https://gitlab.com/ska-telescope/ci-metrics-utilities/raw/master/scripts/ci-badges-func.sh | sh
+    # Gitlab CI badges creation: END
+  artifacts:
+    paths:
+      - ./build

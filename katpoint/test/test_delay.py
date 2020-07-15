@@ -17,9 +17,9 @@
 """Tests for the model module."""
 
 import json
-import unittest
 from io import StringIO
 
+import pytest
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import Angle
@@ -27,38 +27,36 @@ from astropy.coordinates import Angle
 import katpoint
 
 
-class TestDelayModel(unittest.TestCase):
-    """Test antenna delay model."""
-
-    def test_construct_save_load(self):
-        """Test construction / save / load of delay model."""
-        m = katpoint.DelayModel('1.0, -2.0, -3.0, 4.123, 5.0, 6.0')
-        m.header['date'] = '2014-01-15'
-        # An empty file should lead to a BadModelFile exception
-        cfg_file = StringIO()
-        self.assertRaises(katpoint.BadModelFile, m.fromfile, cfg_file)
-        m.tofile(cfg_file)
-        cfg_str = cfg_file.getvalue()
-        cfg_file.close()
-        # Load the saved config file
-        cfg_file = StringIO(cfg_str)
-        m2 = katpoint.DelayModel()
-        m2.fromfile(cfg_file)
-        self.assertEqual(m, m2, 'Saving delay model to file and loading it again failed')
-        params = m.delay_params
-        m3 = katpoint.DelayModel()
-        m3.fromdelays(params)
-        self.assertEqual(m, m3, 'Converting delay model to delay parameters and loading it again failed')
-        try:
-            self.assertEqual(hash(m), hash(m3), 'Delay model hashes not equal')
-        except TypeError:
-            self.fail('DelayModel object not hashable')
+def test_construct_save_load():
+    """Test construction / save / load of delay model."""
+    m = katpoint.DelayModel('1.0, -2.0, -3.0, 4.123, 5.0, 6.0')
+    m.header['date'] = '2014-01-15'
+    # An empty file should lead to a BadModelFile exception
+    cfg_file = StringIO()
+    with pytest.raises(katpoint.BadModelFile):
+        m.fromfile(cfg_file)
+    m.tofile(cfg_file)
+    cfg_str = cfg_file.getvalue()
+    cfg_file.close()
+    # Load the saved config file
+    cfg_file = StringIO(cfg_str)
+    m2 = katpoint.DelayModel()
+    m2.fromfile(cfg_file)
+    assert m == m2, 'Saving delay model to file and loading it again failed'
+    params = m.delay_params
+    m3 = katpoint.DelayModel()
+    m3.fromdelays(params)
+    assert m == m3, 'Converting delay model to delay parameters and loading it again failed'
+    try:
+        assert hash(m) == hash(m3), 'Delay model hashes not equal'
+    except TypeError:
+        pytest.fail('DelayModel object not hashable')
 
 
-class TestDelayCorrection(unittest.TestCase):
+class TestDelayCorrection:
     """Test correlator delay corrections."""
 
-    def setUp(self):
+    def setup(self):
         self.target1 = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
         self.target2 = katpoint.Target('Sun, special')
         self.ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
@@ -73,14 +71,16 @@ class TestDelayCorrection(unittest.TestCase):
         delays2 = katpoint.DelayCorrection(descr)
         delays_dict = json.loads(descr)
         delays2_dict = json.loads(delays2.description)
-        self.assertEqual(delays2_dict, delays_dict,
-                         'Objects created through description strings differ')
-        self.assertRaises(ValueError, katpoint.DelayCorrection, [self.ant1, self.ant2], self.ant3)
-        self.assertRaises(ValueError, katpoint.DelayCorrection, [self.ant1, self.ant2])
-        self.assertRaises(ValueError, katpoint.DelayCorrection, '')
+        assert delays2_dict == delays_dict, 'Objects created through description strings differ'
+        with pytest.raises(ValueError):
+            katpoint.DelayCorrection([self.ant1, self.ant2], self.ant3)
+        with pytest.raises(ValueError):
+            katpoint.DelayCorrection([self.ant1, self.ant2])
+        with pytest.raises(ValueError):
+            katpoint.DelayCorrection('')
         delays3 = katpoint.DelayCorrection([], self.ant1)
-        self.assertEqual(delays3._params.shape, (0, len(katpoint.DelayModel())),
-                         "Delay correction with no antennas should fail gracefully")
+        assert delays3._params.shape == (0, len(katpoint.DelayModel())), (
+            "Delay correction with no antennas should fail gracefully")
 
     def test_correction(self):
         """Test delay correction."""
@@ -88,12 +88,12 @@ class TestDelayCorrection(unittest.TestCase):
         delay0, phase0 = self.delays.corrections(self.target1, self.ts)
         delay1, phase1 = self.delays.corrections(self.target1, self.ts, self.ts + 1.0)
         # This target is special - direction perpendicular to baseline (and stationary)
-        self.assertEqual(delay0['A2h'], extra_delay, 'Delay for ant2h should be zero')
-        self.assertEqual(delay0['A2v'], extra_delay, 'Delay for ant2v should be zero')
-        self.assertEqual(delay1['A2h'][0], extra_delay, 'Delay for ant2h should be zero')
-        self.assertEqual(delay1['A2v'][0], extra_delay, 'Delay for ant2v should be zero')
-        self.assertEqual(delay1['A2h'][1], 0.0, 'Delay rate for ant2h should be zero')
-        self.assertEqual(delay1['A2v'][1], 0.0, 'Delay rate for ant2v should be zero')
+        assert delay0['A2h'] == extra_delay, 'Delay for ant2h should be zero'
+        assert delay0['A2v'] == extra_delay, 'Delay for ant2v should be zero'
+        assert delay1['A2h'][0] == extra_delay, 'Delay for ant2h should be zero'
+        assert delay1['A2v'][0] == extra_delay, 'Delay for ant2v should be zero'
+        assert delay1['A2h'][1] == 0.0, 'Delay rate for ant2h should be zero'
+        assert delay1['A2v'][1] == 0.0, 'Delay rate for ant2v should be zero'
         # Compare to target geometric delay calculations
         delay0, phase0 = self.delays.corrections(self.target2, self.ts)
         delay1, phase1 = self.delays.corrections(self.target2, self.ts - 0.5, self.ts + 0.5)
@@ -110,7 +110,7 @@ class TestDelayCorrection(unittest.TestCase):
         max_size = katpoint.DelayCorrection.CACHE_SIZE
         for n in range(max_size + 10):
             delay0, phase0 = self.delays.corrections(self.target1, self.ts + n)
-        self.assertEqual(len(self.delays._cache), max_size, 'Delay cache grew past limit')
+        assert len(self.delays._cache) == max_size, 'Delay cache grew past limit'
 
     def test_offset(self):
         """Test target offset."""
@@ -125,12 +125,12 @@ class TestDelayCorrection(unittest.TestCase):
         delay0, phase0 = self.delays.corrections(target3, self.ts, offset=offset)
         delay1, phase1 = self.delays.corrections(target3, self.ts, self.ts + 1.0, offset)
         # Conspire to return to special target1
-        self.assertEqual(delay0['A2h'], extra_delay, 'Delay for ant2h should be zero')
-        self.assertEqual(delay0['A2v'], extra_delay, 'Delay for ant2v should be zero')
-        self.assertEqual(delay1['A2h'][0], extra_delay, 'Delay for ant2h should be zero')
-        self.assertEqual(delay1['A2v'][0], extra_delay, 'Delay for ant2v should be zero')
-        self.assertEqual(delay1['A2h'][1], 0.0, 'Delay rate for ant2h should be zero')
-        self.assertEqual(delay1['A2v'][1], 0.0, 'Delay rate for ant2v should be zero')
+        assert delay0['A2h'] == extra_delay, 'Delay for ant2h should be zero'
+        assert delay0['A2v'] == extra_delay, 'Delay for ant2v should be zero'
+        assert delay1['A2h'][0] == extra_delay, 'Delay for ant2h should be zero'
+        assert delay1['A2v'][0] == extra_delay, 'Delay for ant2v should be zero'
+        assert delay1['A2h'][1] == 0.0, 'Delay rate for ant2h should be zero'
+        assert delay1['A2v'][1] == 0.0, 'Delay rate for ant2v should be zero'
         # Now try (ra, dec) coordinate system
         radec = self.target1.radec(self.ts, self.ant1)
         offset = dict(projection_type='ARC', coord_system='radec')

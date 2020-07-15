@@ -4,21 +4,12 @@
 *.so
 *.so.dSYM
 
-# Packages
-*.egg
-*.egg-info
-dist
+# Packages / virtual envs
 build
-eggs
-.eggs
-parts
-bin
-var
-sdist
-develop-eggs
-.installed.cfg
-lib
-lib64
+dist
+*.eggs
+*.egg-info
+.cache
 __pycache__
 
 # Installer logs
@@ -27,11 +18,20 @@ pip-log.txt
 # Unit test / coverage reports
 .coverage
 .tox
-nosetests.xml
+htmlcov
+coverage.xml
+.pytest_cache
 
-# Developer tools
+# Documentation
+docs/_build
+docs/apidocs
+
+# Developer tools / IDEs
 *~
 .ropeproject
+.idea
+.eclipse
+.vscode
 
 # Downloaded AIPS source files
 katpoint/test/aips_projection/*.F

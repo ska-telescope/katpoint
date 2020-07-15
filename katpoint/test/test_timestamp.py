@@ -16,17 +16,16 @@
 
 """Tests for the timestamp module."""
 
-import unittest
-
+import pytest
 from astropy.time import Time
 
 import katpoint
 
 
-class TestTimestamp(unittest.TestCase):
+class TestTimestamp:
     """Test timestamp creation and conversion."""
 
-    def setUp(self):
+    def setup(self):
         self.valid_timestamps = [(1248186982.3980861, '2009-07-21 14:36:22.398'),
                                  (Time('2009-07-21 02:52:12.34'), '2009-07-21 02:52:12.340'),
                                  (0, '1970-01-01 00:00:00'),
@@ -55,38 +54,42 @@ class TestTimestamp(unittest.TestCase):
         """Test construction of timestamps."""
         for v, s in self.valid_timestamps:
             t = katpoint.Timestamp(v)
-            self.assertEqual(str(t), s, "Timestamp string ('%s') differs from expected one ('%s')" % (str(t), s))
+            assert str(t) == s, (
+                "Timestamp string ('%s') differs from expected one ('%s')"
+                % (str(t), s))
         for v in self.invalid_timestamps:
-            self.assertRaises(ValueError, katpoint.Timestamp, v)
+            with pytest.raises(ValueError):
+                katpoint.Timestamp(v)
 #        for v in self.overflow_timestamps:
-#            self.assertRaises(OverflowError, katpoint.Timestamp, v)
+#            with pytest.raises(OverflowError):
+#               katpoint.Timestamp(v)
 
     def test_numerical_timestamp(self):
         """Test numerical properties of timestamps."""
         t = katpoint.Timestamp(self.valid_timestamps[0][0])
-        self.assertEqual(t, t + 0.0)
-        self.assertNotEqual(t, t + 1.0)
-        self.assertTrue(t > t - 1.0)
-        self.assertTrue(t < t + 1.0)
-        self.assertEqual(t, eval('katpoint.' + repr(t)))
-        self.assertEqual(float(t), self.valid_timestamps[0][0])
+        assert t == t + 0.0
+        assert t != t + 1.0
+        assert t > t - 1.0
+        assert t < t + 1.0
+        assert t == eval('katpoint.' + repr(t))
+        assert float(t) == self.valid_timestamps[0][0]
         t = katpoint.Timestamp(self.valid_timestamps[1][0])
         # self.assertAlmostEqual(t.to_ephem_date(), self.valid_timestamps[1][0], places=9)
-        self.assertEqual(t.to_ephem_date().value, self.valid_timestamps[1][0])
+        assert t.to_ephem_date().value == self.valid_timestamps[1][0]
         try:
-            self.assertEqual(hash(t), hash(t + 0.0), 'Timestamp hashes not equal')
+            assert hash(t) == hash(t + 0.0), 'Timestamp hashes not equal'
         except TypeError:
-            self.fail('Timestamp object not hashable')
+            pytest.fail('Timestamp object not hashable')
 
     def test_operators(self):
         """Test operators defined for timestamps."""
         T = katpoint.Timestamp(self.valid_timestamps[0][0])
         S = T.secs
         # Logical operators, float treated as absolute time
-        self.assertTrue(T == S)
-        self.assertTrue(T < S+1)
-        self.assertTrue(T > S-1)
+        assert T == S
+        assert T < S + 1
+        assert T > S - 1
         # Arithmetic operators, float treated as interval
-        self.assertTrue(isinstance(T - S, katpoint.Timestamp))
-        self.assertTrue(isinstance(S - T, float))
-        self.assertTrue(isinstance(T - T, float))
+        assert isinstance(T - S, katpoint.Timestamp)
+        assert isinstance(S - T, float)
+        assert isinstance(T - T, float)

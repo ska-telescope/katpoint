@@ -16,68 +16,24 @@
 
 """Tests for the target module."""
 
-import unittest
 import time
 import pickle
 
 import numpy as np
+import pytest
 import astropy.units as u
 from astropy.coordinates import Angle
 
 import katpoint
 
-# Use the current year in TLE epochs to avoid pyephem crash due to expired TLEs
+# Use the current year in TLE epochs to avoid potential crashes due to expired TLEs
 YY = time.localtime().tm_year % 100
 
 
-class TestTargetConstruction(unittest.TestCase):
+class TestTargetConstruction:
     """Test construction of targets from strings and vice versa."""
 
-    def setUp(self):
-        self.valid_targets = ['azel, -30.0, 90.0',
-                              ', azel, 180, -45:00:00.0',
-                              'Zenith, azel, 0, 90',
-                              'radec J2000, 0, 0.0, (1000.0 2000.0 1.0 10.0)',
-                              ', radec B1950, 14:23:45.6, -60:34:21.1',
-                              'radec B1900, 14:23:45.6, -60:34:21.1',
-                              'gal, 300.0, 0.0',
-                              'Sag A, gal, 0.0, 0.0',
-                              'Zizou, radec cal, 1.4, 30.0, (1000.0 2000.0 1.0 10.0)',
-                              'Fluffy | *Dinky, radec, 12.5, -50.0, (1.0 2.0 1.0 2.0 3.0 4.0)',
-                              'tle, GPS BIIA-21 (PRN 09)    \n' +
-                              ('1 22700U 93042A   %02d266.32333151  .00000012  00000-0  10000-3 0  805%1d\n' %
-                               (YY, (YY // 10 + YY - 7 + 4) % 10)) +
-                              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n',
-                              ', tle, GPS BIIA-22 (PRN 05)    \n' +
-                              ('1 22779U 93054A   %02d266.92814765  .00000062  00000-0  10000-3 0  289%1d\n' %
-                               (YY, (YY // 10 + YY - 7 + 5) % 10)) +
-                              '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n',
-                              'Sun, special',
-                              'Nothing, special',
-                              'Moon | Luna, special solarbody',
-                              'Aldebaran, star',
-                              'Betelgeuse | Maitland, star orion',
-                              'xephem star, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
-                              'Acamar | Theta Eridani, xephem, HIC 13847~f|S|A4~2:58:16.03~-40:18:17.1~2.906~2000~0',
-                              'Kakkab | A Lupi, xephem, H71860 | S225128~f|S|B1~14:41:55.768~-47:23:17.51~2.304~2000~0']
-        self.invalid_targets = ['Sun',
-                                'Sun, ',
-                                '-30.0, 90.0',
-                                ', azel, -45:00:00.0',
-                                'Zenith, azel blah',
-                                'radec J2000, 0.3',
-                                'gal, 0.0',
-                                'Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)',
-                                'tle, GPS BIIA-21 (PRN 09)    \n' +
-                                '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n',
-                                ', tle, GPS BIIA-22 (PRN 05)    \n' +
-                                ('1 93054A   %02d266.92814765  .00000062  00000-0  10000-3 0  289%1d\n' %
-                                 (YY, (YY // 10 + YY - 7 + 5) % 10)) +
-                                '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n',
-                                'Sunny, special',
-                                'Slinky, star',
-                                'xephem star, Sadr~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
-                                'hotbody, 34.0, 45.0']
+    def setup(self):
         self.azel_target = 'azel, 10.0, -10.0'
         # A floating-point RA is in degrees
         self.radec_target = 'radec, 20.0, -20.0'
@@ -88,50 +44,43 @@ class TestTargetConstruction(unittest.TestCase):
 
     def test_construct_target(self):
         """Test construction of targets from strings and vice versa."""
-        valid_targets = [katpoint.Target(descr) for descr in self.valid_targets]
-        valid_strings = [t.description for t in valid_targets]
-        for descr in valid_strings:
-            t = katpoint.Target(descr)
-            self.assertEqual(descr, t.description, "Target description ('%s') differs from original string ('%s')" %
-                             (t.description, descr))
-            print('%r %s' % (t, t))
-        for descr in self.invalid_targets:
-            self.assertRaises(ValueError, katpoint.Target, descr)
         azel1 = katpoint.Target(self.azel_target)
         azel2 = katpoint.construct_azel_target('10:00:00.0', '-10:00:00.0')
-        self.assertEqual(azel1, azel2, 'Special azel constructor failed')
+        assert azel1 == azel2, 'Special azel constructor failed'
         radec1 = katpoint.Target(self.radec_target)
         radec2 = katpoint.construct_radec_target('20.0', '-20.0')
-        self.assertEqual(radec1, radec2, 'Special radec constructor (decimal) failed')
+        assert radec1 == radec2, 'Special radec constructor (decimal) failed'
         radec3 = katpoint.Target(self.radec_target_rahours)
         radec4 = katpoint.construct_radec_target('20:00:00.0', '-20:00:00.0')
-        self.assertEqual(radec3, radec4, 'Special radec constructor (sexagesimal) failed')
+        assert radec3 == radec4, 'Special radec constructor (sexagesimal) failed'
         radec5 = katpoint.construct_radec_target('20:00:00.0', '-00:30:00.0')
         radec6 = katpoint.construct_radec_target('300.0', '-0.5')
-        self.assertEqual(radec5, radec6, 'Special radec constructor (decimal <-> sexagesimal) failed')
+        assert radec5 == radec6, (
+            'Special radec constructor (decimal <-> sexagesimal) failed')
         # Check that description string updates when object is updated
         t1 = katpoint.Target('piet, azel, 20, 30')
         t2 = katpoint.Target('piet | bollie, azel, 20, 30')
-        self.assertNotEqual(t1, t2, 'Targets should not be equal')
+        assert t1 != t2, 'Targets should not be equal'
         t1.aliases += ['bollie']
-        self.assertEqual(t1.description, t2.description, 'Target description string not updated')
-        self.assertEqual(t1, t2.description, 'Equality with description string failed')
-        self.assertEqual(t1, t2, 'Equality with target failed')
-        self.assertEqual(t1, katpoint.Target(t2), 'Construction with target object failed')
-        self.assertEqual(t1, pickle.loads(pickle.dumps(t1)), 'Pickling failed')
+        assert t1.description == t2.description, (
+            'Target description string not updated')
+        assert t1 == t2.description, 'Equality with description string failed'
+        assert t1 == t2, 'Equality with target failed'
+        assert t1 == katpoint.Target(t2), 'Construction with target object failed'
+        assert t1 == pickle.loads(pickle.dumps(t1)), 'Pickling failed'
         try:
-            self.assertEqual(hash(t1), hash(t2), 'Target hashes not equal')
+            assert hash(t1) == hash(t2), 'Target hashes not equal'
         except TypeError:
-            self.fail('Target object not hashable')
+            pytest.fail('Target object not hashable')
 
     def test_constructed_coords(self):
         """Test whether calculated coordinates match those with which it is constructed."""
         # azel = katpoint.Target(self.azel_target)
         # calc_azel = azel.azel()
-        # calc_az = calc_azel.az;
-        # calc_el = calc_azel.alt;
-        # self.assertEqual(calc_az.deg, 10.0, 'Calculated az does not match specified value in azel target')
-        # self.assertEqual(calc_el.deg, -10.0, 'Calculated el does not match specified value in azel target')
+        # calc_az = calc_azel.az
+        # calc_el = calc_azel.alt
+        # assert calc_az.deg == 10.0, 'Calculated az does not match specified value in azel target'
+        # assert calc_el.deg == -10.0, 'Calculated el does not match specified value in azel target'
         radec = katpoint.Target(self.radec_target)
         calc_radec = radec.radec()
         calc_ra = calc_radec.ra
@@ -159,13 +108,86 @@ class TestTargetConstruction(unittest.TestCase):
         tag_target.add_tags(None)
         tag_target.add_tags('pulsar')
         tag_target.add_tags(['SNR', 'GPS'])
-        self.assertEqual(tag_target.tags, ['azel', 'J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct')
+        assert tag_target.tags == ['azel', 'J2000', 'GPS', 'pulsar', 'SNR'], (
+            'Added tags not correct')
 
 
-class TestTargetCalculations(unittest.TestCase):
+@pytest.mark.parametrize(
+    "description",
+    [
+        'azel, -30.0, 90.0',
+        ', azel, 180, -45:00:00.0',
+        'Zenith, azel, 0, 90',
+        'radec J2000, 0, 0.0, (1000.0 2000.0 1.0 10.0)',
+        ', radec B1950, 14:23:45.6, -60:34:21.1',
+        'radec B1900, 14:23:45.6, -60:34:21.1',
+        'gal, 300.0, 0.0',
+        'Sag A, gal, 0.0, 0.0',
+        'Zizou, radec cal, 1.4, 30.0, (1000.0 2000.0 1.0 10.0)',
+        'Fluffy | *Dinky, radec, 12.5, -50.0, (1.0 2.0 1.0 2.0 3.0 4.0)',
+        ('tle, GPS BIIA-21 (PRN 09)    \n'
+         '1 22700U 93042A   {:02d}266.32333151  .00000012  00000-0  10000-3 0  805{:1d}\n'
+         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'
+         .format(YY, (YY // 10 + YY - 7 + 4) % 10)),
+        (', tle, GPS BIIA-22 (PRN 05)    \n'
+         '1 22779U 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
+         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
+         .format(YY, (YY // 10 + YY - 7 + 5) % 10)),
+        'Sun, special',
+        'Nothing, special',
+        'Moon | Luna, special solarbody',
+        'Aldebaran, star',
+        'Betelgeuse | Maitland, star orion',
+        'xephem star, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
+        'Acamar | Theta Eridani, xephem, HIC 13847~f|S|A4~2:58:16.03~-40:18:17.1~2.906~2000~0',
+        'Kakkab, xephem, H71860 | S225128~f|S|B1~14:41:55.768~-47:23:17.51~2.304~2000~0',
+    ]
+)
+def test_construct_valid_target(description):
+    """Test construction of valid targets from strings and vice versa."""
+    # Normalise description string through one cycle to allow comparison
+    reference_description = katpoint.Target(description).description
+    test_target = katpoint.Target(reference_description)
+    assert test_target.description == reference_description, (
+        "Target description ('{}') differs from reference ('{}')"
+        .format(test_target.description, reference_description))
+    # Exercise repr() and str()
+    print('{!r} {}'.format(test_target, test_target))
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        'Sun',
+        'Sun, ',
+        '-30.0, 90.0',
+        ', azel, -45:00:00.0',
+        'Zenith, azel blah',
+        'radec J2000, 0.3',
+        'gal, 0.0',
+        'Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)',
+        ('tle, GPS BIIA-21 (PRN 09)    \n'
+         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'),
+        (', tle, GPS BIIA-22 (PRN 05)    \n'
+         '1 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
+         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
+         .format(YY, (YY // 10 + YY - 7 + 5) % 10)),
+        'Sunny, special',
+        'Slinky, star',
+        'xephem star, Sadr~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
+        'hotbody, 34.0, 45.0',
+    ]
+)
+def test_construct_invalid_target(description):
+    """Test construction of invalid targets from strings."""
+    with pytest.raises(ValueError):
+        katpoint.Target(description)
+
+
+class TestTargetCalculations:
     """Test various calculations involving antennas and timestamps."""
 
-    def setUp(self):
+    def setup(self):
         self.target = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
         self.ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
         self.ant2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
