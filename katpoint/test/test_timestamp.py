@@ -124,6 +124,13 @@ def test_array_timestamps():
     print(repr(t2 + np.arange(1)))
     print(repr(t2 + np.arange(2)))
     print(repr(t2 + np.arange(3)))
+    # Construct from array of strings or `Time`s
+    t0 = katpoint.Timestamp(t.time[0])
+    t1 = katpoint.Timestamp(t.time[1])
+    t3 = katpoint.Timestamp([str(t0), str(t1)])
+    assert all(t3 == t)
+    t4 = katpoint.Timestamp([t0.time, t1.time])
+    assert all(t4 == t)
 
 
 @pytest.mark.parametrize('mjd', [59000.0, (59000.0, 59001.0)])
