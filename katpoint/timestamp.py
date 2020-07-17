@@ -41,14 +41,14 @@ class Timestamp:
     - A floating-point number, directly representing the number of UTC seconds
       since the Unix epoch. Fractional seconds are allowed.
 
-    - A string with format 'YYYY-MM-DD HH:MM:SS.SSS' or 'YYYY/MM/DD HH:MM:SS.SSS',
-      where the hours and minutes, seconds, and fractional seconds are optional.
-      The input string is always in UTC. Examples are:
+    - A string or bytes with format 'YYYY-MM-DD HH:MM:SS.SSS' or
+      'YYYY/MM/DD HH:MM:SS.SSS', where the hours and minutes, seconds, and
+      fractional seconds are optional. It is always in UTC. Examples are:
 
         '1999-12-31 12:34:56.789'
-        '1999-12-31 12:34:56'
+        '1999/12/31 12:34:56'
         '1999-12-31 12:34'
-        '1999/12/31'
+        b'1999-12-31'
 
     - A :class:`~astropy.time.Time` object.
 
@@ -56,7 +56,7 @@ class Timestamp:
 
     Parameters
     ----------
-    timestamp : float, string, :class:`~astropy.time.Time` or :class:`Timestamp` or None
+    timestamp : float, string, bytes, :class:`~astropy.time.Time`, :class:`Timestamp` or None
         Timestamp, in various formats (if None, defaults to now)
 
     Arguments
@@ -94,17 +94,17 @@ class Timestamp:
     def __repr__(self):
         """Short machine-friendly string representation of timestamp object."""
         t = self.secs
-        if t.shape == ():
-            return 'Timestamp({!r})'.format(t)
+        if t.shape in {(), (0,)}:
+            return 'Timestamp({})'.format(t)
         elif t.shape == (1,):
             return 'Timestamp([{!r}])'.format(t[0])
         elif t.shape == (2,):
             return 'Timestamp([{!r}, {!r}])'.format(t[0], t[-1])
         else:
-            return 'Timestamp([{!r}, ...{} more..., {!r}])'.format(t[0], len(t) - 2, t[-1])
+            return 'Timestamp([{!r}, ..., {!r}])'.format(t[0], t[-1])
 
     def __str__(self):
-        """Verbose human-friendly string representation of timestamp object."""
+        """Verbose human-friendly string representation of scalar timestamp object."""
         return self.to_string()
 
     def __eq__(self, other):
@@ -180,15 +180,20 @@ class Timestamp:
         return self
 
     def __float__(self):
-        """Convert to floating-point UTC seconds."""
-        return float(self.secs)
+        """Convert scalar timestamp to floating-point UTC seconds."""
+        try:
+            return float(self.secs)
+        except TypeError as err:
+            raise TypeError('Float conversion only supported for scalar Timestamps') from err
 
     def __hash__(self):
         """Base hash on internal timestamp, just like equality operator."""
         return hash(self.time)
 
     def local(self):
-        """Convert timestamp to local time string representation (for display only)."""
+        """Convert scalar timestamp to local time string representation (for display only)."""
+        if self.time.shape != ():
+            raise TypeError('String output only supported for scalar Timestamps')
         int_secs = math.floor(self.secs)
         frac_secs = np.round(1000.0 * (self.secs - int_secs)) / 1000.0
         if frac_secs >= 1.0:
@@ -203,8 +208,10 @@ class Timestamp:
 
     def to_string(self):
         """Convert timestamp to UTC string representation."""
+        if self.time.shape != ():
+            raise TypeError('String output only supported for scalar Timestamps')
         s = self.time.strftime('%Y-%m-%d %H:%M:%S.%f')
-        if isinstance(s, str) and s.endswith('.000'):
+        if s.endswith('.000'):
             s = s[:-4]
         return s
 
