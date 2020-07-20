@@ -19,7 +19,7 @@
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord  # High-level coordinates
-from astropy.coordinates import ICRS, Galactic, FK4, FK5  # Low-level frames
+from astropy.coordinates import ICRS, Galactic, FK4  # Low-level frames
 from astropy.coordinates import Latitude, Longitude  # Angles
 from astropy.time import Time
 
@@ -1034,14 +1034,11 @@ def construct_target_params(description):
             body.name = "Ra: %s Dec: %s" % (ra, dec)
         # Extract epoch info from tags
         if ('B1900' in tags) or ('b1900' in tags):
-            epoch = Time(1900.0, format='byear')
-            frame = FK4(equinox=epoch)
+            frame = FK4(equinox=Time(1900.0, format='byear'))
         elif ('B1950' in tags) or ('b1950' in tags):
-            epoch = Time(1950.0, format='byear')
-            frame = FK4(equinox=epoch)
+            frame = FK4(equinox=Time(1950.0, format='byear'))
         else:
-            epoch = Time(2000.0, format='jyear')
-            frame = FK5(equinox=epoch)
+            frame = ICRS
         body._radec = SkyCoord(ra=ra, dec=dec, frame=frame)
 
     elif body_type == 'gal':
