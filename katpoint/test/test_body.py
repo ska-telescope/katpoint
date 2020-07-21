@@ -42,19 +42,19 @@ def _get_earth_satellite():
     "body, date_str, ra_str, dec_str, az_str, el_str",
     [
         (FixedBody(), '2020-01-01 00:00:00.000',
-            '10:10:40.123', '40:20:50.567', '326:05:57.541', '51:21:20.0119'),
-        #                                 326:05:54.8,     51:21:18.5  (PyEphem)
+         '10:10:40.123', '40:20:50.567', '326:05:57.541', '51:21:20.0119'),
+        # 10:10:40.12     40:20:50.6      326:05:54.8,     51:21:18.5  (PyEphem)
         (Mars(), '2020-01-01 00:00:00.000',
-            '', '', '118:10:05.1129', '27:23:12.8499'),
-        #         118:10:06.1,      27:23:13.3  (PyEphem)
+         '14:05:58.9201', '-12:13:51.9009', '118:10:05.1129', '27:23:12.8499'),
+        # (PyEphem does GCRS)                118:10:06.1,      27:23:13.3  (PyEphem)
         (Moon(), '2020-01-01 10:00:00.000',
-            '', '', '127:15:17.1381', '60:05:10.2438'),
-        #         127:15:23.6,      60:05:13.7  (PyEphem)
+         '6:44:11.9332', '23:02:08.402', '127:15:17.1381', '60:05:10.2438'),
+        # (PyEphem does GCRS)             127:15:23.6,      60:05:13.7  (PyEphem)
         (Sun(), '2020-01-01 10:00:00.000',
-            '', '', '234:53:19.4835', '31:38:11.412'),
-        #         234:53:20.8,      31:38:09.4  (PyEphem)
+         '7:56:36.8784', '20:53:59.2603', '234:53:19.4835', '31:38:11.412'),
+        # (PyEphem does GCRS)              234:53:20.8,      31:38:09.4  (PyEphem)
         (_get_earth_satellite(), '2019-09-23 07:45:36.000',
-            '3:32:56.7813', '-2:04:35.4329', '280:32:29.675', '-54:06:50.7456'),
+         '3:32:56.7813', '-2:04:35.4329', '280:32:29.675', '-54:06:50.7456'),
         # 3:32:59.21      -2:04:36.3       280:32:07.2      -54:06:14.4  (PyEphem)
     ]
 )
@@ -71,9 +71,8 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str):
     height = 4200.0 if isinstance(body, EarthSatellite) else 0.0
     body.compute(EarthLocation(lat=lat, lon=lon, height=height), date, 0.0)
 
-    if ra_str and dec_str:
-        assert body.a_radec.ra.to_string(sep=':', unit=u.hour) == ra_str
-        assert body.a_radec.dec.to_string(sep=':') == dec_str
+    assert body.a_radec.ra.to_string(sep=':', unit=u.hour) == ra_str
+    assert body.a_radec.dec.to_string(sep=':') == dec_str
     assert body.altaz.az.to_string(sep=':') == az_str
     assert body.altaz.alt.to_string(sep=':') == el_str
 
