@@ -32,7 +32,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
 
-from katpoint.bodies import FixedBody, EarthSatellite
+from katpoint.bodies import FixedBody, EarthSatelliteBody
 
 
 db = """\
@@ -171,12 +171,9 @@ def readdb(line):
         name = fields[0]
         ra = fields[2].split('|')[0]
         dec = fields[3].split('|')[0]
-        s = FixedBody()
-        s.name = name
         ra = Longitude(ra, unit=u.hour)
         dec = Latitude(dec, unit=u.deg)
-        s._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
-        return s
+        return FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
 
     elif fields[1][0] == 'E':
 
@@ -184,8 +181,7 @@ def readdb(line):
         subfields = fields[2].split('|')
 
         # This is an earth satellite.
-        e = EarthSatellite()
-        e.name = fields[0]
+        e = EarthSatelliteBody(name=fields[0])
         epoch = subfields[0].split('/')
         yr = epoch[2]
         mon = epoch[0]

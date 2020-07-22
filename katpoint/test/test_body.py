@@ -25,10 +25,16 @@ import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 import astropy.units as u
-from astropy.coordinates import SkyCoord, ICRS, EarthLocation, Latitude, Longitude
+from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Latitude, Longitude
 from astropy.time import Time
 
-from katpoint.bodies import FixedBody, Sun, Moon, Mars, EarthSatellite, readtle
+from katpoint.bodies import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
+
+
+def _get_fixed_body(ra_str, dec_str):
+    ra = Longitude(ra_str, unit=u.hour)
+    dec = Latitude(dec_str, unit=u.deg)
+    return FixedBody('name', SkyCoord(ra=ra, dec=dec, frame=ICRS))
 
 
 def _get_earth_satellite():
@@ -41,17 +47,17 @@ def _get_earth_satellite():
 @pytest.mark.parametrize(
     "body, date_str, ra_str, dec_str, az_str, el_str",
     [
-        (FixedBody(), '2020-01-01 00:00:00.000',
+        (_get_fixed_body('10:10:40.123', '40:20:50.567'), '2020-01-01 00:00:00.000',
          '10:10:40.123', '40:20:50.567', '326:05:57.541', '51:21:20.0119'),
         # 10:10:40.12     40:20:50.6      326:05:54.8,     51:21:18.5  (PyEphem)
-        (Mars(), '2020-01-01 00:00:00.000',
+        (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
          '14:05:58.9201', '-12:13:51.9009', '118:10:05.1129', '27:23:12.8499'),
         # (PyEphem does GCRS)                118:10:06.1,      27:23:13.3  (PyEphem)
-        (Moon(), '2020-01-01 10:00:00.000',
+        (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
          '6:44:11.9332', '23:02:08.402', '127:15:17.1381', '60:05:10.2438'),
         # (PyEphem does GCRS)             127:15:23.6,      60:05:13.7  (PyEphem)
-        (Sun(), '2020-01-01 10:00:00.000',
-         '7:56:36.8784', '20:53:59.2603', '234:53:19.4835', '31:38:11.412'),
+        (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
+         '7:56:36.7964', '20:53:59.4553', '234:53:19.4762', '31:38:11.4248'),
         # (PyEphem does GCRS)              234:53:20.8,      31:38:09.4  (PyEphem)
         (_get_earth_satellite(), '2019-09-23 07:45:36.000',
          '3:32:56.7813', '-2:04:35.4329', '280:32:29.675', '-54:06:50.7456'),
@@ -60,26 +66,22 @@ def _get_earth_satellite():
 )
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str):
     """Test compute method"""
+    obstime = Time(date_str)
     lat = Latitude('10:00:00.000', unit=u.deg)
     lon = Longitude('80:00:00.000', unit=u.deg)
-    date = Time(date_str)
-
-    if isinstance(body, FixedBody):
-        ra = Longitude(ra_str, unit=u.hour)
-        dec = Latitude(dec_str, unit=u.deg)
-        body._radec = SkyCoord(ra=ra, dec=dec, frame=ICRS)
-    height = 4200.0 if isinstance(body, EarthSatellite) else 0.0
-    body.compute(EarthLocation(lat=lat, lon=lon, height=height), date, 0.0)
-
-    assert body.a_radec.ra.to_string(sep=':', unit=u.hour) == ra_str
-    assert body.a_radec.dec.to_string(sep=':') == dec_str
-    assert body.altaz.az.to_string(sep=':') == az_str
-    assert body.altaz.alt.to_string(sep=':') == el_str
+    height = 4200.0 if isinstance(body, EarthSatelliteBody) else 0.0
+    location = EarthLocation(lat=lat, lon=lon, height=height)
+    radec = body.compute(ICRS, obstime, location)
+    assert radec.ra.to_string(sep=':', unit=u.hour) == ra_str
+    assert radec.dec.to_string(sep=':') == dec_str
+    altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)
+    assert altaz.az.to_string(sep=':') == az_str
+    assert altaz.alt.to_string(sep=':') == el_str
 
 
 def test_earth_satellite():
     sat = _get_earth_satellite()
-    # Check that the EarthSatellite object has the expect attribute values.
+    # Check that the EarthSatelliteBody object has the expected attribute values
     assert str(sat._epoch) == '2019-09-23 07:45:35.842'
     assert sat._inc == np.deg2rad(55.4408)
     assert sat._raan == np.deg2rad(61.3790)
