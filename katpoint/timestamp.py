@@ -103,7 +103,7 @@ class Timestamp:
             return 'Timestamp([{!r}, ..., {!r}])'.format(t[0], t[-1])
 
     def __str__(self):
-        """Verbose human-friendly string representation of scalar timestamp object."""
+        """Verbose human-friendly string representation of timestamp object."""
         return self.to_string()
 
     def __eq__(self, other):
@@ -207,12 +207,7 @@ class Timestamp:
 
     def to_string(self):
         """Convert timestamp to UTC string representation."""
-        if self.time.shape != ():
-            raise TypeError('String output only supported for scalar Timestamps')
-        s = self.time.strftime('%Y-%m-%d %H:%M:%S.%f')
-        if s.endswith('.000'):
-            s = s[:-4]
-        return s
+        return str(self.time.iso)
 
     def to_mjd(self):
         """Convert timestamp to Modified Julian Day (MJD)."""
