@@ -21,9 +21,8 @@ import math
 
 import numpy as np
 import astropy.time
+import astropy.units as u
 from astropy.time import Time
-
-SECONDS_PER_DAY = astropy.time.core.erfa.DAYSEC
 
 
 class Timestamp:
@@ -133,7 +132,7 @@ class Timestamp:
 
     def __add__(self, other):
         """Add seconds (as floating-point number) to timestamp and return result."""
-        return Timestamp(self.time + other / SECONDS_PER_DAY)
+        return Timestamp(self.time + (other << u.second))
 
     def __sub__(self, other):
         """Subtract seconds (floating-point time interval) from timestamp.
@@ -146,7 +145,7 @@ class Timestamp:
         elif isinstance(other, Time):
             return (self.time - other).sec
         else:
-            return Timestamp(self.time - other / SECONDS_PER_DAY)
+            return Timestamp(self.time - (other << u.second))
 
     def __mul__(self, other):
         """Multiply timestamp by numerical factor (useful for processing timestamps)."""
@@ -158,11 +157,11 @@ class Timestamp:
 
     def __radd__(self, other):
         """Add timestamp to seconds (as floating-point number) and return result."""
-        return Timestamp(self.time + other / SECONDS_PER_DAY)
+        return Timestamp(self.time + (other << u.second))
 
     def __iadd__(self, other):
         """Add seconds (as floating-point number) to timestamp in-place."""
-        self.time += other / SECONDS_PER_DAY
+        self.time += (other << u.second)
         return self
 
     def __rsub__(self, other):
@@ -176,7 +175,7 @@ class Timestamp:
 
     def __isub__(self, other):
         """Subtract seconds (as floating-point number) from timestamp in-place."""
-        self.time -= other / SECONDS_PER_DAY
+        self.time -= (other << u.second)
         return self
 
     def __float__(self):
