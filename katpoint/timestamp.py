@@ -91,15 +91,11 @@ class Timestamp:
 
     def __repr__(self):
         """Short machine-friendly string representation of timestamp object."""
-        t = self.secs
-        if t.shape in {(), (0,)}:
-            return 'Timestamp({})'.format(t)
-        elif t.shape == (1,):
-            return 'Timestamp([{!r}])'.format(t[0])
-        elif t.shape == (2,):
-            return 'Timestamp([{!r}, {!r}])'.format(t[0], t[-1])
-        else:
-            return 'Timestamp([{!r}, ..., {!r}])'.format(t[0], t[-1])
+        # We need a custom formatter because suppress=True only works on values < 1e8
+        # and today's Unix timestamps are bigger than that
+        formatter = '{{:.{:d}f}}'.format(self.time.precision).format
+        with np.printoptions(threshold=2, edgeitems=1, formatter={'float': formatter}):
+            return 'Timestamp({})'.format(self.secs)
 
     def __str__(self):
         """Verbose human-friendly string representation of timestamp object."""
