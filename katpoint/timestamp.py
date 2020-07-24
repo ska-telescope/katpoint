@@ -68,7 +68,7 @@ class Timestamp:
         if timestamp is None:
             self.time = Time.now()
         elif isinstance(timestamp, Timestamp):
-            self.time = timestamp.time
+            self.time = timestamp.time.replicate()
         else:
             # Convert to array to simplify both array/scalar and string/bytes handling
             val = np.asarray(timestamp)
