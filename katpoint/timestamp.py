@@ -25,21 +25,18 @@ from astropy.time import Time
 
 
 class Timestamp:
-    """Basic representation of time, in UTC seconds since Unix epoch.
+    """Basic representation of time(s), in UTC seconds since Unix epoch.
 
-    This is loosely based on PyEphem's `Date` object. Its base representation
-    of time is UTC seconds since the Unix epoch, i.e. the standard Posix
-    timestamp. Fractional seconds are allowed, as the basic data
-    type is a Python (double-precision) float.
+    This is loosely based on PyEphem's `Date` object, but uses an Astropy
+    `Time` object as internal representation. Like `Time` it can contain
+    a multi-dimensional array of timestamps.
 
     The following input formats are accepted for a timestamp:
-
-    - None, which uses the current time (the default).
 
     - A floating-point number, directly representing the number of UTC seconds
       since the Unix epoch. Fractional seconds are allowed.
 
-    - A string or bytes with format 'YYYY-MM-DD HH:MM:SS.SSS' or
+    - A string or bytes with format 'YYYY-MM-DD HH:MM:SS.SSS' (RFC 3339) or
       'YYYY/MM/DD HH:MM:SS.SSS', where the hours and minutes, seconds, and
       fractional seconds are optional. It is always in UTC. Examples are:
 
@@ -50,17 +47,39 @@ class Timestamp:
 
     - A :class:`~astropy.time.Time` object.
 
-    - A :class:`Timestamp` object, which will result in a shallow copy.
+    - A sequence or NumPy array of one of the above types.
+
+    - None, which uses the current time (the default).
+
+    - Another :class:`Timestamp` object, which will result in a copy.
 
     Parameters
     ----------
-    timestamp : float, string, bytes, :class:`~astropy.time.Time`, :class:`Timestamp` or None
+    timestamp : float, string, bytes, :class:`~astropy.time.Time`, sequence or
+                array of the former, :class:`Timestamp` or None, optional
         Timestamp, in various formats (if None, defaults to now)
 
     Arguments
     ---------
-    secs : float
+    time : :class:`~astropy.time.Time`
+        Underlying `Time` object
+    secs : float or array of float
         Timestamp as UTC seconds since Unix epoch
+
+    Notes
+    -----
+    This differs from :class:`~astropy.time.Time` in the following respects:
+
+    - Numbers are interpreted as Unix timestamps during initialisation;
+      `Timestamp(1234567890)` is equivalent to `Time(1234567890, format='unix')`
+      (while `Time(1234567890)` is not allowed because it lacks a format).
+
+    - Arithmetic is done in seconds instead of days (in the absence of units).
+
+    - Date strings may contain slashes (a leftover from PyEphem / XEphem).
+
+    - Empty initialisation results in the current time, so `Timestamp()`
+      is equivalent to `Time.now()` (while `Time()` is not allowed).
     """
 
     def __init__(self, timestamp=None):
