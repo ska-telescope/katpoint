@@ -20,7 +20,6 @@ import time
 import math
 
 import numpy as np
-import astropy.time
 import astropy.units as u
 from astropy.time import Time
 
@@ -71,9 +70,8 @@ class Timestamp:
         elif isinstance(timestamp, Timestamp):
             self.time = timestamp.time
         else:
-            # Use Astropy internal function to cast input to float64,
-            # string (unicode / bytes) or Time object array (0-dim for scalar)
-            val = astropy.time.core._make_array(timestamp)
+            # Convert to array to simplify both array/scalar and string/bytes handling
+            val = np.asarray(timestamp)
             format = None
             if val.dtype.kind == 'U':
                 # Convert default PyEphem timestamp strings to ISO strings
@@ -82,7 +80,8 @@ class Timestamp:
             elif val.dtype.kind == 'S':
                 val = np.char.replace(np.char.strip(val), b'/', b'-')
                 format = 'iso'
-            elif val.dtype.kind == 'f':
+            elif val.dtype.kind in 'iuf':
+                # Consider any number to be a Unix timestamp
                 format = 'unix'
             self.time = Time(val, format=format, scale='utc', precision=3)
 
