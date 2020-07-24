@@ -28,7 +28,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Latitude, Longitude
 from astropy.time import Time
 
-from katpoint.bodies import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
+from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
 
 
 def _get_fixed_body(ra_str, dec_str):

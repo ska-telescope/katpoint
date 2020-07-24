@@ -28,7 +28,7 @@ from .flux import FluxDensityModel
 from .ephem_extra import (is_iterable, lightspeed, deg2rad, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .bodies import FixedBody, readtle, StationaryBody, SolarSystemBody, NullBody
+from .body import FixedBody, readtle, StationaryBody, SolarSystemBody, NullBody
 from .stars import star, readdb
 
 

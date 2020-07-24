@@ -19,7 +19,7 @@
 import numpy as np
 
 from katpoint.stars import readdb
-from katpoint.bodies import EarthSatelliteBody, FixedBody
+from katpoint.body import EarthSatelliteBody, FixedBody
 
 
 def test_earth_satellite():

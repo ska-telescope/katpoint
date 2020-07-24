@@ -32,7 +32,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
 
-from katpoint.bodies import FixedBody, EarthSatelliteBody
+from katpoint.body import FixedBody, EarthSatelliteBody
 
 
 db = """\
