@@ -47,16 +47,16 @@ class Timestamp:
 
     - A :class:`~astropy.time.Time` object.
 
+    - Another :class:`Timestamp` object, which will result in a copy.
+
     - A sequence or NumPy array of one of the above types.
 
     - None, which uses the current time (the default).
 
-    - Another :class:`Timestamp` object, which will result in a copy.
-
     Parameters
     ----------
-    timestamp : float, string, bytes, :class:`~astropy.time.Time`, sequence or
-                array of the former, :class:`Timestamp` or None, optional
+    timestamp : :class:`~astropy.time.Time`, :class:`Timestamp`, float, string,
+                bytes, sequence or array of any of the former, or None, optional
         Timestamp, in various formats (if None, defaults to now)
 
     Arguments
@@ -86,11 +86,12 @@ class Timestamp:
         format = None
         if timestamp is None:
             self.time = Time.now()
-        elif isinstance(timestamp, Timestamp):
-            self.time = timestamp.time.replicate()
         else:
             # Convert to array to simplify both array/scalar and string/bytes handling
             val = np.asarray(timestamp)
+            # Extract copies of Time objects from inside Timestamps
+            if val.size > 0 and isinstance(val.flat[0], Timestamp):
+                val = np.vectorize(lambda ts: ts.time.replicate())(val)
             format = None
             if val.dtype.kind == 'U':
                 # Convert default PyEphem timestamp strings to ISO strings
