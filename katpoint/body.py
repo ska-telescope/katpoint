@@ -375,7 +375,12 @@ class StationaryBody(Body):
 
     def compute(self, frame, obstime, location):
         """Transform (az, el) at given location and time to requested `frame`."""
-        altaz = self.coord.replicate(obstime=obstime, location=location)
+        # Ensure that coordinates have same shape as obstime (broadcasting fails)
+        altaz = self.coord.take(np.zeros_like(obstime, dtype=int))
+        altaz = altaz.replicate(obstime=obstime, location=location)
+        # Bypass transform_to for AltAz -> AltAz, otherwise we need a location
+        # and the output (az, el) will not be exactly equal to the coord (az, el)
+        # due to small numerical errors.
         if isinstance(frame, AltAz) and altaz.is_equivalent_frame(frame):
             return altaz
         else:
