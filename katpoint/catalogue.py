@@ -939,10 +939,13 @@ class Catalogue:
         print()
         print('Target                        Azimuth    Elevation <    Flux Fringe period')
         print('------                        -------    --------- -    ---- -------------')
-        for target in self.sort('el', timestamp=timestamp, antenna=antenna, ascending=False):
-            azel = target.azel(timestamp, antenna)
-            delta_el = target.azel(timestamp + 30.0, antenna).alt.deg - target.azel(timestamp - 30.0, antenna).alt.deg
-            el_code = '-' if (np.abs(delta_el) < 1.0 / 60.0) else ('/' if delta_el > 0.0 else '\\')
+        azels = [target.azel(timestamp + (-30.0, 0.0, 30.0), antenna) for target in self.targets]
+        elevations = [azel[1].alt.deg for azel in azels]
+        for index in np.argsort(elevations)[::-1]:
+            target = self.targets[index]
+            azel = azels[index][1]
+            delta_el = azels[index][2].alt.deg - azels[index][0].alt.deg
+            el_code = '-' if (np.abs(delta_el) < 1 / 60) else ('/' if delta_el > 0 else '\\')
             # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
             flux = target.flux_density(flux_freq_MHz) if flux_freq_MHz is not None else np.nan
             if antenna2 is not None and flux_freq_MHz is not None:
@@ -954,7 +957,9 @@ class Catalogue:
                 # Draw horizon line
                 print('--------------------------------------------------------------------------')
                 above_horizon = False
-            line = '%-24s %12s %12s %c' % (target.name, azel.az.rad, azel.alt.rad, el_code)
+            az = azel.az.wrap_at('180deg').to_string(sep=':', precision=1)
+            el = azel.alt.to_string(sep=':', precision=1)
+            line = '%-24s %12s %12s %c' % (target.name, az, el, el_code)
             line = line + ' %7.1f' % (flux,) if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
                 line += '    %10.2f' % (fringe_period,)
