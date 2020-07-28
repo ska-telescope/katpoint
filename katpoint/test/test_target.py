@@ -286,12 +286,12 @@ class TestTargetCalculations:
         azel_sun = sun.azel(self.ts, self.ant1)
         azel = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt)
         sep = sun.separation(azel, self.ts, self.ant1)
-        np.testing.assert_almost_equal(sep, 0.0)
+        np.testing.assert_almost_equal(sep.rad, 0.0)
         sep = azel.separation(sun, self.ts, self.ant1)
-        np.testing.assert_almost_equal(sep, 0.0)
+        np.testing.assert_almost_equal(sep.rad, 0.0)
         azel2 = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt + Angle(0.01, unit=u.rad))
         sep = azel.separation(azel2, self.ts, self.ant1)
-        np.testing.assert_almost_equal(sep, 0.01, decimal=7)
+        np.testing.assert_almost_equal(sep.rad, 0.01, decimal=7)
 
     def test_projection(self):
         """Test projection."""

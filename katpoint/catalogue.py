@@ -24,7 +24,6 @@ from astropy.time import Time
 
 from .target import Target
 from .timestamp import Timestamp
-from .ephem_extra import rad2deg
 from .stars import stars
 
 logger = logging.getLogger(__name__)
@@ -623,7 +622,7 @@ class Catalogue:
         """
         if len(self.targets) == 0:
             return None, 180.0
-        dist = rad2deg(np.array([target.separation(tgt, timestamp, antenna) for tgt in self.targets]))
+        dist = np.array([target.separation(tgt, timestamp, antenna).deg for tgt in self.targets])
         closest = dist.argmin()
         return self.targets[closest], dist[closest]
 
@@ -757,7 +756,7 @@ class Catalogue:
                     if (el_deg < el_limit_deg[0]) or (el_deg > el_limit_deg[1]):
                         continue
                 if proximity_filter:
-                    dist_deg = np.array([rad2deg(target.separation(prox_target, latest_timestamp, antenna))
+                    dist_deg = np.array([target.separation(prox_target, latest_timestamp, antenna).deg
                                          for prox_target in proximity_targets])
                     if (dist_deg < dist_limit_deg[0]).any() or (dist_deg > dist_limit_deg[1]).any():
                         continue
