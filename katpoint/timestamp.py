@@ -20,8 +20,12 @@ import time
 import math
 
 import numpy as np
-import astropy.units as u
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
+
+
+def delta_seconds(x):
+    """Construct a `TimeDelta` in TAI seconds."""
+    return TimeDelta(x, format='sec', scale='tai')
 
 
 class Timestamp:
@@ -36,9 +40,10 @@ class Timestamp:
     - A floating-point number, directly representing the number of UTC seconds
       since the Unix epoch. Fractional seconds are allowed.
 
-    - A string or bytes with format 'YYYY-MM-DD HH:MM:SS.SSS' (RFC 3339) or
-      'YYYY/MM/DD HH:MM:SS.SSS', where the hours and minutes, seconds, and
-      fractional seconds are optional. It is always in UTC. Examples are:
+    - A string or bytes with format 'YYYY-MM-DD HH:MM:SS.SSS' (ISO 8601 with
+      a space separator) or 'YYYY/MM/DD HH:MM:SS.SSS' (XEphem), where the hours
+      and minutes, seconds, and fractional seconds are optional. It is always
+      in UTC. Examples are:
 
         '1999-12-31 12:34:56.789'
         '1999/12/31 12:34:56'
@@ -59,8 +64,8 @@ class Timestamp:
                 bytes, sequence or array of any of the former, or None, optional
         Timestamp, in various formats (if None, defaults to now)
 
-    Arguments
-    ---------
+    Attributes
+    ----------
     time : :class:`~astropy.time.Time`
         Underlying `Time` object
     secs : float or array of float
@@ -147,7 +152,7 @@ class Timestamp:
 
     def __add__(self, other):
         """Add seconds (as floating-point number) to timestamp and return result."""
-        return Timestamp(self.time + (other << u.second))
+        return Timestamp(self.time + delta_seconds(other))
 
     def __sub__(self, other):
         """Subtract seconds (floating-point time interval) from timestamp.
@@ -157,10 +162,10 @@ class Timestamp:
         """
         if isinstance(other, Timestamp):
             return (self.time - other.time).sec
-        elif isinstance(other, Time):
+        elif isinstance(other, Time) and not isinstance(other, TimeDelta):
             return (self.time - other).sec
         else:
-            return Timestamp(self.time - (other << u.second))
+            return Timestamp(self.time - delta_seconds(other))
 
     def __mul__(self, other):
         """Multiply timestamp by numerical factor (useful for processing timestamps)."""
@@ -172,11 +177,11 @@ class Timestamp:
 
     def __radd__(self, other):
         """Add timestamp to seconds (as floating-point number) and return result."""
-        return Timestamp(self.time + (other << u.second))
+        return Timestamp(self.time + delta_seconds(other))
 
     def __iadd__(self, other):
         """Add seconds (as floating-point number) to timestamp in-place."""
-        self.time += (other << u.second)
+        self.time += delta_seconds(other)
         return self
 
     def __rsub__(self, other):
@@ -190,7 +195,7 @@ class Timestamp:
 
     def __isub__(self, other):
         """Subtract seconds (as floating-point number) from timestamp in-place."""
-        self.time -= (other << u.second)
+        self.time -= delta_seconds(other)
         return self
 
     def __float__(self):

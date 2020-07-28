@@ -16,10 +16,13 @@
 
 """Tests for the timestamp module."""
 
+import warnings
+from unittest.mock import patch
+
 import pytest
 import numpy as np
 import astropy.units as u
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 
 import katpoint
 
@@ -52,20 +55,32 @@ def test_construct_valid_timestamp(init_value, string):
     print(t.local())
 
 
-@pytest.mark.parametrize('init_value', ['gielie', '03 Mar 2003'])
+@pytest.mark.parametrize('init_value',
+                         ['2020-07-28T18:18:18.000',  # ISO 8601 with a 'T' is invalid
+                          '2020-07-28 18:18:18.000+02:00',  # Time zones are not accepted
+                          'gielie', '03 Mar 2003', 2j])
 def test_construct_invalid_timestamp(init_value):
     with pytest.raises(ValueError):
-        katpoint.Timestamp(init_value)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', np.ComplexWarning)
+            katpoint.Timestamp(init_value)
 
 
-def test_now_and_ordering_timestamps():
-    t1 = Time.now()
-    # We won't run this test during a leap second, promise...
-    t2 = katpoint.Timestamp()
-    assert t2 >= t1, "The second now() is not after the first now()"
-    assert t2 - t1 >= 0.0
-    t3 = katpoint.Timestamp()
-    assert t2 <= t3, "The second now() is not before the third now()"
+def test_current_timestamp():
+    t0 = Time.now()
+    with patch.object(Time, 'now', side_effect=lambda: t0):
+        assert katpoint.Timestamp() == t0
+
+
+def test_timestamp_ordering():
+    t1 = katpoint.Timestamp(1234567890)
+    t2 = katpoint.Timestamp(1234567891)
+    assert t2 >= t1
+    assert t2 >= t1.time
+    assert t2 >= t1.secs
+    assert t2 > t1
+    assert t1 <= t2
+    assert t1 < t2
 
 
 def test_numerical_timestamp():
@@ -113,6 +128,59 @@ def test_operators():
     assert isinstance(s - t, float)
     assert isinstance(t - t, float)
 
+    # Check various additions and subtractions
+    def approx_equal(x, y, **kwargs):
+        return x.secs == pytest.approx(y, **kwargs)
+    # Timestamp + interval
+    assert approx_equal(t + 1, t0 + 1)
+    assert approx_equal(t + 1 * u.second, t0 + 1)
+    assert approx_equal(t + TimeDelta(1.0, format='sec', scale='tai'), t0 + 1)
+    # interval + Timestamp
+    assert approx_equal(1 + t, t0 + 1)
+    with pytest.raises(TypeError):  # why does Quantity not return NotImplemented here?
+        assert approx_equal(1 * u.second + t, t0 + 1)
+    assert approx_equal(TimeDelta(1.0, format='sec', scale='tai') + t, t0 + 1)
+    # Timestamp + Timestamp
+    with pytest.raises(ValueError):
+        t + t
+    with pytest.raises(ValueError):
+        t + t.time
+    # Timestamp - interval
+    assert approx_equal(t - 1, t0 - 1)
+    assert approx_equal(t - 1 * u.second, t0 - 1)
+    assert approx_equal(t - TimeDelta(1.0, format='sec', scale='tai'), t0 - 1)
+    # This differs from PyEphem-based katpoint: leap seconds!
+    assert approx_equal(t - t0, 26.0, rel=1e-5)  # float t0 is an interval here...
+    # Timestamp - Timestamp
+    assert t - katpoint.Timestamp(t0) == 0.0
+    assert t - t.time == 0.0
+    assert t0 - t == 0.0  # float t0 is a Unix timestamp here...
+    assert t.time - t == 0.0
+    # Timestamp += interval
+    t += 1
+    assert approx_equal(t, t0 + 1)
+    t += 1 * u.second
+    assert approx_equal(t, t0 + 2)
+    t += TimeDelta(1.0, format='sec', scale='tai')
+    assert approx_equal(t, t0 + 3)
+    # Timestamp += Timestamp
+    with pytest.raises(ValueError):
+        t += t
+    with pytest.raises(ValueError):
+        t += t.time
+    # Timestamp -= interval
+    t -= 1
+    assert approx_equal(t, t0 + 2)
+    t -= 1 * u.second
+    assert approx_equal(t, t0 + 1)
+    t -= TimeDelta(1.0, format='sec', scale='tai')
+    assert approx_equal(t, t0)
+    # Timestamp -= Timestamp
+    with pytest.raises(ValueError):
+        t -= t
+    with pytest.raises(ValueError):
+        t -= t.time
+
 
 def test_array_timestamps():
     t = katpoint.Timestamp([1234567890.0, 1234567891.0])
@@ -123,12 +191,7 @@ def test_array_timestamps():
     np.testing.assert_array_equal(t == 1234567890.0, [True, False])
     np.testing.assert_array_equal(t != 1234567890.0, [False, True])
     t2 = katpoint.Timestamp(1234567890.0)
-    # Exercise various repr code paths
-    print(repr(t2))
-    print(repr(t2 + np.arange(0)))
-    print(repr(t2 + np.arange(1)))
-    print(repr(t2 + np.arange(2)))
-    print(repr(t2 + np.arange(3)))
+    assert repr(t2 + np.arange(3)) == 'Timestamp([1234567890.000 ... 1234567892.000])'
     # Construct from sequence or array of strings or `Time`s or `Timestamp`s
     t0 = katpoint.Timestamp(t.time[0])
     t1 = katpoint.Timestamp(t.time[1])
