@@ -44,7 +44,7 @@ import katpoint
         ('2009/07/21 02:52:12', '2009-07-21 02:52:12.000'),
         ('2009/07/21 02:52', '2009-07-21 02:52:00.000'),
         (b'2009/07/21', '2009-07-21 00:00:00.000'),
-        (b'2020-07-17 12:40:12', '2020-07-17 12:40:12.000')
+        (b'2020-07-17 12:40:12', '2020-07-17 12:40:12.000'),
     ]
 )
 def test_construct_valid_timestamp(init_value, string):
@@ -55,10 +55,17 @@ def test_construct_valid_timestamp(init_value, string):
     print(t.local())
 
 
-@pytest.mark.parametrize('init_value',
-                         ['2020-07-28T18:18:18.000',  # ISO 8601 with a 'T' is invalid
-                          '2020-07-28 18:18:18.000+02:00',  # Time zones are not accepted
-                          'gielie', '03 Mar 2003', 2j])
+@pytest.mark.parametrize(
+    'init_value',
+    [
+        'gielie',
+        '03 Mar 2003',
+        2j,  # An unsupported NumPy dtype
+        '2020-07-28T18:18:18.000',  # ISO 8601 with a 'T' is invalid
+        '2020-07-28 18:18:18.000+02:00',  # Time zones are not accepted
+        TimeDelta(1.0, format='sec', scale='tai'),  # A TimeDelta is the wrong kind of Time
+    ]
+)
 def test_construct_invalid_timestamp(init_value):
     with pytest.raises(ValueError):
         with warnings.catch_warnings():

@@ -49,7 +49,7 @@ class Timestamp:
         '1999-12-31 12:34'
         b'1999-12-31'
 
-    - A :class:`~astropy.time.Time` object.
+    - A :class:`~astropy.time.Time` object (NOT :class:`~astropy.time.TimeDelta`).
 
     - Another :class:`Timestamp` object, which will result in a copy.
 
@@ -62,6 +62,11 @@ class Timestamp:
     timestamp : :class:`~astropy.time.Time`, :class:`Timestamp`, float, string,
                 bytes, sequence or array of any of the former, or None, optional
         Timestamp, in various formats (if None, defaults to now)
+
+    Raises
+    ------
+    ValueError
+        If `timestamp` is not in a supported format
 
     Attributes
     ----------
@@ -87,11 +92,12 @@ class Timestamp:
     """
 
     def __init__(self, timestamp=None):
-        format = None
         if timestamp is None:
             self.time = Time.now()
         elif isinstance(timestamp, Timestamp):
             self.time = timestamp.time.replicate()
+        elif isinstance(timestamp, TimeDelta):
+            raise ValueError('Cannot construct Timestamp from TimeDelta {}'.format(timestamp))
         elif isinstance(timestamp, Time):
             self.time = timestamp.replicate()
         else:
