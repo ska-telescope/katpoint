@@ -198,12 +198,27 @@ class TestTargetCalculations:
         self.uvw = [10.820796672358002, -9.1055125816993954, -2.22044604925e-16]
 
     def test_coords(self):
-        """Test coordinate conversions for coverage."""
-        self.target.azel(self.ts, self.ant1)
-        self.target.apparent_radec(self.ts, self.ant1)
-        self.target.astrometric_radec(self.ts, self.ant1)
-        self.target.galactic(self.ts, self.ant1)
-        self.target.parallactic_angle(self.ts, self.ant1)
+        """Test coordinate conversions for coverage and verification."""
+        coord = self.target.azel(self.ts, self.ant1)
+        assert coord.az.deg == 45  # PyEphem: 45
+        assert coord.alt.deg == 75  # PyEphem: 75
+        coord = self.target.apparent_radec(self.ts, self.ant1)
+        ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
+        dec_deg = coord.dec.to_string(sep=':', precision=8)
+        assert ra_hour == '8:53:03.49166920'  # PyEphem: 8:53:09.60 (same as astrometric)
+        assert dec_deg == '-19:54:51.92328722'  # PyEphem: -19:51:43.0 (same as astrometric)
+        coord = self.target.astrometric_radec(self.ts, self.ant1)
+        ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
+        dec_deg = coord.dec.to_string(sep=':', precision=8)
+        assert ra_hour == '8:53:09.60397465'  # PyEphem: 8:53:09.60
+        assert dec_deg == '-19:51:42.87773802'  # PyEphem: -19:51:43.0
+        coord = self.target.galactic(self.ts, self.ant1)
+        l_deg = coord.l.to_string(sep=':', precision=8)
+        b_deg = coord.b.to_string(sep=':', precision=8)
+        assert l_deg == '245:34:49.20442837'  # PyEphem: 245:34:49.3
+        assert b_deg == '15:36:24.87974969'  # PyEphem: 15:36:24.7
+        coord = self.target.parallactic_angle(self.ts, self.ant1)
+        assert coord.deg == -140.27959356633625  # PyEphem: -140.34440985011398
 
     def test_delay(self):
         """Test geometric delay."""
