@@ -75,32 +75,34 @@ class TestTargetConstruction:
 
     def test_constructed_coords(self):
         """Test whether calculated coordinates match those with which it is constructed."""
-        # azel = katpoint.Target(self.azel_target)
-        # calc_azel = azel.azel()
-        # calc_az = calc_azel.az
-        # calc_el = calc_azel.alt
-        # assert calc_az.deg == 10.0, 'Calculated az does not match specified value in azel target'
-        # assert calc_el.deg == -10.0, 'Calculated el does not match specified value in azel target'
+        # azel
+        azel = katpoint.Target(self.azel_target)
+        calc_azel = azel.azel()
+        calc_az = calc_azel.az
+        calc_el = calc_azel.alt
+        assert calc_az.deg == 10.0
+        assert calc_el.deg == -10.0
+        # radec (degrees)
         radec = katpoint.Target(self.radec_target)
         calc_radec = radec.radec()
         calc_ra = calc_radec.ra
         calc_dec = calc_radec.dec
-        # You would think that these could be made exactly equal, but the following assignment is inexact:
-        # body = ephem.FixedBody()
-        # body._ra = ra
-        # Then body._ra != ra... Possibly due to double vs float? This problem goes all the way to libastro.
-        np.testing.assert_almost_equal(calc_ra.deg, 20.0, decimal=4)
-        np.testing.assert_almost_equal(calc_dec.deg, -20.0, decimal=4)
+        assert calc_ra.deg == 20.0
+        assert calc_dec.deg == -20.0
+        # radec (hours)
         radec_rahours = katpoint.Target(self.radec_target_rahours)
         calc_radec_rahours = radec_rahours.radec()
-        calc_rahours = calc_radec_rahours.ra
-        np.testing.assert_almost_equal(calc_rahours.deg, 20.0 * 360.0 / 24.0, decimal=4)
+        calc_ra = calc_radec_rahours.ra
+        calc_dec = calc_radec_rahours.dec
+        assert calc_ra.hms == (20, 0, 0)
+        assert calc_dec.deg == -20.0
+        # gal
         lb = katpoint.Target(self.gal_target)
         calc_lb = lb.galactic()
         calc_l = calc_lb.l
         calc_b = calc_lb.b
-        np.testing.assert_almost_equal(calc_l.deg, 30.0, decimal=4)
-        np.testing.assert_almost_equal(calc_b.deg, -30.0, decimal=4)
+        assert calc_l.deg == 30.0
+        assert calc_b.deg == -30.0
 
     def test_add_tags(self):
         """Test adding tags."""
