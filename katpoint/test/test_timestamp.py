@@ -189,9 +189,9 @@ def test_array_timestamps():
     np.testing.assert_array_equal(t == 1234567890.0, [True, False])
     np.testing.assert_array_equal(t != 1234567890.0, [False, True])
     t2 = katpoint.Timestamp(1234567890.0)
-    t_array = t2 + np.arange(3)
-    assert repr(t_array) == 'Timestamp([1234567890.000 ... 1234567892.000])'
-    assert t_array.local().shape == (3,)
+    t_array_1d = t2 + np.arange(3)
+    assert repr(t_array_1d) == 'Timestamp([1234567890.000 ... 1234567892.000])'
+    assert t_array_1d.local().shape == (3,)
     # Construct from sequence or array of strings or `Time`s or `Timestamp`s
     t0 = katpoint.Timestamp(t.time[0])
     t1 = katpoint.Timestamp(t.time[1])
@@ -204,6 +204,11 @@ def test_array_timestamps():
     t5 = katpoint.Timestamp(np.array((t0, t1)))
     assert t5.time.shape == (2,)
     assert all(t5 == t)
+    # Construct from 2-dimensional array of floats or a 2-D `Time`
+    array_2d = [[1234567890.0, 1234567891.0], [1234567892.0, 1234567893.0]]
+    t_array_2d = katpoint.Timestamp(array_2d)
+    t_array_2d = katpoint.Timestamp(t_array_2d.time)
+    np.testing.assert_array_equal(t_array_2d.secs, array_2d)
 
 
 @pytest.mark.parametrize('mjd', [59000.0, (59000.0, 59001.0)])

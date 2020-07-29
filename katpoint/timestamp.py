@@ -107,7 +107,8 @@ class Timestamp:
             elif val.dtype.kind in 'iuf':
                 # Consider any number to be a Unix timestamp
                 format = 'unix'
-            self.time = Time(val, format=format, scale='utc', precision=3)
+            self.time = Time(val.ravel(), format=format,
+                             scale='utc', precision=3).reshape(val.shape)
 
     @property
     def secs(self):
