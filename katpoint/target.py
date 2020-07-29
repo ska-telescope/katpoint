@@ -323,7 +323,7 @@ class Target:
 
         Returns
         -------
-        azel : :class:`~astropy.coordinates.AltAz`
+        azel : :class:`~astropy.coordinates.AltAz`, same shape as *timestamp*
             Azimuth and elevation in `AltAz` frame
 
         Raises
@@ -355,7 +355,7 @@ class Target:
 
         Returns
         -------
-        radec : :class:`~astropy.coordinates.CIRS`
+        radec : :class:`~astropy.coordinates.CIRS`, same shape as *timestamp*
             Right ascension and declination in `CIRS` frame
 
         Raises
@@ -384,7 +384,7 @@ class Target:
 
         Returns
         -------
-        radec : :class:`~astropy.coordinates.ICRS`
+        radec : :class:`~astropy.coordinates.ICRS`, same shape as *timestamp*
             Right ascension and declination in `ICRS` frame
 
         Raises
@@ -415,7 +415,7 @@ class Target:
 
         Returns
         -------
-        lb : :class:`~astropy.coordinates.Galactic`
+        lb : :class:`~astropy.coordinates.Galactic`, same shape as *timestamp*
             Galactic longitude, *l*, and latitude, *b*, in `Galactic` frame
 
         Raises

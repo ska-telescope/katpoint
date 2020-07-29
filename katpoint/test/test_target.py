@@ -55,15 +55,13 @@ class TestTargetConstruction:
         assert radec3 == radec4, 'Special radec constructor (sexagesimal) failed'
         radec5 = katpoint.construct_radec_target('20:00:00.0', '-00:30:00.0')
         radec6 = katpoint.construct_radec_target('300.0', '-0.5')
-        assert radec5 == radec6, (
-            'Special radec constructor (decimal <-> sexagesimal) failed')
+        assert radec5 == radec6, 'Special radec constructor (decimal <-> sexagesimal) failed'
         # Check that description string updates when object is updated
         t1 = katpoint.Target('piet, azel, 20, 30')
         t2 = katpoint.Target('piet | bollie, azel, 20, 30')
         assert t1 != t2, 'Targets should not be equal'
         t1.aliases += ['bollie']
-        assert t1.description == t2.description, (
-            'Target description string not updated')
+        assert t1.description == t2.description, 'Target description string not updated'
         assert t1 == t2.description, 'Equality with description string failed'
         assert t1 == t2, 'Equality with target failed'
         assert t1 == katpoint.Target(t2), 'Construction with target object failed'
@@ -306,7 +304,8 @@ class TestTargetCalculations:
         np.testing.assert_almost_equal(sep.rad, 0.0)
         sep = azel.separation(sun, self.ts, self.ant1)
         np.testing.assert_almost_equal(sep.rad, 0.0)
-        azel2 = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt + Angle(0.01, unit=u.rad))
+        azel2 = katpoint.construct_azel_target(azel_sun.az,
+                                               azel_sun.alt + Angle(0.01, unit=u.rad))
         sep = azel.separation(azel2, self.ts, self.ant1)
         np.testing.assert_almost_equal(sep.rad, 0.01, decimal=7)
 
