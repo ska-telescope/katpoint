@@ -39,8 +39,8 @@ class Timestamp:
     - A floating-point number, directly representing the number of UTC seconds
       since the Unix epoch. Fractional seconds are allowed.
 
-    - A string or bytes with format 'YYYY-MM-DD HH:MM:SS.SSS' (ISO 8601 with
-      a space separator) or 'YYYY/MM/DD HH:MM:SS.SSS' (XEphem), where the hours
+    - A string or bytes with format 'YYYY-MM-DD HH:MM:SS.SSS' (Astropy 'iso'
+      format) or 'YYYY/MM/DD HH:MM:SS.SSS' (XEphem format), where the hours
       and minutes, seconds, and fractional seconds are optional. It is always
       in UTC. Examples are:
 
@@ -90,12 +90,16 @@ class Timestamp:
         format = None
         if timestamp is None:
             self.time = Time.now()
+        elif isinstance(timestamp, Timestamp):
+            self.time = timestamp.time.replicate()
+        elif isinstance(timestamp, Time):
+            self.time = timestamp.replicate()
         else:
             # Convert to array to simplify both array/scalar and string/bytes handling
             val = np.asarray(timestamp)
             # Extract copies of Time objects from inside Timestamps
             if val.size > 0 and isinstance(val.flat[0], Timestamp):
-                val = np.vectorize(lambda ts: ts.time.replicate())(val)
+                val = np.vectorize(lambda ts: ts.time)(val)
             format = None
             if val.dtype.kind == 'U':
                 # Convert default PyEphem timestamp strings to ISO strings
@@ -107,8 +111,7 @@ class Timestamp:
             elif val.dtype.kind in 'iuf':
                 # Consider any number to be a Unix timestamp
                 format = 'unix'
-            self.time = Time(val.ravel(), format=format,
-                             scale='utc', precision=3).reshape(val.shape)
+            self.time = Time(val, format=format, scale='utc', precision=3)
 
     @property
     def secs(self):
@@ -211,10 +214,12 @@ class Timestamp:
 
     def local(self):
         """Local time string representation (str or array of str)."""
-        frac_secs, int_secs = np.modf(np.round(self.secs, decimals=self.time.precision))
+        prec = self.time.precision
+        frac_secs, int_secs = np.modf(np.round(self.secs, decimals=prec))
 
         def local_time_string(f, i):
-            format_string = '%Y-%m-%d %H:%M:%S.{:.0f} %Z'.format(1000 * f)
+            format_string = '%Y-%m-%d %H:%M:%S.{:0{width}.0f} %Z'.format(
+                f * 10 ** prec, width=prec)
             return time.strftime(format_string, time.localtime(i))
         local_str = np.vectorize(local_time_string)(frac_secs, int_secs)
         return local_str if local_str.ndim else local_str.item()

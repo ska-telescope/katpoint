@@ -66,9 +66,23 @@ def test_construct_invalid_timestamp(init_value):
             katpoint.Timestamp(init_value)
 
 
+def test_string_representations():
+    t = katpoint.Timestamp(1234567890.01234)
+    assert t.to_string() == '2009-02-13 23:31:30.012'
+    assert str(t) == '2009-02-13 23:31:30.012'
+    assert repr(t) == 'Timestamp(1234567890.01234)'
+    # XXX We could mock time.localtime to control the output of Timestamp.local()
+    assert len(t.local().split()) == 3
+    assert t.local().split()[1].endswith('30.012')
+    # Change the output precision
+    t.time.precision = 5
+    assert str(t) == '2009-02-13 23:31:30.01234'
+    assert t.local().split()[1].endswith('30.01234')
+
+
 def test_current_timestamp():
     t0 = Time.now()
-    with patch.object(Time, 'now', side_effect=lambda: t0):
+    with patch.object(Time, 'now', return_value=t0):
         assert katpoint.Timestamp() == t0
 
 
@@ -190,6 +204,9 @@ def test_array_timestamps():
     np.testing.assert_array_equal(t != 1234567890.0, [False, True])
     t2 = katpoint.Timestamp(1234567890.0)
     t_array_1d = t2 + np.arange(3)
+    np.testing.assert_array_equal(t_array_1d.to_string(), ['2009-02-13 23:31:30.000',
+                                                           '2009-02-13 23:31:31.000',
+                                                           '2009-02-13 23:31:32.000'])
     assert repr(t_array_1d) == 'Timestamp([1234567890.000 ... 1234567892.000])'
     assert t_array_1d.local().shape == (3,)
     # Construct from sequence or array of strings or `Time`s or `Timestamp`s
