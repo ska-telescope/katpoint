@@ -20,7 +20,7 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord  # High-level coordinates
 from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS  # Low-level frames
-from astropy.coordinates import Latitude, Longitude  # Angles
+from astropy.coordinates import Latitude, Longitude, Angle  # Angles
 from astropy.time import Time
 
 from .timestamp import Timestamp
@@ -447,8 +447,8 @@ class Target:
 
         Returns
         -------
-        parangle : float, or array of same shape as *timestamp*
-            Parallactic angle, in radians
+        parangle : :class:`~astropy.coordinates.Angle`, same shape as *timestamp*
+            Parallactic angle
 
         Raises
         ------
@@ -469,9 +469,9 @@ class Target:
         # Get apparent hour angle and declination
         radec = self.apparent_radec(time, antenna)
         ha = antenna.local_sidereal_time(time) - radec.ra
-        return np.arctan2(np.sin(ha),
-                          np.tan(location.lat.rad) * np.cos(radec.dec)
-                          - np.sin(radec.dec) * np.cos(ha))
+        y = np.sin(ha)
+        x = np.tan(location.lat.rad) * np.cos(radec.dec) - np.sin(radec.dec) * np.cos(ha)
+        return Angle(np.arctan2(y, x))
 
     def geometric_delay(self, antenna2, timestamp=None, antenna=None):
         """Calculate geometric delay between two antennas pointing at target.
