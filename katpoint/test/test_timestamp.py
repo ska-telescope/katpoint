@@ -186,12 +186,12 @@ def test_array_timestamps():
     t = katpoint.Timestamp([1234567890.0, 1234567891.0])
     with pytest.raises(TypeError):
         float(t)
-    with pytest.raises(TypeError):
-        t.local()
     np.testing.assert_array_equal(t == 1234567890.0, [True, False])
     np.testing.assert_array_equal(t != 1234567890.0, [False, True])
     t2 = katpoint.Timestamp(1234567890.0)
-    assert repr(t2 + np.arange(3)) == 'Timestamp([1234567890.000 ... 1234567892.000])'
+    t_array = t2 + np.arange(3)
+    assert repr(t_array) == 'Timestamp([1234567890.000 ... 1234567892.000])'
+    assert t_array.local().shape == (3,)
     # Construct from sequence or array of strings or `Time`s or `Timestamp`s
     t0 = katpoint.Timestamp(t.time[0])
     t1 = katpoint.Timestamp(t.time[1])

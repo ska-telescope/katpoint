@@ -17,7 +17,6 @@
 """A Timestamp object."""
 
 import time
-import math
 
 import numpy as np
 from astropy.time import Time, TimeDelta
@@ -124,7 +123,7 @@ class Timestamp:
 
     def __str__(self):
         """Verbose human-friendly string representation of timestamp object."""
-        return self.to_string()
+        return str(self.to_string())
 
     def __eq__(self, other):
         """Test for equality."""
@@ -210,24 +209,18 @@ class Timestamp:
         return hash(self.time)
 
     def local(self):
-        """Convert scalar timestamp to local time string representation (for display only)."""
-        if self.time.shape != ():
-            raise TypeError('String output only supported for scalar Timestamps')
-        int_secs = math.floor(self.secs)
-        frac_secs = np.round(1000.0 * (self.secs - int_secs)) / 1000.0
-        if frac_secs >= 1.0:
-            int_secs += 1.0
-            frac_secs -= 1.0
-        datetime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int_secs))
-        timezone = time.strftime('%Z', time.localtime(int_secs))
-        if frac_secs == 0.0:
-            return '%s %s' % (datetime, timezone)
-        else:
-            return '%s%5.3f %s' % (datetime[:-1], float(datetime[-1]) + frac_secs, timezone)
+        """Local time string representation (str or array of str)."""
+        frac_secs, int_secs = np.modf(np.round(self.secs, decimals=self.time.precision))
+
+        def local_time_string(f, i):
+            format_string = '%Y-%m-%d %H:%M:%S.{:.0f} %Z'.format(1000 * f)
+            return time.strftime(format_string, time.localtime(i))
+        local_str = np.vectorize(local_time_string)(frac_secs, int_secs)
+        return local_str if local_str.ndim else local_str.item()
 
     def to_string(self):
-        """Convert timestamp to UTC string representation."""
-        return str(self.time.iso)
+        """UTC string representation (str or array of str)."""
+        return self.time.iso
 
     def to_mjd(self):
         """Convert timestamp to Modified Julian Day (MJD)."""
