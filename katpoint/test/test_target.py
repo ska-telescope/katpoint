@@ -18,6 +18,7 @@
 
 import time
 import pickle
+from contextlib import contextmanager
 
 import numpy as np
 import pytest
@@ -28,6 +29,10 @@ import katpoint
 
 # Use the current year in TLE epochs to avoid potential crashes due to expired TLEs
 YY = time.localtime().tm_year % 100
+TLE_TARGET = ('tle, GPS BIIA-21 (PRN 09)    \n'
+              '1 22700U 93042A   {:02d}266.32333151  .00000012  00000-0  10000-3 0  805{:1d}\n'
+              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'
+              .format(YY, (YY // 10 + YY - 7 + 4) % 10))
 
 
 class TestTargetConstruction:
@@ -125,10 +130,7 @@ class TestTargetConstruction:
         'Sag A, gal, 0.0, 0.0',
         'Zizou, radec cal, 1.4, 30.0, (1000.0 2000.0 1.0 10.0)',
         'Fluffy | *Dinky, radec, 12.5, -50.0, (1.0 2.0 1.0 2.0 3.0 4.0)',
-        ('tle, GPS BIIA-21 (PRN 09)    \n'
-         '1 22700U 93042A   {:02d}266.32333151  .00000012  00000-0  10000-3 0  805{:1d}\n'
-         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'
-         .format(YY, (YY // 10 + YY - 7 + 4) % 10)),
+        TLE_TARGET,
         (', tle, GPS BIIA-22 (PRN 05)    \n'
          '1 22779U 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
          '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
@@ -182,6 +184,36 @@ def test_construct_invalid_target(description):
     """Test construction of invalid targets from strings."""
     with pytest.raises(ValueError):
         katpoint.Target(description)
+
+
+NON_AZEL = 'astrometric_radec apparent_radec galactic'
+
+
+@contextmanager
+def does_not_raise(error):
+    yield
+
+
+@pytest.mark.parametrize(
+    "description,methods,raises,error",
+    [
+        ('azel, 10, -10', 'azel', does_not_raise, None),
+        ('azel, 10, -10', NON_AZEL, pytest.raises, ValueError),
+        ('radec, 20, -20', 'azel', pytest.raises, ValueError),
+        ('radec, 20, -20', NON_AZEL, does_not_raise, None),
+        ('gal, 30, -30', 'azel', pytest.raises, ValueError),
+        ('gal, 30, -30', NON_AZEL, does_not_raise, None),
+        ('Sun, special', 'azel', pytest.raises, ValueError),
+        ('Sun, special', NON_AZEL, does_not_raise, None),
+        (TLE_TARGET, 'azel ' + NON_AZEL, pytest.raises, ValueError),
+    ]
+)
+def test_coord_methods_without_antenna(description, methods, raises, error):
+    """"Test whether coordinate methods can operate without an Antenna."""
+    target = katpoint.Target(description)
+    for method in methods.split():
+        with raises(error):
+            getattr(target, method)()
 
 
 class TestTargetCalculations:

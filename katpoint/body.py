@@ -75,6 +75,9 @@ class Body:
                 :class:`~astropy.coordinates.SkyCoord`
             The computed coordinates as a new object
         """
+        if isinstance(frame, AltAz) and frame.location is None:
+            raise ValueError('Body needs a location to calculate (az, el) coordinates - '
+                             'did you specify an Antenna?')
         return self.coord.transform_to(frame)
 
 
@@ -109,6 +112,9 @@ class SolarSystemBody(Body):
 
     def compute(self, frame, obstime, location=None):
         """Determine position of body in GCRS at given time and transform to `frame`."""
+        if isinstance(frame, AltAz) and frame.location is None:
+            raise ValueError('Body needs a location to calculate (az, el) coordinates - '
+                             'did you specify an Antenna?')
         gcrs = get_body(self.name, obstime, location)
         return gcrs.transform_to(frame)
 
@@ -127,6 +133,9 @@ class EarthSatelliteBody(Body):
 
     def compute(self, frame, obstime, location):
         """Determine position of body at the given time and transform to `frame`."""
+        if location is None:
+            raise ValueError('EarthSatelliteBody needs a location to calculate coordinates - '
+                             'did you specify an Antenna?')
         # Create an SGP4 satellite object
         self._sat = sgp4.model.Satellite()
         self._sat.whichconst = sgp4.earth_gravity.wgs84
@@ -384,6 +393,9 @@ class StationaryBody(Body):
         if isinstance(frame, AltAz) and altaz.is_equivalent_frame(frame):
             return altaz
         else:
+            if location is None:
+                raise ValueError('StationaryBody needs a location to calculate coordinates - '
+                                 'did you specify an Antenna?')
             return altaz.transform_to(frame)
 
 

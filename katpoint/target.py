@@ -302,7 +302,7 @@ class Target:
         Raises
         ------
         ValueError
-            If no antenna could be found and one is required
+            If an antenna is required and none could be found
         """
         if antenna is None:
             antenna = self.antenna
@@ -329,7 +329,7 @@ class Target:
         Raises
         ------
         ValueError
-            If no antenna is specified, and no default antenna was set either
+            If no antenna is specified and body type requires it for (az, el)
         """
         time = Timestamp(timestamp).time
         _, location = self._normalise_antenna(antenna)
@@ -361,7 +361,7 @@ class Target:
         Raises
         ------
         ValueError
-            If no antenna is specified, and no default antenna was set either
+            If no antenna is specified and body type requires it for (ra, dec)
         """
         time = Timestamp(timestamp).time
         _, location = self._normalise_antenna(antenna)
@@ -390,7 +390,7 @@ class Target:
         Raises
         ------
         ValueError
-            If no antenna is specified, and no default antenna was set either
+            If no antenna is specified and body type requires it for (ra, dec)
         """
         time = Timestamp(timestamp).time
         _, location = self._normalise_antenna(antenna)
@@ -421,7 +421,7 @@ class Target:
         Raises
         ------
         ValueError
-            If no antenna is specified, and no default antenna was set either
+            If no antenna is specified and body type requires it for (l, b)
         """
         time = Timestamp(timestamp).time
         _, location = self._normalise_antenna(antenna)
