@@ -267,7 +267,7 @@ class TestTargetCalculations:
         assert l_deg == '245:34:49.20442837'  # PyEphem: 245:34:49.3
         assert b_deg == '15:36:24.87974969'  # PyEphem: 15:36:24.7
         coord = self.target.parallactic_angle(self.ts, self.ant1)
-        assert coord.deg == -140.27959356633625  # PyEphem: -140.34440985011398
+        assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
 
     def test_delay(self):
         """Test geometric delay."""
