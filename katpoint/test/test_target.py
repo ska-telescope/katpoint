@@ -216,6 +216,25 @@ def test_coord_methods_without_antenna(description, methods, raises, error):
             getattr(target, method)()
 
 
+# XXX TLE_TARGET does not support array timestamps yet
+@pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
+                                         'gal, 30, -30', 'Sun, special'])
+def test_array_valued_azel(description):
+    """Test array-valued (az, el) coordinates."""
+    ts = katpoint.Timestamp('2020-07-30 14:02:00')
+    ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
+    offsets = np.array([np.arange(3), np.arange(3)])
+    times = ts + offsets
+    assert times.time.shape == offsets.shape
+    target = katpoint.Target(description)
+    assert target.azel(times, ant1).shape == offsets.shape
+    assert target.astrometric_radec(times, ant1).shape == offsets.shape
+    assert target.apparent_radec(times, ant1).shape == offsets.shape
+    assert target.galactic(times, ant1).shape == offsets.shape
+    assert target.parallactic_angle(times, ant1).shape == offsets.shape
+    assert target.separation(target, times, ant1).shape == offsets.shape
+
+
 class TestTargetCalculations:
     """Test various calculations involving antennas and timestamps."""
 

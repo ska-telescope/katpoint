@@ -78,7 +78,14 @@ class Body:
         if isinstance(frame, AltAz) and frame.location is None:
             raise ValueError('Body needs a location to calculate (az, el) coordinates - '
                              'did you specify an Antenna?')
-        return self.coord.transform_to(frame)
+        # If obstime is array-valued and not contained in the output frame, the transform
+        # will return a scalar SkyCoord. Repeat the value to match obstime shape instead.
+        if (obstime is not None and not obstime.isscalar
+           and 'obstime' not in frame.get_frame_attr_names()):
+            coord = self.coord.take(np.zeros_like(obstime, dtype=int))
+        else:
+            coord = self.coord
+        return coord.transform_to(frame)
 
 
 class FixedBody(Body):
