@@ -103,7 +103,7 @@ class Timestamp:
         else:
             # Convert to array to simplify both array/scalar and string/bytes handling
             val = np.asarray(timestamp)
-            # Extract copies of Time objects from inside Timestamps
+            # Turn array of Timestamps into array of corresponding internal Time objects
             if val.size > 0 and isinstance(val.flat[0], Timestamp):
                 val = np.vectorize(lambda ts: ts.time)(val)
             format = None
