@@ -338,7 +338,7 @@ class Antenna:
         """
         def _scalar_local_sidereal_time(t):
             """Calculate local sidereal time at a single time instant."""
-            time = Time(Timestamp(t).to_ephem_date(), location=self.earth_location)
+            time = Time(Timestamp(t).time, location=self.earth_location)
             return time.sidereal_time('apparent')
 
         if is_iterable(timestamp):

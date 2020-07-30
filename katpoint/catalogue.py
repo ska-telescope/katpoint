@@ -20,6 +20,7 @@ import logging
 from collections import defaultdict
 
 import numpy as np
+from astropy.time import Time
 
 from .target import Target
 from .timestamp import Timestamp
@@ -505,12 +506,14 @@ class Catalogue:
             name = target.split('\n')[0][4:].strip()
             epoch_year, epoch_day = float(target.split('\n')[1][19:21]), float(target.split('\n')[1][21:33])
             epoch_year = epoch_year + 1900 if epoch_year >= 57 else epoch_year + 2000
-            epoch = Timestamp('%d' % (epoch_year,)) + (epoch_day - 1.0) * 24. * 3600.
+            frac_epoch_day, int_epoch_day = np.modf(epoch_day)
+            yday_date = '{:4d}:{:03d}'.format(int(epoch_year), int(int_epoch_day))
+            epoch = Time(yday_date, format='yday') + frac_epoch_day
             revs_per_day = float(target.split('\n')[2][53:64])
             # Use orbital period to distinguish near-earth and deep-space objects (which have different accuracies)
             orbital_period_mins = 24. / revs_per_day * 60.
-            now = Timestamp()
-            epoch_diff_days = np.abs(now - epoch) / 3600. / 24.
+            now = Time.now()
+            epoch_diff_days = np.abs(now - epoch).jd
             direction = 'past' if epoch < now else 'future'
             # Near-earth models should be good for about a week (conservative estimate)
             if orbital_period_mins < 225 and epoch_diff_days > 7:
