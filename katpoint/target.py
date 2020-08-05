@@ -356,7 +356,7 @@ class Target:
         Returns
         -------
         radec : :class:`~astropy.coordinates.CIRS`, same shape as *timestamp*
-            Right ascension and declination in `CIRS` frame
+            Right ascension and declination in CIRS frame
 
         Raises
         ------
@@ -385,7 +385,7 @@ class Target:
         Returns
         -------
         radec : :class:`~astropy.coordinates.ICRS`, same shape as *timestamp*
-            Right ascension and declination in `ICRS` frame
+            Right ascension and declination in ICRS frame
 
         Raises
         ------
@@ -526,7 +526,7 @@ class Target:
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = - np.einsum('j,j...', baseline_m, targetdirs) / lightspeed
+        delays = -np.einsum('j,j...', baseline_m, targetdirs) / lightspeed
         return delays[..., 1], delays[..., 2] - delays[..., 0]
 
     def uvw_basis(self, timestamp=None, antenna=None):

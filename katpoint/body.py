@@ -107,7 +107,7 @@ class SolarSystemBody(Body):
     Parameters
     ----------
     name : str or other
-        The name of the body (see :func:``~astropy.coordinates.get_body`
+        The name of the body (see :func:`~astropy.coordinates.get_body`
         for more details).
     """
 
