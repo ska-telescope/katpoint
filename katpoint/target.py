@@ -316,8 +316,8 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Antenna which points at target (defaults to default antenna)
 
@@ -348,8 +348,8 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Antenna which points at target (defaults to default antenna)
 
@@ -377,8 +377,8 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Antenna which points at target (defaults to default antenna)
 
@@ -408,8 +408,8 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Antenna which points at target (defaults to default antenna)
 
@@ -440,8 +440,8 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Antenna which points at target (defaults to default antenna)
 
@@ -490,8 +490,8 @@ class Target:
         ----------
         antenna2 : :class:`Antenna` object
             Second antenna of baseline pair (baseline vector points toward it)
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
@@ -542,8 +542,8 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Reference antenna of baseline pairs, which also serves as
             pointing reference (defaults to default antenna)
@@ -614,8 +614,8 @@ class Target:
         ----------
         antenna2 : :class:`Antenna` object or sequence
             Second antenna of baseline pair (baseline vector points toward it)
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
@@ -663,8 +663,8 @@ class Target:
             Right ascension of the other target, in radians
         dec : float or array
             Declination of the other target, in radians
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Pointing reference (defaults to default antenna)
 
@@ -759,9 +759,8 @@ class Target:
         ----------
         other_target : :class:`Target` object
             The other target
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) when separation is measured, in UTC seconds since Unix
-            epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s) when separation is measured (defaults to now)
         antenna : class:`Antenna` object, optional
             Antenna that observes both targets, from where separation is measured
             (defaults to default antenna of this target)
@@ -796,8 +795,8 @@ class Target:
             Azimuth or right ascension, in radians
         el : float or array
             Elevation or declination, in radians
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Antenna pointing at target (defaults to default antenna)
         projection_type : {'ARC', 'SIN', 'TAN', 'STG', 'CAR', 'SSN'}, optional
@@ -836,8 +835,8 @@ class Target:
             Azimuth-like coordinate(s) on plane, in radians
         y : float or array
             Elevation-like coordinate(s) on plane, in radians
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
         antenna : :class:`Antenna` object, optional
             Antenna pointing at target (defaults to default antenna)
         projection_type : {'ARC', 'SIN', 'TAN', 'STG', 'CAR', 'SSN'}, optional

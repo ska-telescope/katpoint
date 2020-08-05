@@ -606,9 +606,8 @@ class Catalogue:
         ----------
         target : :class:`Target` object
             Target with which catalogue targets are compared
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -667,9 +666,9 @@ class Catalogue:
             takes the form [lower, upper]. If None, any distance is accepted.
         proximity_targets : :class:`Target` object, or sequence of objects
             Target or list of targets used in proximity filter
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds since
-            Unix epoch. If None, the current time *at each iteration* is used.
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions.
+            If None, the current time *at each iteration* is used.
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -807,9 +806,8 @@ class Catalogue:
             takes the form [lower, upper]. If None, any distance is accepted.
         proximity_targets : :class:`Target` object, or sequence of objects
             Target or list of targets used in proximity filter
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -855,9 +853,8 @@ class Catalogue:
             True if key should be sorted in ascending order
         flux_freq_MHz : float, optional
             Frequency at which to evaluate the flux density, in MHz
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -910,9 +907,8 @@ class Catalogue:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
         flux_freq_MHz : float, optional

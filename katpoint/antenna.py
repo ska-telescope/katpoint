@@ -319,15 +319,15 @@ class Antenna:
             return ecef_to_enu(lat, lon, alt, *lla_to_ecef(*antenna2.position_wgs84))
 
     def local_sidereal_time(self, timestamp=None):
-        """Calculate local sidereal time at antenna for timestamp(s).
+        """Calculate local apparent sidereal time at antenna for timestamp(s).
 
         This is a vectorised function that returns the local apparent sidereal
-        time at the antenna for a given UTC timestamp.
+        time at the antenna for the given timestamp(s).
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
 
         Returns
         -------
