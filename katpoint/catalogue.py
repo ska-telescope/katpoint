@@ -891,7 +891,7 @@ class Catalogue:
         return self
 
     def visibility_list(self, timestamp=None, antenna=None, flux_freq_MHz=None, antenna2=None):
-        """Print out list of targets in catalogue, sorted by decreasing elevation.
+        r"""Print out list of targets in catalogue, sorted by decreasing elevation.
 
         This prints out the name, azimuth and elevation of each target in the
         catalogue, in order of decreasing elevation. The motion of the target at

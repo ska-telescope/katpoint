@@ -43,6 +43,10 @@ class Body:
     are computed on the fly, such as Solar System ephemerides and Earth
     satellites.
 
+    A Body represents a single celestial object with a scalar set of
+    coordinates at a given time instant, although the :meth:`compute` method
+    may return coordinates for multiple observation times.
+
     Parameters
     ----------
     name : str
@@ -51,6 +55,13 @@ class Body:
 
     def __init__(self, name):
         self.name = name
+
+    @staticmethod
+    def _check_location(frame):
+        """Check that we have a location for computing AltAz coordinates."""
+        if isinstance(frame, AltAz) and frame.location is None:
+            raise ValueError('Body needs a location to calculate (az, el) coordinates - '
+                             'did you specify an Antenna?')
 
     def compute(self, frame, obstime, location):
         """Compute the coordinates of the body in the requested frame.
@@ -109,9 +120,7 @@ class FixedBody(Body):
                 :class:`~astropy.coordinates.SkyCoord`
             The computed coordinates as a new object
         """
-        if isinstance(frame, AltAz) and frame.location is None:
-            raise ValueError('Body needs a location to calculate (az, el) coordinates - '
-                             'did you specify an Antenna?')
+        Body._check_location(frame)
         # If obstime is array-valued and not contained in the output frame, the transform
         # will return a scalar SkyCoord. Repeat the value to match obstime shape instead.
         if (obstime is not None and not obstime.isscalar
@@ -148,9 +157,7 @@ class SolarSystemBody(Body):
 
     def compute(self, frame, obstime, location=None):
         """Determine position of body for given time and location and transform to `frame`."""
-        if isinstance(frame, AltAz) and frame.location is None:
-            raise ValueError('Body needs a location to calculate (az, el) coordinates - '
-                             'did you specify an Antenna?')
+        Body._check_location(frame)
         gcrs = get_body(self.name, obstime, location)
         return gcrs.transform_to(frame)
 

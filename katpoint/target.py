@@ -23,7 +23,7 @@ from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS  # Low-level fr
 from astropy.coordinates import Latitude, Longitude, Angle  # Angles
 from astropy.time import Time
 
-from .timestamp import Timestamp
+from .timestamp import Timestamp, delta_seconds
 from .flux import FluxDensityModel
 from .ephem_extra import (is_iterable, lightspeed, deg2rad, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
@@ -521,7 +521,7 @@ class Target:
         baseline_m = antenna.baseline_toward(antenna2)
         # Obtain direction vector(s) from reference antenna to target, and numerically
         # estimate delay rate from difference across 1-second interval spanning timestamp(s)
-        times = time[..., np.newaxis] + np.array((-0.5, 0.0, 0.5)) * u.s.to(u.day)
+        times = time[..., np.newaxis] + delta_seconds([-0.5, 0.0, 0.5])
         azel = self.azel(times, antenna)
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
