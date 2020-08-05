@@ -216,154 +216,160 @@ def test_coord_methods_without_antenna(description, methods, raises, error):
             getattr(target, method)()
 
 
+TARGET = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
+ANT1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
+ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
+TS = katpoint.Timestamp('2013-08-14 09:25')
+
+
 # XXX TLE_TARGET does not support array timestamps yet
 @pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
                                          'gal, 30, -30', 'Sun, special'])
 def test_array_valued_azel(description):
     """Test array-valued (az, el) coordinates."""
-    ts = katpoint.Timestamp('2020-07-30 14:02:00')
-    ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
     offsets = np.array([np.arange(3), np.arange(3)])
-    times = ts + offsets
+    times = katpoint.Timestamp('2020-07-30 14:02:00') + offsets
     assert times.time.shape == offsets.shape
     target = katpoint.Target(description)
-    assert target.azel(times, ant1).shape == offsets.shape
-    assert target.astrometric_radec(times, ant1).shape == offsets.shape
-    assert target.apparent_radec(times, ant1).shape == offsets.shape
-    assert target.galactic(times, ant1).shape == offsets.shape
-    assert target.parallactic_angle(times, ant1).shape == offsets.shape
-    assert target.separation(target, times, ant1).shape == offsets.shape
+    assert target.azel(times, ANT1).shape == offsets.shape
+    assert target.astrometric_radec(times, ANT1).shape == offsets.shape
+    assert target.apparent_radec(times, ANT1).shape == offsets.shape
+    assert target.galactic(times, ANT1).shape == offsets.shape
+    assert target.parallactic_angle(times, ANT1).shape == offsets.shape
+    assert target.separation(target, times, ANT1).shape == offsets.shape
 
 
-class TestTargetCalculations:
-    """Test various calculations involving antennas and timestamps."""
+def test_coords():
+    """Test coordinate conversions for coverage and verification."""
+    coord = TARGET.azel(TS, ANT1)
+    assert coord.az.deg == 45  # PyEphem: 45
+    assert coord.alt.deg == 75  # PyEphem: 75
+    coord = TARGET.apparent_radec(TS, ANT1)
+    ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
+    dec_deg = coord.dec.to_string(sep=':', precision=8)
+    assert ra_hour == '8:53:03.49166920'  # PyEphem: 8:53:09.60 (same as astrometric)
+    assert dec_deg == '-19:54:51.92328722'  # PyEphem: -19:51:43.0 (same as astrometric)
+    coord = TARGET.astrometric_radec(TS, ANT1)
+    ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
+    dec_deg = coord.dec.to_string(sep=':', precision=8)
+    assert ra_hour == '8:53:09.60397465'  # PyEphem: 8:53:09.60
+    assert dec_deg == '-19:51:42.87773802'  # PyEphem: -19:51:43.0
+    coord = TARGET.galactic(TS, ANT1)
+    l_deg = coord.l.to_string(sep=':', precision=8)
+    b_deg = coord.b.to_string(sep=':', precision=8)
+    assert l_deg == '245:34:49.20442837'  # PyEphem: 245:34:49.3
+    assert b_deg == '15:36:24.87974969'  # PyEphem: 15:36:24.7
+    coord = TARGET.parallactic_angle(TS, ANT1)
+    assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
 
-    def setup(self):
-        self.target = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
-        self.ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
-        self.ant2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
-        self.ts = katpoint.Timestamp('2013-08-14 09:25')
-        # self.uvw = [10.822861713680807, -9.103057965680664, -2.220446049250313e-16]
-        self.uvw = [10.820796672358002, -9.1055125816993954, -2.22044604925e-16]
 
-    def test_coords(self):
-        """Test coordinate conversions for coverage and verification."""
-        coord = self.target.azel(self.ts, self.ant1)
-        assert coord.az.deg == 45  # PyEphem: 45
-        assert coord.alt.deg == 75  # PyEphem: 75
-        coord = self.target.apparent_radec(self.ts, self.ant1)
-        ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
-        dec_deg = coord.dec.to_string(sep=':', precision=8)
-        assert ra_hour == '8:53:03.49166920'  # PyEphem: 8:53:09.60 (same as astrometric)
-        assert dec_deg == '-19:54:51.92328722'  # PyEphem: -19:51:43.0 (same as astrometric)
-        coord = self.target.astrometric_radec(self.ts, self.ant1)
-        ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
-        dec_deg = coord.dec.to_string(sep=':', precision=8)
-        assert ra_hour == '8:53:09.60397465'  # PyEphem: 8:53:09.60
-        assert dec_deg == '-19:51:42.87773802'  # PyEphem: -19:51:43.0
-        coord = self.target.galactic(self.ts, self.ant1)
-        l_deg = coord.l.to_string(sep=':', precision=8)
-        b_deg = coord.b.to_string(sep=':', precision=8)
-        assert l_deg == '245:34:49.20442837'  # PyEphem: 245:34:49.3
-        assert b_deg == '15:36:24.87974969'  # PyEphem: 15:36:24.7
-        coord = self.target.parallactic_angle(self.ts, self.ant1)
-        assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
+def test_delay():
+    """Test geometric delay."""
+    delay, delay_rate = TARGET.geometric_delay(ANT2, TS, ANT1)
+    np.testing.assert_almost_equal(delay, 0.0, decimal=12)
+    np.testing.assert_almost_equal(delay_rate, 0.0, decimal=12)
+    delay, delay_rate = TARGET.geometric_delay(ANT2, [TS, TS], ANT1)
+    np.testing.assert_almost_equal(delay, np.array([0.0, 0.0]), decimal=12)
+    np.testing.assert_almost_equal(delay_rate, np.array([0.0, 0.0]), decimal=12)
 
-    def test_delay(self):
-        """Test geometric delay."""
-        delay, delay_rate = self.target.geometric_delay(self.ant2, self.ts, self.ant1)
-        np.testing.assert_almost_equal(delay, 0.0, decimal=12)
-        np.testing.assert_almost_equal(delay_rate, 0.0, decimal=12)
-        delay, delay_rate = self.target.geometric_delay(self.ant2, [self.ts, self.ts], self.ant1)
-        np.testing.assert_almost_equal(delay, np.array([0.0, 0.0]), decimal=12)
-        np.testing.assert_almost_equal(delay_rate, np.array([0.0, 0.0]), decimal=12)
 
-    def test_uvw(self):
-        """Test uvw calculation."""
-        u, v, w = self.target.uvw(self.ant2, self.ts, self.ant1)
-        np.testing.assert_almost_equal(u, self.uvw[0], decimal=5)
-        np.testing.assert_almost_equal(v, self.uvw[1], decimal=5)
-        np.testing.assert_almost_equal(w, self.uvw[2], decimal=5)
+UVW = [10.820796672358002, -9.1055125816993954, -2.22044604925e-16]
 
-    def test_uvw_timestamp_array(self):
-        """Test uvw calculation on an array."""
-        u, v, w = self.target.uvw(self.ant2, np.array([self.ts, self.ts]), self.ant1)
-        np.testing.assert_array_almost_equal(u, np.array([self.uvw[0]] * 2), decimal=5)
-        np.testing.assert_array_almost_equal(v, np.array([self.uvw[1]] * 2), decimal=5)
-        np.testing.assert_array_almost_equal(w, np.array([self.uvw[2]] * 2), decimal=5)
 
-    def test_uvw_timestamp_array_radec(self):
-        """Test uvw calculation on a timestamp array when the target is a radec target."""
-        radec = self.target.radec(self.ts, self.ant1)
-        target = katpoint.construct_radec_target(radec.ra, radec.dec)
-        u, v, w = target.uvw(self.ant2, np.array([self.ts, self.ts]), self.ant1)
-        np.testing.assert_array_almost_equal(u, np.array([self.uvw[0]] * 2), decimal=4)
-        np.testing.assert_array_almost_equal(v, np.array([self.uvw[1]] * 2), decimal=4)
-        np.testing.assert_array_almost_equal(w, np.array([self.uvw[2]] * 2), decimal=4)
+def test_uvw():
+    """Test uvw calculation."""
+    u, v, w = TARGET.uvw(ANT2, TS, ANT1)
+    np.testing.assert_almost_equal(u, UVW[0], decimal=5)
+    np.testing.assert_almost_equal(v, UVW[1], decimal=5)
+    np.testing.assert_almost_equal(w, UVW[2], decimal=5)
 
-    def test_uvw_antenna_array(self):
-        u, v, w = self.target.uvw([self.ant1, self.ant2], self.ts, self.ant1)
-        np.testing.assert_array_almost_equal(u, np.array([0, self.uvw[0]]), decimal=5)
-        np.testing.assert_array_almost_equal(v, np.array([0, self.uvw[1]]), decimal=5)
-        np.testing.assert_array_almost_equal(w, np.array([0, self.uvw[2]]), decimal=5)
 
-    def test_uvw_both_array(self):
-        u, v, w = self.target.uvw([self.ant1, self.ant2], [self.ts, self.ts], self.ant1)
-        np.testing.assert_array_almost_equal(u, np.array([[0, self.uvw[0]]] * 2), decimal=5)
-        np.testing.assert_array_almost_equal(v, np.array([[0, self.uvw[1]]] * 2), decimal=5)
-        np.testing.assert_array_almost_equal(w, np.array([[0, self.uvw[2]]] * 2), decimal=5)
+def test_uvw_timestamp_array():
+    """Test uvw calculation on an array."""
+    u, v, w = TARGET.uvw(ANT2, np.array([TS, TS]), ANT1)
+    np.testing.assert_array_almost_equal(u, np.array([UVW[0]] * 2), decimal=5)
+    np.testing.assert_array_almost_equal(v, np.array([UVW[1]] * 2), decimal=5)
+    np.testing.assert_array_almost_equal(w, np.array([UVW[2]] * 2), decimal=5)
 
-    def test_uvw_hemispheres(self):
-        """Test uvw calculation near the equator.
 
-        The implementation behaves differently depending on the sign of
-        declination. This test is to catch sign flip errors.
-        """
-        target1 = katpoint.construct_radec_target(0.0, -1e-9)
-        target2 = katpoint.construct_radec_target(0.0, +1e-9)
-        u1, v1, w1 = target1.uvw(self.ant2, self.ts, self.ant1)
-        u2, v2, w2 = target2.uvw(self.ant2, self.ts, self.ant1)
-        np.testing.assert_almost_equal(u1, u2, decimal=3)
-        np.testing.assert_almost_equal(v1, v2, decimal=3)
-        np.testing.assert_almost_equal(w1, w2, decimal=3)
+def test_uvw_timestamp_array_radec():
+    """Test uvw calculation on a timestamp array when the target is a radec target."""
+    radec = TARGET.radec(TS, ANT1)
+    target = katpoint.construct_radec_target(radec.ra, radec.dec)
+    u, v, w = target.uvw(ANT2, np.array([TS, TS]), ANT1)
+    np.testing.assert_array_almost_equal(u, np.array([UVW[0]] * 2), decimal=4)
+    np.testing.assert_array_almost_equal(v, np.array([UVW[1]] * 2), decimal=4)
+    np.testing.assert_array_almost_equal(w, np.array([UVW[2]] * 2), decimal=4)
 
-    def test_lmn(self):
-        """Test lmn calculation."""
-        # For angles less than pi/2, it matches SIN projection
-        pointing = katpoint.construct_radec_target('11:00:00.0', '-75:00:00.0')
-        target = katpoint.construct_radec_target('16:00:00.0', '-65:00:00.0')
-        radec = target.radec(timestamp=self.ts, antenna=self.ant1)
-        l, m, n = pointing.lmn(radec.ra.rad, radec.dec.rad)
-        expected_l, expected_m = pointing.sphere_to_plane(
-            radec.ra.rad, radec.dec.rad, projection_type='SIN', coord_system='radec')
-        expected_n = np.sqrt(1.0 - expected_l**2 - expected_m**2)
-        np.testing.assert_almost_equal(l, expected_l, decimal=12)
-        np.testing.assert_almost_equal(m, expected_m, decimal=12)
-        np.testing.assert_almost_equal(n, expected_n, decimal=12)
-        # Test angle > pi/2: using the diametrically opposite target
-        l, m, n = pointing.lmn(np.pi + radec.ra.rad, -radec.dec.rad)
-        np.testing.assert_almost_equal(l, -expected_l, decimal=12)
-        np.testing.assert_almost_equal(m, -expected_m, decimal=12)
-        np.testing.assert_almost_equal(n, -expected_n, decimal=12)
 
-    def test_separation(self):
-        """Test separation calculation."""
-        sun = katpoint.Target('Sun, special')
-        azel_sun = sun.azel(self.ts, self.ant1)
-        azel = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt)
-        sep = sun.separation(azel, self.ts, self.ant1)
-        np.testing.assert_almost_equal(sep.rad, 0.0)
-        sep = azel.separation(sun, self.ts, self.ant1)
-        np.testing.assert_almost_equal(sep.rad, 0.0)
-        azel2 = katpoint.construct_azel_target(azel_sun.az,
-                                               azel_sun.alt + Angle(0.01, unit=u.rad))
-        sep = azel.separation(azel2, self.ts, self.ant1)
-        np.testing.assert_almost_equal(sep.rad, 0.01, decimal=7)
+def test_uvw_antenna_array():
+    u, v, w = TARGET.uvw([ANT1, ANT2], TS, ANT1)
+    np.testing.assert_array_almost_equal(u, np.array([0, UVW[0]]), decimal=5)
+    np.testing.assert_array_almost_equal(v, np.array([0, UVW[1]]), decimal=5)
+    np.testing.assert_array_almost_equal(w, np.array([0, UVW[2]]), decimal=5)
 
-    def test_projection(self):
-        """Test projection."""
-        az, el = katpoint.deg2rad(50.0), katpoint.deg2rad(80.0)
-        x, y = self.target.sphere_to_plane(az, el, self.ts, self.ant1)
-        re_az, re_el = self.target.plane_to_sphere(x, y, self.ts, self.ant1)
-        np.testing.assert_almost_equal(re_az, az, decimal=12)
-        np.testing.assert_almost_equal(re_el, el, decimal=12)
+
+def test_uvw_both_array():
+    u, v, w = TARGET.uvw([ANT1, ANT2], [TS, TS], ANT1)
+    np.testing.assert_array_almost_equal(u, np.array([[0, UVW[0]]] * 2), decimal=5)
+    np.testing.assert_array_almost_equal(v, np.array([[0, UVW[1]]] * 2), decimal=5)
+    np.testing.assert_array_almost_equal(w, np.array([[0, UVW[2]]] * 2), decimal=5)
+
+
+def test_uvw_hemispheres():
+    """Test uvw calculation near the equator.
+
+    The implementation behaves differently depending on the sign of
+    declination. This test is to catch sign flip errors.
+    """
+    target1 = katpoint.construct_radec_target(0.0, -1e-9)
+    target2 = katpoint.construct_radec_target(0.0, +1e-9)
+    u1, v1, w1 = target1.uvw(ANT2, TS, ANT1)
+    u2, v2, w2 = target2.uvw(ANT2, TS, ANT1)
+    np.testing.assert_almost_equal(u1, u2, decimal=3)
+    np.testing.assert_almost_equal(v1, v2, decimal=3)
+    np.testing.assert_almost_equal(w1, w2, decimal=3)
+
+
+def test_lmn():
+    """Test lmn calculation."""
+    # For angles less than pi/2, it matches SIN projection
+    pointing = katpoint.construct_radec_target('11:00:00.0', '-75:00:00.0')
+    target = katpoint.construct_radec_target('16:00:00.0', '-65:00:00.0')
+    radec = target.radec(timestamp=TS, antenna=ANT1)
+    l, m, n = pointing.lmn(radec.ra.rad, radec.dec.rad)
+    expected_l, expected_m = pointing.sphere_to_plane(
+        radec.ra.rad, radec.dec.rad, projection_type='SIN', coord_system='radec')
+    expected_n = np.sqrt(1.0 - expected_l**2 - expected_m**2)
+    np.testing.assert_almost_equal(l, expected_l, decimal=12)
+    np.testing.assert_almost_equal(m, expected_m, decimal=12)
+    np.testing.assert_almost_equal(n, expected_n, decimal=12)
+    # Test angle > pi/2: using the diametrically opposite target
+    l, m, n = pointing.lmn(np.pi + radec.ra.rad, -radec.dec.rad)
+    np.testing.assert_almost_equal(l, -expected_l, decimal=12)
+    np.testing.assert_almost_equal(m, -expected_m, decimal=12)
+    np.testing.assert_almost_equal(n, -expected_n, decimal=12)
+
+
+def test_separation():
+    """Test separation calculation."""
+    sun = katpoint.Target('Sun, special')
+    azel_sun = sun.azel(TS, ANT1)
+    azel = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt)
+    sep = sun.separation(azel, TS, ANT1)
+    np.testing.assert_almost_equal(sep.rad, 0.0)
+    sep = azel.separation(sun, TS, ANT1)
+    np.testing.assert_almost_equal(sep.rad, 0.0)
+    azel2 = katpoint.construct_azel_target(azel_sun.az,
+                                           azel_sun.alt + Angle(0.01, unit=u.rad))
+    sep = azel.separation(azel2, TS, ANT1)
+    np.testing.assert_almost_equal(sep.rad, 0.01, decimal=7)
+
+
+def test_projection():
+    """Test projection."""
+    az, el = katpoint.deg2rad(50.0), katpoint.deg2rad(80.0)
+    x, y = TARGET.sphere_to_plane(az, el, TS, ANT1)
+    re_az, re_el = TARGET.plane_to_sphere(x, y, TS, ANT1)
+    np.testing.assert_almost_equal(re_az, az, decimal=12)
+    np.testing.assert_almost_equal(re_el, el, decimal=12)
