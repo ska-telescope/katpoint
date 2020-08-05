@@ -46,14 +46,48 @@ class Body:
     Parameters
     ----------
     name : str
-        Name of celestial body
-    coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
-            :class:`~astropy.coordinates.SkyCoord`, optional
-        Coordinates of body (None if it is not fixed in any standard frame)
+        The name of the body
     """
 
-    def __init__(self, name, coord=None):
+    def __init__(self, name):
         self.name = name
+
+    def compute(self, frame, obstime, location):
+        """Compute the coordinates of the body in the requested frame.
+
+        Parameters
+        ----------
+        frame : str, :class:`~astropy.coordinates.BaseCoordinateFrame` class or
+                instance, or :class:`~astropy.coordinates.SkyCoord` instance
+            The frame to transform this body's coordinates into
+        obstime : :class:`~astropy.time.Time`
+            The time of observation
+        location : :class:`~astropy.coordinates.EarthLocation`
+            The location of the observer on the Earth
+
+        Returns
+        -------
+        coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+                :class:`~astropy.coordinates.SkyCoord`
+            The computed coordinates as a new object
+        """
+        raise NotImplementedError
+
+
+class FixedBody(Body):
+    """A body with a fixed ICRS position.
+
+    Parameters
+    ----------
+    name : str
+        The name of the celestial body
+    coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+            :class:`~astropy.coordinates.SkyCoord`
+        The coordinates of the body
+    """
+
+    def __init__(self, name, coord):
+        super().__init__(name)
         self.coord = coord
 
     def compute(self, frame, obstime=None, location=None):
@@ -87,10 +121,6 @@ class Body:
             coord = self.coord
         return coord.transform_to(frame)
 
-
-class FixedBody(Body):
-    """A body with a fixed position on the celestial sphere."""
-
     def writedb(self):
         """ Create an XEphem catalogue entry.
 
@@ -106,19 +136,18 @@ class SolarSystemBody(Body):
 
     Parameters
     ----------
-    name : str or other
-        The name of the body (see :func:`~astropy.coordinates.get_body`
-        for more details).
+    name : str
+        The name of the Solar System body
     """
 
     def __init__(self, name):
         if name.lower() not in solar_system_ephemeris.bodies:
             raise ValueError("Unknown Solar System body '{}' - should be one of {}"
                              .format(name.lower(), solar_system_ephemeris.bodies))
-        super().__init__(name, None)
+        super().__init__(name)
 
     def compute(self, frame, obstime, location=None):
-        """Determine position of body in GCRS at given time and transform to `frame`."""
+        """Determine position of body for given time and location and transform to `frame`."""
         if isinstance(frame, AltAz) and frame.location is None:
             raise ValueError('Body needs a location to calculate (az, el) coordinates - '
                              'did you specify an Antenna?')
@@ -132,11 +161,11 @@ class EarthSatelliteBody(Body):
     Parameters
     ----------
     name : str
-        Name of body
+        The name of the satellite
     """
 
     def __init__(self, name):
-        super().__init__(name, None)
+        super().__init__(name)
 
     def compute(self, frame, obstime, location):
         """Determine position of body at the given time and transform to `frame`."""
@@ -380,14 +409,15 @@ class StationaryBody(Body):
     az, el : string or float
         Azimuth and elevation, either in 'D:M:S' string format, or float in rads
     name : string, optional
-        Name of body
+        The name of the stationary body
     """
 
     def __init__(self, az, el, name=None):
-        super().__init__(name, AltAz(az=angle_from_degrees(az), alt=angle_from_degrees(el)))
-        if not self.name:
-            self.name = "Az: {} El: {}".format(self.coord.az.to_string(sep=':', unit=u.deg),
-                                               self.coord.alt.to_string(sep=':', unit=u.deg))
+        self.coord = AltAz(az=angle_from_degrees(az), alt=angle_from_degrees(el))
+        if not name:
+            name = "Az: {} El: {}".format(self.coord.az.to_string(sep=':', unit=u.deg),
+                                          self.coord.alt.to_string(sep=':', unit=u.deg))
+        super().__init__(name)
 
     def compute(self, frame, obstime, location):
         """Transform (az, el) at given location and time to requested `frame`."""
@@ -406,7 +436,7 @@ class StationaryBody(Body):
             return altaz.transform_to(frame)
 
 
-class NullBody(Body):
+class NullBody(FixedBody):
     """Body with no position, used as a placeholder.
 
     This body has the expected methods of :class:`Body`, but always returns NaNs
