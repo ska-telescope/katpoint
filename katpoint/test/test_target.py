@@ -225,17 +225,26 @@ TS = katpoint.Timestamp('2013-08-14 09:25')
 # XXX TLE_TARGET does not support array timestamps yet
 @pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
                                          'gal, 30, -30', 'Sun, special'])
-def test_array_valued_azel(description):
-    """Test array-valued (az, el) coordinates."""
-    offsets = np.array([np.arange(3), np.arange(3)])
+def test_array_valued_methods(description):
+    """Test array-valued methods (at least their output shapes)."""
+    offsets = np.array([[0, 1, 2, 3]])
     times = katpoint.Timestamp('2020-07-30 14:02:00') + offsets
     assert times.time.shape == offsets.shape
     target = katpoint.Target(description)
     assert target.azel(times, ANT1).shape == offsets.shape
-    assert target.astrometric_radec(times, ANT1).shape == offsets.shape
     assert target.apparent_radec(times, ANT1).shape == offsets.shape
+    radec = target.astrometric_radec(times, ANT1)
+    assert radec.shape == offsets.shape
     assert target.galactic(times, ANT1).shape == offsets.shape
     assert target.parallactic_angle(times, ANT1).shape == offsets.shape
+    delay, delay_rate = target.geometric_delay(ANT2, times, ANT1)
+    assert delay.shape == offsets.shape
+    assert delay_rate.shape == offsets.shape
+    assert target.uvw_basis(times, ANT1).shape == (3, 3) + offsets.shape
+    u, v, w = target.uvw([ANT1, ANT2], times, ANT1)
+    assert u.shape == v.shape == w.shape == offsets.shape + (2,)
+    l, m, n = target.lmn(radec.ra.rad, radec.dec.rad, times, ANT1)
+    assert l.shape == m.shape == n.shape == offsets.shape
     assert target.separation(target, times, ANT1).shape == offsets.shape
 
 

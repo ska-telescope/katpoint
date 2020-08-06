@@ -562,8 +562,8 @@ class Target:
         if not time.isscalar and self.body_type != 'radec':
             # Some calculations depend on ra/dec in a way that won't easily
             # vectorise.
-            bases = [self.uvw_basis(t, antenna) for t in time]
-            return np.stack(bases, axis=-1)
+            bases = [self.uvw_basis(t, antenna) for t in time.ravel()]
+            return np.stack(bases, axis=-1).reshape(3, 3, *time.shape)
 
         # Offset the target slightly in declination to approximate the
         # derivative of ENU in the direction of increasing declination. This
