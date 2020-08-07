@@ -25,7 +25,8 @@ import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 import astropy.units as u
-from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Latitude, Longitude
+from astropy.coordinates import SkyCoord, ICRS, AltAz, UnitSphericalRepresentation
+from astropy.coordinates import EarthLocation, Latitude, Longitude
 from astropy.time import Time
 
 from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
@@ -44,28 +45,34 @@ def _get_earth_satellite():
     return readtle(name, line1, line2)
 
 
+def _check_separation(actual, lon, lat, tol):
+    """Check that actual and desired directions are within tolerance."""
+    desired = actual.realize_frame(UnitSphericalRepresentation(lon, lat))
+    assert actual.separation(desired) <= tol
+
+
 @pytest.mark.parametrize(
-    "body, date_str, ra_str, dec_str, az_str, el_str",
+    "body, date_str, ra_str, dec_str, az_str, el_str, tol",
     [
         (_get_fixed_body('10:10:40.123', '40:20:50.567'), '2020-01-01 00:00:00.000',
-         '10:10:40.123', '40:20:50.567', '326:05:57.541', '51:21:20.0119'),
-        # 10:10:40.12     40:20:50.6      326:05:54.8,     51:21:18.5  (PyEphem)
-        # Adjust time by UT1-UTC=-0.177:  326:05:57.1      51:21:19.9  (PyEphem)
+         '10:10:40.123h', '40:20:50.567d', '326:05:57.541d', '51:21:20.0119d', 1 * u.mas),
+        # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
+        # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
-         '14:05:58.9201', '-12:13:51.9009', '118:10:05.1129', '27:23:12.8499'),
-        # (PyEphem does GCRS)                118:10:06.1,      27:23:13.3  (PyEphem)
+         '14:05:58.9201h', '-12:13:51.9009d', '118:10:05.1129d', '27:23:12.8499d', 1 * u.mas),
+        # (PyEphem radec is geocentric)        118:10:06.1d       27:23:13.3d  (PyEphem)
         (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
-         '6:44:11.9332', '23:02:08.402', '127:15:17.1381', '60:05:10.2438'),
-        # (PyEphem does GCRS)             127:15:23.6,      60:05:13.7  (PyEphem)
+         '6:44:11.9332h', '23:02:08.402d', '127:15:17.1381d', '60:05:10.2438d', 1 * u.arcsec),
+        # (PyEphem radec is geocentric)     127:15:23.6d       60:05:13.7d  (PyEphem)
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
-         '7:56:36.7964', '20:53:59.4553', '234:53:19.4762', '31:38:11.4248'),
-        # (PyEphem does GCRS)              234:53:20.8,      31:38:09.4  (PyEphem)
+         '7:56:36.7964h', '20:53:59.4553d', '234:53:19.4762d', '31:38:11.4248d', 1 * u.mas),
+        # (PyEphem radec is geocentric)      234:53:20.8d       31:38:09.4d  (PyEphem)
         (_get_earth_satellite(), '2019-09-23 07:45:36.000',
-         '3:32:56.7813', '-2:04:35.4329', '280:32:29.675', '-54:06:50.7456'),
-        # 3:32:59.21      -2:04:36.3       280:32:07.2      -54:06:14.4  (PyEphem)
+         '3:32:56.7813h', '-2:04:35.4329d', '280:32:29.675d', '-54:06:50.7456d', 1 * u.mas),
+        # 3:32:59.21h      -2:04:36.3d       280:32:07.2d      -54:06:14.4d  (PyEphem)
     ]
 )
-def test_compute(body, date_str, ra_str, dec_str, az_str, el_str):
+def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     """Test compute method"""
     obstime = Time(date_str)
     lat = Latitude('10:00:00.000', unit=u.deg)
@@ -73,11 +80,9 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str):
     height = 4200.0 if isinstance(body, EarthSatelliteBody) else 0.0
     location = EarthLocation(lat=lat, lon=lon, height=height)
     radec = body.compute(ICRS(), obstime, location)
-    assert radec.ra.to_string(sep=':', unit=u.hour) == ra_str
-    assert radec.dec.to_string(sep=':') == dec_str
+    _check_separation(radec, ra_str, dec_str, tol)
     altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)
-    assert altaz.az.to_string(sep=':') == az_str
-    assert altaz.alt.to_string(sep=':') == el_str
+    _check_separation(altaz, az_str, el_str, tol)
 
 
 def test_earth_satellite():
