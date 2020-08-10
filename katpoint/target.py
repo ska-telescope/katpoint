@@ -592,11 +592,10 @@ class Target:
         azel = self.azel(time, antenna)
         # w axis points toward target
         w = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
-        # u axis is orthogonal to z and w, and row_stack makes it 2-D array of column vectors
-        u = np.row_stack(np.cross(z, w, axis=0)) * offset_sign
-        u_norm = np.sqrt(np.sum(u ** 2, axis=0))
-        # Ensure that u and w (and therefore v) have the same shape to handle scalar vs array output correctly
-        u = u.reshape(w.shape) / u_norm
+        # u axis is orthogonal to z and w
+        u = np.cross(z, w, axis=0) * offset_sign
+        u /= np.linalg.norm(u, axis=0)
+        # v axis completes the orthonormal basis
         v = np.cross(w, u, axis=0)
         return np.array([u, v, w])
 
