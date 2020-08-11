@@ -304,9 +304,9 @@ def test_delay():
 def test_uvw():
     """Test uvw calculation."""
     u, v, w = DELAY_TARGET.uvw(ANT2, DELAY_TS[0], ANT1)
-    np.testing.assert_almost_equal([u, v, w], UVW[0], decimal=5)
+    np.testing.assert_almost_equal([u, v, w], UVW[0], decimal=12)
     u, v, w = DELAY_TARGET.uvw(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_array_almost_equal([u, v, w], np.c_[UVW], decimal=5)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[UVW], decimal=12)
 
 
 def test_uvw_timestamp_array_azel():
@@ -314,19 +314,19 @@ def test_uvw_timestamp_array_azel():
     azel = DELAY_TARGET.azel(DELAY_TS[0], ANT1)
     target = katpoint.construct_azel_target(azel.az, azel.alt)
     u, v, w = target.uvw(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_array_almost_equal([u, v, w], np.c_[(UVW[0],) * len(DELAY_TS)], decimal=4)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[(UVW[0],) * len(DELAY_TS)], decimal=5)
 
 
 def test_uvw_antenna_array():
     u, v, w = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
-    np.testing.assert_array_almost_equal([u, v, w], np.c_[np.zeros(3), UVW[0]], decimal=5)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[np.zeros(3), UVW[0]], decimal=12)
 
 
 def test_uvw_both_array():
     u, v, w = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
     # UVW array has shape (3, n_times, n_bls) - stack times along dim 1 and ants along dim 2
     desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), np.c_[UVW]])
-    np.testing.assert_array_almost_equal([u, v, w], desired_uvw, decimal=5)
+    np.testing.assert_array_almost_equal([u, v, w], desired_uvw, decimal=12)
 
 
 def test_uvw_hemispheres():
@@ -376,7 +376,7 @@ def test_separation():
     azel2 = katpoint.construct_azel_target(azel_sun.az,
                                            azel_sun.alt + Angle(0.01, unit=u.rad))
     sep = azel.separation(azel2, TS, ANT1)
-    np.testing.assert_almost_equal(sep.rad, 0.01, decimal=7)
+    np.testing.assert_almost_equal(sep.rad, 0.01, decimal=12)
 
 
 def test_projection():
