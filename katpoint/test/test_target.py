@@ -261,55 +261,50 @@ def test_coords():
     assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
 
 
+DELAY_TARGET = katpoint.Target('radec, 20.0, -20.0')
+DELAY_TS = [TS, TS + 1.0]
+DELAY = [1.75538294e-08, 1.75522002e-08]
+DELAY_RATE = [-1.62915174e-12, -1.62929689e-12]
+UVW = ([-7.118580813334029, -11.028682662045913, -5.262505671628351],
+       [-7.119215642091996, -11.028505936045280, -5.262017242465739])
+
+
 def test_delay():
     """Test geometric delay."""
-    delay, delay_rate = TARGET.geometric_delay(ANT2, TS, ANT1)
-    np.testing.assert_almost_equal(delay, 0.0, decimal=12)
-    np.testing.assert_almost_equal(delay_rate, 0.0, decimal=12)
-    delay, delay_rate = TARGET.geometric_delay(ANT2, [TS, TS], ANT1)
-    np.testing.assert_almost_equal(delay, np.array([0.0, 0.0]), decimal=12)
-    np.testing.assert_almost_equal(delay_rate, np.array([0.0, 0.0]), decimal=12)
-
-
-UVW = [10.820796672358002, -9.1055125816993954, -2.22044604925e-16]
+    delay, delay_rate = DELAY_TARGET.geometric_delay(ANT2, DELAY_TS[0], ANT1)
+    np.testing.assert_allclose(delay, DELAY[0])
+    np.testing.assert_allclose(delay_rate, DELAY_RATE[0])
+    delay, delay_rate = DELAY_TARGET.geometric_delay(ANT2, DELAY_TS, ANT1)
+    np.testing.assert_allclose(delay, DELAY)
+    np.testing.assert_allclose(delay_rate, DELAY_RATE)
 
 
 def test_uvw():
     """Test uvw calculation."""
-    u, v, w = TARGET.uvw(ANT2, TS, ANT1)
-    np.testing.assert_almost_equal([u, v, w], UVW, decimal=5)
+    u, v, w = DELAY_TARGET.uvw(ANT2, DELAY_TS[0], ANT1)
+    np.testing.assert_almost_equal([u, v, w], UVW[0], decimal=5)
+    u, v, w = DELAY_TARGET.uvw(ANT2, DELAY_TS, ANT1)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[UVW], decimal=5)
 
 
-def test_uvw_timestamp_array():
-    """Test uvw calculation on an array."""
-    u, v, w = TARGET.uvw(ANT2, np.array([TS, TS]), ANT1)
-    np.testing.assert_array_almost_equal(u, np.array([UVW[0]] * 2), decimal=5)
-    np.testing.assert_array_almost_equal(v, np.array([UVW[1]] * 2), decimal=5)
-    np.testing.assert_array_almost_equal(w, np.array([UVW[2]] * 2), decimal=5)
-
-
-def test_uvw_timestamp_array_radec():
-    """Test uvw calculation on a timestamp array when the target is a radec target."""
-    radec = TARGET.radec(TS, ANT1)
-    target = katpoint.construct_radec_target(radec.ra, radec.dec)
-    u, v, w = target.uvw(ANT2, np.array([TS, TS]), ANT1)
-    np.testing.assert_array_almost_equal(u, np.array([UVW[0]] * 2), decimal=4)
-    np.testing.assert_array_almost_equal(v, np.array([UVW[1]] * 2), decimal=4)
-    np.testing.assert_array_almost_equal(w, np.array([UVW[2]] * 2), decimal=4)
+def test_uvw_timestamp_array_azel():
+    """Test uvw calculation on a timestamp array when the target is an azel target."""
+    azel = DELAY_TARGET.azel(DELAY_TS[0], ANT1)
+    target = katpoint.construct_azel_target(azel.az, azel.alt)
+    u, v, w = target.uvw(ANT2, DELAY_TS, ANT1)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[(UVW[0],) * len(DELAY_TS)], decimal=4)
 
 
 def test_uvw_antenna_array():
-    u, v, w = TARGET.uvw([ANT1, ANT2], TS, ANT1)
-    np.testing.assert_array_almost_equal(u, np.array([0, UVW[0]]), decimal=5)
-    np.testing.assert_array_almost_equal(v, np.array([0, UVW[1]]), decimal=5)
-    np.testing.assert_array_almost_equal(w, np.array([0, UVW[2]]), decimal=5)
+    u, v, w = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[np.zeros(3), UVW[0]], decimal=5)
 
 
 def test_uvw_both_array():
-    u, v, w = TARGET.uvw([ANT1, ANT2], [TS, TS], ANT1)
-    np.testing.assert_array_almost_equal(u, np.array([[0, UVW[0]]] * 2), decimal=5)
-    np.testing.assert_array_almost_equal(v, np.array([[0, UVW[1]]] * 2), decimal=5)
-    np.testing.assert_array_almost_equal(w, np.array([[0, UVW[2]]] * 2), decimal=5)
+    u, v, w = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
+    # UVW array has shape (3, n_times, n_bls) - stack times along dim 1 and ants along dim 2
+    desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), np.c_[UVW]])
+    np.testing.assert_array_almost_equal([u, v, w], desired_uvw, decimal=5)
 
 
 def test_uvw_hemispheres():
