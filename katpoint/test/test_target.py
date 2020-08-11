@@ -81,31 +81,23 @@ class TestTargetConstruction:
         # azel
         azel = katpoint.Target(self.azel_target)
         calc_azel = azel.azel()
-        calc_az = calc_azel.az
-        calc_el = calc_azel.alt
-        assert calc_az.deg == 10.0
-        assert calc_el.deg == -10.0
+        assert calc_azel.az.deg == 10.0
+        assert calc_azel.alt.deg == -10.0
         # radec (degrees)
         radec = katpoint.Target(self.radec_target)
         calc_radec = radec.radec()
-        calc_ra = calc_radec.ra
-        calc_dec = calc_radec.dec
-        assert calc_ra.deg == 20.0
-        assert calc_dec.deg == -20.0
+        assert calc_radec.ra.deg == 20.0
+        assert calc_radec.dec.deg == -20.0
         # radec (hours)
         radec_rahours = katpoint.Target(self.radec_target_rahours)
         calc_radec_rahours = radec_rahours.radec()
-        calc_ra = calc_radec_rahours.ra
-        calc_dec = calc_radec_rahours.dec
-        assert calc_ra.hms == (20, 0, 0)
-        assert calc_dec.deg == -20.0
+        assert calc_radec_rahours.ra.hms == (20, 0, 0)
+        assert calc_radec_rahours.dec.deg == -20.0
         # gal
         lb = katpoint.Target(self.gal_target)
         calc_lb = lb.galactic()
-        calc_l = calc_lb.l
-        calc_b = calc_lb.b
-        assert calc_l.deg == 30.0
-        assert calc_b.deg == -30.0
+        assert calc_lb.l.deg == 30.0
+        assert calc_lb.b.deg == -30.0
 
     def test_add_tags(self):
         """Test adding tags."""
@@ -131,10 +123,7 @@ class TestTargetConstruction:
         'Zizou, radec cal, 1.4, 30.0, (1000.0 2000.0 1.0 10.0)',
         'Fluffy | *Dinky, radec, 12.5, -50.0, (1.0 2.0 1.0 2.0 3.0 4.0)',
         TLE_TARGET,
-        (', tle, GPS BIIA-22 (PRN 05)    \n'
-         '1 22779U 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
-         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
-         .format(YY, (YY // 10 + YY - 7 + 5) % 10)),
+        ', ' + TLE_TARGET,
         'Sun, special',
         'Nothing, special',
         'Moon | Luna, special solarbody',
@@ -288,9 +277,7 @@ UVW = [10.820796672358002, -9.1055125816993954, -2.22044604925e-16]
 def test_uvw():
     """Test uvw calculation."""
     u, v, w = TARGET.uvw(ANT2, TS, ANT1)
-    np.testing.assert_almost_equal(u, UVW[0], decimal=5)
-    np.testing.assert_almost_equal(v, UVW[1], decimal=5)
-    np.testing.assert_almost_equal(w, UVW[2], decimal=5)
+    np.testing.assert_almost_equal([u, v, w], UVW, decimal=5)
 
 
 def test_uvw_timestamp_array():
