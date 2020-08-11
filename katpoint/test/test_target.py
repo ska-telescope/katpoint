@@ -211,30 +211,52 @@ ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
 TS = katpoint.Timestamp('2013-08-14 09:25')
 
 
+def _array_vs_scalar(func, array_in, sky_coord=False):
+    """Check that `func` output for 2D array of inputs is array of corresponding scalar outputs."""
+    assert array_in.ndim == 2
+    array_out = func(array_in)
+    for i in range(array_in.shape[0]):
+        for j in range(array_in.shape[1]):
+            scalar = func(array_in[i, j])
+            if sky_coord:
+                # Treat output as if it is SkyCoord with internal array, check separation instead
+                assert array_out[i, j].separation(scalar).rad == pytest.approx(0.0)
+            else:
+                # Assume that function outputs ndarrays of numbers (or equivalent)
+                np.testing.assert_array_equal(np.array(array_out)[..., i, j], scalar)
+    return array_out
+
+
 # XXX TLE_TARGET does not support array timestamps yet
 @pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
                                          'gal, 30, -30', 'Sun, special'])
 def test_array_valued_methods(description):
     """Test array-valued methods (at least their output shapes)."""
-    offsets = np.array([[0, 1, 2, 3]])
-    times = katpoint.Timestamp('2020-07-30 14:02:00') + offsets
-    assert times.time.shape == offsets.shape
+    offsets = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
+    times = (katpoint.Timestamp('2020-07-30 14:02:00') + offsets).time
+    assert times.shape == offsets.shape
     target = katpoint.Target(description)
-    assert target.azel(times, ANT1).shape == offsets.shape
+    azel = _array_vs_scalar(lambda t: target.azel(t, ANT1), times, sky_coord=True)
+    assert azel.shape == offsets.shape
     assert target.apparent_radec(times, ANT1).shape == offsets.shape
-    radec = target.astrometric_radec(times, ANT1)
+    radec = _array_vs_scalar(lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True)
     assert radec.shape == offsets.shape
     assert target.galactic(times, ANT1).shape == offsets.shape
     assert target.parallactic_angle(times, ANT1).shape == offsets.shape
-    delay, delay_rate = target.geometric_delay(ANT2, times, ANT1)
+    delay, delay_rate = _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1), times)
     assert delay.shape == offsets.shape
     assert delay_rate.shape == offsets.shape
-    assert target.uvw_basis(times, ANT1).shape == (3, 3) + offsets.shape
+    uvw_basis = _array_vs_scalar(lambda t: target.uvw_basis(t, ANT1), times)
+    assert uvw_basis.shape == (3, 3) + offsets.shape
     u, v, w = target.uvw([ANT1, ANT2], times, ANT1)
     assert u.shape == v.shape == w.shape == offsets.shape + (2,)
+    # Check scalar radec vs array timestamps
+    _array_vs_scalar(lambda t: target.lmn(radec.ra.rad.flat[0],
+                                          radec.dec.rad.flat[0], t, ANT1), times)
     l, m, n = target.lmn(radec.ra.rad, radec.dec.rad, times, ANT1)
     assert l.shape == m.shape == n.shape == offsets.shape
-    assert target.separation(target, times, ANT1).shape == offsets.shape
+    np.testing.assert_allclose(target.separation(target, times, ANT1).rad,
+                               np.zeros_like(offsets), atol=1e-12)
 
 
 def test_coords():
