@@ -146,7 +146,7 @@ class Target:
             descr += ', %s %s' % (self.body.coord.az.to_string(unit=u.deg),
                                   self.body.coord.alt.to_string(unit=u.deg))
         if self.body_type == 'gal':
-            gal = self.body.compute(Galactic)
+            gal = self.body.compute(Galactic())
             descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
         if self.flux_model is None:
             descr += ', no flux info'
@@ -221,7 +221,7 @@ class Target:
             # Check if it's an unnamed target with a default name
             if names.startswith('Galactic l:'):
                 fields = [tags]
-            gal = self.body.compute(Galactic)
+            gal = self.body.compute(Galactic())
             fields += ['%.4f' % (gal.l.deg,), '%.4f' % (gal.b.deg,)]
             if fluxinfo:
                 fields += [fluxinfo]
@@ -394,7 +394,7 @@ class Target:
         """
         time = Timestamp(timestamp).time
         _, location = self._normalise_antenna(antenna)
-        return self.body.compute(ICRS, obstime=time, location=location)
+        return self.body.compute(ICRS(), obstime=time, location=location)
 
     # The default (ra, dec) coordinates are the astrometric ones
     radec = astrometric_radec
@@ -425,7 +425,7 @@ class Target:
         """
         time = Timestamp(timestamp).time
         _, location = self._normalise_antenna(antenna)
-        return self.body.compute(Galactic, obstime=time, location=location)
+        return self.body.compute(Galactic(), obstime=time, location=location)
 
     def parallactic_angle(self, timestamp=None, antenna=None):
         """Calculate parallactic angle on target as seen from antenna at time(s).

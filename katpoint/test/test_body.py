@@ -72,7 +72,7 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str):
     lon = Longitude('80:00:00.000', unit=u.deg)
     height = 4200.0 if isinstance(body, EarthSatelliteBody) else 0.0
     location = EarthLocation(lat=lat, lon=lon, height=height)
-    radec = body.compute(ICRS, obstime, location)
+    radec = body.compute(ICRS(), obstime, location)
     assert radec.ra.to_string(sep=':', unit=u.hour) == ra_str
     assert radec.dec.to_string(sep=':') == dec_str
     altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)

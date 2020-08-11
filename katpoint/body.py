@@ -68,8 +68,8 @@ class Body:
 
         Parameters
         ----------
-        frame : str, :class:`~astropy.coordinates.BaseCoordinateFrame` class or
-                instance, or :class:`~astropy.coordinates.SkyCoord` instance
+        frame : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+                :class:`~astropy.coordinates.SkyCoord`
             The frame to transform this body's coordinates into
         obstime : :class:`~astropy.time.Time`
             The time of observation
@@ -106,8 +106,8 @@ class FixedBody(Body):
 
         Parameters
         ----------
-        frame : str, :class:`~astropy.coordinates.BaseCoordinateFrame` class or
-                instance, or :class:`~astropy.coordinates.SkyCoord` instance
+        frame : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+                :class:`~astropy.coordinates.SkyCoord`
             The frame to transform this body's coordinate into
         obstime : :class:`~astropy.time.Time`, optional
             The time of observation
