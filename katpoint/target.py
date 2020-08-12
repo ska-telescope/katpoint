@@ -777,7 +777,16 @@ class Target:
         # Get a common timestamp and antenna for both targets
         time = Timestamp(timestamp).time
         antenna, _ = self._normalise_antenna(antenna)
-        return self.azel(time, antenna).separation(other_target.azel(time, antenna))
+        this_azel = self.azel(time, antenna)
+        other_azel = other_target.azel(time, antenna)
+        # XXX Work around Astropy 4.1rc1 limitation:
+        # SkyCoord.separation triggers a frame equivalency check and this crashes
+        # if one azel has an attribute that the other lacks. The workaround blanks
+        # out attributes introduced by SolarSystemBody's GCRS coordinates, which
+        # should not affect separation calculation.
+        this_azel.obsgeoloc = other_azel.obsgeoloc = None
+        this_azel.obsgeovel = other_azel.obsgeovel = None
+        return this_azel.separation(other_azel)
 
     def sphere_to_plane(self, az, el, timestamp=None, antenna=None, projection_type='ARC', coord_system='azel'):
         """Project spherical coordinates to plane with target position as reference.
