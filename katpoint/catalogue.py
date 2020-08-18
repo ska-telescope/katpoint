@@ -24,7 +24,6 @@ from astropy.time import Time
 
 from .target import Target
 from .timestamp import Timestamp
-from .ephem_extra import rad2deg
 from .stars import stars
 
 logger = logging.getLogger(__name__)
@@ -607,9 +606,8 @@ class Catalogue:
         ----------
         target : :class:`Target` object
             Target with which catalogue targets are compared
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -623,7 +621,7 @@ class Catalogue:
         """
         if len(self.targets) == 0:
             return None, 180.0
-        dist = rad2deg(np.array([target.separation(tgt, timestamp, antenna) for tgt in self.targets]))
+        dist = np.array([target.separation(tgt, timestamp, antenna).deg for tgt in self.targets])
         closest = dist.argmin()
         return self.targets[closest], dist[closest]
 
@@ -668,9 +666,9 @@ class Catalogue:
             takes the form [lower, upper]. If None, any distance is accepted.
         proximity_targets : :class:`Target` object, or sequence of objects
             Target or list of targets used in proximity filter
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds since
-            Unix epoch. If None, the current time *at each iteration* is used.
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions.
+            If None, the current time *at each iteration* is used.
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -757,7 +755,7 @@ class Catalogue:
                     if (el_deg < el_limit_deg[0]) or (el_deg > el_limit_deg[1]):
                         continue
                 if proximity_filter:
-                    dist_deg = np.array([rad2deg(target.separation(prox_target, latest_timestamp, antenna))
+                    dist_deg = np.array([target.separation(prox_target, latest_timestamp, antenna).deg
                                          for prox_target in proximity_targets])
                     if (dist_deg < dist_limit_deg[0]).any() or (dist_deg > dist_limit_deg[1]).any():
                         continue
@@ -808,9 +806,8 @@ class Catalogue:
             takes the form [lower, upper]. If None, any distance is accepted.
         proximity_targets : :class:`Target` object, or sequence of objects
             Target or list of targets used in proximity filter
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -856,9 +853,8 @@ class Catalogue:
             True if key should be sorted in ascending order
         flux_freq_MHz : float, optional
             Frequency at which to evaluate the flux density, in MHz
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -895,7 +891,7 @@ class Catalogue:
         return self
 
     def visibility_list(self, timestamp=None, antenna=None, flux_freq_MHz=None, antenna2=None):
-        """Print out list of targets in catalogue, sorted by decreasing elevation.
+        r"""Print out list of targets in catalogue, sorted by decreasing elevation.
 
         This prints out the name, azimuth and elevation of each target in the
         catalogue, in order of decreasing elevation. The motion of the target at
@@ -911,9 +907,8 @@ class Catalogue:
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
         flux_freq_MHz : float, optional
@@ -940,10 +935,13 @@ class Catalogue:
         print()
         print('Target                        Azimuth    Elevation <    Flux Fringe period')
         print('------                        -------    --------- -    ---- -------------')
-        for target in self.sort('el', timestamp=timestamp, antenna=antenna, ascending=False):
-            azel = target.azel(timestamp, antenna)
-            delta_el = target.azel(timestamp + 30.0, antenna).alt.deg - target.azel(timestamp - 30.0, antenna).alt.deg
-            el_code = '-' if (np.abs(delta_el) < 1.0 / 60.0) else ('/' if delta_el > 0.0 else '\\')
+        azels = [target.azel(timestamp + (-30.0, 0.0, 30.0), antenna) for target in self.targets]
+        elevations = [azel[1].alt.deg for azel in azels]
+        for index in np.argsort(elevations)[::-1]:
+            target = self.targets[index]
+            azel = azels[index][1]
+            delta_el = azels[index][2].alt.deg - azels[index][0].alt.deg
+            el_code = '-' if (np.abs(delta_el) < 1 / 60) else ('/' if delta_el > 0 else '\\')
             # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
             flux = target.flux_density(flux_freq_MHz) if flux_freq_MHz is not None else np.nan
             if antenna2 is not None and flux_freq_MHz is not None:
@@ -955,7 +953,9 @@ class Catalogue:
                 # Draw horizon line
                 print('--------------------------------------------------------------------------')
                 above_horizon = False
-            line = '%-24s %12s %12s %c' % (target.name, azel.az.rad, azel.alt.rad, el_code)
+            az = azel.az.wrap_at('180deg').to_string(sep=':', precision=1)
+            el = azel.alt.to_string(sep=':', precision=1)
+            line = '%-24s %12s %12s %c' % (target.name, az, el, el_code)
             line = line + ' %7.1f' % (flux,) if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
                 line += '    %10.2f' % (fringe_period,)

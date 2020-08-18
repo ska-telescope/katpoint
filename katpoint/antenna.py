@@ -24,10 +24,8 @@ and other parameters that affect pointing and delay calculations.
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import Latitude, Longitude, EarthLocation
-from astropy.time import Time
 
 from .timestamp import Timestamp
-from .ephem_extra import is_iterable
 from .conversion import enu_to_ecef, ecef_to_lla, lla_to_ecef, ecef_to_enu
 from .pointing import PointingModel
 from .delay import DelayModel
@@ -321,30 +319,23 @@ class Antenna:
             return ecef_to_enu(lat, lon, alt, *lla_to_ecef(*antenna2.position_wgs84))
 
     def local_sidereal_time(self, timestamp=None):
-        """Calculate local sidereal time at antenna for timestamp(s).
+        """Calculate local apparent sidereal time at antenna for timestamp(s).
 
-        This is a vectorised function that returns the local sidereal time at
-        the antenna for a given UTC timestamp.
+        This is a vectorised function that returns the local apparent sidereal
+        time at the antenna for the given timestamp(s).
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, or sequence, optional
-            Timestamp(s) in UTC seconds since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s), defaults to now
 
         Returns
         -------
-        lst : :class:`astropy.coordinates.Angle` object, or sequence of objects
-            Local sidereal time(s), in radians
+        last : :class:`astropy.coordinates.Longitude`
+            Local apparent sidereal time(s)
         """
-        def _scalar_local_sidereal_time(t):
-            """Calculate local sidereal time at a single time instant."""
-            time = Time(Timestamp(t).time, location=self.earth_location)
-            return time.sidereal_time('apparent')
-
-        if is_iterable(timestamp):
-            return np.array([_scalar_local_sidereal_time(t) for t in timestamp], dtype=object)
-        else:
-            return _scalar_local_sidereal_time(timestamp)
+        time = Timestamp(timestamp).time
+        return time.sidereal_time('apparent', longitude=self.earth_location.lon)
 
     def array_reference_antenna(self, name='array'):
         """Synthetic antenna at the delay model reference position of this antenna.

@@ -16,8 +16,6 @@
 
 """Tests for the catalogue module."""
 
-import time
-
 import pytest
 from numpy.testing import assert_allclose
 
@@ -25,10 +23,10 @@ import katpoint
 
 
 # Use the current year in TLE epochs to avoid pyephem crash due to expired TLEs
-YY = time.localtime().tm_year % 100
+YY = katpoint.Timestamp().time.ymdhms[0] % 100
 FLUX_TARGET = katpoint.Target('flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)')
 ANTENNA = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')
-TIMESTAMP = time.mktime(time.strptime('2009/06/14 12:34:56', '%Y/%m/%d %H:%M:%S'))
+TIMESTAMP = '2009/06/14 12:34:56'
 
 
 def test_catalogue_basic():

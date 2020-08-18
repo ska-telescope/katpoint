@@ -214,8 +214,8 @@ class DelayCorrection:
         ----------
         target : :class:`Target` object
             Target providing direction for geometric delays
-        timestamp : :class:`Timestamp` object or equivalent
-            Timestamp in UTC seconds since Unix epoch
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
+            Timestamp when wavefront from target passes reference position
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
@@ -284,12 +284,11 @@ class DelayCorrection:
         ----------
         target : :class:`Target` object
             Target providing direction for geometric delays
-        timestamp : :class:`Timestamp` object or equivalent, or sequence, optional
-            Timestamp(s) in UTC seconds since Unix epoch when delays are
-            evaluated (default is now). If more than one timestamp is given,
-            the corrections will include slopes to be used for linear
-            interpolation between the times
-        next_timestamp : :class:`Timestamp` object or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s) when delays are evaluated (default is now). If more
+            than one timestamp is given, the corrections will include slopes
+            to be used for linear interpolation between the times.
+        next_timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp when next delay will be evaluated, used to determine
             a slope for linear interpolation (default is no slope). This is
             ignored if *timestamp* is a sequence.

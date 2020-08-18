@@ -14,23 +14,16 @@
 # limitations under the License.
 ################################################################################
 
-"""Replacement for the pyephem body classes.
-
-We only implement ra, dec (CIRS), a_ra, a_dec (ICRS RA/dec) and alt, az
-(topcentric) as that is all that katpoint uses
-
-The real pyephem computes observed place but katpoint always sets the
-pressure to zero so we compute apparent places instead.
-"""
+"""A celestial body that can compute its sky position, inspired by PyEphem."""
 
 import copy
 import datetime
 
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import solar_system_ephemeris, get_body, get_sun, get_moon
-from astropy.coordinates import CIRS, ICRS, SkyCoord, AltAz
 from astropy.time import Time, TimeDelta
+from astropy.coordinates import ICRS, SkyCoord, AltAz
+from astropy.coordinates import solar_system_ephemeris, get_body
 
 import sgp4.model
 import sgp4.earth_gravity
@@ -43,184 +36,149 @@ from .ephem_extra import angle_from_degrees
 
 
 class Body:
-    """Base class for all Body classes.
+    """A celestial body that can compute() its sky position.
 
-    Attributes
+    This is loosely based on PyEphem's `Body` class. It handles both static
+    coordinates fixed in some standard frame and dynamic coordinates that
+    are computed on the fly, such as Solar System ephemerides and Earth
+    satellites.
+
+    A Body represents a single celestial object with a scalar set of
+    coordinates at a given time instant, although the :meth:`compute` method
+    may return coordinates for multiple observation times.
+
+    Parameters
     ----------
-
-    a_radec : astropy.coordinates.SkyCoord
-        Astrometric (ICRS) position at date of observation
-
-    radec : astropy.coordinates.SkyCoord
-        Apparent (CIRS) position at date of observation
-
-    altaz : astropy.coordinates.AltAz
-        Topocentric alt/az of body at date of observation
+    name : str
+        The name of the body
     """
 
-    def __init__(self):
-        self._epoch = Time(2000.0, format='jyear')
+    def __init__(self, name):
+        self.name = name
 
-    def _compute(self, loc, date, pressure, icrs_radec):
-        """Calculates the RA/Dec and Az/El of the body.
+    @staticmethod
+    def _check_location(frame):
+        """Check that we have a location for computing AltAz coordinates."""
+        if isinstance(frame, AltAz) and frame.location is None:
+            raise ValueError('Body needs a location to calculate (az, el) coordinates - '
+                             'did you specify an Antenna?')
+
+    def compute(self, frame, obstime, location):
+        """Compute the coordinates of the body in the requested frame.
 
         Parameters
         ----------
-        loc : astropy.coordinates.EarthLocation
-            Location of observation
+        frame : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+                :class:`~astropy.coordinates.SkyCoord`
+            The frame to transform this body's coordinates into
+        obstime : :class:`~astropy.time.Time`
+            The time of observation
+        location : :class:`~astropy.coordinates.EarthLocation`
+            The location of the observer on the Earth
 
-        date : astropy.Time
-            Date of observation
-
-        pressure : float
-            Atmospheric pressure
-
-        icrs_radec : astropy.coordinates.SkyCoord
-            Position of the body in the ICRS
+        Returns
+        -------
+        coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+                :class:`~astropy.coordinates.SkyCoord`
+            The computed coordinates as a new object
         """
-
-        # Store the astrometric (ICRS) position
-        self.a_radec = icrs_radec
-
-        # Store apparent (CIRS) position
-        self.radec = self.a_radec.transform_to(CIRS(obstime=date))
-
-        # ICRS to Az/El
-        self.altaz = self.radec.transform_to(AltAz(location=loc, obstime=date, pressure=pressure))
+        raise NotImplementedError
 
 
 class FixedBody(Body):
-    """A body with a fixed (on the celestial sphere) position.
+    """A body with a fixed ICRS position.
 
-    Attributes
+    Parameters
     ----------
-
-    _radec : astropy.coordinates.SkyCoord
-        Position of body in some RA/Dec frame
+    name : str
+        The name of the celestial body
+    coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+            :class:`~astropy.coordinates.SkyCoord`
+        The coordinates of the body
     """
 
-    def __init__(self):
-        Body.__init__(self)
+    def __init__(self, name, coord):
+        super().__init__(name)
+        self.coord = coord
 
-    def compute(self, loc, date, pressure):
-        """Compute alt/az of body.
+    def compute(self, frame, obstime=None, location=None):
+        """Compute the coordinates of the body in the requested frame.
 
         Parameters
         ----------
-        loc : astropy.coordinates.EarthLocation
-            Location of observation
+        frame : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+                :class:`~astropy.coordinates.SkyCoord`
+            The frame to transform this body's coordinate into
+        obstime : :class:`~astropy.time.Time`, optional
+            The time of observation
+        location : :class:`~astropy.coordinates.EarthLocation`, optional
+            The location of the observer on the Earth
 
-        date : astropy.Time
-            Date of observation
-
-        pressure : float
-            Atmospheric pressure
+        Returns
+        -------
+        coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
+                :class:`~astropy.coordinates.SkyCoord`
+            The computed coordinates as a new object
         """
-        icrs = self._radec.transform_to(ICRS)
-        Body._compute(self, loc, date, pressure, icrs)
+        Body._check_location(frame)
+        # If obstime is array-valued and not contained in the output frame, the transform
+        # will return a scalar SkyCoord. Repeat the value to match obstime shape instead.
+        if (obstime is not None and not obstime.isscalar
+           and 'obstime' not in frame.get_frame_attr_names()):
+            coord = self.coord.take(np.zeros_like(obstime, dtype=int))
+        else:
+            coord = self.coord
+        return coord.transform_to(frame)
 
     def writedb(self):
         """ Create an XEphem catalogue entry.
 
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
-        icrs = self._radec.transform_to(ICRS)
+        icrs = self.coord.transform_to(ICRS)
         return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
                                    icrs.dec.to_string(sep=':', unit=u.deg))
 
 
-class Sun(Body):
-    def __init__(self):
-        Body.__init__(self)
-        self.name = 'Sun'
+class SolarSystemBody(Body):
+    """A major Solar System body identified by name.
 
-    def compute(self, loc, date, pressure):
-        sun = get_sun(date)
-        icrs = sun.transform_to(ICRS)
-        Body._compute(self, loc, date, pressure, icrs)
+    Parameters
+    ----------
+    name : str
+        The name of the Solar System body
+    """
 
-
-class Moon(Body):
-    def __init__(self):
-        Body.__init__(self)
-        self.name = 'Moon'
-
-    def compute(self, loc, date, pressure):
-        moon = get_moon(date, loc)
-        icrs = moon.transform_to(ICRS)
-        Body._compute(self, loc, date, pressure, icrs)
-
-
-class Earth(Body):
-    def __init__(self):
-        Body.__init__(self)
-
-    def compute(self):
-        pass
-
-
-class Planet(Body):
     def __init__(self, name):
-        Body.__init__(self)
-        self._name = name
+        if name.lower() not in solar_system_ephemeris.bodies:
+            raise ValueError("Unknown Solar System body '{}' - should be one of {}"
+                             .format(name.lower(), solar_system_ephemeris.bodies))
+        super().__init__(name)
 
-    def compute(self, loc, date, pressure):
-        with solar_system_ephemeris.set('builtin'):
-            planet = get_body(self._name, date, loc)
-        icrs = planet.transform_to(ICRS)
-        Body._compute(self, loc, date, pressure, icrs)
-
-
-class Mercury(Planet):
-    def __init__(self):
-        Planet.__init__(self, 'mercury')
-        self.name = 'Mercury'
+    def compute(self, frame, obstime, location=None):
+        """Determine position of body for given time and location and transform to `frame`."""
+        Body._check_location(frame)
+        gcrs = get_body(self.name, obstime, location)
+        return gcrs.transform_to(frame)
 
 
-class Venus(Planet):
-    def __init__(self):
-        Planet.__init__(self, 'venus')
-        self.name = 'Venus'
+class EarthSatelliteBody(Body):
+    """Body orbiting the Earth (besides the Moon, which is a SolarSystemBody).
 
+    Parameters
+    ----------
+    name : str
+        The name of the satellite
+    """
 
-class Mars(Planet):
-    def __init__(self):
-        Planet.__init__(self, 'mars')
-        self.name = 'Mars'
+    def __init__(self, name):
+        super().__init__(name)
 
-
-class Jupiter(Planet):
-    def __init__(self):
-        Planet.__init__(self, 'jupiter')
-        self.name = 'Jupiter'
-
-
-class Saturn(Planet):
-    def __init__(self):
-        Planet.__init__(self, 'saturn')
-        self.name = 'Saturn'
-
-
-class Uranus(Planet):
-    def __init__(self):
-        Planet.__init__(self, 'uranus')
-        self.name = 'Uranus'
-
-
-class Neptune(Planet):
-    def __init__(self):
-        Planet.__init__(self, 'neptune')
-        self.name = 'Neptune'
-
-
-class EarthSatellite(Body):
-    """Body orbiting the earth."""
-
-    def __init__(self):
-        Body.__init__(self)
-
-    def compute(self, loc, date, pressure):
-
+    def compute(self, frame, obstime, location):
+        """Determine position of body at the given time and transform to `frame`."""
+        if location is None:
+            raise ValueError('EarthSatelliteBody needs a location to calculate coordinates - '
+                             'did you specify an Antenna?')
         # Create an SGP4 satellite object
         self._sat = sgp4.model.Satellite()
         self._sat.whichconst = sgp4.earth_gravity.wgs84
@@ -249,7 +207,7 @@ class EarthSatellite(Body):
         self._sat.no_kozai = self._n / (24.0 * 60.0) * (2.0 * np.pi)
 
         # Compute position and velocity
-        date = date.iso
+        date = obstime.iso
         yr = int(date[:4])
         mon = int(date[5:7])
         day = int(date[8:10])
@@ -271,11 +229,11 @@ class EarthSatellite(Body):
 
         # Convert to alt, az at observer
         az, alt = get_observer_look(lon, lat, alt, utc_time,
-                                    loc.lon.deg, loc.lat.deg, loc.height.to(u.kilometer).value)
+                                    location.lon.deg, location.lat.deg,
+                                    location.height.to(u.kilometer).value)
 
-        self.altaz = SkyCoord(az*u.deg, alt*u.deg, location=loc,
-                              obstime=date, pressure=pressure, frame=AltAz)
-        self.a_radec = self.altaz.transform_to(ICRS)
+        altaz = SkyCoord(az*u.deg, alt*u.deg, frame=AltAz, obstime=obstime, location=location)
+        return altaz.transform_to(frame)
 
     def writedb(self):
         """ Create an XEphem catalogue entry.
@@ -338,7 +296,7 @@ def _tle_to_float(tle_float):
 
 
 def readtle(name, line1, line2):
-    """Create an EarthSatellite object from a TLE description of an orbit.
+    """Create an EarthSatelliteBody object from a TLE description of an orbit.
 
     See https://en.wikipedia.org/wiki/Two-line_element_set
 
@@ -355,8 +313,7 @@ def readtle(name, line1, line2):
     """
     line1 = line1.lstrip()
     line2 = line2.lstrip()
-    s = EarthSatellite()
-    s.name = name
+    s = EarthSatelliteBody(name)
     epochyr = int('20' + line1[18:20])
     epochdays = float(line1[20:32])
 
@@ -459,32 +416,34 @@ class StationaryBody(Body):
     az, el : string or float
         Azimuth and elevation, either in 'D:M:S' string format, or float in rads
     name : string, optional
-        Name of body
+        The name of the stationary body
     """
 
     def __init__(self, az, el, name=None):
-        self._azel = AltAz(az=angle_from_degrees(az), alt=angle_from_degrees(el))
+        self.coord = AltAz(az=angle_from_degrees(az), alt=angle_from_degrees(el))
         if not name:
-            name = "Az: {} El: {}".format(self._azel.az.to_string(sep=':', unit=u.deg),
-                                          self._azel.alt.to_string(sep=':', unit=u.deg))
-        self.name = name
+            name = "Az: {} El: {}".format(self.coord.az.to_string(sep=':', unit=u.deg),
+                                          self.coord.alt.to_string(sep=':', unit=u.deg))
+        super().__init__(name)
 
-    def compute(self, loc, date, pressure):
-        """Update target coordinates for given observer.
+    def compute(self, frame, obstime, location):
+        """Transform (az, el) at given location and time to requested `frame`."""
+        # Ensure that coordinates have same shape as obstime (broadcasting fails)
+        altaz = self.coord.take(np.zeros_like(obstime, dtype=int))
+        altaz = altaz.replicate(obstime=obstime, location=location)
+        # Bypass transform_to for AltAz -> AltAz, otherwise we need a location
+        # and the output (az, el) will not be exactly equal to the coord (az, el)
+        # due to small numerical errors.
+        if isinstance(frame, AltAz) and altaz.is_equivalent_frame(frame):
+            return altaz
+        else:
+            if location is None:
+                raise ValueError('StationaryBody needs a location to calculate coordinates - '
+                                 'did you specify an Antenna?')
+            return altaz.transform_to(frame)
 
-        This updates the (ra, dec) coordinates of the target, as seen from the
-        given *observer*, while its (az, el) coordinates remain unchanged.
 
-        """
-        self.altaz = AltAz(az=self._azel.az, alt=self._azel.alt,
-                           location=loc, obstime=date, pressure=pressure)
-        # Store the astrometric (ICRS) position
-        self.a_radec = self.altaz.transform_to(ICRS)
-        # Store apparent (CIRS) position
-        self.radec = self.a_radec.transform_to(CIRS(obstime=date))
-
-
-class NullBody:
+class NullBody(FixedBody):
     """Body with no position, used as a placeholder.
 
     This body has the expected methods of :class:`Body`, but always returns NaNs
@@ -493,10 +452,4 @@ class NullBody:
     """
 
     def __init__(self):
-        self.name = 'Nothing'
-        self.altaz = None
-        self.a_radec = None
-        self.radec = None
-
-    def compute(self, loc, date, pressure):
-        pass
+        super().__init__('Nothing', ICRS(np.nan * u.rad, np.nan * u.rad))
