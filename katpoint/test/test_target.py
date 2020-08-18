@@ -194,7 +194,8 @@ def does_not_raise(error):
         ('gal, 30, -30', NON_AZEL, does_not_raise, None),
         ('Sun, special', 'azel', pytest.raises, ValueError),
         ('Sun, special', NON_AZEL, does_not_raise, None),
-        (TLE_TARGET, 'azel ' + NON_AZEL, pytest.raises, ValueError),
+        (TLE_TARGET, 'azel', pytest.raises, ValueError),
+        (TLE_TARGET, NON_AZEL, does_not_raise, None),
     ]
 )
 def test_coord_methods_without_antenna(description, methods, raises, error):

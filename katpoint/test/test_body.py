@@ -31,6 +31,13 @@ from astropy.time import Time
 
 from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
 
+try:
+    from skyfield.api import load, EarthSatellite, Topos
+except ImportError:
+    HAS_SKYFIELD = False
+else:
+    HAS_SKYFIELD = True
+
 
 def _get_fixed_body(ra_str, dec_str):
     ra = Longitude(ra_str, unit=u.hour)
@@ -38,11 +45,20 @@ def _get_fixed_body(ra_str, dec_str):
     return FixedBody('name', SkyCoord(ra=ra, dec=dec, frame=ICRS))
 
 
-def _get_earth_satellite():
-    name = ' GPS BIIA-21 (PRN 09) '
-    line1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
-    line2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
-    return readtle(name, line1, line2)
+TLE_NAME = ' GPS BIIA-21 (PRN 09) '
+TLE_LINE1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
+TLE_LINE2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
+TLE_TS = '2019-09-23 07:45:36.000'
+TLE_AZ = '280:32:28.4266d'
+# 1.      280:32:28.6053   Skyfield (0.23" error)
+# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.67" error)
+# 3.      280:32:07.2d     PyEphem (37" error)
+TLE_EL = '-54:06:49.2409d'
+# 1.      -54:06:49.0358   Skyfield
+# 2.      -54:06:50.7456   Astropy 4.0.1 + PyOrbital for TEME
+# 3.      -54:06:14.4      PyEphem
+TLE_LOCATION = EarthLocation(lat=10.0, lon=80.0, height=4200.0)
+LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 
 
 def _check_separation(actual, lon, lat, tol):
@@ -67,26 +83,39 @@ def _check_separation(actual, lon, lat, tol):
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
          '7:56:36.7964h', '20:53:59.4553d', '234:53:19.4762d', '31:38:11.4248d', 1 * u.mas),
         # (PyEphem radec is geocentric)      234:53:20.8d       31:38:09.4d  (PyEphem)
-        (_get_earth_satellite(), '2019-09-23 07:45:36.000',
-         '3:32:56.7813h', '-2:04:35.4329d', '280:32:29.675d', '-54:06:50.7456d', 1 * u.mas),
-        # 3:32:59.21h      -2:04:36.3d       280:32:07.2d      -54:06:14.4d  (PyEphem)
+        (readtle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
+         '0:00:38.5009h', '00:03:56.0093d', TLE_AZ, TLE_EL, 1 * u.mas),
     ]
 )
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     """Test compute method"""
     obstime = Time(date_str)
-    lat = Latitude('10:00:00.000', unit=u.deg)
-    lon = Longitude('80:00:00.000', unit=u.deg)
-    height = 4200.0 if isinstance(body, EarthSatelliteBody) else 0.0
-    location = EarthLocation(lat=lat, lon=lon, height=height)
+    location = TLE_LOCATION if isinstance(body, EarthSatelliteBody) else LOCATION
     radec = body.compute(ICRS(), obstime, location)
     _check_separation(radec, ra_str, dec_str, tol)
     altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)
     _check_separation(altaz, az_str, el_str, tol)
 
 
+@pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
+def test_earth_satellite_vs_skyfield():
+    ts = load.timescale()
+    satellite = EarthSatellite(TLE_LINE1, TLE_LINE2, TLE_NAME, ts)
+    antenna = Topos(latitude_degrees=TLE_LOCATION.lat.deg,
+                    longitude_degrees=TLE_LOCATION.lon.deg,
+                    elevation_m=TLE_LOCATION.height.value)
+    obstime = Time(TLE_TS)
+    t = ts.from_astropy(obstime)
+    towards_sat = (satellite - antenna).at(t)
+    alt, az, distance = towards_sat.altaz()
+    altaz = AltAz(alt=Latitude(alt.radians, unit=u.rad),
+                  az=Longitude(az.radians, unit=u.rad),
+                  obstime=obstime, location=TLE_LOCATION)
+    _check_separation(altaz, TLE_AZ, TLE_EL, 0.25 * u.arcsec)
+
+
 def test_earth_satellite():
-    sat = _get_earth_satellite()
+    sat = readtle(TLE_NAME, TLE_LINE1, TLE_LINE2)
     # Check that the EarthSatelliteBody object has the expected attribute values
     assert str(sat._epoch) == '2019-09-23 07:45:35.842'
     assert sat._inc == np.deg2rad(55.4408)
