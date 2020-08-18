@@ -24,10 +24,10 @@ pyephem package.
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-import astropy.units as u
+from astropy import units as u
+from astropy.time import Time
 from astropy.coordinates import SkyCoord, ICRS, AltAz, UnitSphericalRepresentation
 from astropy.coordinates import EarthLocation, Latitude, Longitude
-from astropy.time import Time
 
 from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
 

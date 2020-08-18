@@ -28,7 +28,7 @@ registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 """
 
 import numpy as np
-import astropy.units as u
+from astropy import units as u
 from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
 

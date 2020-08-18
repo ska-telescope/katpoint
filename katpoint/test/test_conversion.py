@@ -18,7 +18,7 @@
 
 import pytest
 import numpy as np
-import astropy.units as u
+from astropy import units as u
 from astropy.coordinates import Angle
 
 import katpoint

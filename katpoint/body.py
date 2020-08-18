@@ -17,12 +17,11 @@
 """A celestial body that can compute its sky position, inspired by PyEphem."""
 
 import copy
-import datetime
 
 import numpy as np
-import astropy.units as u
+from astropy import units as u
 from astropy.time import Time, TimeDelta
-from astropy.coordinates import ICRS, SkyCoord, AltAz
+from astropy.coordinates import ICRS, AltAz
 from astropy.coordinates import solar_system_ephemeris, get_body
 from astropy.coordinates import TEME, CartesianDifferential, CartesianRepresentation
 
