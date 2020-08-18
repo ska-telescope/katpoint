@@ -6,7 +6,6 @@ pipdeptree
 pygments
 pylint
 pylint-junit
-pyorbital
 pytest
 pytest-cov
 pytest-pylint

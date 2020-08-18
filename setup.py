@@ -55,7 +55,6 @@ setup(name="katpoint",
       install_requires=[
           "astropy>=4.1rc1",
           "numpy",
-          "pyorbital",
           "sgp4",
       ],
       tests_require=[
