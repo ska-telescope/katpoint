@@ -2,5 +2,5 @@ astropy>=4.1rc1
 numpy
 pytest
 pytest-cov
-sgp4
+sgp4>=2.3
 virtualenv
