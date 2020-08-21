@@ -159,8 +159,10 @@ def test_construct_valid_target(description):
         'radec J2000, 0.3',
         'gal, 0.0',
         'Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)',
+        # TLE missing the first line
         ('tle, GPS BIIA-21 (PRN 09)    \n'
          '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'),
+        # TLE missing the satellite catalog number and classification on line 1
         (', tle, GPS BIIA-22 (PRN 05)    \n'
          '1 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
          '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
