@@ -27,18 +27,10 @@ Of the thousand brighest Hipparcos stars, those with proper names
 registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 """
 
-import re
-
-import numpy as np
-import astropy.units as u
-from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
-from astropy.time import Time
-from sgp4.api import Satrec, WGS72
-
-from katpoint.body import FixedBody, EarthSatelliteBody
+from katpoint.body import Body
 
 
-db = """\
+db = """
 Sirrah,f|S|B9,0:08:23.2|135.68,29:05:27|-162.95,2.07,2000,0
 Caph,f|S|F2,0:09:10.1|523.39,59:09:01|-180.42,2.28,2000,0
 Algenib,f|S|B2,0:13:14.2|4.7,15:11:01|-8.24,2.83,2000,0
@@ -156,95 +148,8 @@ Suhail,f|S|K4,09 07 59.7771|-23.21,-43 25 57.447|14.28,2.23,2000,0
 Zubenelgenubi,f|S|A3,14 50 52.7773|-105.69,-16 02 29.798|-69.00,2.75,2000,0
 """
 
-stars = {}
-
-
-def _edb_to_time(edb_epoch):
-    """Construct `Time` object from XEphem EDB epoch string."""
-    match = re.match(r'\s*(\d{1,2})/(\d+\.?\d*)/\s*(\d+)', edb_epoch, re.ASCII)
-    if not match:
-        raise ValueError(f"Epoch string '{edb_epoch}' does not match EDB format 'MM/DD.DD+/YYYY'")
-    frac_day, int_day = np.modf(float(match[2]))
-    # Convert fractional day to hours, minutes and fractional seconds via Astropy machinery.
-    # Add arbitrary integer day to suppress ERFA warnings (will be replaced by actual day next).
-    rec = Time(59081.0, frac_day, scale='utc', format='mjd').ymdhms
-    rec['year'] = int(match[3])
-    rec['month'] = int(match[1])
-    rec['day'] = int(int_day)
-    return Time(rec, scale='utc')
-
-
-def readdb(line):
-    """Unpacks a line of an xephem catalogue and creates a Body object.
-
-    Only fixed positions without proper motions and earth satellites have
-    been implemented.
-    """
-    # Split line to fields
-    fields = line.split(',')
-
-    if fields[1][0] == 'f':
-
-        # This is a fixed position
-        name = fields[0]
-        ra = fields[2].split('|')[0]
-        dec = fields[3].split('|')[0]
-        ra = Longitude(ra, unit=u.hour)
-        dec = Latitude(dec, unit=u.deg)
-        return FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
-
-    elif fields[1][0] == 'E':
-
-        # This is an Earth satellite
-        name = fields[0]
-        edb_epoch = _edb_to_time(fields[2].split('|')[0])
-        # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
-        # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
-        sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format='jd').jd
-        (inclination, ra_asc_node, eccentricity, arg_perigee, mean_anomaly,
-         mean_motion, orbit_decay, orbit_number, drag_coef) = tuple(float(f) for f in fields[3:])
-        sat = Satrec()
-        sat.sgp4init(
-            WGS72,  # gravity model (TLEs are based on WGS72, therefore it is preferred to WGS84)
-            'i',  # 'a' = old AFSPC mode, 'i' = improved mode
-            0,  # satnum: Satellite number is not stored by XEphem, so pick an unused one
-            sgp4_epoch,  # epoch
-            drag_coef,  # bstar
-            (orbit_decay * u.cycle / u.day ** 2).to(u.rad / u.minute ** 2).value,  # ndot
-            0.0,  # nddot (not used by SGP4)
-            eccentricity,  # ecco
-            (arg_perigee * u.deg).to(u.rad).value,  # argpo
-            (inclination * u.deg).to(u.rad).value,  # inclo
-            (mean_anomaly * u.deg).to(u.rad).value,  # mo
-            (mean_motion * u.cycle / u.day).to(u.rad / u.minute).value,  # no_kozai
-            (ra_asc_node * u.deg).to(u.rad).value,  # nodeo
-        )
-        return EarthSatelliteBody(name, sat, int(orbit_number))
-
-    else:
-        raise ValueError('Bogus: ' + line)
-
-
-def _build_stars():
-    """ Builds the default catalogue.
-
-    The catalogue is loaded into a global array "stars"
-    """
-    global stars
-    for line in db.strip().split('\n'):
-        s = readdb(line)
-        stars[s.name] = s
-
-
-def star(name):
-    """ Get a record from the catalogue
-    """
-    return stars[name]
-
-
-# Build catalogue
-_build_stars()
-
-# Remove the function for creating the default catalogue as it is no longer
-# needed.
-del _build_stars
+STARS = {}
+for _line in db.strip().split('\n'):
+    _body = Body.from_edb(_line.strip())
+    STARS[_body.name] = _body
+del _line, _body

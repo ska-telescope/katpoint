@@ -82,7 +82,7 @@ def test_construct_catalogue():
     """Test construction of catalogues."""
     cat = katpoint.Catalogue(add_specials=True, add_stars=True, antenna=ANTENNA)
     num_targets_original = len(cat)
-    assert num_targets_original == len(katpoint.specials) + 1 + len(katpoint.stars.stars)
+    assert num_targets_original == len(katpoint.specials) + 1 + len(katpoint.stars.STARS)
     # Add target already in catalogue - no action
     cat.add(katpoint.Target('Sun, special'))
     num_targets = len(cat)
@@ -165,7 +165,7 @@ def test_filter_catalogue():
 def test_sort_catalogue():
     """Test sorting of catalogues."""
     cat = katpoint.Catalogue(add_specials=True, add_stars=True)
-    assert len(cat.targets) == len(katpoint.specials) + 1 + len(katpoint.stars.stars)
+    assert len(cat.targets) == len(katpoint.specials) + 1 + len(katpoint.stars.STARS)
     cat1 = cat.sort(key='name')
     assert cat1 == cat, 'Catalogue equality failed'
     assert cat1.targets[0].name == 'Acamar', 'Sorting on name failed'

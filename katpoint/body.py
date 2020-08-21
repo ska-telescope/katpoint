@@ -16,13 +16,15 @@
 
 """A celestial body that can compute its sky position, inspired by PyEphem."""
 
+import re
+
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import ICRS, AltAz
+from astropy.coordinates import ICRS, AltAz, Latitude, Longitude, SkyCoord
 from astropy.coordinates import solar_system_ephemeris, get_body
 from astropy.coordinates import TEME, CartesianDifferential, CartesianRepresentation
-from sgp4.api import Satrec
+from sgp4.api import Satrec, WGS72
 from sgp4.model import Satrec as SatrecPython
 
 from .ephem_extra import angle_from_degrees
@@ -55,6 +57,24 @@ class Body:
         if isinstance(frame, AltAz) and frame.location is None:
             raise ValueError('Body needs a location to calculate (az, el) coordinates - '
                              'did you specify an Antenna?')
+
+    @classmethod
+    def from_edb(cls, line):
+        """Build an appropriate `Body` from a line of an XEphem EDB catalogue.
+
+        Only fixed positions without proper motions and earth satellites have
+        been implemented.
+        """
+        try:
+            edb_type = line.split(',')[1][0]
+        except (AttributeError, IndexError):
+            raise ValueError(f'Failed parsing XEphem EDB line: {line}')
+        if edb_type == 'f':
+            return FixedBody.from_edb(line)
+        elif edb_type == 'E':
+            return EarthSatelliteBody.from_edb(line)
+        else:
+            raise ValueError(f'Unsupported XEphem EDB line: {line}')
 
     def compute(self, frame, obstime, location):
         """Compute the coordinates of the body in the requested frame.
@@ -94,6 +114,26 @@ class FixedBody(Body):
         super().__init__(name)
         self.coord = coord
 
+    @classmethod
+    def from_edb(cls, line):
+        """Construct a `FixedBody` from an XEphem database (EDB) entry."""
+        fields = line.split(',')
+        name = fields[0]
+        ra = fields[2].split('|')[0]
+        dec = fields[3].split('|')[0]
+        ra = Longitude(ra, unit=u.hour)
+        dec = Latitude(dec, unit=u.deg)
+        return cls(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
+
+    def to_edb(self):
+        """Create an XEphem database (EDB) entry for fixed body ("f").
+
+        See http://www.clearskyinstitute.com/xephem/xephem.html
+        """
+        icrs = self.coord.transform_to(ICRS)
+        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
+                                   icrs.dec.to_string(sep=':', unit=u.deg))
+
     def compute(self, frame, obstime=None, location=None):
         """Compute the coordinates of the body in the requested frame.
 
@@ -123,15 +163,6 @@ class FixedBody(Body):
             coord = self.coord
         return coord.transform_to(frame)
 
-    def writedb(self):
-        """ Create an XEphem catalogue entry.
-
-        See http://www.clearskyinstitute.com/xephem/xephem.html
-        """
-        icrs = self.coord.transform_to(ICRS)
-        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
-                                   icrs.dec.to_string(sep=':', unit=u.deg))
-
 
 class SolarSystemBody(Body):
     """A major Solar System body identified by name.
@@ -153,6 +184,21 @@ class SolarSystemBody(Body):
         Body._check_location(frame)
         gcrs = get_body(self.name, obstime, location)
         return gcrs.transform_to(frame)
+
+
+def _edb_to_time(edb_epoch):
+    """Construct `Time` object from XEphem EDB epoch string."""
+    match = re.match(r'\s*(\d{1,2})/(\d+\.?\d*)/\s*(\d+)', edb_epoch, re.ASCII)
+    if not match:
+        raise ValueError(f"Epoch string '{edb_epoch}' does not match EDB format 'MM/DD.DD+/YYYY'")
+    frac_day, int_day = np.modf(float(match[2]))
+    # Convert fractional day to hours, minutes and fractional seconds via Astropy machinery.
+    # Add arbitrary integer day to suppress ERFA warnings (will be replaced by actual day next).
+    rec = Time(59081.0, frac_day, scale='utc', format='mjd').ymdhms
+    rec['year'] = int(match[3])
+    rec['month'] = int(match[1])
+    rec['day'] = int(int_day)
+    return Time(rec, scale='utc')
 
 
 def _time_to_edb(t, high_precision=False):
@@ -196,7 +242,7 @@ class EarthSatelliteBody(Body):
 
     @classmethod
     def from_tle(cls, name, line1, line2):
-        """Build a Earth satellite body from a two-line element set (TLE).
+        """Build an `EarthSatelliteBody` from a two-line element set (TLE).
 
         Parameters
         ----------
@@ -211,25 +257,36 @@ class EarthSatelliteBody(Body):
         SatrecPython.twoline2rv(line1, line2)
         return cls(name, Satrec.twoline2rv(line1, line2))
 
-    def compute(self, frame, obstime, location=None):
-        """Determine position of body at the given time and transform to `frame`."""
-        Body._check_location(frame)
-        # Propagate the satellite according to SGP4 model (use array version if possible)
-        if obstime.shape == ():
-            e, r, v = self.satellite.sgp4(obstime.jd1, obstime.jd2)
-        else:
-            e, r, v = self.satellite.sgp4_array(obstime.jd1.ravel(), obstime.jd2.ravel())
-            e = e.reshape(obstime.shape)
-            r = r.reshape(obstime.shape)
-            v = v.reshape(obstime.shape)
-        # Represent the position and velocity in the appropriate TEME frame
-        teme_p = CartesianRepresentation(r * u.km)
-        teme_v = CartesianDifferential(v * (u.km / u.s))
-        teme = TEME(teme_p.with_differentials(teme_v), obstime=obstime)
-        # Convert to the desired output frame
-        return teme.transform_to(frame)
+    @classmethod
+    def from_edb(cls, line):
+        """Build an `EarthSatelliteBody` from an XEphem database (EDB) entry."""
+        fields = line.split(',')
+        name = fields[0]
+        edb_epoch = _edb_to_time(fields[2].split('|')[0])
+        # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
+        # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
+        sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format='jd').jd
+        (inclination, ra_asc_node, eccentricity, arg_perigee, mean_anomaly,
+         mean_motion, orbit_decay, orbit_number, drag_coef) = tuple(float(f) for f in fields[3:])
+        sat = Satrec()
+        sat.sgp4init(
+            WGS72,  # gravity model (TLEs are based on WGS72, therefore it is preferred to WGS84)
+            'i',  # 'a' = old AFSPC mode, 'i' = improved mode
+            0,  # satnum: Satellite number is not stored by XEphem, so pick an unused one
+            sgp4_epoch,  # epoch
+            drag_coef,  # bstar
+            (orbit_decay * u.cycle / u.day ** 2).to(u.rad / u.minute ** 2).value,  # ndot
+            0.0,  # nddot (not used by SGP4)
+            eccentricity,  # ecco
+            (arg_perigee * u.deg).to(u.rad).value,  # argpo
+            (inclination * u.deg).to(u.rad).value,  # inclo
+            (mean_anomaly * u.deg).to(u.rad).value,  # mo
+            (mean_motion * u.cycle / u.day).to(u.rad / u.minute).value,  # no_kozai
+            (ra_asc_node * u.deg).to(u.rad).value,  # nodeo
+        )
+        return cls(name, sat, int(orbit_number))
 
-    def writedb(self):
+    def to_edb(self):
         """Create an XEphem database (EDB) entry for Earth satellite ("E").
 
         See http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501.
@@ -267,6 +324,24 @@ class EarthSatelliteBody(Body):
                 f'{ra_asc_node:.8g},{eccentricity:.8g},{arg_perigee:.8g},'
                 f'{mean_anomaly:.8g},{mean_motion:.12g},{orbit_decay:.8g},'
                 f'{orbit_number:d},{drag_coef:.8g}')
+
+    def compute(self, frame, obstime, location=None):
+        """Determine position of body at the given time and transform to `frame`."""
+        Body._check_location(frame)
+        # Propagate the satellite according to SGP4 model (use array version if possible)
+        if obstime.shape == ():
+            e, r, v = self.satellite.sgp4(obstime.jd1, obstime.jd2)
+        else:
+            e, r, v = self.satellite.sgp4_array(obstime.jd1.ravel(), obstime.jd2.ravel())
+            e = e.reshape(obstime.shape)
+            r = r.reshape(obstime.shape)
+            v = v.reshape(obstime.shape)
+        # Represent the position and velocity in the appropriate TEME frame
+        teme_p = CartesianRepresentation(r * u.km)
+        teme_v = CartesianDifferential(v * (u.km / u.s))
+        teme = TEME(teme_p.with_differentials(teme_v), obstime=obstime)
+        # Convert to the desired output frame
+        return teme.transform_to(frame)
 
 
 class StationaryBody(Body):

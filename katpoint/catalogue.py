@@ -24,7 +24,7 @@ from astropy.time import Time
 
 from .target import Target
 from .timestamp import Timestamp
-from .stars import stars
+from .stars import STARS
 
 logger = logging.getLogger(__name__)
 
@@ -306,7 +306,7 @@ class Catalogue:
             self.add(['%s, special' % (name,) for name in specials], tags)
             self.add('Zenith, azel, 0, 90', tags)
         if add_stars:
-            self.add(['%s, star' % (name,) for name in sorted(stars.keys())], tags)
+            self.add(['%s, star' % (name,) for name in sorted(STARS)], tags)
         if targets is None:
             targets = []
         self.add(targets, tags)
