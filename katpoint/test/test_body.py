@@ -107,45 +107,42 @@ def test_earth_satellite_vs_skyfield():
     check_separation(altaz, TLE_AZ, TLE_EL, 0.5 * u.arcsec)
 
 
+def _check_edb_E(sat, epoch_iso, inc, raan, e, ap, M, n, decay, drag):
+    """Check SGP4 object and EDB versions of standard orbital parameters."""
+    epoch = Time(sat.jdsatepoch, sat.jdsatepochF, format='jd')
+    assert epoch.iso == epoch_iso
+    assert sat.inclo * u.rad == inc * u.deg
+    assert sat.nodeo * u.rad == raan * u.deg
+    assert sat.ecco == e
+    assert sat.argpo * u.rad == ap * u.deg
+    assert sat.mo * u.rad == M * u.deg
+    sat_n = (sat.no_kozai * u.rad / u.minute).to(u.cycle / u.day)
+    assert sat_n.value == pytest.approx(n, abs=1e-15)
+    assert sat.ndot * u.rad / u.minute ** 2 == decay * u.cycle / u.day ** 2
+    assert sat.bstar == drag
+
+
 def test_earth_satellite():
     body = EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2)
-    sat = body.satellite
     # Check that the EarthSatelliteBody object has the expected attribute values
-    epoch = Time(sat.jdsatepoch, sat.jdsatepochF, format='jd')
-    assert epoch.iso == '2019-09-23 07:45:35.842'
-    assert sat.inclo * u.rad == 55.4408 * u.deg
-    assert sat.nodeo * u.rad == 61.3790 * u.deg
-    assert sat.ecco == 0.0191986
-    assert sat.argpo * u.rad == 78.1802 * u.deg
-    assert sat.mo * u.rad == 283.9935 * u.deg
-    assert 2.0056172 * u.cycle / u.day == sat.no_kozai * u.rad / u.minute
-    assert sat.ndot * u.rad / u.minute ** 2 == 1.2e-07 * u.cycle / u.day ** 2
-    assert sat.revnum == 10428
-    assert sat.bstar == 1.e-04
+    _check_edb_E(body.satellite, epoch_iso='2019-09-23 07:45:35.842',
+                 inc=55.4408, raan=61.3790, e=0.0191986, ap=78.1802, M=283.9935,
+                 n=2.0056172, decay=1.2e-07, drag=1.e-04)
+    assert body.satellite.revnum == 10428
     # This is the XEphem database record that PyEphem generates
     xephem = ('GPS BIIA-21 (PRN 09),E,'
               '9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,'
               '55.4408,61.379002,0.0191986,78.180199,283.9935,'
               '2.0056172,1.2e-07,10428,9.9999997e-05')
     assert body.to_edb() == xephem
-
-    record = 'GPS BIIA-21 (PR,E,9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,' \
-        '55.4408,61.379002,0.0191986,78.180199,283.9935,2.0056172,1.2e-07,10428,9.9999997e-05'
-    e = Body.from_edb(record)
-    assert isinstance(e, EarthSatelliteBody)
-    assert e.name == 'GPS BIIA-21 (PR'
-    sat = e.satellite
-    epoch = Time(sat.jdsatepoch, sat.jdsatepochF, format='jd')
-    assert epoch.iso == '2019-09-23 07:45:35.842'
-    assert sat.inclo * u.rad == 55.4408 * u.deg
-    assert sat.nodeo * u.rad == 61.379002 * u.deg
-    assert sat.ecco == 0.0191986
-    assert sat.argpo * u.rad == 78.180199 * u.deg
-    assert sat.mo * u.rad == 283.9935 * u.deg
-    assert sat.no_kozai * u.rad / u.minute == 2.0056172 * u.cycle / u.day
-    assert sat.ndot * u.rad / u.minute ** 2 == 1.2e-07 * u.cycle / u.day ** 2
-    assert e.orbit_number == 10428  # XXX This should eventually be sat.revnum
-    assert sat.bstar == 9.9999997e-05
+    # Check some round-tripping
+    body2 = Body.from_edb(xephem)
+    assert isinstance(body2, EarthSatelliteBody)
+    assert body2.to_edb() == xephem
+    _check_edb_E(body2.satellite, epoch_iso='2019-09-23 07:45:35.842',
+                 inc=55.4408, raan=61.379002, e=0.0191986, ap=78.180199, M=283.9935,
+                 n=2.0056172, decay=1.2e-07, drag=9.9999997e-05)
+    assert body2.orbit_number == 10428  # XXX This should eventually be sat.revnum
 
 
 def test_star():
