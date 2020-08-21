@@ -17,9 +17,16 @@
 """Shared pytest utilities."""
 
 import numpy as np
+from astropy.coordinates import UnitSphericalRepresentation
 
 
 def assert_angles_almost_equal(x, y, **kwargs):
     def primary_angle(x):
         return x - np.round(x / (2.0 * np.pi)) * 2.0 * np.pi
     np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), **kwargs)
+
+
+def check_separation(actual, lon, lat, tol):
+    """Check that actual and desired directions are within tolerance."""
+    desired = actual.realize_frame(UnitSphericalRepresentation(lon, lat))
+    assert actual.separation(desired) <= tol

@@ -26,6 +26,8 @@ from astropy import units as u
 from astropy.coordinates import Angle
 
 import katpoint
+from katpoint.test.helper import check_separation
+
 
 # Use the current year in TLE epochs to avoid potential crashes due to expired TLEs
 YY = time.localtime().tm_year % 100
@@ -260,20 +262,14 @@ def test_coords():
     assert coord.az.deg == 45  # PyEphem: 45
     assert coord.alt.deg == 75  # PyEphem: 75
     coord = TARGET.apparent_radec(TS, ANT1)
-    ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=5)
-    dec_deg = coord.dec.to_string(sep=':', precision=8)
-    assert ra_hour == '8:53:03.49166'  # PyEphem: 8:53:09.60 (same as astrometric)
-    assert dec_deg == '-19:54:51.92328722'  # PyEphem: -19:51:43.0 (same as astrometric)
+    check_separation(coord, '8:53:03.49166920h', '-19:54:51.92328722d', tol=1 * u.mas)
+    # PyEphem:               8:53:09.60,          -19:51:43.0 (same as astrometric)
     coord = TARGET.astrometric_radec(TS, ANT1)
-    ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=5)
-    dec_deg = coord.dec.to_string(sep=':', precision=6)
-    assert ra_hour == '8:53:09.60397'  # PyEphem: 8:53:09.60
-    assert dec_deg == '-19:51:42.877738'  # PyEphem: -19:51:43.0
+    check_separation(coord, '8:53:09.60397465h', '-19:51:42.87773802d', tol=1 * u.mas)
+    # PyEphem:               8:53:09.60,          -19:51:43.0
     coord = TARGET.galactic(TS, ANT1)
-    l_deg = coord.l.to_string(sep=':', precision=4)
-    b_deg = coord.b.to_string(sep=':', precision=4)
-    assert l_deg == '245:34:49.2044'  # PyEphem: 245:34:49.3
-    assert b_deg == '15:36:24.8797'  # PyEphem: 15:36:24.7
+    check_separation(coord, '245:34:49.20442837d', '15:36:24.87974969d', tol=1 * u.mas)
+    # PyEphem:               245:34:49.3,           15:36:24.7
     coord = TARGET.parallactic_angle(TS, ANT1)
     assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
 

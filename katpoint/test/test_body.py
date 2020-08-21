@@ -26,10 +26,11 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy import units as u
 from astropy.time import Time
-from astropy.coordinates import SkyCoord, ICRS, AltAz, UnitSphericalRepresentation
+from astropy.coordinates import SkyCoord, ICRS, AltAz
 from astropy.coordinates import EarthLocation, Latitude, Longitude
 
 from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
+from katpoint.test.helper import check_separation
 
 try:
     from skyfield.api import load, EarthSatellite, Topos
@@ -61,10 +62,6 @@ TLE_LOCATION = EarthLocation(lat=10.0, lon=80.0, height=4200.0)
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 
 
-def _check_separation(actual, lon, lat, tol):
-    """Check that actual and desired directions are within tolerance."""
-    desired = actual.realize_frame(UnitSphericalRepresentation(lon, lat))
-    assert actual.separation(desired) <= tol
 
 
 @pytest.mark.parametrize(
@@ -92,9 +89,9 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     obstime = Time(date_str)
     location = TLE_LOCATION if isinstance(body, EarthSatelliteBody) else LOCATION
     radec = body.compute(ICRS(), obstime, location)
-    _check_separation(radec, ra_str, dec_str, tol)
+    check_separation(radec, ra_str, dec_str, tol)
     altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)
-    _check_separation(altaz, az_str, el_str, tol)
+    check_separation(altaz, az_str, el_str, tol)
 
 
 @pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
@@ -111,7 +108,7 @@ def test_earth_satellite_vs_skyfield():
     altaz = AltAz(alt=Latitude(alt.radians, unit=u.rad),
                   az=Longitude(az.radians, unit=u.rad),
                   obstime=obstime, location=TLE_LOCATION)
-    _check_separation(altaz, TLE_AZ, TLE_EL, 0.25 * u.arcsec)
+    check_separation(altaz, TLE_AZ, TLE_EL, 0.25 * u.arcsec)
 
 
 def test_earth_satellite():
