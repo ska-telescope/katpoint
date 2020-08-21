@@ -205,6 +205,8 @@ class EarthSatelliteBody(Body):
         line1, line2 : str
             The two lines of the TLE
         """
+        line1 = line1.strip()
+        line2 = line2.strip()
         # Use the Python Satrec to validate the TLE first, since the C++ one has no error checking
         SatrecPython.twoline2rv(line1, line2)
         return cls(name, Satrec.twoline2rv(line1, line2))
