@@ -30,7 +30,7 @@ registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 import re
 
 import numpy as np
-from astropy import units as u
+import astropy.units as u
 from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
 from sgp4.api import Satrec, WGS72

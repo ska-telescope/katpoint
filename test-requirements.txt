@@ -1,6 +1,8 @@
 attrs                   # via pytest
+certifi                 # via skyfield
 coverage                # via pytest-cov
 importlib-metadata      # via pytest
+jplephem==2.14
 more-itertools          # via pytest
 packaging               # via pytest
 pluggy                  # via pytest
@@ -9,5 +11,6 @@ pyparsing               # via packaging
 pytest
 pytest-cov
 six                     # via packaging
+skyfield==1.26
 wcwidth                 # via pytest
 zipp                    # via importlib-metadata

@@ -17,7 +17,7 @@
 """A celestial body that can compute its sky position, inspired by PyEphem."""
 
 import numpy as np
-from astropy import units as u
+import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import ICRS, AltAz
 from astropy.coordinates import solar_system_ephemeris, get_body
@@ -222,7 +222,7 @@ class EarthSatelliteBody(Body):
             v = v.reshape(obstime.shape)
         # Represent the position and velocity in the appropriate TEME frame
         teme_p = CartesianRepresentation(r * u.km)
-        teme_v = CartesianDifferential(v * u.km / u.s)
+        teme_v = CartesianDifferential(v * (u.km / u.s))
         teme = TEME(teme_p.with_differentials(teme_v), obstime=obstime)
         # Convert to the desired output frame
         return teme.transform_to(frame)

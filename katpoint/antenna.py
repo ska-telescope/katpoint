@@ -22,7 +22,7 @@ and other parameters that affect pointing and delay calculations.
 """
 
 import numpy as np
-from astropy import units as u
+import astropy.units as u
 from astropy.coordinates import Latitude, Longitude, EarthLocation
 
 from .timestamp import Timestamp

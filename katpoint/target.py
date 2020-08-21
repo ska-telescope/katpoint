@@ -17,7 +17,7 @@
 """Target object used for pointing and flux density calculation."""
 
 import numpy as np
-from astropy import units as u
+import astropy.units as u
 from astropy.coordinates import SkyCoord  # High-level coordinates
 from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS  # Low-level frames
 from astropy.coordinates import Latitude, Longitude, Angle  # Angles

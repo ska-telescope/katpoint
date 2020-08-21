@@ -22,7 +22,7 @@ pyephem package.
 """
 
 import pytest
-from astropy import units as u
+import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 from astropy.coordinates import EarthLocation, Latitude, Longitude
