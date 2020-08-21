@@ -27,10 +27,13 @@ Of the thousand brighest Hipparcos stars, those with proper names
 registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 """
 
+import re
+
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
+from sgp4.api import Satrec, WGS72
 
 from katpoint.body import FixedBody, EarthSatelliteBody
 
@@ -156,6 +159,21 @@ Zubenelgenubi,f|S|A3,14 50 52.7773|-105.69,-16 02 29.798|-69.00,2.75,2000,0
 stars = {}
 
 
+def _edb_to_time(edb_epoch):
+    """Construct `Time` object from XEphem EDB epoch string."""
+    match = re.match(r'\s*(\d{1,2})/(\d+\.?\d*)/\s*(\d+)', edb_epoch, re.ASCII)
+    if not match:
+        raise ValueError(f"Epoch string '{edb_epoch}' does not match EDB format 'MM/DD.DD+/YYYY'")
+    frac_day, int_day = np.modf(float(match[2]))
+    # Convert fractional day to hours, minutes and fractional seconds via Astropy machinery.
+    # Add arbitrary integer day to suppress ERFA warnings (will be replaced by actual day next).
+    rec = Time(59081.0, frac_day, scale='utc', format='mjd').ymdhms
+    rec['year'] = int(match[3])
+    rec['month'] = int(match[1])
+    rec['day'] = int(int_day)
+    return Time(rec, scale='utc')
+
+
 def readdb(line):
     """Unpacks a line of an xephem catalogue and creates a Body object.
 
@@ -178,32 +196,30 @@ def readdb(line):
     elif fields[1][0] == 'E':
 
         # This is an Earth satellite
-        subfields = fields[2].split('|')
-
-        # This is an earth satellite.
-        e = EarthSatelliteBody(name=fields[0])
-        epoch = subfields[0].split('/')
-        yr = epoch[2]
-        mon = epoch[0]
-        h, day = np.modf(float(epoch[1]))
-        day = int(np.floor(day))
-        m, h = np.modf(h * 24.0)
-        h = int(np.floor(h))
-        s, m = np.modf(m * 60.0)
-        m = int(np.floor(m))
-        s = s * 60.0
-        e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr, mon, day, h, m, s), scale='utc')
-        e._inc = np.deg2rad(float(fields[3]))
-        e._raan = np.deg2rad(float(fields[4]))
-        e._e = float(fields[5])
-        e._ap = np.deg2rad(float(fields[6]))
-        e._M = np.deg2rad(float(fields[7]))
-        e._n = float(fields[8])
-        e._decay = float(fields[9])
-        e._nddot = 0.0
-        e._orbit = int(fields[10])
-        e._drag = float(fields[11])
-        return e
+        name = fields[0]
+        edb_epoch = _edb_to_time(fields[2].split('|')[0])
+        # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
+        # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
+        sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format='jd').jd
+        (inclination, ra_asc_node, eccentricity, arg_perigee, mean_anomaly,
+         mean_motion, orbit_decay, orbit_number, drag_coef) = tuple(float(f) for f in fields[3:])
+        sat = Satrec()
+        sat.sgp4init(
+            WGS72,  # gravity model (TLEs are based on WGS72, therefore it is preferred to WGS84)
+            'i',  # 'a' = old AFSPC mode, 'i' = improved mode
+            0,  # satnum: Satellite number is not stored by XEphem, so pick an unused one
+            sgp4_epoch,  # epoch
+            drag_coef,  # bstar
+            (orbit_decay * u.cycle / u.day ** 2).to(u.rad / u.minute ** 2).value,  # ndot
+            0.0,  # nddot (not used by SGP4)
+            eccentricity,  # ecco
+            (arg_perigee * u.deg).to(u.rad).value,  # argpo
+            (inclination * u.deg).to(u.rad).value,  # inclo
+            (mean_anomaly * u.deg).to(u.rad).value,  # mo
+            (mean_motion * u.cycle / u.day).to(u.rad / u.minute).value,  # no_kozai
+            (ra_asc_node * u.deg).to(u.rad).value,  # nodeo
+        )
+        return EarthSatelliteBody(name, sat, int(orbit_number))
 
     else:
         raise ValueError('Bogus: ' + line)

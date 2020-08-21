@@ -28,7 +28,7 @@ from .flux import FluxDensityModel
 from .ephem_extra import (is_iterable, lightspeed, deg2rad, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .body import FixedBody, readtle, StationaryBody, SolarSystemBody, NullBody
+from .body import FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
 from .stars import star, readdb
 
 
@@ -980,7 +980,7 @@ def construct_target_params(description):
         if tle_name != preferred_name:
             aliases.append(tle_name)
         try:
-            body = readtle(preferred_name, lines[1], lines[2])
+            body = EarthSatelliteBody.from_tle(preferred_name, lines[1], lines[2])
         except ValueError:
             raise ValueError("Target description '%s' contains malformed *tle* body" % description)
 

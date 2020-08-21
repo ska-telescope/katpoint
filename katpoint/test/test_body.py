@@ -22,14 +22,12 @@ pyephem package.
 """
 
 import pytest
-import numpy as np
-from numpy.testing import assert_allclose
 from astropy import units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 from astropy.coordinates import EarthLocation, Latitude, Longitude
 
-from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
+from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody
 from katpoint.test.helper import check_separation
 
 try:
@@ -46,22 +44,20 @@ def _get_fixed_body(ra_str, dec_str):
     return FixedBody('name', SkyCoord(ra=ra, dec=dec, frame=ICRS))
 
 
-TLE_NAME = ' GPS BIIA-21 (PRN 09) '
+TLE_NAME = 'GPS BIIA-21 (PRN 09)'
 TLE_LINE1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
 TLE_LINE2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
 TLE_TS = '2019-09-23 07:45:36.000'
-TLE_AZ = '280:32:28.4266d'
-# 1.      280:32:28.6053   Skyfield (0.23" error)
-# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.67" error)
-# 3.      280:32:07.2d     PyEphem (37" error)
-TLE_EL = '-54:06:49.2409d'
+TLE_AZ = '280:32:28.1892d'
+# 1.      280:32:28.6053   Skyfield (0.43" error, was 0.23" with WGS84)
+# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.82" error)
+# 3.      280:32:07.2      PyEphem (37" error)
+TLE_EL = '-54:06:49.3936d'
 # 1.      -54:06:49.0358   Skyfield
 # 2.      -54:06:50.7456   Astropy 4.0.1 + PyOrbital for TEME
 # 3.      -54:06:14.4      PyEphem
 TLE_LOCATION = EarthLocation(lat=10.0, lon=80.0, height=4200.0)
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
-
-
 
 
 @pytest.mark.parametrize(
@@ -80,7 +76,7 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
          '7:56:36.7964h', '20:53:59.4553d', '234:53:19.4762d', '31:38:11.4248d', 1 * u.mas),
         # (PyEphem radec is geocentric)      234:53:20.8d       31:38:09.4d  (PyEphem)
-        (readtle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
+        (EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
          '0:00:38.5009h', '00:03:56.0093d', TLE_AZ, TLE_EL, 1 * u.mas),
     ]
 )
@@ -108,60 +104,27 @@ def test_earth_satellite_vs_skyfield():
     altaz = AltAz(alt=Latitude(alt.radians, unit=u.rad),
                   az=Longitude(az.radians, unit=u.rad),
                   obstime=obstime, location=TLE_LOCATION)
-    check_separation(altaz, TLE_AZ, TLE_EL, 0.25 * u.arcsec)
+    check_separation(altaz, TLE_AZ, TLE_EL, 0.5 * u.arcsec)
 
 
 def test_earth_satellite():
-    sat = readtle(TLE_NAME, TLE_LINE1, TLE_LINE2)
+    body = EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2)
+    sat = body.satellite
     # Check that the EarthSatelliteBody object has the expected attribute values
-    assert str(sat._epoch) == '2019-09-23 07:45:35.842'
-    assert sat._inc == np.deg2rad(55.4408)
-    assert sat._raan == np.deg2rad(61.3790)
-    assert sat._e == 0.0191986
-    assert sat._ap == np.deg2rad(78.1802)
-    assert sat._M == np.deg2rad(283.9935)
-    assert sat._n == 2.0056172
-    assert sat._decay == 1.2e-07
-    assert sat._orbit == 10428
-    assert sat._drag == 1.e-04
-
-    # This is xephem database record that pyephem generates
-    xephem = ' GPS BIIA-21 (PRN 09) ,E,9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,' \
-             '55.4408,61.379002,0.0191986,78.180199,283.9935,2.0056172,1.2e-07,10428,9.9999997e-05'
-
-    rec = sat.writedb()
-    assert rec.split(',')[0] == xephem.split(',')[0]
-    assert rec.split(',')[1] == xephem.split(',')[1]
-
-    assert (rec.split(',')[2].split('|')[0].split('/')[0]
-            == xephem.split(',')[2].split('|')[0].split('/')[0])
-    assert_allclose(float(rec.split(',')[2].split('|')[0].split('/')[1]),
-                    float(xephem.split(',')[2].split('|')[0].split('/')[1]), rtol=0, atol=0.5e-7)
-    assert (rec.split(',')[2].split('|')[0].split('/')[2]
-            == xephem.split(',')[2].split('|')[0].split('/')[2])
-
-    assert (rec.split(',')[2].split('|')[1].split('/')[0]
-            == xephem.split(',')[2].split('|')[1].split('/')[0])
-    assert_allclose(float(rec.split(',')[2].split('|')[1].split('/')[1]),
-                    float(xephem.split(',')[2].split('|')[1].split('/')[1]), rtol=0, atol=0.5e-2)
-    assert (rec.split(',')[2].split('|')[1].split('/')[2]
-            == xephem.split(',')[2].split('|')[1].split('/')[2])
-
-    assert (rec.split(',')[2].split('|')[2].split('/')[0]
-            == xephem.split(',')[2].split('|')[2].split('/')[0])
-    assert_allclose(float(rec.split(',')[2].split('|')[2].split('/')[1]),
-                    float(xephem.split(',')[2].split('|')[2].split('/')[1]), rtol=0, atol=0.5e-2)
-    assert (rec.split(',')[2].split('|')[2].split('/')[2]
-            == xephem.split(',')[2].split('|')[2].split('/')[2])
-
-    assert rec.split(',')[3] == xephem.split(',')[3]
-
-    # pyephem adds spurious precision to these 3 fields
-    assert rec.split(',')[4] == xephem.split(',')[4][:6]
-    assert rec.split(',')[5][:7] == xephem.split(',')[5][:7]
-    assert rec.split(',')[6] == xephem.split(',')[6][:5]
-
-    assert rec.split(',')[7] == xephem.split(',')[7]
-    assert rec.split(',')[8] == xephem.split(',')[8]
-    assert rec.split(',')[9] == xephem.split(',')[9]
-    assert rec.split(',')[10] == xephem.split(',')[10]
+    epoch = Time(sat.jdsatepoch, sat.jdsatepochF, format='jd')
+    assert epoch.iso == '2019-09-23 07:45:35.842'
+    assert sat.inclo * u.rad == 55.4408 * u.deg
+    assert sat.nodeo * u.rad == 61.3790 * u.deg
+    assert sat.ecco == 0.0191986
+    assert sat.argpo * u.rad == 78.1802 * u.deg
+    assert sat.mo * u.rad == 283.9935 * u.deg
+    assert 2.0056172 * u.cycle / u.day == sat.no_kozai * u.rad / u.minute
+    assert sat.ndot * u.rad / u.minute ** 2 == 1.2e-07 * u.cycle / u.day ** 2
+    assert sat.revnum == 10428
+    assert sat.bstar == 1.e-04
+    # This is the XEphem database record that PyEphem generates
+    xephem = ('GPS BIIA-21 (PRN 09),E,'
+              '9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,'
+              '55.4408,61.379002,0.0191986,78.180199,283.9935,'
+              '2.0056172,1.2e-07,10428,9.9999997e-05')
+    assert body.writedb() == xephem
