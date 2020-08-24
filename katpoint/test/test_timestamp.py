@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 import pytest
 import numpy as np
-import astropy.units as u
+from astropy import units as u
 from astropy.time import Time, TimeDelta
 
 import katpoint

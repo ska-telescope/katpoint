@@ -24,11 +24,20 @@ pyephem package.
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-import astropy.units as u
-from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Latitude, Longitude
+from astropy import units as u
 from astropy.time import Time
+from astropy.coordinates import SkyCoord, ICRS, AltAz
+from astropy.coordinates import EarthLocation, Latitude, Longitude
 
 from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
+from katpoint.test.helper import check_separation
+
+try:
+    from skyfield.api import load, EarthSatellite, Topos
+except ImportError:
+    HAS_SKYFIELD = False
+else:
+    HAS_SKYFIELD = True
 
 
 def _get_fixed_body(ra_str, dec_str):
@@ -37,51 +46,73 @@ def _get_fixed_body(ra_str, dec_str):
     return FixedBody('name', SkyCoord(ra=ra, dec=dec, frame=ICRS))
 
 
-def _get_earth_satellite():
-    name = ' GPS BIIA-21 (PRN 09) '
-    line1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
-    line2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
-    return readtle(name, line1, line2)
+TLE_NAME = ' GPS BIIA-21 (PRN 09) '
+TLE_LINE1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
+TLE_LINE2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
+TLE_TS = '2019-09-23 07:45:36.000'
+TLE_AZ = '280:32:28.4266d'
+# 1.      280:32:28.6053   Skyfield (0.23" error)
+# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.67" error)
+# 3.      280:32:07.2d     PyEphem (37" error)
+TLE_EL = '-54:06:49.2409d'
+# 1.      -54:06:49.0358   Skyfield
+# 2.      -54:06:50.7456   Astropy 4.0.1 + PyOrbital for TEME
+# 3.      -54:06:14.4      PyEphem
+TLE_LOCATION = EarthLocation(lat=10.0, lon=80.0, height=4200.0)
+LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
+
+
 
 
 @pytest.mark.parametrize(
-    "body, date_str, ra_str, dec_str, az_str, el_str",
+    "body, date_str, ra_str, dec_str, az_str, el_str, tol",
     [
         (_get_fixed_body('10:10:40.123', '40:20:50.567'), '2020-01-01 00:00:00.000',
-         '10:10:40.123', '40:20:50.567', '326:05:57.541', '51:21:20.0119'),
-        # 10:10:40.12     40:20:50.6      326:05:54.8,     51:21:18.5  (PyEphem)
-        # Adjust time by UT1-UTC=-0.177:  326:05:57.1      51:21:19.9  (PyEphem)
+         '10:10:40.123h', '40:20:50.567d', '326:05:57.541d', '51:21:20.0119d', 1 * u.mas),
+        # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
+        # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
-         '14:05:58.9201', '-12:13:51.9009', '118:10:05.1129', '27:23:12.8499'),
-        # (PyEphem does GCRS)                118:10:06.1,      27:23:13.3  (PyEphem)
+         '14:05:58.9201h', '-12:13:51.9009d', '118:10:05.1129d', '27:23:12.8499d', 1 * u.mas),
+        # (PyEphem radec is geocentric)        118:10:06.1d       27:23:13.3d  (PyEphem)
         (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
-         '6:44:11.9332', '23:02:08.402', '127:15:17.1381', '60:05:10.2438'),
-        # (PyEphem does GCRS)             127:15:23.6,      60:05:13.7  (PyEphem)
+         '6:44:11.9332h', '23:02:08.402d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
+        # (PyEphem radec is geocentric)     127:15:23.6d       60:05:13.7d  (PyEphem)
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
-         '7:56:36.7964', '20:53:59.4553', '234:53:19.4762', '31:38:11.4248'),
-        # (PyEphem does GCRS)              234:53:20.8,      31:38:09.4  (PyEphem)
-        (_get_earth_satellite(), '2019-09-23 07:45:36.000',
-         '3:32:56.7813', '-2:04:35.4329', '280:32:29.675', '-54:06:50.7456'),
-        # 3:32:59.21      -2:04:36.3       280:32:07.2      -54:06:14.4  (PyEphem)
+         '7:56:36.7964h', '20:53:59.4553d', '234:53:19.4762d', '31:38:11.4248d', 1 * u.mas),
+        # (PyEphem radec is geocentric)      234:53:20.8d       31:38:09.4d  (PyEphem)
+        (readtle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
+         '0:00:38.5009h', '00:03:56.0093d', TLE_AZ, TLE_EL, 1 * u.mas),
     ]
 )
-def test_compute(body, date_str, ra_str, dec_str, az_str, el_str):
+def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     """Test compute method"""
     obstime = Time(date_str)
-    lat = Latitude('10:00:00.000', unit=u.deg)
-    lon = Longitude('80:00:00.000', unit=u.deg)
-    height = 4200.0 if isinstance(body, EarthSatelliteBody) else 0.0
-    location = EarthLocation(lat=lat, lon=lon, height=height)
+    location = TLE_LOCATION if isinstance(body, EarthSatelliteBody) else LOCATION
     radec = body.compute(ICRS(), obstime, location)
-    assert radec.ra.to_string(sep=':', unit=u.hour) == ra_str
-    assert radec.dec.to_string(sep=':') == dec_str
+    check_separation(radec, ra_str, dec_str, tol)
     altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)
-    assert altaz.az.to_string(sep=':') == az_str
-    assert altaz.alt.to_string(sep=':') == el_str
+    check_separation(altaz, az_str, el_str, tol)
+
+
+@pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
+def test_earth_satellite_vs_skyfield():
+    ts = load.timescale()
+    satellite = EarthSatellite(TLE_LINE1, TLE_LINE2, TLE_NAME, ts)
+    antenna = Topos(latitude_degrees=TLE_LOCATION.lat.deg,
+                    longitude_degrees=TLE_LOCATION.lon.deg,
+                    elevation_m=TLE_LOCATION.height.value)
+    obstime = Time(TLE_TS)
+    t = ts.from_astropy(obstime)
+    towards_sat = (satellite - antenna).at(t)
+    alt, az, distance = towards_sat.altaz()
+    altaz = AltAz(alt=Latitude(alt.radians, unit=u.rad),
+                  az=Longitude(az.radians, unit=u.rad),
+                  obstime=obstime, location=TLE_LOCATION)
+    check_separation(altaz, TLE_AZ, TLE_EL, 0.25 * u.arcsec)
 
 
 def test_earth_satellite():
-    sat = _get_earth_satellite()
+    sat = readtle(TLE_NAME, TLE_LINE1, TLE_LINE2)
     # Check that the EarthSatelliteBody object has the expected attribute values
     assert str(sat._epoch) == '2019-09-23 07:45:35.842'
     assert sat._inc == np.deg2rad(55.4408)

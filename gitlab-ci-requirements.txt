@@ -1,4 +1,4 @@
-astropy
+astropy>=4.1rc1
 docutils
 markupsafe
 numpy
@@ -6,7 +6,6 @@ pipdeptree
 pygments
 pylint
 pylint-junit
-pyorbital
 pytest
 pytest-cov
 pytest-pylint

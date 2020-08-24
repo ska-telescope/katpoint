@@ -22,10 +22,12 @@ from contextlib import contextmanager
 
 import numpy as np
 import pytest
-import astropy.units as u
+from astropy import units as u
 from astropy.coordinates import Angle
 
 import katpoint
+from katpoint.test.helper import check_separation
+
 
 # Use the current year in TLE epochs to avoid potential crashes due to expired TLEs
 YY = time.localtime().tm_year % 100
@@ -194,7 +196,8 @@ def does_not_raise(error):
         ('gal, 30, -30', NON_AZEL, does_not_raise, None),
         ('Sun, special', 'azel', pytest.raises, ValueError),
         ('Sun, special', NON_AZEL, does_not_raise, None),
-        (TLE_TARGET, 'azel ' + NON_AZEL, pytest.raises, ValueError),
+        (TLE_TARGET, 'azel', pytest.raises, ValueError),
+        (TLE_TARGET, NON_AZEL, does_not_raise, None),
     ]
 )
 def test_coord_methods_without_antenna(description, methods, raises, error):
@@ -259,20 +262,14 @@ def test_coords():
     assert coord.az.deg == 45  # PyEphem: 45
     assert coord.alt.deg == 75  # PyEphem: 75
     coord = TARGET.apparent_radec(TS, ANT1)
-    ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
-    dec_deg = coord.dec.to_string(sep=':', precision=8)
-    assert ra_hour == '8:53:03.49166920'  # PyEphem: 8:53:09.60 (same as astrometric)
-    assert dec_deg == '-19:54:51.92328722'  # PyEphem: -19:51:43.0 (same as astrometric)
+    check_separation(coord, '8:53:03.49166920h', '-19:54:51.92328722d', tol=1 * u.mas)
+    # PyEphem:               8:53:09.60,          -19:51:43.0 (same as astrometric)
     coord = TARGET.astrometric_radec(TS, ANT1)
-    ra_hour = coord.ra.to_string(unit='hour', sep=':', precision=8)
-    dec_deg = coord.dec.to_string(sep=':', precision=8)
-    assert ra_hour == '8:53:09.60397465'  # PyEphem: 8:53:09.60
-    assert dec_deg == '-19:51:42.87773802'  # PyEphem: -19:51:43.0
+    check_separation(coord, '8:53:09.60397465h', '-19:51:42.87773802d', tol=1 * u.mas)
+    # PyEphem:               8:53:09.60,          -19:51:43.0
     coord = TARGET.galactic(TS, ANT1)
-    l_deg = coord.l.to_string(sep=':', precision=8)
-    b_deg = coord.b.to_string(sep=':', precision=8)
-    assert l_deg == '245:34:49.20442837'  # PyEphem: 245:34:49.3
-    assert b_deg == '15:36:24.87974969'  # PyEphem: 15:36:24.7
+    check_separation(coord, '245:34:49.20442837d', '15:36:24.87974969d', tol=1 * u.mas)
+    # PyEphem:               245:34:49.3,           15:36:24.7
     coord = TARGET.parallactic_angle(TS, ANT1)
     assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
 
@@ -298,9 +295,9 @@ def test_delay():
 def test_uvw():
     """Test uvw calculation."""
     u, v, w = DELAY_TARGET.uvw(ANT2, DELAY_TS[0], ANT1)
-    np.testing.assert_almost_equal([u, v, w], UVW[0], decimal=12)
+    np.testing.assert_almost_equal([u, v, w], UVW[0], decimal=8)
     u, v, w = DELAY_TARGET.uvw(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_array_almost_equal([u, v, w], np.c_[UVW], decimal=12)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[UVW], decimal=8)
 
 
 def test_uvw_timestamp_array_azel():
@@ -314,14 +311,14 @@ def test_uvw_timestamp_array_azel():
 
 def test_uvw_antenna_array():
     u, v, w = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
-    np.testing.assert_array_almost_equal([u, v, w], np.c_[np.zeros(3), UVW[0]], decimal=12)
+    np.testing.assert_array_almost_equal([u, v, w], np.c_[np.zeros(3), UVW[0]], decimal=8)
 
 
 def test_uvw_both_array():
     u, v, w = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
     # UVW array has shape (3, n_times, n_bls) - stack times along dim 1 and ants along dim 2
     desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), np.c_[UVW]])
-    np.testing.assert_array_almost_equal([u, v, w], desired_uvw, decimal=12)
+    np.testing.assert_array_almost_equal([u, v, w], desired_uvw, decimal=8)
 
 
 def test_uvw_hemispheres():
