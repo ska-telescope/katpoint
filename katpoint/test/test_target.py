@@ -233,9 +233,8 @@ def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=(
             np.testing.assert_array_equal(array_slice, np.asarray(scalar))
 
 
-# XXX TLE_TARGET does not support array timestamps yet
 @pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
-                                         'gal, 30, -30', 'Sun, special'])
+                                         'gal, 30, -30', 'Sun, special', TLE_TARGET])
 def test_array_valued_methods(description):
     """Test array-valued methods, comparing output against corresponding scalar versions."""
     offsets = np.array([[[0, 1, 2, 3], [4, 5, 6, 7]]])

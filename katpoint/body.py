@@ -334,8 +334,8 @@ class EarthSatelliteBody(Body):
         else:
             e, r, v = self.satellite.sgp4_array(obstime.jd1.ravel(), obstime.jd2.ravel())
             e = e.reshape(obstime.shape)
-            r = r.reshape(obstime.shape)
-            v = v.reshape(obstime.shape)
+            r = r.T.reshape((3,) + obstime.shape)
+            v = v.T.reshape((3,) + obstime.shape)
         # Represent the position and velocity in the appropriate TEME frame
         teme_p = CartesianRepresentation(r * u.km)
         teme_v = CartesianDifferential(v * (u.km / u.s))
