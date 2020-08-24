@@ -493,7 +493,8 @@ class Catalogue:
                 continue
             tle += [line]
             if len(tle) == 3:
-                targets.append('tle,' + ' '.join(tle))
+                name, line1, line2 = [raw_line.strip() for raw_line in tle]
+                targets.append(f'{name}, tle, {line1}, {line2}')
                 tle = []
         if len(tle) > 0:
             logger.warning('Did not receive a multiple of three lines when constructing TLEs')
@@ -501,14 +502,14 @@ class Catalogue:
         # Check TLE epochs and warn if some are too far in past or future, which would make TLE inaccurate right now
         max_epoch_diff_days, num_outdated, worst = 0, 0, None
         for target in targets:
+            name, _, line1, line2 = target.split(',')
             # Extract name, epoch and mean motion (revolutions per day)
-            name = target.split('\n')[0][4:].strip()
-            epoch_year, epoch_day = float(target.split('\n')[1][19:21]), float(target.split('\n')[1][21:33])
+            epoch_year, epoch_day = float(line1[19:21]), float(line1[21:33])
             epoch_year = epoch_year + 1900 if epoch_year >= 57 else epoch_year + 2000
             frac_epoch_day, int_epoch_day = np.modf(epoch_day)
             yday_date = '{:4d}:{:03d}'.format(int(epoch_year), int(int_epoch_day))
             epoch = Time(yday_date, format='yday') + frac_epoch_day
-            revs_per_day = float(target.split('\n')[2][53:64])
+            revs_per_day = float(line2[53:64])
             # Use orbital period to distinguish near-earth and deep-space objects (which have different accuracies)
             orbital_period_mins = 24. / revs_per_day * 60.
             now = Time.now()

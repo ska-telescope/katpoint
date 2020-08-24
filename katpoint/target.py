@@ -227,15 +227,9 @@ class Target:
                 fields += [fluxinfo]
 
         elif self.body_type == 'tle':
-            # Switch body type to xephem, as XEphem only saves bodies in xephem edb format (no TLE output)
-            tags = tags.replace(tags.partition(' ')[0], 'xephem tle')
-            edb_string = self.body.to_edb().replace(',', '~')
-            # Suppress name if it's the same as in the xephem db string
-            edb_name = edb_string[:edb_string.index('~')]
-            if edb_name == names:
-                fields = [tags, edb_string]
-            else:
-                fields = [names, tags, edb_string]
+            fields += self.body.to_tle()
+            if fluxinfo:
+                fields += [fluxinfo]
 
         elif self.body_type == 'xephem':
             # Replace commas in xephem string with tildes, to avoid clashing with main string structure
@@ -970,17 +964,13 @@ def construct_target_params(description):
                                                   b=Latitude(b, unit=u.deg), frame=Galactic))
 
     elif body_type == 'tle':
-        lines = fields[-1].split('\n')
-        if len(lines) != 3:
-            raise ValueError("Target description '%s' contains *tle* body without the expected three lines"
-                             % description)
-        tle_name = lines[0].strip()
+        if len(fields) < 4:
+            raise ValueError(f"Target description '{description}' contains *tle* body "
+                             "without the expected two comma-separated lines")
         if not preferred_name:
-            preferred_name = tle_name
-        if tle_name != preferred_name:
-            aliases.append(tle_name)
+            preferred_name = 'Unnamed Satellite'
         try:
-            body = EarthSatelliteBody.from_tle(preferred_name, lines[1], lines[2])
+            body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
         except ValueError:
             raise ValueError("Target description '%s' contains malformed *tle* body" % description)
 

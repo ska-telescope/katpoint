@@ -26,6 +26,7 @@ from astropy.coordinates import solar_system_ephemeris, get_body
 from astropy.coordinates import TEME, CartesianDifferential, CartesianRepresentation
 from sgp4.api import Satrec, WGS72
 from sgp4.model import Satrec as SatrecPython
+from sgp4.exporter import export_tle
 
 from .ephem_extra import angle_from_degrees
 
@@ -256,6 +257,10 @@ class EarthSatelliteBody(Body):
         # Use the Python Satrec to validate the TLE first, since the C++ one has no error checking
         SatrecPython.twoline2rv(line1, line2)
         return cls(name, Satrec.twoline2rv(line1, line2))
+
+    def to_tle(self):
+        """Export satellite parameters as a TLE in the form `(line1, line2)`."""
+        return export_tle(self.satellite)
 
     @classmethod
     def from_edb(cls, line):

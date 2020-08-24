@@ -124,6 +124,7 @@ def _check_edb_E(sat, epoch_iso, inc, raan, e, ap, M, n, decay, drag):
 
 def test_earth_satellite():
     body = EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2)
+    assert body.to_tle() == (TLE_LINE1, TLE_LINE2)
     # Check that the EarthSatelliteBody object has the expected attribute values
     _check_edb_E(body.satellite, epoch_iso='2019-09-23 07:45:35.842',
                  inc=55.4408, raan=61.3790, e=0.0191986, ap=78.1802, M=283.9935,
