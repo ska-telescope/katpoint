@@ -76,7 +76,7 @@ def test_catalogue_same_name():
     assert len(cat) == len(cat.targets) == len(cat.lookup) == 0, 'Catalogue not empty'
 
 
-def test_construct_catalogue():
+def test_construct_catalogue(caplog):
     """Test construction of catalogues."""
     cat = katpoint.Catalogue(add_specials=True, add_stars=True, antenna=ANTENNA)
     num_targets_original = len(cat)
@@ -102,17 +102,24 @@ def test_construct_catalogue():
     test_target = cat.targets[-1]
     assert test_target.description == cat[test_target.name].description, 'Lookup failed'
     assert cat['Non-existent'] is None, 'Lookup of non-existent target failed'
-    tle_lines = ['# Comment ignored\n',
+    tle_lines = ['# Near-Earth object (comment ignored)\n',
+                 'IRIDIUM 7 [-]           \n',
+                 '1 24793U 97020B   19215.43137162  .00000054  00000-0  12282-4 0  9996\n',
+                 '2 24793  86.3987 354.1155 0002085  89.4941 270.6494 14.34287341164608\n',
+                 '# Deep-space object\n',
                  'GPS BIIA-21 (PRN 09)    \n',
                  '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054\n',
-                 '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n']
+                 '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n',
+                 ]
     cat.add_tle(tle_lines, 'tle')
+    assert "2 of 2 TLE set(s) are outdated" in caplog.text, 'TLE epoch checks failed'
+    assert "deep-space" in caplog.text, 'Worst TLE epoch should be deep-space GPS satellite'
     edb_lines = ['# Comment ignored\n',
                  'HIC 13847,f|S|A4,2:58:16.03,-40:18:17.1,2.906,2000,\n']
     cat.add_edb(edb_lines, 'edb')
-    assert len(cat.targets) == num_targets + 2, 'Number of targets incorrect'
+    assert len(cat.targets) == num_targets + 3, 'Number of targets incorrect'
     cat.remove(cat.targets[-1].name)
-    assert len(cat.targets) == num_targets + 1, 'Number of targets incorrect'
+    assert len(cat.targets) == num_targets + 2, 'Number of targets incorrect'
     closest_target, dist = cat.closest_to(test_target)
     assert closest_target.description == test_target.description, 'Closest target incorrect'
     assert_allclose(dist, 0.0, rtol=0.0, atol=0.5e-5,

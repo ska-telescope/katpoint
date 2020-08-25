@@ -500,33 +500,36 @@ class Catalogue:
         if len(tle) > 0:
             logger.warning('Did not receive a multiple of three lines when constructing TLEs')
 
-        # Check TLE epochs and warn if some are too far in past or future, which would make TLE inaccurate right now
-        max_epoch_diff_days, num_outdated, worst = 0, 0, None
+        # Check TLE epochs and warn if some are too far in past or future,
+        # which would make TLE inaccurate right now
+        max_epoch_age = 0 * u.day
+        num_outdated = 0
+        worst = None
         for target in targets:
             # Use orbital period to distinguish near-earth and deep-space objects
             # (which have different accuracies)
             mean_motion = target.body.satellite.no_kozai * u.rad / u.minute
             orbital_period = 1 * u.cycle / mean_motion
-            now = Time.now()
-            epoch_diff_days = np.abs(now - target.body.epoch).jd
-            direction = 'past' if target.body.epoch < now else 'future'
+            epoch_age = Time.now() - target.body.epoch
+            direction = 'past' if epoch_age > 0 else 'future'
+            epoch_age = abs(epoch_age)
             # Near-earth models should be good for about a week (conservative estimate)
-            if orbital_period < 225 * u.minute and epoch_diff_days > 7:
+            if orbital_period < 225 * u.minute and epoch_age > 7 * u.day:
                 num_outdated += 1
-                if epoch_diff_days > max_epoch_diff_days:
-                    worst = "Worst case: TLE epoch for '%s' is %d days in %s, should be <= 7 for near-earth model" % \
-                            (name, epoch_diff_days, direction)
-                    max_epoch_diff_days = epoch_diff_days
+                if epoch_age > max_epoch_age:
+                    worst = (f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
+                             f"days in the {direction}, should be <= 7 for near-Earth model")
+                    max_epoch_age = epoch_age
             # Deep-space models are more accurate (three weeks for a conservative estimate)
-            if orbital_period >= 225 * u.minute and epoch_diff_days > 21:
+            if orbital_period >= 225 * u.minute and epoch_age > 21 * u.day:
                 num_outdated += 1
-                if epoch_diff_days > max_epoch_diff_days:
-                    worst = "Worst case: TLE epoch for '%s' is %d days in %s, should be <= 21 for deep-space model" % \
-                            (name, epoch_diff_days, direction)
-                    max_epoch_diff_days = epoch_diff_days
+                if epoch_age > max_epoch_age:
+                    worst = (f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
+                             f"days in the {direction}, should be <= 21 for deep-space model")
+                    max_epoch_age = epoch_age
         if num_outdated > 0:
-            logger.warning('%d of %d TLE set(s) are outdated, probably making them inaccurate for use right now',
-                           num_outdated, len(targets))
+            logger.warning('%d of %d TLE set(s) are outdated, probably making them inaccurate '
+                           'for use right now', num_outdated, len(targets))
             logger.warning(worst)
         self.add(targets, tags)
 
