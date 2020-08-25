@@ -206,8 +206,8 @@ def _time_to_edb(t, high_precision=False):
     """Construct XEphem EDB epoch string from `Time` object."""
     if not high_precision:
         # The XEphem startok/endok epochs are also single-precision MJDs
-        t = Time(np.float32(t.mjd), format='mjd')
-    dt = t.datetime
+        t = Time(np.float32(t.utc.mjd), format='mjd')
+    dt = t.utc.datetime
     second = dt.second + dt.microsecond / 1e6
     minute = dt.minute + second / 60.
     hour = dt.hour + minute / 60.
@@ -281,18 +281,18 @@ class EarthSatelliteBody(Body):
         sat = Satrec()
         sat.sgp4init(
             WGS72,  # gravity model (TLEs are based on WGS72, therefore it is preferred to WGS84)
-            'i',  # 'a' = old AFSPC mode, 'i' = improved mode
-            0,  # satnum: Satellite number is not stored by XEphem, so pick an unused one
-            sgp4_epoch,  # epoch
-            drag_coef,  # bstar
+            'i',           # 'a' = old AFSPC mode, 'i' = improved mode
+            0,             # satnum: Satellite number is not stored by XEphem so pick an unused one
+            sgp4_epoch,    # epoch
+            drag_coef,     # bstar
             (orbit_decay * u.cycle / u.day ** 2).to_value(u.rad / u.minute ** 2),  # ndot
-            0.0,  # nddot (not used by SGP4)
-            eccentricity,  # ecco
-            (arg_perigee * u.deg).to(u.rad).value,  # argpo
-            (inclination * u.deg).to(u.rad).value,  # inclo
-            (mean_anomaly * u.deg).to(u.rad).value,  # mo
-            (mean_motion * u.cycle / u.day).to(u.rad / u.minute).value,  # no_kozai
-            (ra_asc_node * u.deg).to(u.rad).value,  # nodeo
+            0.0,                                                         # nddot (not used by SGP4)
+            eccentricity,                                                # ecco
+            (arg_perigee * u.deg).to_value(u.rad),                       # argpo
+            (inclination * u.deg).to_value(u.rad),                       # inclo
+            (mean_anomaly * u.deg).to_value(u.rad),                      # mo
+            (mean_motion * u.cycle / u.day).to_value(u.rad / u.minute),  # no_kozai
+            (ra_asc_node * u.deg).to_value(u.rad),                       # nodeo
         )
         return cls(name, sat, int(orbit_number))
 
@@ -308,25 +308,26 @@ class EarthSatelliteBody(Body):
         epoch = self.epoch
         # Extract orbital elements in XEphem units, and mostly single-precision.
         # The trailing comments are corresponding XEphem variable names.
-        inclination = np.float32((sat.inclo * u.rad).to(u.deg).value)  # inc
-        ra_asc_node = np.float32((sat.nodeo * u.rad).to(u.deg).value)  # raan
-        eccentricity = np.float32(sat.ecco)  # e
-        arg_perigee = np.float32((sat.argpo * u.rad).to(u.deg).value)  # ap
-        mean_anomaly = np.float32((sat.mo * u.rad).to(u.deg).value)  # M
+        inclination = np.float32((sat.inclo * u.rad).to_value(u.deg))                    # inc
+        ra_asc_node = np.float32((sat.nodeo * u.rad).to_value(u.deg))                    # raan
+        eccentricity = np.float32(sat.ecco)                                              # e
+        arg_perigee = np.float32((sat.argpo * u.rad).to_value(u.deg))                    # ap
+        mean_anomaly = np.float32((sat.mo * u.rad).to_value(u.deg))                      # M
         # The mean motion uses double precision due to "sensitive differencing operation"
-        mean_motion = (sat.no_kozai * u.rad / u.minute).to(u.cycle / u.day).value  # n
-        orbit_decay = (sat.ndot * u.rad / u.minute ** 2).to(u.cycle / u.day ** 2).value  # decay
+        mean_motion = (sat.no_kozai * u.rad / u.minute).to_value(u.cycle / u.day)        # n
+        orbit_decay = (sat.ndot * u.rad / u.minute ** 2).to_value(u.cycle / u.day ** 2)  # decay
         orbit_decay = np.float32(orbit_decay)
-        orbit_number = sat.revnum if sat.revnum else self.orbit_number  # orbit
-        drag_coef = np.float32(sat.bstar)  # drag
-        epoch_str = _time_to_edb(epoch, high_precision=True)  # epoch
+        # XXX Satrec object only accepts revnum via twoline2rv but EDB needs it, so add a backdoor
+        orbit_number = sat.revnum if sat.revnum else self.orbit_number                   # orbit
+        drag_coef = np.float32(sat.bstar)                                                # drag
+        epoch_str = _time_to_edb(epoch, high_precision=True)                             # epoch
         if abs(orbit_decay) > 0:
             # The TLE is considered valid until the satellite period changes by more
             # than 1%, but never for more than 100 days either side of the epoch.
             # The mean motion is revs/day while decay is (revs/day)/day.
             stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100)
-            epoch_start = _time_to_edb(epoch - stable_days)  # startok
-            epoch_end = _time_to_edb(epoch + stable_days)  # endok
+            epoch_start = _time_to_edb(epoch - stable_days)                              # startok
+            epoch_end = _time_to_edb(epoch + stable_days)                                # endok
             valid_range = f'|{epoch_start}|{epoch_end}'
         else:
             valid_range = ''

@@ -2,7 +2,7 @@ attrs                   # via pytest
 certifi                 # via skyfield
 coverage                # via pytest-cov
 importlib-metadata      # via pytest
-jplephem==2.14
+jplephem==2.14          # via skyfield
 more-itertools          # via pytest
 packaging               # via pytest
 pluggy                  # via pytest
