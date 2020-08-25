@@ -241,6 +241,11 @@ class EarthSatelliteBody(Body):
         # This needs to go into the XEphem EDB string, which is still the de facto description
         self.orbit_number = orbit_number
 
+    @property
+    def epoch(self):
+        """The moment in time when the satellite model is true, as an Astropy `Time`."""
+        return Time(self.satellite.jdsatepoch, self.satellite.jdsatepochF, format='jd')
+
     @classmethod
     def from_tle(cls, name, line1, line2):
         """Build an `EarthSatelliteBody` from a two-line element set (TLE).
@@ -300,7 +305,7 @@ class EarthSatelliteBody(Body):
         libastro's dbfmt.c, down to its use of single precision floats.
         """
         sat = self.satellite
-        epoch = Time(sat.jdsatepoch, sat.jdsatepochF, format='jd')
+        epoch = self.epoch
         # Extract orbital elements in XEphem units, and mostly single-precision.
         # The trailing comments are corresponding XEphem variable names.
         inclination = np.float32((sat.inclo * u.rad).to(u.deg).value)  # inc

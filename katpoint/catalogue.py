@@ -20,6 +20,7 @@ import logging
 from collections import defaultdict
 
 import numpy as np
+import astropy.units as u
 from astropy.time import Time
 
 from .target import Target
@@ -494,7 +495,7 @@ class Catalogue:
             tle += [line]
             if len(tle) == 3:
                 name, line1, line2 = [raw_line.strip() for raw_line in tle]
-                targets.append(f'{name}, tle, {line1}, {line2}')
+                targets.append(Target(f'{name}, tle, {line1}, {line2}'))
                 tle = []
         if len(tle) > 0:
             logger.warning('Did not receive a multiple of three lines when constructing TLEs')
@@ -502,28 +503,22 @@ class Catalogue:
         # Check TLE epochs and warn if some are too far in past or future, which would make TLE inaccurate right now
         max_epoch_diff_days, num_outdated, worst = 0, 0, None
         for target in targets:
-            name, _, line1, line2 = target.split(',')
-            # Extract name, epoch and mean motion (revolutions per day)
-            epoch_year, epoch_day = float(line1[19:21]), float(line1[21:33])
-            epoch_year = epoch_year + 1900 if epoch_year >= 57 else epoch_year + 2000
-            frac_epoch_day, int_epoch_day = np.modf(epoch_day)
-            yday_date = '{:4d}:{:03d}'.format(int(epoch_year), int(int_epoch_day))
-            epoch = Time(yday_date, format='yday') + frac_epoch_day
-            revs_per_day = float(line2[53:64])
-            # Use orbital period to distinguish near-earth and deep-space objects (which have different accuracies)
-            orbital_period_mins = 24. / revs_per_day * 60.
+            # Use orbital period to distinguish near-earth and deep-space objects
+            # (which have different accuracies)
+            mean_motion = target.body.satellite.no_kozai * u.rad / u.minute
+            orbital_period = 1 * u.cycle / mean_motion
             now = Time.now()
-            epoch_diff_days = np.abs(now - epoch).jd
-            direction = 'past' if epoch < now else 'future'
+            epoch_diff_days = np.abs(now - target.body.epoch).jd
+            direction = 'past' if target.body.epoch < now else 'future'
             # Near-earth models should be good for about a week (conservative estimate)
-            if orbital_period_mins < 225 and epoch_diff_days > 7:
+            if orbital_period < 225 * u.minute and epoch_diff_days > 7:
                 num_outdated += 1
                 if epoch_diff_days > max_epoch_diff_days:
                     worst = "Worst case: TLE epoch for '%s' is %d days in %s, should be <= 7 for near-earth model" % \
                             (name, epoch_diff_days, direction)
                     max_epoch_diff_days = epoch_diff_days
             # Deep-space models are more accurate (three weeks for a conservative estimate)
-            if orbital_period_mins >= 225 and epoch_diff_days > 21:
+            if orbital_period >= 225 * u.minute and epoch_diff_days > 21:
                 num_outdated += 1
                 if epoch_diff_days > max_epoch_diff_days:
                     worst = "Worst case: TLE epoch for '%s' is %d days in %s, should be <= 21 for deep-space model" % \
