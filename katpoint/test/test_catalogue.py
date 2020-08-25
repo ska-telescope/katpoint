@@ -22,8 +22,6 @@ from numpy.testing import assert_allclose
 import katpoint
 
 
-# Use the current year in TLE epochs to avoid pyephem crash due to expired TLEs
-YY = katpoint.Timestamp().time.ymdhms[0] % 100
 FLUX_TARGET = katpoint.Target('flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)')
 ANTENNA = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')
 TIMESTAMP = '2009/06/14 12:34:56'
@@ -106,8 +104,7 @@ def test_construct_catalogue():
     assert cat['Non-existent'] is None, 'Lookup of non-existent target failed'
     tle_lines = ['# Comment ignored\n',
                  'GPS BIIA-21 (PRN 09)    \n',
-                 '1 22700U 93042A   %02d266.32333151  .00000012  00000-0  10000-3 0  805%1d\n'
-                 % (YY, (YY // 10 + YY - 7 + 4) % 10),
+                 '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054\n',
                  '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n']
     cat.add_tle(tle_lines, 'tle')
     edb_lines = ['# Comment ignored\n',

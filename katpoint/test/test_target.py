@@ -16,7 +16,6 @@
 
 """Tests for the target module."""
 
-import time
 import pickle
 from contextlib import contextmanager
 
@@ -29,12 +28,9 @@ import katpoint
 from katpoint.test.helper import check_separation
 
 
-# Use the current year in TLE epochs to avoid potential crashes due to expired TLEs
-YY = time.localtime().tm_year % 100
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
-              '1 22700U 93042A   {:02d}266.32333151  .00000012  00000-0  10000-3 0  805{:1d}, '
-              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
-              .format(YY, (YY // 10 + YY - 7 + 4) % 10))
+              '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054, '
+              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282')
 
 
 class TestTargetConstruction:
@@ -162,17 +158,15 @@ def test_construct_valid_target(description):
         'Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)',
         # The old TLE format containing three newline-separated lines straight from TLE file
         ('tle, GPS BIIA-21 (PRN 09)    \n'
-         '1 22700U 93042A   {:02d}266.32333151  .00000012  00000-0  10000-3 0  805{:1d}\n'
-         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'
-         .format(YY, (YY // 10 + YY - 7 + 4) % 10)),
+         '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054\n'
+         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'),
         # TLE missing the first line
         ('GPS BIIA-21 (PRN 09), tle, '
          '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'),
         # TLE missing the satellite catalog number and classification on line 1
         ('GPS BIIA-22 (PRN 05), tle, '
-         '1 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}, '
-         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055'
-         .format(YY, (YY // 10 + YY - 7 + 5) % 10)),
+         '1 93054A   07266.92814765  .00000062  00000-0  10000-3 0  2895, '
+         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055'),
         'Sunny, special',
         'Slinky, star',
         'xephem star, Sadr~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
