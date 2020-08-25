@@ -50,13 +50,12 @@ TLE_LINE2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.005617201042
 TLE_TS = '2019-09-23 07:45:36.000'
 TLE_AZ = '280:32:28.1892d'
 # 1.      280:32:28.6053   Skyfield (0.43" error, was 0.23" with WGS84)
-# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.82" error)
+# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.61" error)
 # 3.      280:32:07.2      PyEphem (37" error)
-TLE_EL = '-54:06:49.3936d'
-# 1.      -54:06:49.0358   Skyfield
-# 2.      -54:06:50.7456   Astropy 4.0.1 + PyOrbital for TEME
-# 3.      -54:06:14.4      PyEphem
-TLE_LOCATION = EarthLocation(lat=10.0, lon=80.0, height=4200.0)
+TLE_EL = '-54:06:33.1950d'
+# 1.      -54:06:32.8374   Skyfield
+# 2.      -54:06:34.5473   Astropy 4.0.1 + PyOrbital for TEME
+# 3.      -54:05:58.2      PyEphem
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 
 
@@ -83,10 +82,9 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     """Test compute method"""
     obstime = Time(date_str)
-    location = TLE_LOCATION if isinstance(body, EarthSatelliteBody) else LOCATION
-    radec = body.compute(ICRS(), obstime, location)
+    radec = body.compute(ICRS(), obstime, LOCATION)
     check_separation(radec, ra_str, dec_str, tol)
-    altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)
+    altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
     check_separation(altaz, az_str, el_str, tol)
 
 
@@ -94,16 +92,16 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
 def test_earth_satellite_vs_skyfield():
     ts = load.timescale()
     satellite = EarthSatellite(TLE_LINE1, TLE_LINE2, TLE_NAME, ts)
-    antenna = Topos(latitude_degrees=TLE_LOCATION.lat.deg,
-                    longitude_degrees=TLE_LOCATION.lon.deg,
-                    elevation_m=TLE_LOCATION.height.value)
+    antenna = Topos(latitude_degrees=LOCATION.lat.deg,
+                    longitude_degrees=LOCATION.lon.deg,
+                    elevation_m=LOCATION.height.value)
     obstime = Time(TLE_TS)
     t = ts.from_astropy(obstime)
     towards_sat = (satellite - antenna).at(t)
     alt, az, distance = towards_sat.altaz()
     altaz = AltAz(alt=Latitude(alt.radians, unit=u.rad),
                   az=Longitude(az.radians, unit=u.rad),
-                  obstime=obstime, location=TLE_LOCATION)
+                  obstime=obstime, location=LOCATION)
     check_separation(altaz, TLE_AZ, TLE_EL, 0.5 * u.arcsec)
 
 
