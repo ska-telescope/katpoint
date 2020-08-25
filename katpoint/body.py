@@ -285,7 +285,7 @@ class EarthSatelliteBody(Body):
             0,  # satnum: Satellite number is not stored by XEphem, so pick an unused one
             sgp4_epoch,  # epoch
             drag_coef,  # bstar
-            (orbit_decay * u.cycle / u.day ** 2).to(u.rad / u.minute ** 2).value,  # ndot
+            (orbit_decay * u.cycle / u.day ** 2).to_value(u.rad / u.minute ** 2),  # ndot
             0.0,  # nddot (not used by SGP4)
             eccentricity,  # ecco
             (arg_perigee * u.deg).to(u.rad).value,  # argpo
@@ -324,7 +324,7 @@ class EarthSatelliteBody(Body):
             # The TLE is considered valid until the satellite period changes by more
             # than 1%, but never for more than 100 days either side of the epoch.
             # The mean motion is revs/day while decay is (revs/day)/day.
-            stable_days = np.clip(0.01 * mean_motion / abs(orbit_decay), None, 100)
+            stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100)
             epoch_start = _time_to_edb(epoch - stable_days)  # startok
             epoch_end = _time_to_edb(epoch + stable_days)  # endok
             valid_range = f'|{epoch_start}|{epoch_end}'
