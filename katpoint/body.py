@@ -204,6 +204,7 @@ def _edb_to_time(edb_epoch):
 
 def _time_to_edb(t, high_precision=False):
     """Construct XEphem EDB epoch string from `Time` object."""
+    # The output of this function is undefined if `t` is within a leap second
     if not high_precision:
         # The XEphem startok/endok epochs are also single-precision MJDs
         t = Time(np.float32(t.utc.mjd), format='mjd')
@@ -244,7 +245,7 @@ class EarthSatelliteBody(Body):
     @property
     def epoch(self):
         """The moment in time when the satellite model is true, as an Astropy `Time`."""
-        return Time(self.satellite.jdsatepoch, self.satellite.jdsatepochF, format='jd')
+        return Time(self.satellite.jdsatepoch, self.satellite.jdsatepochF, scale='utc', format='jd')
 
     @classmethod
     def from_tle(cls, name, line1, line2):

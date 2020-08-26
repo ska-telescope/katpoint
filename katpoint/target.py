@@ -973,7 +973,7 @@ def construct_target_params(description):
             body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
         except ValueError as err:
             raise ValueError(f"Target description '{description}' "
-                             "contains malformed *tle* body") from err
+                             f"contains malformed *tle* body: {err}") from err
 
     elif body_type == 'special':
         try:
@@ -991,7 +991,7 @@ def construct_target_params(description):
             body = STARS[star_name]
         except KeyError as err:
             raise ValueError(f"Target description '{description}' "
-                             f"contains unknown *star* '{star_name}'") from err
+                             f"contains unknown *star* '{star_name}'") from None
 
     elif body_type == 'xephem':
         edb_string = fields[-1].replace('~', ',')
@@ -1010,7 +1010,7 @@ def construct_target_params(description):
             body = Body.from_edb(edb_string)
         except ValueError as err:
             raise ValueError(f"Target description '{description}' "
-                             "contains malformed *xephem* body") from err
+                             f"contains malformed *xephem* body: {err}") from err
         # Add xephem body type as an extra tag, right after the main 'xephem' tag
         edb_type = edb_string[edb_string.find(',') + 1]
         if edb_type == 'f':
