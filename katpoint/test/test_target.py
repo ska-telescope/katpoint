@@ -16,25 +16,21 @@
 
 """Tests for the target module."""
 
-import time
 import pickle
 from contextlib import contextmanager
 
 import numpy as np
 import pytest
-from astropy import units as u
+import astropy.units as u
 from astropy.coordinates import Angle
 
 import katpoint
 from katpoint.test.helper import check_separation
 
 
-# Use the current year in TLE epochs to avoid potential crashes due to expired TLEs
-YY = time.localtime().tm_year % 100
-TLE_TARGET = ('tle, GPS BIIA-21 (PRN 09)    \n'
-              '1 22700U 93042A   {:02d}266.32333151  .00000012  00000-0  10000-3 0  805{:1d}\n'
-              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'
-              .format(YY, (YY // 10 + YY - 7 + 4) % 10))
+TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
+              '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054, '
+              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282')
 
 
 class TestTargetConstruction:
@@ -125,7 +121,8 @@ class TestTargetConstruction:
         'Zizou, radec cal, 1.4, 30.0, (1000.0 2000.0 1.0 10.0)',
         'Fluffy | *Dinky, radec, 12.5, -50.0, (1.0 2.0 1.0 2.0 3.0 4.0)',
         TLE_TARGET,
-        ', ' + TLE_TARGET,
+        # Unnamed satellite
+        TLE_TARGET[TLE_TARGET.find(','):],
         'Sun, special',
         'Nothing, special',
         'Moon | Luna, special solarbody',
@@ -159,12 +156,17 @@ def test_construct_valid_target(description):
         'radec J2000, 0.3',
         'gal, 0.0',
         'Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)',
+        # The old TLE format containing three newline-separated lines straight from TLE file
         ('tle, GPS BIIA-21 (PRN 09)    \n'
+         '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054\n'
          '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n'),
-        (', tle, GPS BIIA-22 (PRN 05)    \n'
-         '1 93054A   {:02d}266.92814765  .00000062  00000-0  10000-3 0  289{:1d}\n'
-         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055\n'
-         .format(YY, (YY // 10 + YY - 7 + 5) % 10)),
+        # TLE missing the first line
+        ('GPS BIIA-21 (PRN 09), tle, '
+         '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'),
+        # TLE missing the satellite catalog number and classification on line 1
+        ('GPS BIIA-22 (PRN 05), tle, '
+         '1 93054A   07266.92814765  .00000062  00000-0  10000-3 0  2895, '
+         '2 22779  53.8943 118.4708 0081407  68.2645 292.7207  2.00558015103055'),
         'Sunny, special',
         'Slinky, star',
         'xephem star, Sadr~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
@@ -231,9 +233,8 @@ def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=(
             np.testing.assert_array_equal(array_slice, np.asarray(scalar))
 
 
-# XXX TLE_TARGET does not support array timestamps yet
 @pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
-                                         'gal, 30, -30', 'Sun, special'])
+                                         'gal, 30, -30', 'Sun, special', TLE_TARGET])
 def test_array_valued_methods(description):
     """Test array-valued methods, comparing output against corresponding scalar versions."""
     offsets = np.array([[[0, 1, 2, 3], [4, 5, 6, 7]]])

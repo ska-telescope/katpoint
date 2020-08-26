@@ -22,14 +22,12 @@ pyephem package.
 """
 
 import pytest
-import numpy as np
-from numpy.testing import assert_allclose
-from astropy import units as u
+import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 from astropy.coordinates import EarthLocation, Latitude, Longitude
 
-from katpoint.body import FixedBody, SolarSystemBody, EarthSatelliteBody, readtle
+from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody
 from katpoint.test.helper import check_separation
 
 try:
@@ -46,22 +44,19 @@ def _get_fixed_body(ra_str, dec_str):
     return FixedBody('name', SkyCoord(ra=ra, dec=dec, frame=ICRS))
 
 
-TLE_NAME = ' GPS BIIA-21 (PRN 09) '
+TLE_NAME = 'GPS BIIA-21 (PRN 09)'
 TLE_LINE1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
 TLE_LINE2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
 TLE_TS = '2019-09-23 07:45:36.000'
-TLE_AZ = '280:32:28.4266d'
-# 1.      280:32:28.6053   Skyfield (0.23" error)
-# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.67" error)
-# 3.      280:32:07.2d     PyEphem (37" error)
-TLE_EL = '-54:06:49.2409d'
-# 1.      -54:06:49.0358   Skyfield
-# 2.      -54:06:50.7456   Astropy 4.0.1 + PyOrbital for TEME
-# 3.      -54:06:14.4      PyEphem
-TLE_LOCATION = EarthLocation(lat=10.0, lon=80.0, height=4200.0)
+TLE_AZ = '280:32:28.1892d'
+# 1.      280:32:28.6053   Skyfield (0.43" error, was 0.23" with WGS84)
+# 2.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (1.61" error)
+# 3.      280:32:07.2      PyEphem (37" error)
+TLE_EL = '-54:06:33.1950d'
+# 1.      -54:06:32.8374   Skyfield
+# 2.      -54:06:34.5473   Astropy 4.0.1 + PyOrbital for TEME
+# 3.      -54:05:58.2      PyEphem
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
-
-
 
 
 @pytest.mark.parametrize(
@@ -80,17 +75,16 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
          '7:56:36.7964h', '20:53:59.4553d', '234:53:19.4762d', '31:38:11.4248d', 1 * u.mas),
         # (PyEphem radec is geocentric)      234:53:20.8d       31:38:09.4d  (PyEphem)
-        (readtle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
+        (EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
          '0:00:38.5009h', '00:03:56.0093d', TLE_AZ, TLE_EL, 1 * u.mas),
     ]
 )
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     """Test compute method"""
     obstime = Time(date_str)
-    location = TLE_LOCATION if isinstance(body, EarthSatelliteBody) else LOCATION
-    radec = body.compute(ICRS(), obstime, location)
+    radec = body.compute(ICRS(), obstime, LOCATION)
     check_separation(radec, ra_str, dec_str, tol)
-    altaz = body.compute(AltAz(obstime=obstime, location=location), obstime, location)
+    altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
     check_separation(altaz, az_str, el_str, tol)
 
 
@@ -98,70 +92,58 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
 def test_earth_satellite_vs_skyfield():
     ts = load.timescale()
     satellite = EarthSatellite(TLE_LINE1, TLE_LINE2, TLE_NAME, ts)
-    antenna = Topos(latitude_degrees=TLE_LOCATION.lat.deg,
-                    longitude_degrees=TLE_LOCATION.lon.deg,
-                    elevation_m=TLE_LOCATION.height.value)
+    antenna = Topos(latitude_degrees=LOCATION.lat.deg,
+                    longitude_degrees=LOCATION.lon.deg,
+                    elevation_m=LOCATION.height.value)
     obstime = Time(TLE_TS)
     t = ts.from_astropy(obstime)
     towards_sat = (satellite - antenna).at(t)
     alt, az, distance = towards_sat.altaz()
     altaz = AltAz(alt=Latitude(alt.radians, unit=u.rad),
                   az=Longitude(az.radians, unit=u.rad),
-                  obstime=obstime, location=TLE_LOCATION)
-    check_separation(altaz, TLE_AZ, TLE_EL, 0.25 * u.arcsec)
+                  obstime=obstime, location=LOCATION)
+    check_separation(altaz, TLE_AZ, TLE_EL, 0.5 * u.arcsec)
+
+
+def _check_edb_E(sat, epoch_iso, inc, raan, e, ap, M, n, decay, drag):
+    """Check SGP4 object and EDB versions of standard orbital parameters."""
+    epoch = Time(sat.jdsatepoch, sat.jdsatepochF, format='jd')
+    assert epoch.iso == epoch_iso
+    assert sat.inclo * u.rad == inc * u.deg
+    assert sat.nodeo * u.rad == raan * u.deg
+    assert sat.ecco == e
+    assert sat.argpo * u.rad == ap * u.deg
+    assert sat.mo * u.rad == M * u.deg
+    sat_n = (sat.no_kozai * u.rad / u.minute).to(u.cycle / u.day)
+    assert sat_n.value == pytest.approx(n, abs=1e-15)
+    assert sat.ndot * u.rad / u.minute ** 2 == decay * u.cycle / u.day ** 2
+    assert sat.bstar == drag
 
 
 def test_earth_satellite():
-    sat = readtle(TLE_NAME, TLE_LINE1, TLE_LINE2)
+    body = EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2)
+    assert body.to_tle() == (TLE_LINE1, TLE_LINE2)
     # Check that the EarthSatelliteBody object has the expected attribute values
-    assert str(sat._epoch) == '2019-09-23 07:45:35.842'
-    assert sat._inc == np.deg2rad(55.4408)
-    assert sat._raan == np.deg2rad(61.3790)
-    assert sat._e == 0.0191986
-    assert sat._ap == np.deg2rad(78.1802)
-    assert sat._M == np.deg2rad(283.9935)
-    assert sat._n == 2.0056172
-    assert sat._decay == 1.2e-07
-    assert sat._orbit == 10428
-    assert sat._drag == 1.e-04
+    _check_edb_E(body.satellite, epoch_iso='2019-09-23 07:45:35.842',
+                 inc=55.4408, raan=61.3790, e=0.0191986, ap=78.1802, M=283.9935,
+                 n=2.0056172, decay=1.2e-07, drag=1.e-04)
+    assert body.satellite.revnum == 10428
+    # This is the XEphem database record that PyEphem generates
+    xephem = ('GPS BIIA-21 (PRN 09),E,'
+              '9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,'
+              '55.4408,61.379002,0.0191986,78.180199,283.9935,'
+              '2.0056172,1.2e-07,10428,9.9999997e-05')
+    assert body.to_edb() == xephem
+    # Check some round-tripping
+    body2 = Body.from_edb(xephem)
+    assert isinstance(body2, EarthSatelliteBody)
+    assert body2.to_edb() == xephem
 
-    # This is xephem database record that pyephem generates
-    xephem = ' GPS BIIA-21 (PRN 09) ,E,9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,' \
-             '55.4408,61.379002,0.0191986,78.180199,283.9935,2.0056172,1.2e-07,10428,9.9999997e-05'
 
-    rec = sat.writedb()
-    assert rec.split(',')[0] == xephem.split(',')[0]
-    assert rec.split(',')[1] == xephem.split(',')[1]
-
-    assert (rec.split(',')[2].split('|')[0].split('/')[0]
-            == xephem.split(',')[2].split('|')[0].split('/')[0])
-    assert_allclose(float(rec.split(',')[2].split('|')[0].split('/')[1]),
-                    float(xephem.split(',')[2].split('|')[0].split('/')[1]), rtol=0, atol=0.5e-7)
-    assert (rec.split(',')[2].split('|')[0].split('/')[2]
-            == xephem.split(',')[2].split('|')[0].split('/')[2])
-
-    assert (rec.split(',')[2].split('|')[1].split('/')[0]
-            == xephem.split(',')[2].split('|')[1].split('/')[0])
-    assert_allclose(float(rec.split(',')[2].split('|')[1].split('/')[1]),
-                    float(xephem.split(',')[2].split('|')[1].split('/')[1]), rtol=0, atol=0.5e-2)
-    assert (rec.split(',')[2].split('|')[1].split('/')[2]
-            == xephem.split(',')[2].split('|')[1].split('/')[2])
-
-    assert (rec.split(',')[2].split('|')[2].split('/')[0]
-            == xephem.split(',')[2].split('|')[2].split('/')[0])
-    assert_allclose(float(rec.split(',')[2].split('|')[2].split('/')[1]),
-                    float(xephem.split(',')[2].split('|')[2].split('/')[1]), rtol=0, atol=0.5e-2)
-    assert (rec.split(',')[2].split('|')[2].split('/')[2]
-            == xephem.split(',')[2].split('|')[2].split('/')[2])
-
-    assert rec.split(',')[3] == xephem.split(',')[3]
-
-    # pyephem adds spurious precision to these 3 fields
-    assert rec.split(',')[4] == xephem.split(',')[4][:6]
-    assert rec.split(',')[5][:7] == xephem.split(',')[5][:7]
-    assert rec.split(',')[6] == xephem.split(',')[6][:5]
-
-    assert rec.split(',')[7] == xephem.split(',')[7]
-    assert rec.split(',')[8] == xephem.split(',')[8]
-    assert rec.split(',')[9] == xephem.split(',')[9]
-    assert rec.split(',')[10] == xephem.split(',')[10]
+def test_star():
+    record = 'Sadr,f|S|F8,20:22:13.7|2.43,40:15:24|-0.93,2.23,2000,0'
+    e = Body.from_edb(record)
+    assert isinstance(e, FixedBody)
+    assert e.name == 'Sadr'
+    assert e.coord.ra.to_string(sep=':', unit='hour') == '20:22:13.7'
+    assert e.coord.dec.to_string(sep=':', unit='deg') == '40:15:24'

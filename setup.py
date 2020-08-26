@@ -55,9 +55,10 @@ setup(name="katpoint",
       install_requires=[
           "astropy>=4.1rc1",
           "numpy",
-          "sgp4",
+          "sgp4>=2.7",
       ],
       tests_require=[
           "pytest",
           "pytest-cov",
+          "skyfield",
       ])

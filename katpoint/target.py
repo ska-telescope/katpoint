@@ -17,7 +17,7 @@
 """Target object used for pointing and flux density calculation."""
 
 import numpy as np
-from astropy import units as u
+import astropy.units as u
 from astropy.coordinates import SkyCoord  # High-level coordinates
 from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS  # Low-level frames
 from astropy.coordinates import Latitude, Longitude, Angle  # Angles
@@ -28,8 +28,8 @@ from .flux import FluxDensityModel
 from .ephem_extra import (is_iterable, lightspeed, deg2rad, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .body import FixedBody, readtle, StationaryBody, SolarSystemBody, NullBody
-from .stars import star, readdb
+from .body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
+from .stars import STARS
 
 
 class NonAsciiError(ValueError):
@@ -227,20 +227,14 @@ class Target:
                 fields += [fluxinfo]
 
         elif self.body_type == 'tle':
-            # Switch body type to xephem, as XEphem only saves bodies in xephem edb format (no TLE output)
-            tags = tags.replace(tags.partition(' ')[0], 'xephem tle')
-            edb_string = self.body.writedb().replace(',', '~')
-            # Suppress name if it's the same as in the xephem db string
-            edb_name = edb_string[:edb_string.index('~')]
-            if edb_name == names:
-                fields = [tags, edb_string]
-            else:
-                fields = [names, tags, edb_string]
+            fields += self.body.to_tle()
+            if fluxinfo:
+                fields += [fluxinfo]
 
         elif self.body_type == 'xephem':
             # Replace commas in xephem string with tildes, to avoid clashing with main string structure
-            # Also remove extra spaces added into string by writedb
-            edb_string = '~'.join([edb_field.strip() for edb_field in self.body.writedb().split(',')])
+            # Also remove extra spaces added into string by to_edb
+            edb_string = '~'.join([edb_field.strip() for edb_field in self.body.to_edb().split(',')])
             # Suppress name if it's the same as in the xephem db string
             edb_name = edb_string[:edb_string.index('~')]
             if edb_name == names:
@@ -970,19 +964,16 @@ def construct_target_params(description):
                                                   b=Latitude(b, unit=u.deg), frame=Galactic))
 
     elif body_type == 'tle':
-        lines = fields[-1].split('\n')
-        if len(lines) != 3:
-            raise ValueError("Target description '%s' contains *tle* body without the expected three lines"
-                             % description)
-        tle_name = lines[0].strip()
+        if len(fields) < 4:
+            raise ValueError(f"Target description '{description}' contains *tle* body "
+                             "without the expected two comma-separated lines")
         if not preferred_name:
-            preferred_name = tle_name
-        if tle_name != preferred_name:
-            aliases.append(tle_name)
+            preferred_name = 'Unnamed Satellite'
         try:
-            body = readtle(preferred_name, lines[1], lines[2])
-        except ValueError:
-            raise ValueError("Target description '%s' contains malformed *tle* body" % description)
+            body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
+        except ValueError as err:
+            raise ValueError(f"Target description '{description}' "
+                             f"contains malformed *tle* body: {err}") from err
 
     elif body_type == 'special':
         try:
@@ -997,10 +988,10 @@ def construct_target_params(description):
     elif body_type == 'star':
         star_name = ' '.join([w.capitalize() for w in preferred_name.split()])
         try:
-            body = star(star_name)
-        except KeyError:
-            raise ValueError("Target description '%s' contains unknown *star* '%s'"
-                             % (description, star_name))
+            body = STARS[star_name]
+        except KeyError as err:
+            raise ValueError(f"Target description '{description}' "
+                             f"contains unknown *star* '{star_name}'") from None
 
     elif body_type == 'xephem':
         edb_string = fields[-1].replace('~', ',')
@@ -1016,9 +1007,10 @@ def construct_target_params(description):
             if not (extra_name in aliases) and not (extra_name == preferred_name):
                 aliases.append(extra_name)
         try:
-            body = readdb(edb_string)
-        except ValueError:
-            raise ValueError("Target description '%s' contains malformed *xephem* body" % description)
+            body = Body.from_edb(edb_string)
+        except ValueError as err:
+            raise ValueError(f"Target description '{description}' "
+                             f"contains malformed *xephem* body: {err}") from err
         # Add xephem body type as an extra tag, right after the main 'xephem' tag
         edb_type = edb_string[edb_string.find(',') + 1]
         if edb_type == 'f':

@@ -16,18 +16,17 @@
 
 """A celestial body that can compute its sky position, inspired by PyEphem."""
 
-import copy
+import re
 
 import numpy as np
-from astropy import units as u
-from astropy.time import Time, TimeDelta
-from astropy.coordinates import ICRS, AltAz
+import astropy.units as u
+from astropy.time import Time
+from astropy.coordinates import ICRS, AltAz, Latitude, Longitude, SkyCoord
 from astropy.coordinates import solar_system_ephemeris, get_body
 from astropy.coordinates import TEME, CartesianDifferential, CartesianRepresentation
-
-import sgp4.model
-import sgp4.earth_gravity
-from sgp4.propagation import sgp4init
+from sgp4.api import Satrec, WGS72
+from sgp4.model import Satrec as SatrecPython
+from sgp4.exporter import export_tle
 
 from .ephem_extra import angle_from_degrees
 
@@ -59,6 +58,24 @@ class Body:
         if isinstance(frame, AltAz) and frame.location is None:
             raise ValueError('Body needs a location to calculate (az, el) coordinates - '
                              'did you specify an Antenna?')
+
+    @classmethod
+    def from_edb(cls, line):
+        """Build an appropriate `Body` from a line of an XEphem EDB catalogue.
+
+        Only fixed positions without proper motions and earth satellites have
+        been implemented.
+        """
+        try:
+            edb_type = line.split(',')[1][0]
+        except (AttributeError, IndexError):
+            raise ValueError(f'Failed parsing XEphem EDB line: {line}')
+        if edb_type == 'f':
+            return FixedBody.from_edb(line)
+        elif edb_type == 'E':
+            return EarthSatelliteBody.from_edb(line)
+        else:
+            raise ValueError(f'Unsupported XEphem EDB line: {line}')
 
     def compute(self, frame, obstime, location):
         """Compute the coordinates of the body in the requested frame.
@@ -98,6 +115,26 @@ class FixedBody(Body):
         super().__init__(name)
         self.coord = coord
 
+    @classmethod
+    def from_edb(cls, line):
+        """Construct a `FixedBody` from an XEphem database (EDB) entry."""
+        fields = line.split(',')
+        name = fields[0]
+        ra = fields[2].split('|')[0]
+        dec = fields[3].split('|')[0]
+        ra = Longitude(ra, unit=u.hour)
+        dec = Latitude(dec, unit=u.deg)
+        return cls(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
+
+    def to_edb(self):
+        """Create an XEphem database (EDB) entry for fixed body ("f").
+
+        See http://www.clearskyinstitute.com/xephem/xephem.html
+        """
+        icrs = self.coord.transform_to(ICRS)
+        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
+                                   icrs.dec.to_string(sep=':', unit=u.deg))
+
     def compute(self, frame, obstime=None, location=None):
         """Compute the coordinates of the body in the requested frame.
 
@@ -127,15 +164,6 @@ class FixedBody(Body):
             coord = self.coord
         return coord.transform_to(frame)
 
-    def writedb(self):
-        """ Create an XEphem catalogue entry.
-
-        See http://www.clearskyinstitute.com/xephem/xephem.html
-        """
-        icrs = self.coord.transform_to(ICRS)
-        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
-                                   icrs.dec.to_string(sep=':', unit=u.deg))
-
 
 class SolarSystemBody(Body):
     """A major Solar System body identified by name.
@@ -159,6 +187,40 @@ class SolarSystemBody(Body):
         return gcrs.transform_to(frame)
 
 
+def _edb_to_time(edb_epoch):
+    """Construct `Time` object from XEphem EDB epoch string."""
+    match = re.match(r'\s*(\d{1,2})/(\d+\.?\d*)/\s*(\d+)', edb_epoch, re.ASCII)
+    if not match:
+        raise ValueError(f"Epoch string '{edb_epoch}' does not match EDB format 'MM/DD.DD+/YYYY'")
+    frac_day, int_day = np.modf(float(match[2]))
+    # Convert fractional day to hours, minutes and fractional seconds via Astropy machinery.
+    # Add arbitrary integer day to suppress ERFA warnings (will be replaced by actual day next).
+    rec = Time(59081.0, frac_day, scale='utc', format='mjd').ymdhms
+    rec['year'] = int(match[3])
+    rec['month'] = int(match[1])
+    rec['day'] = int(int_day)
+    return Time(rec, scale='utc')
+
+
+def _time_to_edb(t, high_precision=False):
+    """Construct XEphem EDB epoch string from `Time` object."""
+    # The output of this function is undefined if `t` is within a leap second
+    if not high_precision:
+        # The XEphem startok/endok epochs are also single-precision MJDs
+        t = Time(np.float32(t.utc.mjd), format='mjd')
+    dt = t.utc.datetime
+    second = dt.second + dt.microsecond / 1e6
+    minute = dt.minute + second / 60.
+    hour = dt.hour + minute / 60.
+    day = dt.day + hour / 24.
+    if high_precision:
+        # See write_E function in libastro's dbfmt.c
+        return f'{dt.month:d}/{day:.12g}/{dt.year:d}'
+    else:
+        # See fs_date function in libastro's formats.c
+        return f'{dt.month:2d}/{day:02.6g}/{dt.year:-4d}'
+
+
 class EarthSatelliteBody(Body):
     """Body orbiting the Earth (besides the Moon, which is a SolarSystemBody).
 
@@ -166,171 +228,132 @@ class EarthSatelliteBody(Body):
     ----------
     name : str
         The name of the satellite
+    satellite : :class:`sgp4.api.Satrec`
+        Underlying SGP4 object doing the work with access to satellite parameters
+    orbit_number : int, optional
+        Number of revolutions / orbits the satellite has completed at given epoch
+        (only for backwards compatibility with EDB format, ignore otherwise)
     """
 
-    def __init__(self, name):
+    def __init__(self, name, satellite, orbit_number=0):
         super().__init__(name)
+        self.satellite = satellite
+        # XXX We store this because C++ sgp4init doesn't take revnum and Satrec object is read-only
+        # This needs to go into the XEphem EDB string, which is still the de facto description
+        self.orbit_number = orbit_number
+
+    @property
+    def epoch(self):
+        """The moment in time when the satellite model is true, as an Astropy `Time`."""
+        return Time(self.satellite.jdsatepoch, self.satellite.jdsatepochF, scale='utc', format='jd')
+
+    @classmethod
+    def from_tle(cls, name, line1, line2):
+        """Build an `EarthSatelliteBody` from a two-line element set (TLE).
+
+        Parameters
+        ----------
+        name : str
+            The name of the satellite
+        line1, line2 : str
+            The two lines of the TLE
+        """
+        line1 = line1.strip()
+        line2 = line2.strip()
+        # Use the Python Satrec to validate the TLE first, since the C++ one has no error checking
+        SatrecPython.twoline2rv(line1, line2)
+        return cls(name, Satrec.twoline2rv(line1, line2))
+
+    def to_tle(self):
+        """Export satellite parameters as a TLE in the form `(line1, line2)`."""
+        return export_tle(self.satellite)
+
+    @classmethod
+    def from_edb(cls, line):
+        """Build an `EarthSatelliteBody` from an XEphem database (EDB) entry."""
+        fields = line.split(',')
+        name = fields[0]
+        edb_epoch = _edb_to_time(fields[2].split('|')[0])
+        # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
+        # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
+        sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format='jd').jd
+        (inclination, ra_asc_node, eccentricity, arg_perigee, mean_anomaly,
+         mean_motion, orbit_decay, orbit_number, drag_coef) = tuple(float(f) for f in fields[3:])
+        sat = Satrec()
+        sat.sgp4init(
+            WGS72,  # gravity model (TLEs are based on WGS72, therefore it is preferred to WGS84)
+            'i',           # 'a' = old AFSPC mode, 'i' = improved mode
+            0,             # satnum: Satellite number is not stored by XEphem so pick an unused one
+            sgp4_epoch,    # epoch
+            drag_coef,     # bstar
+            (orbit_decay * u.cycle / u.day ** 2).to_value(u.rad / u.minute ** 2),  # ndot
+            0.0,                                                         # nddot (not used by SGP4)
+            eccentricity,                                                # ecco
+            (arg_perigee * u.deg).to_value(u.rad),                       # argpo
+            (inclination * u.deg).to_value(u.rad),                       # inclo
+            (mean_anomaly * u.deg).to_value(u.rad),                      # mo
+            (mean_motion * u.cycle / u.day).to_value(u.rad / u.minute),  # no_kozai
+            (ra_asc_node * u.deg).to_value(u.rad),                       # nodeo
+        )
+        return cls(name, sat, int(orbit_number))
+
+    def to_edb(self):
+        """Create an XEphem database (EDB) entry for Earth satellite ("E").
+
+        See http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501.
+
+        This attempts to be a faithful copy of the write_E function in
+        libastro's dbfmt.c, down to its use of single precision floats.
+        """
+        sat = self.satellite
+        epoch = self.epoch
+        # Extract orbital elements in XEphem units, and mostly single-precision.
+        # The trailing comments are corresponding XEphem variable names.
+        inclination = np.float32((sat.inclo * u.rad).to_value(u.deg))                    # inc
+        ra_asc_node = np.float32((sat.nodeo * u.rad).to_value(u.deg))                    # raan
+        eccentricity = np.float32(sat.ecco)                                              # e
+        arg_perigee = np.float32((sat.argpo * u.rad).to_value(u.deg))                    # ap
+        mean_anomaly = np.float32((sat.mo * u.rad).to_value(u.deg))                      # M
+        # The mean motion uses double precision due to "sensitive differencing operation"
+        mean_motion = (sat.no_kozai * u.rad / u.minute).to_value(u.cycle / u.day)        # n
+        orbit_decay = (sat.ndot * u.rad / u.minute ** 2).to_value(u.cycle / u.day ** 2)  # decay
+        orbit_decay = np.float32(orbit_decay)
+        # XXX Satrec object only accepts revnum via twoline2rv but EDB needs it, so add a backdoor
+        orbit_number = sat.revnum if sat.revnum else self.orbit_number                   # orbit
+        drag_coef = np.float32(sat.bstar)                                                # drag
+        epoch_str = _time_to_edb(epoch, high_precision=True)                             # epoch
+        if abs(orbit_decay) > 0:
+            # The TLE is considered valid until the satellite period changes by more
+            # than 1%, but never for more than 100 days either side of the epoch.
+            # The mean motion is revs/day while decay is (revs/day)/day.
+            stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100)
+            epoch_start = _time_to_edb(epoch - stable_days)                              # startok
+            epoch_end = _time_to_edb(epoch + stable_days)                                # endok
+            valid_range = f'|{epoch_start}|{epoch_end}'
+        else:
+            valid_range = ''
+        return (f'{self.name},E,{epoch_str}{valid_range},{inclination:.8g},'
+                f'{ra_asc_node:.8g},{eccentricity:.8g},{arg_perigee:.8g},'
+                f'{mean_anomaly:.8g},{mean_motion:.12g},{orbit_decay:.8g},'
+                f'{orbit_number:d},{drag_coef:.8g}')
 
     def compute(self, frame, obstime, location=None):
         """Determine position of body at the given time and transform to `frame`."""
         Body._check_location(frame)
-        # Create an SGP4 satellite object
-        self._sat = sgp4.model.Satellite()
-        self._sat.whichconst = sgp4.earth_gravity.wgs84
-        self._sat.satnum = 1
-
-        # Extract date and time from the epoch
-        ep = copy.deepcopy(self._epoch)
-        ep.format = 'yday'
-        y = int(ep.value[:4])
-        d = int(ep.value[5:8])
-        h = int(ep.value[9:11])
-        m = int(ep.value[12:14])
-        s = float(ep.value[15:])
-        self._sat.epochyr = y
-        self._sat.epochdays = d + (h + (m + s / 60.0) / 60.0) / 24.0
-        ep.format = 'jd'
-        self._sat.jdsatepoch = ep.value
-        self._sat.bstar = self._drag
-        self._sat.ndot = self._decay
-        self._sat.nddot = self._nddot
-        self._sat.inclo = float(self._inc)
-        self._sat.nodeo = float(self._raan)
-        self._sat.ecco = self._e
-        self._sat.argpo = self._ap
-        self._sat.mo = self._M
-        self._sat.no_kozai = self._n / (24.0 * 60.0) * (2.0 * np.pi)
-
-        # Compute position and velocity
-        date = obstime.iso
-        yr = int(date[:4])
-        mon = int(date[5:7])
-        day = int(date[8:10])
-        h = int(date[11:13])
-        m = int(date[14:16])
-        s = float(date[17:])
-        sgp4init(sgp4.earth_gravity.wgs84, False, self._sat.satnum,
-                 self._sat.jdsatepoch-2433281.5, self._sat.bstar,
-                 self._sat.ndot, self._sat.nddot,
-                 self._sat.ecco, self._sat.argpo, self._sat.inclo,
-                 self._sat.mo, self._sat.no,
-                 self._sat.nodeo, self._sat)
-        p, v = self._sat.propagate(yr, mon, day, h, m, s)
-
-        teme_p = CartesianRepresentation(p * u.km)
-        teme_v = CartesianDifferential(v * u.km / u.s)
+        # Propagate the satellite according to SGP4 model (use array version if possible)
+        if obstime.shape == ():
+            e, r, v = self.satellite.sgp4(obstime.jd1, obstime.jd2)
+        else:
+            e, r, v = self.satellite.sgp4_array(obstime.jd1.ravel(), obstime.jd2.ravel())
+            e = e.reshape(obstime.shape)
+            r = r.T.reshape((3,) + obstime.shape)
+            v = v.T.reshape((3,) + obstime.shape)
+        # Represent the position and velocity in the appropriate TEME frame
+        teme_p = CartesianRepresentation(r * u.km)
+        teme_v = CartesianDifferential(v * (u.km / u.s))
         teme = TEME(teme_p.with_differentials(teme_v), obstime=obstime)
+        # Convert to the desired output frame
         return teme.transform_to(frame)
-
-    def writedb(self):
-        """ Create an XEphem catalogue entry.
-
-        See http://www.clearskyinstitute.com/xephem/xephem.html
-        """
-        dt = self._epoch.iso
-        yr = int(dt[:4])
-        mon = int(dt[5:7])
-        day = int(dt[8:10])
-        h = int(dt[11:13])
-        m = int(dt[14:16])
-        s = float(dt[17:])
-
-        # The epoch field contains 3 dates, the actual epoch and the range
-        # of valid dates which xepehm sets to +/- 100 days.
-        epoch0 = '{0}/{1:.9}/{2}'.format(mon, day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
-        e = self._epoch + TimeDelta(-100, format='jd')
-        dt = str(e)
-        yr = int(dt[:4])
-        mon = int(dt[5:7])
-        day = int(dt[8:10])
-        h = int(dt[11:13])
-        m = int(dt[14:16])
-        s = float(dt[17:])
-        epoch1 = '{0}/{1:.6}/{2}'.format(mon, day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
-        e = e + TimeDelta(200, format='jd')
-        dt = str(e)
-        yr = int(dt[:4])
-        mon = int(dt[5:7])
-        day = int(dt[8:10])
-        h = int(dt[11:13])
-        m = int(dt[14:16])
-        s = float(dt[17:])
-        epoch2 = '{0}/{1:.6}/{2}'.format(mon, day + ((h + (m + s/60.0) / 60.0) / 24.0), yr)
-
-        epoch = '{0}| {1}| {2}'.format(epoch0, epoch1, epoch2)
-
-        return '{0},{1},{2},{3},{4},{5:0.6f},{6:0.2f},{7},{8},{9},{10},{11}'.\
-            format(self.name, 'E',
-                   epoch,
-                   np.rad2deg(float(self._inc)),
-                   np.rad2deg(float(self._raan)),
-                   self._e,
-                   np.rad2deg(float(self._ap)),
-                   np.rad2deg(float(self._M)),
-                   self._n,
-                   self._decay,
-                   self._orbit,
-                   self._drag)
-
-
-def _tle_to_float(tle_float):
-    """ Convert a TLE formatted float to a float."""
-    dash = tle_float.find('-')
-    if dash == -1:
-        return float(tle_float)
-    else:
-        return float(tle_float[:dash] + "e-" + tle_float[dash+1:])
-
-
-def readtle(name, line1, line2):
-    """Create an EarthSatelliteBody object from a TLE description of an orbit.
-
-    See https://en.wikipedia.org/wiki/Two-line_element_set
-
-    Parameters
-    ----------
-    name : str
-        Satellite name
-
-    line1 : str
-        Line 1 of TLE
-
-    line2 : str
-        Line 2 of TLE
-    """
-    line1 = line1.lstrip()
-    line2 = line2.lstrip()
-    s = EarthSatelliteBody(name)
-    epochyr = int('20' + line1[18:20])
-    epochdays = float(line1[20:32])
-
-    # Extract day, hour, min, sec from epochdays
-    ed = float(epochdays)
-    d = int(ed)
-    f = ed - d
-    h = int(f * 24.0)
-    f = (f * 24.0 - h)
-    m = int(f * 60.0)
-    sec = (f * 60.0 - m) * 60.0
-    date = '{0:04d}:{1:03d}:{2:02d}:{3:02d}:{4:02}'.format(epochyr, d, h, m, sec)
-
-    s._epoch = Time('2000-01-01 00:00:00.000')
-
-    s._epoch = Time(date, format='yday')
-    s._epoch.format = 'iso'
-
-    s._inc = np.deg2rad(_tle_to_float(line2[8:16]))
-    s._raan = np.deg2rad(_tle_to_float(line2[17:25]))
-    s._e = _tle_to_float('0.' + line2[26:33])
-    s._ap = np.deg2rad(_tle_to_float(line2[34:42]))
-    s._M = np.deg2rad(_tle_to_float(line2[43:51]))
-    s._n = _tle_to_float(line2[52:63])
-    s._decay = _tle_to_float(line1[33:43])
-    s._nddot = _tle_to_float(line1[44:52])
-    s._orbit = int(line2[63:68])
-    s._drag = _tle_to_float('0.' + line1[53:61].strip())
-
-    return s
 
 
 class StationaryBody(Body):

@@ -27,15 +27,10 @@ Of the thousand brighest Hipparcos stars, those with proper names
 registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
 """
 
-import numpy as np
-from astropy import units as u
-from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
-from astropy.time import Time
-
-from katpoint.body import FixedBody, EarthSatelliteBody
+from katpoint.body import Body
 
 
-db = """\
+db = """
 Sirrah,f|S|B9,0:08:23.2|135.68,29:05:27|-162.95,2.07,2000,0
 Caph,f|S|F2,0:09:10.1|523.39,59:09:01|-180.42,2.28,2000,0
 Algenib,f|S|B2,0:13:14.2|4.7,15:11:01|-8.24,2.83,2000,0
@@ -153,82 +148,8 @@ Suhail,f|S|K4,09 07 59.7771|-23.21,-43 25 57.447|14.28,2.23,2000,0
 Zubenelgenubi,f|S|A3,14 50 52.7773|-105.69,-16 02 29.798|-69.00,2.75,2000,0
 """
 
-stars = {}
-
-
-def readdb(line):
-    """Unpacks a line of an xephem catalogue and creates a Body object.
-
-    Only fixed positions without proper motions and earth satellites have
-    been implemented.
-    """
-    # Split line to fields
-    fields = line.split(',')
-
-    if fields[1][0] == 'f':
-
-        # This is a fixed position
-        name = fields[0]
-        ra = fields[2].split('|')[0]
-        dec = fields[3].split('|')[0]
-        ra = Longitude(ra, unit=u.hour)
-        dec = Latitude(dec, unit=u.deg)
-        return FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
-
-    elif fields[1][0] == 'E':
-
-        # This is an Earth satellite
-        subfields = fields[2].split('|')
-
-        # This is an earth satellite.
-        e = EarthSatelliteBody(name=fields[0])
-        epoch = subfields[0].split('/')
-        yr = epoch[2]
-        mon = epoch[0]
-        h, day = np.modf(float(epoch[1]))
-        day = int(np.floor(day))
-        m, h = np.modf(h * 24.0)
-        h = int(np.floor(h))
-        s, m = np.modf(m * 60.0)
-        m = int(np.floor(m))
-        s = s * 60.0
-        e._epoch = Time('{0}-{1}-{2} {3:02d}:{4:02d}:{5}'.format(yr, mon, day, h, m, s), scale='utc')
-        e._inc = np.deg2rad(float(fields[3]))
-        e._raan = np.deg2rad(float(fields[4]))
-        e._e = float(fields[5])
-        e._ap = np.deg2rad(float(fields[6]))
-        e._M = np.deg2rad(float(fields[7]))
-        e._n = float(fields[8])
-        e._decay = float(fields[9])
-        e._nddot = 0.0
-        e._orbit = int(fields[10])
-        e._drag = float(fields[11])
-        return e
-
-    else:
-        raise ValueError('Bogus: ' + line)
-
-
-def _build_stars():
-    """ Builds the default catalogue.
-
-    The catalogue is loaded into a global array "stars"
-    """
-    global stars
-    for line in db.strip().split('\n'):
-        s = readdb(line)
-        stars[s.name] = s
-
-
-def star(name):
-    """ Get a record from the catalogue
-    """
-    return stars[name]
-
-
-# Build catalogue
-_build_stars()
-
-# Remove the function for creating the default catalogue as it is no longer
-# needed.
-del _build_stars
+STARS = {}
+for _line in db.strip().split('\n'):
+    _body = Body.from_edb(_line.strip())
+    STARS[_body.name] = _body
+del _line, _body

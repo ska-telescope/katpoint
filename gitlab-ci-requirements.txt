@@ -11,7 +11,7 @@ pytest-cov
 pytest-pylint
 python-dotenv>=0.5.1
 setuptools
-sgp4
+sgp4>=2.7
 sphinx
 sphinx-autobuild
 sphinx-rtd-theme
