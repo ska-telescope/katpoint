@@ -138,10 +138,6 @@ def test_earth_satellite():
     body2 = Body.from_edb(xephem)
     assert isinstance(body2, EarthSatelliteBody)
     assert body2.to_edb() == xephem
-    _check_edb_E(body2.satellite, epoch_iso='2019-09-23 07:45:35.842',
-                 inc=55.4408, raan=61.379002, e=0.0191986, ap=78.180199, M=283.9935,
-                 n=2.0056172, decay=1.2e-07, drag=9.9999997e-05)
-    assert body2.orbit_number == 10428  # XXX This should eventually be sat.revnum
 
 
 def test_star():
