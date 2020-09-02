@@ -67,31 +67,33 @@ def _just_gimme_an_ascii_string(s):
 def angle_from_degrees(s):
     """Creates angle object from sexagesimal string in degrees or number in radians."""
     try:
-        # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
-        if type(s) == str:
-            return Angle(s, unit=u.deg)
-        elif type(s) == tuple:
+        return Angle(s)
+    except u.UnitsError:
+        # Deal with user input
+        if isinstance(s, bytes):
+            s = s.decode(encoding='ascii')
+        # We now have a number, string or tuple without a unit
+        if isinstance(s, (str, tuple)):
             return Angle(s, unit=u.deg)
         else:
             return Angle(s, unit=u.rad)
-    except TypeError:
-        # If input is neither, assume that it really wants to be a string
-        return Angle(_just_gimme_an_ascii_string(s), unit=u.deg)
 
 
 def angle_from_hours(s):
     """Creates angle object from sexagesimal string in hours or number in radians."""
     try:
-        # Ephem expects a number or platform-appropriate string (i.e. Unicode on Py3)
-        if type(s) == str:
+        return Angle(s)
+    except u.UnitsError:
+        # Deal with user input
+        if isinstance(s, bytes):
+            s = s.decode(encoding='ascii')
+        # We now have a number, string or tuple without a unit
+        if isinstance(s, str) and ':' in s or isinstance(s, tuple):
             return Angle(s, unit=u.hour)
-        elif type(s) == tuple:
-            return Angle(s, unit=u.hour)
+        if isinstance(s, str):
+            return Angle(s, unit=u.deg)
         else:
             return Angle(s, unit=u.rad)
-    except TypeError:
-        # If input is neither, assume that it really wants to be a string
-        return Angle(_just_gimme_an_ascii_string(s), unit=u.hour)
 
 
 def wrap_angle(angle, period=2.0 * np.pi):

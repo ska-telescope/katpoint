@@ -41,14 +41,14 @@ else:
 
 @pytest.mark.parametrize("angle, angle_deg", [('10:00:00', 10), ('10.0', 10),
                                               ((10 * u.deg).to_value(u.rad), 10),
-                                              ('10d00m00s', 10)])
+                                              ('10d00m00s', 10), ((10, 0, 0), 10)])
 def test_angle_from_degrees(angle, angle_deg):
     assert angle_from_degrees(angle).deg == angle_deg
 
 
-@pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10), ('150.0', 10),
+@pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10), ('150.0', pytest.approx(10)),
                                                ((150 * u.deg).to_value(u.rad), pytest.approx(10)),
-                                               ('10h00m00s', 10)])
+                                               ('10h00m00s', 10), ((10, 0, 0), 10)])
 def test_angle_from_hours(angle, angle_hour):
     assert angle_from_hours(angle).hour == angle_hour
 
