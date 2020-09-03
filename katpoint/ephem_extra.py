@@ -16,8 +16,6 @@
 
 """Enhancements to PyEphem."""
 
-import numpy as np
-
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
 # --------------------------------------------------------------------------------------------------
@@ -27,11 +25,3 @@ def is_iterable(x):
     """Checks if object is iterable (but not a string or 0-dimensional array)."""
     return hasattr(x, '__iter__') and not isinstance(x, str) and \
         not (getattr(x, 'shape', None) == ())
-
-
-def wrap_angle(angle, period=2.0 * np.pi):
-    """Wrap angle into interval centred on zero.
-
-    This wraps the *angle* into the interval -*period* / 2 ... *period* / 2.
-    """
-    return (angle + 0.5 * period) % period - 0.5 * period
