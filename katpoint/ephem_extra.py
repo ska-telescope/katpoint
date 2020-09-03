@@ -44,26 +44,6 @@ def deg2rad(x):
     return x * (np.pi / 180.0)
 
 
-def _just_gimme_an_ascii_string(s):
-    """Converts encoded/decoded string to a platform-appropriate ASCII string.
-
-    On Python 2 this encodes Unicode strings to normal ASCII strings, while
-    normal strings are left unchanged. On Python 3 this decodes bytes to
-    Unicode strings via the ASCII encoding, while Unicode strings are left
-    unchanged (and might still contain non-ASCII characters!).
-
-    Raises
-    ------
-    UnicodeEncodeError, UnicodeDecodeError
-        If the conversion fails due to the presence of non-ASCII characters
-    """
-    if isinstance(s, bytes) and not isinstance(s, str):
-        # Only encoded bytes on Python 3 will end up here
-        return str(s, encoding='ascii')
-    else:
-        return str(s)
-
-
 def wrap_angle(angle, period=2.0 * np.pi):
     """Wrap angle into interval centred on zero.
 

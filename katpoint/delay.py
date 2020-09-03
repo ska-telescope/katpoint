@@ -28,7 +28,7 @@ import numpy as np
 
 from .model import Parameter, Model
 from .conversion import azel_to_enu
-from .ephem_extra import lightspeed, is_iterable, _just_gimme_an_ascii_string
+from .ephem_extra import lightspeed, is_iterable
 from .target import construct_radec_target
 
 
@@ -140,8 +140,7 @@ class DelayCorrection:
             except ValueError:
                 raise ValueError("Trying to construct DelayCorrection with an "
                                  "invalid description string %r" % (ants,))
-            # JSON only returns Unicode, even on Python 2... Remedy this.
-            ref_ant_str = _just_gimme_an_ascii_string(descr['ref_ant'])
+            ref_ant_str = descr['ref_ant']
             # Antenna needs DelayModel which also lives in this module...
             # This is messy but avoids a circular dependency and having to
             # split this file into two small bits.
@@ -152,8 +151,8 @@ class DelayCorrection:
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():
                 ant_model = DelayModel()
-                ant_model.fromstring(_just_gimme_an_ascii_string(ant_model_str))
-                ant_models[_just_gimme_an_ascii_string(ant_name)] = ant_model
+                ant_model.fromstring(ant_model_str)
+                ant_models[ant_name] = ant_model
         else:
             # `ants` is a sequence of Antennas - verify and extract delay models
             if ref_ant is None:
