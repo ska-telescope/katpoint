@@ -27,8 +27,8 @@ from .helper import assert_angles_almost_equal
 @pytest.fixture
 def pointing_grid():
     """Generate a grid of (az, el) values in natural antenna coordinates."""
-    az_range = katpoint.deg2rad(np.arange(-185.0, 275.0, 5.0))
-    el_range = katpoint.deg2rad(np.arange(0.0, 86.0, 1.0))
+    az_range = np.radians(np.arange(-185.0, 275.0, 5.0))
+    el_range = np.radians(np.arange(0.0, 86.0, 1.0))
     mesh_az, mesh_el = np.meshgrid(az_range, el_range)
     az = mesh_az.ravel()
     el = mesh_el.ravel()
@@ -39,7 +39,7 @@ def pointing_grid():
 def params():
     """Generate random parameters for a pointing model."""
     # Generate random parameter values with this spread
-    param_stdev = katpoint.deg2rad(20. / 60.)
+    param_stdev = np.radians(20. / 60.)
     num_params = len(katpoint.PointingModel())
     params = param_stdev * np.random.randn(num_params)
     return params

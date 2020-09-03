@@ -80,10 +80,10 @@ cat = katpoint.Catalogue(open('bae_optical_pointing_sources.csv'),
 timestamp = katpoint.Timestamp()
 ra, dec = np.array([t.radec(timestamp) for t in cat]).transpose()
 constellation = [t.aliases[0].partition(' ')[2][:3] if t.aliases else 'SOL' for t in cat]
-ra, dec = katpoint.rad2deg(ra), katpoint.rad2deg(dec)
+ra, dec = np.degrees(ra), np.degrees(dec)
 az, el = np.hstack([targ.azel([katpoint.Timestamp(timestamp + t)
                                for t in range(0, 24 * 3600, 30 * 60)]) for targ in cat])
-az, el = katpoint.rad2deg(az), katpoint.rad2deg(el)
+az, el = np.degrees(az), np.degrees(el)
 
 plt.figure(1)
 plt.clf()

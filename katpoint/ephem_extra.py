@@ -17,8 +17,6 @@
 """Enhancements to PyEphem."""
 
 import numpy as np
-import astropy.units as u
-from astropy.coordinates import Angle
 
 # --------------------------------------------------------------------------------------------------
 # --- Helper functions
@@ -32,16 +30,6 @@ def is_iterable(x):
     """Checks if object is iterable (but not a string or 0-dimensional array)."""
     return hasattr(x, '__iter__') and not isinstance(x, str) and \
         not (getattr(x, 'shape', None) == ())
-
-
-def rad2deg(x):
-    """Converts radians to degrees (also works for arrays)."""
-    return x * (180.0 / np.pi)
-
-
-def deg2rad(x):
-    """Converts degrees to radians (also works for arrays)."""
-    return x * (np.pi / 180.0)
 
 
 def wrap_angle(angle, period=2.0 * np.pi):
