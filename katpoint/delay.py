@@ -25,17 +25,20 @@ import logging
 import json
 
 import numpy as np
+import astropy.units as u
+import astropy.constants as const
 
 from .model import Parameter, Model
 from .conversion import azel_to_enu
-from .ephem_extra import lightspeed, is_iterable
+from .ephem_extra import is_iterable
 from .target import construct_radec_target
 
 
 # Speed of EM wave in fixed path (typically due to cables / clock distribution).
 # This number is not critical - only meant to convert delays to "nice" lengths.
 # Typical factors are: fibre = 0.7, coax = 0.84.
-FIXEDSPEED = 0.7 * lightspeed
+LIGHTSPEED = const.c.to_value(u.m / u.s)
+FIXEDSPEED = 0.7 * LIGHTSPEED
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +74,7 @@ class DelayModel(Model):
         Model.__init__(self, params)
         self.set(model)
         # The EM wave velocity associated with each parameter
-        self._speeds = np.array([lightspeed] * 3 + [FIXEDSPEED] * 2 + [lightspeed])
+        self._speeds = np.array([LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED])
 
     @property
     def delay_params(self):

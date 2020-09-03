@@ -18,6 +18,7 @@
 
 import numpy as np
 import astropy.units as u
+import astropy.constants as const
 from astropy.coordinates import SkyCoord  # High-level coordinates
 from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS  # Low-level frames
 from astropy.coordinates import Latitude, Longitude, Angle  # Angles
@@ -25,7 +26,7 @@ from astropy.time import Time
 
 from .timestamp import Timestamp, delta_seconds
 from .flux import FluxDensityModel
-from .ephem_extra import is_iterable, lightspeed
+from .ephem_extra import is_iterable
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from .body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
@@ -521,7 +522,7 @@ class Target:
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline_m, targetdirs) / lightspeed
+        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)
         return delays[..., 1], delays[..., 2] - delays[..., 0]
 
     def uvw_basis(self, timestamp=None, antenna=None):

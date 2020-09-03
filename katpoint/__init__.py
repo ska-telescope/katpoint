@@ -34,7 +34,7 @@ from .antenna import Antenna
 from .timestamp import Timestamp
 from .flux import FluxDensityModel, FluxError
 from .catalogue import Catalogue, specials
-from .ephem_extra import lightspeed, wrap_angle, is_iterable
+from .ephem_extra import wrap_angle, is_iterable
 from .conversion import (lla_to_ecef, ecef_to_lla, enu_to_ecef, ecef_to_enu,
                          azel_to_enu, enu_to_azel, hadec_to_enu, enu_to_xyz)
 from .projection import sphere_to_plane, plane_to_sphere

@@ -22,9 +22,6 @@ import numpy as np
 # --- Helper functions
 # --------------------------------------------------------------------------------------------------
 
-# The speed of light, in metres per second
-lightspeed = 299792458.0
-
 
 def is_iterable(x):
     """Checks if object is iterable (but not a string or 0-dimensional array)."""
