@@ -25,10 +25,11 @@ from astropy.time import Time
 
 from .timestamp import Timestamp, delta_seconds
 from .flux import FluxDensityModel
-from .ephem_extra import is_iterable, lightspeed, to_angle
+from .ephem_extra import is_iterable, lightspeed
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
+from .body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
+                   StationaryBody, NullBody, to_angle)
 from .stars import STARS
 
 

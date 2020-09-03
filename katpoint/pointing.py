@@ -25,7 +25,8 @@ import numpy as np
 from astropy import units
 
 from .model import Parameter, Model
-from .ephem_extra import rad2deg, deg2rad, to_angle
+from .body import to_angle
+from .ephem_extra import rad2deg, deg2rad
 
 logger = logging.getLogger(__name__)
 

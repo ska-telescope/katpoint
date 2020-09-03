@@ -21,14 +21,51 @@ import re
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import ICRS, AltAz, Latitude, Longitude, SkyCoord
+from astropy.coordinates import SkyCoord, ICRS, AltAz, Latitude, Longitude, Angle
 from astropy.coordinates import solar_system_ephemeris, get_body
 from astropy.coordinates import TEME, CartesianDifferential, CartesianRepresentation
 from sgp4.api import Satrec, WGS72
 from sgp4.model import Satrec as SatrecPython
 from sgp4.exporter import export_tle
 
-from .ephem_extra import to_angle
+
+def to_angle(s, sexagesimal=u.deg):
+    """Construct an `Angle` with default units.
+
+    This creates an :class:`~astropy.coordinates.Angle` with the following
+    default units:
+
+      - A number is in radians.
+      - A decimal string ('123.4') is in degrees.
+      - A sexagesimal string ('12:34:56.7') or tuple has unit `sexagesimal`.
+
+    In addition, bytes are decoded to ASCII strings to normalize user inputs.
+
+    Parameters
+    ----------
+    s : :class:`~astropy.coordinates.Angle` or equivalent
+        Anything accepted by `Angle` and also unitless strings, numbers, tuples
+    sexagesimal : :class:`~astropy.units.UnitBase` or str, optional
+        The unit applied to sexagesimal strings and tuples
+
+    Returns
+    -------
+    angle : :class:`~astropy.coordinates.Angle`
+        Astropy `Angle`
+    """
+    try:
+        return Angle(s)
+    except u.UnitsError:
+        # Deal with user input
+        if isinstance(s, bytes):
+            s = s.decode(encoding='ascii')
+        # We now have a number, string or tuple without a unit
+        if isinstance(s, str) and ':' in s or isinstance(s, tuple):
+            return Angle(s, unit=sexagesimal)
+        if isinstance(s, str):
+            return Angle(s, unit=u.deg)
+        else:
+            return Angle(s, unit=u.rad)
 
 
 class Body:

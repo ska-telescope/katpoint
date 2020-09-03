@@ -27,8 +27,7 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 from astropy.coordinates import EarthLocation, Latitude, Longitude
 
-from katpoint.ephem_extra import to_angle
-from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody
+from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, to_angle
 from katpoint.test.helper import check_separation
 
 try:
