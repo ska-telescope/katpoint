@@ -28,7 +28,7 @@ from sgp4.api import Satrec, WGS72
 from sgp4.model import Satrec as SatrecPython
 from sgp4.exporter import export_tle
 
-from .ephem_extra import angle_from_degrees
+from .ephem_extra import to_angle
 
 
 class Body:
@@ -371,7 +371,7 @@ class StationaryBody(Body):
     """
 
     def __init__(self, az, el, name=None):
-        self.coord = AltAz(az=angle_from_degrees(az), alt=angle_from_degrees(el))
+        self.coord = AltAz(az=Longitude(to_angle(az)), alt=Latitude(to_angle(el)))
         if not name:
             name = "Az: {} El: {}".format(self.coord.az.to_string(sep=':', unit=u.deg),
                                           self.coord.alt.to_string(sep=':', unit=u.deg))

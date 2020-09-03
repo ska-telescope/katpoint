@@ -64,23 +64,30 @@ def _just_gimme_an_ascii_string(s):
         return str(s)
 
 
-def angle_from_degrees(s):
-    """Creates angle object from sexagesimal string in degrees or number in radians."""
-    try:
-        return Angle(s)
-    except u.UnitsError:
-        # Deal with user input
-        if isinstance(s, bytes):
-            s = s.decode(encoding='ascii')
-        # We now have a number, string or tuple without a unit
-        if isinstance(s, (str, tuple)):
-            return Angle(s, unit=u.deg)
-        else:
-            return Angle(s, unit=u.rad)
+def to_angle(s, sexagesimal=u.deg):
+    """Construct an `Angle` with default units.
 
+    This creates an :class:`~astropy.coordinates.Angle` with the following
+    default units:
 
-def angle_from_hours(s):
-    """Creates angle object from sexagesimal string in hours or number in radians."""
+      - A number is in radians.
+      - A decimal string ('123.4') is in degrees.
+      - A sexagesimal string ('12:34:56.7') or tuple has unit `sexagesimal`.
+
+    In addition, bytes are decoded to ASCII strings to normalize user inputs.
+
+    Parameters
+    ----------
+    s : :class:`~astropy.coordinates.Angle` or equivalent
+        Anything accepted by `Angle` and also unitless strings, numbers, tuples
+    sexagesimal : :class:`~astropy.units.UnitBase` or str, optional
+        The unit applied to sexagesimal strings and tuples
+
+    Returns
+    -------
+    angle : :class:`~astropy.coordinates.Angle`
+        Astropy `Angle`
+    """
     try:
         return Angle(s)
     except u.UnitsError:
@@ -89,7 +96,7 @@ def angle_from_hours(s):
             s = s.decode(encoding='ascii')
         # We now have a number, string or tuple without a unit
         if isinstance(s, str) and ':' in s or isinstance(s, tuple):
-            return Angle(s, unit=u.hour)
+            return Angle(s, unit=sexagesimal)
         if isinstance(s, str):
             return Angle(s, unit=u.deg)
         else:

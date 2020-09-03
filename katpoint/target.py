@@ -25,7 +25,7 @@ from astropy.time import Time
 
 from .timestamp import Timestamp, delta_seconds
 from .flux import FluxDensityModel
-from .ephem_extra import (is_iterable, lightspeed, deg2rad, angle_from_degrees, angle_from_hours)
+from .ephem_extra import is_iterable, lightspeed, to_angle
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from .body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
@@ -937,11 +937,8 @@ def construct_target_params(description):
         if len(fields) < 4:
             raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
                              % description)
-        try:
-            ra = deg2rad(float(fields[2]))
-        except ValueError:
-            ra = fields[2]
-        ra, dec = angle_from_hours(ra), angle_from_degrees(fields[3])
+        ra = Longitude(to_angle(fields[2], sexagesimal=u.hour))
+        dec = Latitude(to_angle(fields[3]))
         if not preferred_name:
             preferred_name = "Ra: %s Dec: %s" % (ra, dec)
         # Extract epoch info from tags
@@ -989,7 +986,7 @@ def construct_target_params(description):
         star_name = ' '.join([w.capitalize() for w in preferred_name.split()])
         try:
             body = STARS[star_name]
-        except KeyError as err:
+        except KeyError:
             raise ValueError(f"Target description '{description}' "
                              f"contains unknown *star* '{star_name}'") from None
 
@@ -1080,13 +1077,8 @@ def construct_radec_target(ra, dec):
     target : :class:`Target` object
         Constructed target object
     """
-    # First try to interpret the string as decimal degrees
-    if isinstance(ra, str):
-        try:
-            ra = deg2rad(float(ra))
-        except ValueError:
-            pass
-    ra, dec = angle_from_hours(ra), angle_from_degrees(dec)
+    ra = Longitude(to_angle(ra, sexagesimal=u.hour))
+    dec = Latitude(to_angle(dec))
     name = "Ra: %s Dec: %s" % (ra, dec)
     body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
     return Target(body, 'radec')

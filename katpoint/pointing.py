@@ -25,7 +25,7 @@ import numpy as np
 from astropy import units
 
 from .model import Parameter, Model
-from .ephem_extra import rad2deg, deg2rad, angle_from_degrees
+from .ephem_extra import rad2deg, deg2rad, to_angle
 
 logger = logging.getLogger(__name__)
 
@@ -55,17 +55,16 @@ class PointingModel(Model):
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
         def angle_to_string(a):
-            return angle_from_degrees(a).to_string(sep=':', unit=units.deg) if a != 0 else '0'
+            return to_angle(a).to_string(sep=':', unit=units.deg) if a != 0 else '0'
 
         def angle_param(name, doc):
             """Create angle-valued parameter."""
-            return Parameter(name, 'deg', doc, from_str=angle_from_degrees,
-                             to_str=angle_to_string)
+            return Parameter(name, 'deg', doc, from_str=to_angle, to_str=angle_to_string)
 
         def scale_param(name, doc):
             """Create scale-valued parameter."""
-            return Parameter(name, '', doc,
-                             to_str=lambda s: ('%.9g' % (s,)) if s else '0')
+            return Parameter(name, '', doc, to_str=lambda s: ('%.9g' % (s,)) if s else '0')
+
         # Instantiate the relevant model parameters and register with base class
         params = []
         params.append(angle_param('P1', 'az offset = encoder bias - tilt around [tpoint -IA]'))

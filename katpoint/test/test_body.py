@@ -27,7 +27,7 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, ICRS, AltAz
 from astropy.coordinates import EarthLocation, Latitude, Longitude
 
-from katpoint.ephem_extra import angle_from_degrees, angle_from_hours
+from katpoint.ephem_extra import to_angle
 from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody
 from katpoint.test.helper import check_separation
 
@@ -43,14 +43,14 @@ else:
                                               ((10 * u.deg).to_value(u.rad), 10),
                                               ('10d00m00s', 10), ((10, 0, 0), 10)])
 def test_angle_from_degrees(angle, angle_deg):
-    assert angle_from_degrees(angle).deg == angle_deg
+    assert to_angle(angle, sexagesimal=u.deg).deg == angle_deg
 
 
 @pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10), ('150.0', pytest.approx(10)),
                                                ((150 * u.deg).to_value(u.rad), pytest.approx(10)),
                                                ('10h00m00s', 10), ((10, 0, 0), 10)])
 def test_angle_from_hours(angle, angle_hour):
-    assert angle_from_hours(angle).hour == angle_hour
+    assert to_angle(angle, sexagesimal=u.hour).hour == angle_hour
 
 
 def _get_fixed_body(ra_str, dec_str):
