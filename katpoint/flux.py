@@ -20,8 +20,6 @@ import warnings
 
 import numpy as np
 
-from .ephem_extra import is_iterable
-
 
 class FluxError(ValueError):
     """Exception for a flux parsing error."""
@@ -172,14 +170,11 @@ class FluxDensityModel:
         flux_density : float, or array of floats of same shape as *freq_MHz*
             Flux density in Jy, or np.nan if the frequency is out of range
         """
-        flux = self._flux_density_raw(freq_MHz) * self.iquv_scale[0]
-        if is_iterable(freq_MHz):
-            freq_MHz = np.asarray(freq_MHz)
-            flux[freq_MHz < self.min_freq_MHz] = np.nan
-            flux[freq_MHz > self.max_freq_MHz] = np.nan
-            return flux
-        else:
-            return flux if (freq_MHz >= self.min_freq_MHz) and (freq_MHz <= self.max_freq_MHz) else np.nan
+        freq_MHz = np.asarray(freq_MHz)
+        flux = np.asarray(self._flux_density_raw(freq_MHz) * self.iquv_scale[0])
+        flux[freq_MHz < self.min_freq_MHz] = np.nan
+        flux[freq_MHz > self.max_freq_MHz] = np.nan
+        return flux if flux.ndim else flux.item()
 
     def flux_density_stokes(self, freq_MHz):
         """Calculate full-Stokes flux density for given observation frequency.

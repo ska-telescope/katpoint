@@ -87,6 +87,11 @@ class TestDelayCorrection:
         extra_delay = self.delays.extra_delay
         delay0, phase0 = self.delays.corrections(self.target1, self.ts)
         delay1, phase1 = self.delays.corrections(self.target1, self.ts, self.ts + 1.0)
+        # First check dimensions
+        assert np.shape(delay0['A2h']) == ()
+        assert np.shape(phase0['A2h']) == ()
+        assert np.shape(delay1['A2h']) == (2,)
+        assert np.shape(phase1['A2h']) == (2,)
         # This target is special - direction perpendicular to baseline (and stationary)
         assert delay0['A2h'] == extra_delay, 'Delay for ant2h should be zero'
         assert delay0['A2v'] == extra_delay, 'Delay for ant2v should be zero'
@@ -102,6 +107,8 @@ class TestDelayCorrection:
         np.testing.assert_almost_equal(delay1['A2h'][1], -tgt_delay_rate, decimal=13)
         # Test vector version
         delay2, phase2 = self.delays.corrections(self.target2, (self.ts - 0.5, self.ts + 0.5))
+        assert np.shape(delay2['A2h']) == (2, 2)
+        assert np.shape(phase2['A2h']) == (2, 2)
         np.testing.assert_equal(delay2['A2h'][0], delay1['A2h'])
         np.testing.assert_equal(phase2['A2h'][0], phase1['A2h'])
 

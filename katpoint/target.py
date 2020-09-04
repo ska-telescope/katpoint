@@ -26,7 +26,6 @@ from astropy.time import Time
 
 from .timestamp import Timestamp, delta_seconds
 from .flux import FluxDensityModel
-from .ephem_extra import is_iterable
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from .body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
@@ -634,9 +633,9 @@ class Target:
         # Obtain basis vectors
         basis = self.uvw_basis(time, antenna)
         # Obtain baseline vector from reference antenna to second antenna
-        if is_iterable(antenna2):
+        try:
             baseline_m = np.stack([antenna.baseline_toward(a2) for a2 in antenna2])
-        else:
+        except TypeError:
             baseline_m = antenna.baseline_toward(antenna2)
         # Apply linear coordinate transformation. A single call np.dot won't
         # work for both the scalar and array case, so we explicitly specify the
@@ -707,7 +706,8 @@ class Target:
             raise ValueError('Please specify frequency at which to measure flux density')
         if self.flux_model is None:
             # Target has no specified flux density
-            return np.full(np.shape(flux_freq_MHz), np.nan) if is_iterable(flux_freq_MHz) else np.nan
+            flux = np.full(np.shape(flux_freq_MHz), np.nan)
+            return flux if flux.ndim else flux.item()
         return self.flux_model.flux_density(flux_freq_MHz)
 
     def flux_density_stokes(self, flux_freq_MHz=None):

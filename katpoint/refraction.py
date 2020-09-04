@@ -23,7 +23,6 @@ import logging
 
 import numpy as np
 
-from .ephem_extra import is_iterable
 
 logger = logging.getLogger(__name__)
 
@@ -209,17 +208,10 @@ class RefractionCorrection:
             test_el = self.apply(el, temperature_C, pressure_hPa, humidity_percent)
             if np.all(np.abs(test_el - refracted_el) < tolerance):
                 break
-            # Handle both scalars and arrays (and lists) as cleanly as possible
-            if not is_iterable(refracted_el):
-                if test_el < refracted_el:
-                    lower = el
-                else:
-                    upper = el
-            else:
-                lower = np.where(test_el < refracted_el, el, lower)
-                upper = np.where(test_el > refracted_el, el, upper)
+            lower = np.where(test_el < refracted_el, el, lower)
+            upper = np.where(test_el > refracted_el, el, upper)
         else:
             logger.warning('Reverse refraction correction did not converge in '
                            '%d iterations - elevation differs by at most %f arcsecs',
                            iteration + 1, np.degrees(np.abs(test_el - refracted_el).max()) * 3600.)
-        return el
+        return el if el.ndim else el.item()
