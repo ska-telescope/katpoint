@@ -18,17 +18,17 @@
 
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord  # High-level coordinates
-from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS  # Low-level frames
-from astropy.coordinates import Latitude, Longitude, Angle  # Angles
+import astropy.constants as const
+from astropy.coordinates import SkyCoord, Angle
+from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS
 from astropy.time import Time
 
 from .timestamp import Timestamp, delta_seconds
 from .flux import FluxDensityModel
-from .ephem_extra import (is_iterable, lightspeed, deg2rad, angle_from_degrees, angle_from_hours)
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
+from .body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
+                   StationaryBody, NullBody, to_angle)
 from .stars import STARS
 
 
@@ -520,7 +520,7 @@ class Target:
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline_m, targetdirs) / lightspeed
+        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)
         return delays[..., 1], delays[..., 2] - delays[..., 0]
 
     def uvw_basis(self, timestamp=None, antenna=None):
@@ -632,9 +632,9 @@ class Target:
         # Obtain basis vectors
         basis = self.uvw_basis(time, antenna)
         # Obtain baseline vector from reference antenna to second antenna
-        if is_iterable(antenna2):
+        try:
             baseline_m = np.stack([antenna.baseline_toward(a2) for a2 in antenna2])
-        else:
+        except TypeError:
             baseline_m = antenna.baseline_toward(antenna2)
         # Apply linear coordinate transformation. A single call np.dot won't
         # work for both the scalar and array case, so we explicitly specify the
@@ -705,7 +705,8 @@ class Target:
             raise ValueError('Please specify frequency at which to measure flux density')
         if self.flux_model is None:
             # Target has no specified flux density
-            return np.full(np.shape(flux_freq_MHz), np.nan) if is_iterable(flux_freq_MHz) else np.nan
+            flux = np.full(np.shape(flux_freq_MHz), np.nan)
+            return flux if flux.ndim else flux.item()
         return self.flux_model.flux_density(flux_freq_MHz)
 
     def flux_density_stokes(self, flux_freq_MHz=None):
@@ -937,11 +938,8 @@ def construct_target_params(description):
         if len(fields) < 4:
             raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
                              % description)
-        try:
-            ra = deg2rad(float(fields[2]))
-        except ValueError:
-            ra = fields[2]
-        ra, dec = angle_from_hours(ra), angle_from_degrees(fields[3])
+        ra = to_angle(fields[2], sexagesimal_unit=u.hour)
+        dec = to_angle(fields[3])
         if not preferred_name:
             preferred_name = "Ra: %s Dec: %s" % (ra, dec)
         # Extract epoch info from tags
@@ -960,8 +958,8 @@ def construct_target_params(description):
         l, b = float(fields[2]), float(fields[3])
         if not preferred_name:
             preferred_name = "Galactic l: %.4f b: %.4f" % (l, b)
-        body = FixedBody(preferred_name, SkyCoord(l=Longitude(l, unit=u.deg),
-                                                  b=Latitude(b, unit=u.deg), frame=Galactic))
+        body = FixedBody(preferred_name, SkyCoord(l=Angle(l, unit=u.deg),
+                                                  b=Angle(b, unit=u.deg), frame=Galactic))
 
     elif body_type == 'tle':
         if len(fields) < 4:
@@ -989,7 +987,7 @@ def construct_target_params(description):
         star_name = ' '.join([w.capitalize() for w in preferred_name.split()])
         try:
             body = STARS[star_name]
-        except KeyError as err:
+        except KeyError:
             raise ValueError(f"Target description '{description}' "
                              f"contains unknown *star* '{star_name}'") from None
 
@@ -1080,13 +1078,8 @@ def construct_radec_target(ra, dec):
     target : :class:`Target` object
         Constructed target object
     """
-    # First try to interpret the string as decimal degrees
-    if isinstance(ra, str):
-        try:
-            ra = deg2rad(float(ra))
-        except ValueError:
-            pass
-    ra, dec = angle_from_hours(ra), angle_from_degrees(dec)
+    ra = to_angle(ra, sexagesimal_unit=u.hour)
+    dec = to_angle(dec)
     name = "Ra: %s Dec: %s" % (ra, dec)
     body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
     return Target(body, 'radec')

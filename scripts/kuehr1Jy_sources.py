@@ -69,7 +69,7 @@ for src in table:
     names = '1Jy ' + src['_1Jy']
     if len(src['_3C']) > 0:
         names += ' | *' + src['_3C']
-    ra, dec = katpoint.deg2rad(src['_RAJ2000']), katpoint.deg2rad(src['_DEJ2000'])
+    ra, dec = np.radians(src['_RAJ2000']), np.radians(src['_DEJ2000'])
     tags_ra_dec = katpoint.construct_radec_target(ra, dec).add_tags('J2000').description
     # Extract flux data for the current source from flux table
     flux = flux_table[flux_table['_1Jy'] == src['_1Jy']]

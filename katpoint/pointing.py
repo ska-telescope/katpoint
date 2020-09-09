@@ -25,7 +25,7 @@ import numpy as np
 from astropy import units
 
 from .model import Parameter, Model
-from .ephem_extra import rad2deg, deg2rad, angle_from_degrees
+from .body import to_angle
 
 logger = logging.getLogger(__name__)
 
@@ -55,17 +55,16 @@ class PointingModel(Model):
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
         def angle_to_string(a):
-            return angle_from_degrees(a).to_string(sep=':', unit=units.deg) if a != 0 else '0'
+            return to_angle(a).to_string(sep=':', unit=units.deg) if a != 0 else '0'
 
         def angle_param(name, doc):
             """Create angle-valued parameter."""
-            return Parameter(name, 'deg', doc, from_str=angle_from_degrees,
-                             to_str=angle_to_string)
+            return Parameter(name, 'deg', doc, from_str=to_angle, to_str=angle_to_string)
 
         def scale_param(name, doc):
             """Create scale-valued parameter."""
-            return Parameter(name, '', doc,
-                             to_str=lambda s: ('%.9g' % (s,)) if s else '0')
+            return Parameter(name, '', doc, to_str=lambda s: ('%.9g' % (s,)) if s else '0')
+
         # Instantiate the relevant model parameters and register with base class
         params = []
         params.append(angle_param('P1', 'az offset = encoder bias - tilt around [tpoint -IA]'))
@@ -140,7 +139,7 @@ class PointingModel(Model):
         sin_el, cos_el, sin_8el, cos_8el = np.sin(el), np.cos(el), np.sin(8 * el), np.cos(8 * el)
         # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
-        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), deg2rad(6. / 60.), 1.0)
+        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6. / 60.), 1.0)
         tan_el = sin_el * sec_el
 
         # Obtain pointing correction using full VLBI model for alt-az mount (no P2 or P10 allowed!)
@@ -198,7 +197,7 @@ class PointingModel(Model):
         sin_el, cos_el, sin_8el, cos_8el = np.sin(el), np.cos(el), np.sin(8 * el), np.cos(8 * el)
         # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
-        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), deg2rad(6. / 60.), 1.0)
+        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6. / 60.), 1.0)
         tan_el = sin_el * sec_el
 
         d_corraz_d_az = 1.0 + P5*cos_az*tan_el + P6*sin_az*tan_el + \
@@ -230,7 +229,7 @@ class PointingModel(Model):
             Elevation angle(s) before pointing correction, in radians
         """
         # Maximum difference between input az/el and pointing-corrected version of final output az/el
-        tolerance = deg2rad(0.01 / 3600)
+        tolerance = np.radians(0.01 / 3600)
         # Initial guess of uncorrected az/el is the corrected az/el minus fixed offsets
         az, el = pointed_az - self['P1'], pointed_el - self['P7']
         # Solve F(az, el) = apply(az, el) - (pointed_az, pointed_el) = 0 via Newton's method, should converge quickly
@@ -253,7 +252,7 @@ class PointingModel(Model):
             max_error, max_az, max_el = np.vstack((sky_error, pointed_az, pointed_el))[:, np.argmax(sky_error)]
             logger.warning('Reverse pointing correction did not converge in %d iterations - '
                            'maximum error is %f arcsecs at (az, el) = (%f, %f) radians',
-                           iteration + 1, rad2deg(max_error) * 3600., max_az, max_el)
+                           iteration + 1, np.degrees(max_error) * 3600., max_az, max_el)
         return az, el
 
     def fit(self, az, el, delta_az, delta_el, sigma_daz=None, sigma_del=None, enabled_params=None):

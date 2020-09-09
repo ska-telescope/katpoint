@@ -54,6 +54,8 @@ import numpy as np
 from scikits.fitting import PiecewisePolynomial1DFit
 import katpoint
 
+import astropy.units as u
+import astropy.constants as const
 from astropy.table import Table
 
 # Load tables in one shot (don't verify, as the VizieR VOTables contain a deprecated DEFINITIONS element)
@@ -120,11 +122,11 @@ for src in table:
     if len(src['OName']) > 0:
         names += ' | ' + src['OName']
     ra, dec = atca_cat[src['Name']].radec() if use_atca else \
-        (katpoint.deg2rad(src['_RAJ2000']), katpoint.deg2rad(src['_DEJ2000']))
+        (np.radians(src['_RAJ2000']), np.radians(src['_DEJ2000']))
     tags_ra_dec = katpoint.construct_radec_target(ra, dec).add_tags('J2000 ' + src['Type']).description
     # Extract polarisation data for the current source from pol table
     pol_data = pol_table[pol_table['Name'] == src['Name']]
-    pol_freqs_MHz = katpoint.lightspeed / (0.01 * pol_data['lambda']) / 1e6
+    pol_freqs_MHz = const.c.to_value(u.m / u.s) / (0.01 * pol_data['lambda']) / 1e6
     pol_percent = pol_data['Pol']
     # Remove duplicate frequencies and fit linear interpolator to data as function of frequency
     pol_freq, pol_perc = [], []

@@ -374,7 +374,7 @@ def test_separation():
 
 def test_projection():
     """Test projection."""
-    az, el = katpoint.deg2rad(50.0), katpoint.deg2rad(80.0)
+    az, el = np.radians(50.0), np.radians(80.0)
     x, y = TARGET.sphere_to_plane(az, el, TS, ANT1)
     re_az, re_el = TARGET.plane_to_sphere(x, y, TS, ANT1)
     np.testing.assert_almost_equal(re_az, az, decimal=12)
