@@ -288,9 +288,10 @@ class DelayCorrection:
         target : :class:`Target` object
             Target providing direction for geometric delays
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp(s) when delays are evaluated (default is now). If more
-            than one timestamp is given, the corrections will include slopes
-            to be used for linear interpolation between the times.
+            Timestamp(s) when delays are evaluated (default is now). If an array
+            of timestamps is given (in which case, it must contain at least two
+            elements), the corrections will include slopes to be used for linear
+            interpolation between the times.
         next_timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp when next delay will be evaluated, used to determine
             a slope for linear interpolation (default is no slope). This is

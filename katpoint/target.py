@@ -19,9 +19,8 @@
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
-from astropy.coordinates import SkyCoord  # High-level coordinates
-from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS  # Low-level frames
-from astropy.coordinates import Latitude, Longitude, Angle  # Angles
+from astropy.coordinates import SkyCoord, Angle
+from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS
 from astropy.time import Time
 
 from .timestamp import Timestamp, delta_seconds
@@ -939,8 +938,8 @@ def construct_target_params(description):
         if len(fields) < 4:
             raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
                              % description)
-        ra = Longitude(to_angle(fields[2], sexagesimal=u.hour))
-        dec = Latitude(to_angle(fields[3]))
+        ra = to_angle(fields[2], sexagesimal_unit=u.hour)
+        dec = to_angle(fields[3])
         if not preferred_name:
             preferred_name = "Ra: %s Dec: %s" % (ra, dec)
         # Extract epoch info from tags
@@ -959,8 +958,8 @@ def construct_target_params(description):
         l, b = float(fields[2]), float(fields[3])
         if not preferred_name:
             preferred_name = "Galactic l: %.4f b: %.4f" % (l, b)
-        body = FixedBody(preferred_name, SkyCoord(l=Longitude(l, unit=u.deg),
-                                                  b=Latitude(b, unit=u.deg), frame=Galactic))
+        body = FixedBody(preferred_name, SkyCoord(l=Angle(l, unit=u.deg),
+                                                  b=Angle(b, unit=u.deg), frame=Galactic))
 
     elif body_type == 'tle':
         if len(fields) < 4:
@@ -1079,8 +1078,8 @@ def construct_radec_target(ra, dec):
     target : :class:`Target` object
         Constructed target object
     """
-    ra = Longitude(to_angle(ra, sexagesimal=u.hour))
-    dec = Latitude(to_angle(dec))
+    ra = to_angle(ra, sexagesimal_unit=u.hour)
+    dec = to_angle(dec)
     name = "Ra: %s Dec: %s" % (ra, dec)
     body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
     return Target(body, 'radec')
