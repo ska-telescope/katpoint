@@ -114,8 +114,7 @@ def test_earth_satellite_vs_skyfield():
     t = ts.from_astropy(obstime)
     towards_sat = (satellite - antenna).at(t)
     alt, az, distance = towards_sat.altaz()
-    altaz = AltAz(alt=Angle(alt.radians, unit=u.rad), az=Angle(az.radians, unit=u.rad),
-                  obstime=obstime, location=LOCATION)
+    altaz = AltAz(alt=alt.to(u.rad), az=az.to(u.rad), obstime=obstime, location=LOCATION)
     check_separation(altaz, TLE_AZ, TLE_EL, 0.5 * u.arcsec)
 
 
