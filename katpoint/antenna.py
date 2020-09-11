@@ -121,13 +121,13 @@ class Antenna:
     ref_position_wgs84 : tuple of 3 floats
         WGS84 reference position (latitude and longitude in radians, and
         altitude in metres)
-    earth_location :class:`astropy.coordinates.EarthLocation` object
+    location :class:`astropy.coordinates.EarthLocation` object
         Underlying object used for pointing calculations
     pressure :class:`astropy.units.Quantity`
         Atrmospheric pressure used to refraction calculations
-    ref_earth_location :class:`astropy.coordinates.EarthLocation` object
+    ref_location :class:`astropy.coordinates.EarthLocation` object
         Array reference location for antenna in an array (same as
-        *earth_location* for a stand-alone antenna)
+        *location* for a stand-alone antenna)
     ref_pressure :class:`astropy.units.Quantity`
         Atrmospheric pressure used to refraction calculations
 
@@ -207,35 +207,35 @@ class Antenna:
             height = float(altitude) * u.meter
         # Disable astropy's built-in refraction model.
         self.ref_pressure = 0.0 * u.bar
-        self.ref_earth_location = EarthLocation(lat=lat, lon=lon, height=height)
+        self.ref_location = EarthLocation(lat=lat, lon=lon, height=height)
 
-        self.ref_position_wgs84 = (self.ref_earth_location.lat.rad,
-                                   self.ref_earth_location.lon.rad,
-                                   self.ref_earth_location.height.to(u.meter).value)
+        self.ref_position_wgs84 = (self.ref_location.lat.rad,
+                                   self.ref_location.lon.rad,
+                                   self.ref_location.height.to(u.meter).value)
 
         if self.delay_model:
             dm = self.delay_model
             self.position_enu = (dm['POS_E'], dm['POS_N'], dm['POS_U'])
             # Convert ENU offset to ECEF coordinates of antenna, and then to WGS84 coordinates
-            self.position_ecef = enu_to_ecef(self.ref_earth_location.lat.rad,
-                                             self.ref_earth_location.lon.rad,
-                                             self.ref_earth_location.height.to(u.meter).value,
+            self.position_ecef = enu_to_ecef(self.ref_location.lat.rad,
+                                             self.ref_location.lon.rad,
+                                             self.ref_location.height.to(u.meter).value,
                                              *self.position_enu)
             lat, lon, elevation = ecef_to_lla(*self.position_ecef)
             lat = Latitude(lat, unit=u.rad)
             lon = Longitude(lon, unit=u.rad)
             self.pressure = 0.0
-            self.earth_location = EarthLocation(lat=lat, lon=lon, height=height)
-            self.position_wgs84 = (self.earth_location.lat.rad,
-                                   self.earth_location.lon.rad,
-                                   self.earth_location.height.to(u.meter).value)
+            self.location = EarthLocation(lat=lat, lon=lon, height=height)
+            self.position_wgs84 = (self.location.lat.rad,
+                                   self.location.lon.rad,
+                                   self.location.height.to(u.meter).value)
         else:
-            self.earth_location = self.ref_earth_location
+            self.location = self.ref_location
             self.pressure = self.ref_pressure
             self.position_enu = (0.0, 0.0, 0.0)
-            self.position_wgs84 = lat, lon, alt = (self.earth_location.lat.rad,
-                                                   self.earth_location.lon.rad,
-                                                   self.earth_location.height.to(u.meter).value)
+            self.position_wgs84 = lat, lon, alt = (self.location.lat.rad,
+                                                   self.location.lon.rad,
+                                                   self.location.height.to(u.meter).value)
             self.position_ecef = enu_to_ecef(lat, lon, alt, *self.position_enu)
 
     def __str__(self):
@@ -277,7 +277,7 @@ class Antenna:
         """Complete string representation of antenna object, sufficient to reconstruct it."""
         # These fields are used to build up the antenna description string
         fields = [self.name]
-        location = self.ref_earth_location if self.delay_model else self.earth_location
+        location = self.ref_location if self.delay_model else self.location
         fields += [location.lat.to_string(sep=':', unit=u.deg)]
         fields += [location.lon.to_string(sep=':', unit=u.deg)]
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
@@ -335,7 +335,7 @@ class Antenna:
             Local apparent sidereal time(s)
         """
         time = Timestamp(timestamp).time
-        return time.sidereal_time('apparent', longitude=self.earth_location.lon)
+        return time.sidereal_time('apparent', longitude=self.location.lon)
 
     def array_reference_antenna(self, name='array'):
         """Synthetic antenna at the delay model reference position of this antenna.
