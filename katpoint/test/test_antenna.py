@@ -21,6 +21,8 @@ import pickle
 
 import pytest
 import numpy as np
+import astropy.units as u
+from astropy.coordinates import EarthLocation
 
 import katpoint
 
@@ -34,6 +36,7 @@ from .helper import assert_angles_almost_equal
         'FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0',
         ('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, '
          '-0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16'),
+        ', -25:53:23.0, 27:41:03.0, 1406.1086, 15.0',  # unnamed antenna
     ]
 )
 def test_construct_valid_antenna(description):
@@ -41,15 +44,13 @@ def test_construct_valid_antenna(description):
     # Normalise description string through one cycle to allow comparison
     reference_description = katpoint.Antenna(description).description
     test_antenna = katpoint.Antenna(reference_description)
-    assert test_antenna.description == reference_description, (
+    assert str(test_antenna) == test_antenna.description == reference_description, (
         'Antenna description differs from original string')
-    assert test_antenna.description == test_antenna.format_katcp(), (
-        'Antenna description differs from KATCP format')
     # Exercise repr() and str()
     print('{!r} {}'.format(test_antenna, test_antenna))
 
 
-@pytest.mark.parametrize("description", ['XDM, -25:53:23.05075, 27:41:03.0', ''])
+@pytest.mark.parametrize("description", ['XDM, -25:53:23.05075, 27:41:03.0', '', '\U0001F602'])
 def test_construct_invalid_antenna(description):
     """Test construction of invalid antennas from strings."""
     with pytest.raises(ValueError):
@@ -57,15 +58,31 @@ def test_construct_invalid_antenna(description):
 
 
 def test_construct_antenna():
-    """Test construction of antennas from strings and vice versa."""
-    descr = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0').description
-    assert descr == katpoint.Antenna(*descr.split(', ')).description
+    """Test various ways to construct and compare antennas."""
+    a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0')
+    # Construct Antenna from Antenna
+    assert katpoint.Antenna(a0) == a0
+    # Override some parameters
+    a0b = katpoint.Antenna(a0, name='bloop', beamwidth=3.14)
+    assert a0b.location == a0.location
+    assert a0b.name == 'bloop'
+    assert a0b.diameter == a0.diameter
+    assert a0b.delay_model == a0.delay_model
+    assert a0b.pointing_model == a0.pointing_model
+    assert a0b.beamwidth == 3.14
+    # Construct Antenna from EarthLocation
+    descr = a0.description
+    fields = descr.split(', ')
+    name = fields[0]
+    location = EarthLocation.from_geodetic(lat=fields[1], lon=fields[2], height=fields[3])
+    assert katpoint.Antenna(location, name, *fields[4:]).description == descr
     with pytest.raises(ValueError):
-        katpoint.Antenna(descr, *descr.split(', ')[1:])
+        katpoint.Antenna(location, name + ', oops', *fields[4:])
     # Check that description string updates when object is updated
     a1 = katpoint.Antenna('FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0')
     a2 = katpoint.Antenna('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 13.0, 18.4 -8.7 0.0, 0.1, 1.22')
     assert a1 != a2, 'Antennas should be inequal'
+    assert a1 < a2, 'Antenna a1 comes before a2 when sorted by description string'
     a1.name = 'FF2'
     a1.diameter = 13.0
     a1.pointing_model = katpoint.PointingModel('0.1')
@@ -79,6 +96,27 @@ def test_construct_antenna():
         assert hash(a1) == hash(a2), 'Antenna hashes not equal'
     except TypeError:
         pytest.fail('Antenna object not hashable')
+
+
+def test_coordinates():
+    """Test coordinates associated with antenna location."""
+    lla = ('-30:42:39.8', '21:26:38.0', '1086.6')
+    enu = (-8.264, -207.29, 8.5965)
+    ant = katpoint.Antenna(f"m000, {', '.join(lla)}, 13.5, {' '.join(str(c) for c in enu)}")
+    ref_location = EarthLocation.from_geodetic(lat=lla[0], lon=lla[1], height=lla[2])
+    assert ant.ref_location == ref_location
+    assert ant.position_enu == enu
+    ant0 = ant.array_reference_antenna()
+    assert ant0.location == ref_location
+    assert ant0.position_ecef == tuple(ref_location.itrs.cartesian.xyz.to_value(u.m))
+    assert ant0.position_wgs84 == (ref_location.lat.to_value(u.rad),
+                                   ref_location.lon.to_value(u.rad),
+                                   ref_location.height.to_value(u.m))
+    assert ant0.baseline_toward(ant) == enu
+    reverse_bl = ant.baseline_toward(ant0)
+    assert reverse_bl[0] == pytest.approx(-enu[0], abs=5e-4)
+    assert reverse_bl[1] == pytest.approx(-enu[1], abs=5e-4)
+    assert reverse_bl[2] == pytest.approx(-enu[2], abs=1e-2)
 
 
 def test_local_sidereal_time():
@@ -99,4 +137,4 @@ def test_array_reference_antenna():
     ant = katpoint.Antenna('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, '
                            '-0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16')
     ref_ant = ant.array_reference_antenna()
-    assert ref_ant.description == 'array, -30:43:17.3, 21:24:38.5, 1038, 12.0, , , 1.16'
+    assert ref_ant.description == 'array, -30:43:17.3, 21:24:38.5, 1038, 0.0, , , 1.22'
