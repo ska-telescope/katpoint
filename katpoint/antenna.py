@@ -42,15 +42,14 @@ DEFAULT_BEAMWIDTH = 1.22
 class Antenna:
     """An antenna that can point at a target.
 
-    This is a wrapper around an Astropy earth location
-    adds a dish diameter and other parameters related to pointing and delay
-    calculations.
+    This is a wrapper around an Astropy `EarthLocation` that adds a dish
+    diameter and other parameters related to pointing and delay calculations.
+
     It has two variants: a stand-alone single dish, or an antenna that is part
-    of an array. The first variant is initialised with the antenna location in
-    WGS84 (lat-lon-alt) form, while the second variant is initialised with the
-    array reference location in WGS84 form and an ENU (east-north-up) offset
-    for the specific antenna which also doubles as the first part of a broader
-    delay model for the antenna.
+    of an array. The first variant is initialised with the antenna location,
+    while the second variant is initialised with the array reference location
+    and an ENU (east-north-up) offset for the specific antenna which also
+    doubles as the first part of a broader delay model for the antenna.
 
     Additionally, a diameter, a pointing model and a beamwidth factor may be
     specified. These parameters are collected for convenience, and the pointing
@@ -71,7 +70,8 @@ class Antenna:
     floating-point number.
 
     Any empty fields at the end of the description string may be omitted, as
-    they will be replaced by defaults. The first four fields are required.
+    they will be replaced by defaults. The first four fields are required
+    (but the name may be an empty string).
 
     Here are some examples of description strings::
 
@@ -86,14 +86,10 @@ class Antenna:
 
     Parameters
     ----------
-    name : string or :class:`Antenna` object
-        Name of antenna, or full description string or existing antenna object
-    latitude : string or float, optional
-        Geodetic latitude, either in 'D:M:S' string format or float in radians
-    longitude : string or float, optional
-        Longitude, either in 'D:M:S' string format or a float in radians
-    altitude : string or float, optional
-        Altitude above WGS84 geoid, in metres
+    antenna : :class:`~astropy.coordinates.EarthLocation`, str or :class:`Antenna`
+        A location on Earth, a full description string or existing antenna object
+    name : string, optional
+        Name of antenna (may be empty but may not contain commas)
     diameter : string or float, optional
         Dish diameter, in metres
     delay_model : :class:`DelayModel` object or equivalent, optional
@@ -113,45 +109,18 @@ class Antenna:
         circular dish to 1.22 for a Gaussian-tapered circular dish (the
         default).
 
-    Arguments
-    ---------
-    position_enu : tuple of 3 floats
-        East-North-Up offset from WGS84 reference position, in metres
-    position_wgs84 : tuple of 3 floats
-        WGS84 position of antenna (latitude and longitude in radians, and
-        altitude in metres)
-    position_ecef : tuple of 3 floats
-        ECEF (Earth-centred Earth-fixed) position of antenna (in metres)
-    ref_position_wgs84 : tuple of 3 floats
-        WGS84 reference position (latitude and longitude in radians, and
-        altitude in metres)
-    location :class:`astropy.coordinates.EarthLocation` object
+    Attributes
+    ----------
+    location :class:`~astropy.coordinates.EarthLocation`
         Underlying object used for pointing calculations
-    ref_location :class:`astropy.coordinates.EarthLocation` object
+    ref_location :class:`~astropy.coordinates.EarthLocation`
         Array reference location for antenna in an array (same as
-        *location* for a stand-alone antenna)
+        `location` for a stand-alone antenna)
 
     Raises
     ------
     ValueError
         If description string has wrong format or parameters are incorrect
-
-    Notes
-    -----
-    The only reason for the existence of
-    *ref_observer* is that it is a nice container for the reference latitude,
-    longitude and altitude.
-
-    It is a bad idea to edit the coordinates of the antenna in-place, as the
-    various position tuples will not be updated - reconstruct a new antenna
-    object instead.
-
-    Also note that the description string of the new Antenna could differ from
-    the original description string if the original string had higher precision
-    in its latitude and longitude coordinates than what ephem can handle
-    internally. Generally the latitude and longitude should be specified up to
-    0.1 arcsecond precision, while altitude should be in metres and East, North
-    and Up offsets are generally specified up to millimetres.
     """
 
     def __init__(self, antenna, name='', diameter=0.0, delay_model=None,
@@ -214,23 +183,27 @@ class Antenna:
 
     @property
     def ref_position_wgs84(self):
+        """WGS84 reference position (latitude and longitude in radians, and altitude in metres)"""
         return (self.ref_location.lat.rad,
                 self.ref_location.lon.rad,
                 self.ref_location.height.to_value(u.m))
 
     @property
     def position_wgs84(self):
+        """WGS84 position (latitude and longitude in radians, and altitude in metres)."""
         return (self.location.lat.rad,
                 self.location.lon.rad,
                 self.location.height.to_value(u.m))
 
     @property
     def position_enu(self):
+        """East-North-Up offset from WGS84 reference position, in metres."""
         dm = self.delay_model
         return (dm['POS_E'], dm['POS_N'], dm['POS_U'])
 
     @property
     def position_ecef(self):
+        """ECEF (Earth-centred Earth-fixed) position of antenna (in metres)."""
         return tuple(self.location.itrs.cartesian.xyz.to_value(u.m))
 
     @property
