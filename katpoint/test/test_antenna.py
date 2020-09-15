@@ -46,8 +46,6 @@ def test_construct_valid_antenna(description):
     test_antenna = katpoint.Antenna(reference_description)
     assert str(test_antenna) == test_antenna.description == reference_description, (
         'Antenna description differs from original string')
-    # Exercise repr() and str()
-    print('{!r} {}'.format(test_antenna, test_antenna))
 
 
 @pytest.mark.parametrize("description", ['XDM, -25:53:23.05075, 27:41:03.0', '', '\U0001F602'])
@@ -62,6 +60,8 @@ def test_construct_antenna():
     a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0')
     # Construct Antenna from Antenna
     assert katpoint.Antenna(a0) == a0
+    # Exercise repr() and str()
+    print('{!r} {}'.format(a0, a0))
     # Override some parameters
     a0b = katpoint.Antenna(a0, name='bloop', beamwidth=3.14)
     assert a0b.location == a0.location
@@ -138,3 +138,34 @@ def test_array_reference_antenna():
                            '-0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16')
     ref_ant = ant.array_reference_antenna()
     assert ref_ant.description == 'array, -30:43:17.3, 21:24:38.5, 1038, 0.0, , , 1.22'
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12.0, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.34567, 21:24:38.56723, 1038.1086, 12.0, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.12345678, 21:24:38.12345678, 1038.123456, 12.0, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12.0, 86.123456 25.123456, , 1.22',
+    ]
+)
+def test_description_round_trip(description):
+    assert katpoint.Antenna(description).description == description
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        # The canonical MeerKAT array centre in ITRS to nearest millimetre
+        EarthLocation.from_geocentric(5109360.133,  2006852.586, -3238948.127, unit=u.m),
+        # The canonical MeerKAT array centre in WGS84
+        EarthLocation.from_geodetic('-30:42:39.8', '21:26:38.0', '1086.6'),
+        # The WGS84 array centre in XYZ format (0.5 mm difference...)
+        EarthLocation.from_geocentric(5109360.13332123, 2006852.58604291, -3238948.12747888, unit=u.m),
+    ]
+)
+def test_location_round_trip(location):
+    xyz = location.itrs.cartesian
+    descr = katpoint.Antenna(location).description
+    xyz2 = katpoint.Antenna(descr).location.itrs.cartesian
+    assert (xyz2 - xyz).norm() < 1 * u.micrometer

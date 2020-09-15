@@ -212,8 +212,10 @@ class Antenna:
         # These fields are used to build up the antenna description string
         fields = [self.name]
         location = self.ref_location
-        fields += [location.lat.to_string(sep=':', unit=u.deg)]
-        fields += [location.lon.to_string(sep=':', unit=u.deg)]
+        lat_str = location.lat.to_string(sep=':', unit=u.deg, precision=8)
+        lon_str = location.lon.to_string(sep=':', unit=u.deg, precision=8)
+        # Strip off redundant zeros from coordinate strings (similar to {:.8g})
+        fields += [lat_str.rstrip('0').rstrip('.'), lon_str.rstrip('0').rstrip('.')]
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
         height_m = location.height.to_value(u.m)
