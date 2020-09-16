@@ -34,6 +34,11 @@ from .delay import DelayModel
 # FWHM beamwidth of a Gaussian-tapered circular dish, as a multiple of lambda / D
 DEFAULT_BEAMWIDTH = 1.22
 
+
+def _strip_zeros(number, format_str='{}'):
+    """An alternate {:g} that avoids scientific notation but adjusts precision."""
+    return format_str.format(number).rstrip('0').rstrip('.')
+
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  Antenna
 # --------------------------------------------------------------------------------------------------
@@ -90,7 +95,7 @@ class Antenna:
         A location on Earth, a full description string or existing antenna object
     name : string, optional
         Name of antenna (may be empty but may not contain commas)
-    diameter : string or float, optional
+    diameter : :class:`~astropy.units.Quantity` or string or float, optional
         Dish diameter, in metres
     delay_model : :class:`DelayModel` object or equivalent, optional
         Delay model for antenna, either as a direct object, a file-like object
@@ -141,7 +146,7 @@ class Antenna:
         if ',' in name:
             raise ValueError(f"Antenna name '{name}' may not contain commas")
         self.name = name
-        self.diameter = float(diameter)
+        self.diameter = diameter << u.m
         self.delay_model = DelayModel(delay_model)
         self.pointing_model = PointingModel(pointing_model)
         self.beamwidth = float(beamwidth)
@@ -212,15 +217,13 @@ class Antenna:
         # These fields are used to build up the antenna description string
         fields = [self.name]
         location = self.ref_location
-        lat_str = location.lat.to_string(sep=':', unit=u.deg, precision=8)
-        lon_str = location.lon.to_string(sep=':', unit=u.deg, precision=8)
         # Strip off redundant zeros from coordinate strings (similar to {:.8g})
-        fields += [lat_str.rstrip('0').rstrip('.'), lon_str.rstrip('0').rstrip('.')]
+        fields += [_strip_zeros(location.lat.to_string(sep=':', unit=u.deg, precision=8))]
+        fields += [_strip_zeros(location.lon.to_string(sep=':', unit=u.deg, precision=8))]
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        height_m = location.height.to_value(u.m)
-        fields += ['{:.6f}'.format(height_m).rstrip('0').rstrip('.')]
-        fields += [str(self.diameter)]
+        fields += [_strip_zeros(location.height.to_value(u.m), '{:.6f}')]
+        fields += [_strip_zeros(self.diameter.to_value(u.m), '{:.6f}')]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
         fields += [str(self.beamwidth)]

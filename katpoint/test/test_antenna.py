@@ -84,7 +84,7 @@ def test_construct_antenna():
     assert a1 != a2, 'Antennas should be inequal'
     assert a1 < a2, 'Antenna a1 comes before a2 when sorted by description string'
     a1.name = 'FF2'
-    a1.diameter = 13.0
+    a1.diameter = 13.0 * u.m
     a1.pointing_model = katpoint.PointingModel('0.1')
     a1.beamwidth = 1.22
     assert a1.description == a2.description, 'Antenna description string not updated'
@@ -137,16 +137,16 @@ def test_array_reference_antenna():
     ant = katpoint.Antenna('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, '
                            '-0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16')
     ref_ant = ant.array_reference_antenna()
-    assert ref_ant.description == 'array, -30:43:17.3, 21:24:38.5, 1038, 0.0, , , 1.22'
+    assert ref_ant.description == 'array, -30:43:17.3, 21:24:38.5, 1038, 0, , , 1.22'
 
 
 @pytest.mark.parametrize(
     "description",
     [
-        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12.0, 86.2 25.5, , 1.22',
-        'FF2, -30:43:17.34567, 21:24:38.56723, 1038.1086, 12.0, 86.2 25.5, , 1.22',
-        'FF2, -30:43:17.12345678, 21:24:38.12345678, 1038.123456, 12.0, 86.2 25.5, , 1.22',
-        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12.0, 86.123456 25.123456, , 1.22',
+        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.34567, 21:24:38.56723, 1038.1086, 12, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.12345678, 21:24:38.12345678, 1038.123456, 12, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12, 86.123456 25.123456, , 1.22',
     ]
 )
 def test_description_round_trip(description):
