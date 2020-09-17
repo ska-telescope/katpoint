@@ -234,7 +234,7 @@ class Antenna:
         """Construct antenna object from description string."""
         errmsg_prefix = f"Antenna description string '{description}' "
         if not description:
-            raise ValueError(errmsg_prefix + 'empty')
+            raise ValueError(errmsg_prefix + 'is empty')
         try:
             description.encode('ascii')
         except UnicodeError:
