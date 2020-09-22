@@ -192,16 +192,14 @@ class Antenna:
     @property
     def ref_position_wgs84(self):
         """WGS84 reference position (latitude and longitude in radians, and altitude in metres)"""
-        return (self.ref_location.lat.rad,
-                self.ref_location.lon.rad,
-                self.ref_location.height.to_value(u.m))
+        lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
+        return (lat.rad, lon.rad, height.to_value(u.m))
 
     @property
     def position_wgs84(self):
         """WGS84 position (latitude and longitude in radians, and altitude in metres)."""
-        return (self.location.lat.rad,
-                self.location.lon.rad,
-                self.location.height.to_value(u.m))
+        lon, lat, height = self.location.to_geodetic(ellipsoid='WGS84')
+        return (lat.rad, lon.rad, height.to_value(u.m))
 
     @property
     def position_enu(self):
@@ -219,13 +217,14 @@ class Antenna:
         """Complete string representation of antenna object, sufficient to reconstruct it."""
         # These fields are used to build up the antenna description string
         fields = [self.name]
-        location = self.ref_location
+        # Store `EarthLocation` as WGS84 coordinates
+        lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
         # Strip off redundant zeros from coordinate strings (similar to {:.8g})
-        fields += [_strip_zeros(location.lat.to_string(sep=':', unit=u.deg, precision=8))]
-        fields += [_strip_zeros(location.lon.to_string(sep=':', unit=u.deg, precision=8))]
+        fields += [_strip_zeros(lat.to_string(sep=':', unit=u.deg, precision=8))]
+        fields += [_strip_zeros(lon.to_string(sep=':', unit=u.deg, precision=8))]
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        fields += [_strip_zeros(location.height.to_value(u.m), '{:.6f}')]
+        fields += [_strip_zeros(height.to_value(u.m), '{:.6f}')]
         fields += [_strip_zeros(self.diameter.to_value(u.m), '{:.6f}')]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]

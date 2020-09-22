@@ -175,6 +175,8 @@ def test_description_round_trip(description):
         EarthLocation.from_geodetic('-30:42:39.8', '21:26:38.0', '1086.6'),
         # The WGS84 array centre in XYZ format (0.5 mm difference...)
         EarthLocation.from_geocentric(5109360.13332123, 2006852.58604291, -3238948.12747888, unit=u.m),
+        # Check a geodetic location based on a different ellipsoid (2 m difference from WGS84)
+        EarthLocation.from_geodetic('-30:42:39.8', '21:26:38.0', '1086.6', ellipsoid='WGS72'),
     ]
 )
 def test_location_round_trip(location):
