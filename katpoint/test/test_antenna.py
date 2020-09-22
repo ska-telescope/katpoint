@@ -92,7 +92,10 @@ def test_construct_antenna():
     a1 = katpoint.Antenna('FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0')
     a2 = katpoint.Antenna('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 13.0, 18.4 -8.7 0.0, 0.1, 1.22')
     assert a1 != a2, 'Antennas should be inequal'
-    assert a1 < a2, 'Antenna a1 comes before a2 when sorted by description string'
+    assert a1 < a2, 'Antenna a1 should come before a2 when sorted by description string'
+    assert a1 <= a2, 'Antenna a1 should come before a2 when sorted by description string'
+    assert a2 > a1, 'Antenna a1 should come before a2 when sorted by description string'
+    assert a2 >= a1, 'Antenna a1 should come before a2 when sorted by description string'
     a1.name = 'FF2'
     a1.diameter = 13.0 * u.m
     a1.pointing_model = katpoint.PointingModel('0.1')

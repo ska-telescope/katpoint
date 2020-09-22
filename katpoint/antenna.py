@@ -21,6 +21,7 @@ feeds. The :class:`Antenna` object wraps the antenna's location, dish diameter
 and other parameters that affect pointing and delay calculations.
 """
 
+import functools
 from types import SimpleNamespace
 
 import astropy.units as u
@@ -46,6 +47,7 @@ def _strip_zeros(number, format_str='{}'):
 # --------------------------------------------------------------------------------------------------
 
 
+@functools.total_ordering
 class Antenna:
     """An antenna that can point at a target.
 
@@ -164,12 +166,12 @@ class Antenna:
             self.location = EarthLocation.from_geocentric(*xyz, unit=u.m)
 
     def __str__(self):
-        """Verbose human-friendly string representation of antenna object."""
+        """Complete string representation of antenna object, sufficient to reconstruct it."""
         return self.description
 
     def __repr__(self):
         """Short human-friendly string representation of antenna object."""
-        return "<katpoint.Antenna '%s' diam=%sm at 0x%x>" % (self.name, self.diameter, id(self))
+        return f'<katpoint.Antenna {self.name!r} diam={self.diameter} at 0x{id(self):x}>'
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -178,10 +180,6 @@ class Antenna:
     def __eq__(self, other):
         """Equality comparison operator."""
         return self.description == (other.description if isinstance(other, Antenna) else other)
-
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not (self == other)
 
     def __lt__(self, other):
         """Less-than comparison operator (needed for sorting and np.unique)."""
