@@ -21,6 +21,8 @@ feeds. The :class:`Antenna` object wraps the antenna's location, dish diameter
 and other parameters that affect pointing and delay calculations.
 """
 
+from types import SimpleNamespace
+
 import astropy.units as u
 from astropy.coordinates import EarthLocation
 
@@ -31,8 +33,8 @@ from .pointing import PointingModel
 from .delay import DelayModel
 
 
-# FWHM beamwidth of a Gaussian-tapered circular dish, as a multiple of lambda / D
-DEFAULT_BEAMWIDTH = 1.22
+# Singleton that identifies default antenna parameters
+_DEFAULT = object()
 
 
 def _strip_zeros(number, format_str='{}'):
@@ -92,7 +94,9 @@ class Antenna:
     Parameters
     ----------
     antenna : :class:`~astropy.coordinates.EarthLocation`, str or :class:`Antenna`
-        A location on Earth, a full description string or existing antenna object
+        A location on Earth, a full description string or existing Antenna object.
+        The parameters in the description string or existing Antenna can still
+        be overridden by providing additional parameters after `antenna`.
     name : string, optional
         Name of antenna (may be empty but may not contain commas)
     diameter : :class:`~astropy.units.Quantity` or string or float, optional
@@ -128,20 +132,23 @@ class Antenna:
         If description string has wrong format or parameters are incorrect
     """
 
-    def __init__(self, antenna, name='', diameter=0.0, delay_model=None,
-                 pointing_model=None, beamwidth=0.0):
+    def __init__(self, antenna, name=_DEFAULT, diameter=_DEFAULT, delay_model=_DEFAULT,
+                 pointing_model=_DEFAULT, beamwidth=_DEFAULT):
+        default = SimpleNamespace(name='', diameter=0.0, delay_model=None,
+                                  pointing_model=None, beamwidth=1.22)
         if isinstance(antenna, Antenna):
             # A simple way to make a deep copy of the Antenna object
             antenna = antenna.description
         if isinstance(antenna, str):
-            # Create a temporary Antenna object and pilfer its internals (if needed)
-            antenna = Antenna.from_description(antenna)
-            name = name if name else antenna.name
-            diameter = diameter if diameter else antenna.diameter
-            delay_model = delay_model if delay_model else antenna.delay_model
-            pointing_model = pointing_model if pointing_model else antenna.pointing_model
-            beamwidth = beamwidth if beamwidth else antenna.beamwidth
-            antenna = antenna.ref_location
+            # Create a temporary Antenna object to serve up default parameters instead
+            default = Antenna.from_description(antenna)
+            antenna = default.ref_location
+
+        name = default.name if name is _DEFAULT else name
+        diameter = default.diameter if diameter is _DEFAULT else diameter
+        delay_model = default.delay_model if delay_model is _DEFAULT else delay_model
+        pointing_model = default.pointing_model if pointing_model is _DEFAULT else pointing_model
+        beamwidth = default.beamwidth if beamwidth is _DEFAULT else beamwidth
 
         if ',' in name:
             raise ValueError(f"Antenna name '{name}' may not contain commas")
@@ -150,8 +157,6 @@ class Antenna:
         self.delay_model = DelayModel(delay_model)
         self.pointing_model = PointingModel(pointing_model)
         self.beamwidth = float(beamwidth)
-        if self.beamwidth <= 0:
-            self.beamwidth = DEFAULT_BEAMWIDTH
         self.ref_location = self.location = antenna
         if self.delay_model:
             # Convert ENU offset to ECEF coordinates of antenna
