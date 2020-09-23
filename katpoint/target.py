@@ -302,7 +302,7 @@ class Target:
             antenna = self.antenna
         if required and antenna is None:
             raise ValueError('Antenna object needed to calculate target position')
-        location = antenna.earth_location if antenna is not None else None
+        location = antenna.location if antenna is not None else None
         return antenna, location
 
     def azel(self, timestamp=None, antenna=None):

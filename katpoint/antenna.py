@@ -21,32 +21,44 @@ feeds. The :class:`Antenna` object wraps the antenna's location, dish diameter
 and other parameters that affect pointing and delay calculations.
 """
 
-import numpy as np
-import astropy.units as u
-from astropy.coordinates import Latitude, Longitude, EarthLocation
+import functools
+from types import SimpleNamespace
 
+import astropy.units as u
+from astropy.coordinates import EarthLocation
+
+from .body import to_angle
 from .timestamp import Timestamp
-from .conversion import enu_to_ecef, ecef_to_lla, lla_to_ecef, ecef_to_enu
+from .conversion import enu_to_ecef, lla_to_ecef, ecef_to_enu
 from .pointing import PointingModel
 from .delay import DelayModel
+
+
+# Singleton that identifies default antenna parameters
+_DEFAULT = object()
+
+
+def _strip_zeros(numerical_str):
+    """Remove trailing zeros and unnecessary decimal points from numerical strings."""
+    return numerical_str.rstrip('0').rstrip('.')
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  Antenna
 # --------------------------------------------------------------------------------------------------
 
 
+@functools.total_ordering
 class Antenna:
     """An antenna that can point at a target.
 
-    This is a wrapper around an Astropy earth location
-    adds a dish diameter and other parameters related to pointing and delay
-    calculations.
+    This is a wrapper around an Astropy `EarthLocation` that adds a dish
+    diameter and other parameters related to pointing and delay calculations.
+
     It has two variants: a stand-alone single dish, or an antenna that is part
-    of an array. The first variant is initialised with the antenna location in
-    WGS84 (lat-lon-alt) form, while the second variant is initialised with the
-    array reference location in WGS84 form and an ENU (east-north-up) offset
-    for the specific antenna which also doubles as the first part of a broader
-    delay model for the antenna.
+    of an array. The first variant is initialised with the antenna location,
+    while the second variant is initialised with the array reference location
+    and an ENU (east-north-up) offset for the specific antenna which also
+    doubles as the first part of a broader delay model for the antenna.
 
     Additionally, a diameter, a pointing model and a beamwidth factor may be
     specified. These parameters are collected for convenience, and the pointing
@@ -67,7 +79,8 @@ class Antenna:
     floating-point number.
 
     Any empty fields at the end of the description string may be omitted, as
-    they will be replaced by defaults. The first four fields are required.
+    they will be replaced by defaults. The first four fields are required
+    (but the name may be an empty string).
 
     Here are some examples of description strings::
 
@@ -82,15 +95,13 @@ class Antenna:
 
     Parameters
     ----------
-    name : string or :class:`Antenna` object
-        Name of antenna, or full description string or existing antenna object
-    latitude : string or float, optional
-        Geodetic latitude, either in 'D:M:S' string format or float in radians
-    longitude : string or float, optional
-        Longitude, either in 'D:M:S' string format or a float in radians
-    altitude : string or float, optional
-        Altitude above WGS84 geoid, in metres
-    diameter : string or float, optional
+    antenna : :class:`~astropy.coordinates.EarthLocation`, str or :class:`Antenna`
+        A location on Earth, a full description string or existing Antenna object.
+        The parameters in the description string or existing Antenna can still
+        be overridden by providing additional parameters after `antenna`.
+    name : string, optional
+        Name of antenna (may be empty but may not contain commas)
+    diameter : :class:`~astropy.units.Quantity` or string or float, optional
         Dish diameter, in metres
     delay_model : :class:`DelayModel` object or equivalent, optional
         Delay model for antenna, either as a direct object, a file-like object
@@ -109,148 +120,57 @@ class Antenna:
         circular dish to 1.22 for a Gaussian-tapered circular dish (the
         default).
 
-    Arguments
-    ---------
-    position_enu : tuple of 3 floats
-        East-North-Up offset from WGS84 reference position, in metres
-    position_wgs84 : tuple of 3 floats
-        WGS84 position of antenna (latitude and longitude in radians, and
-        altitude in metres)
-    position_ecef : tuple of 3 floats
-        ECEF (Earth-centred Earth-fixed) position of antenna (in metres)
-    ref_position_wgs84 : tuple of 3 floats
-        WGS84 reference position (latitude and longitude in radians, and
-        altitude in metres)
-    earth_location :class:`astropy.coordinates.EarthLocation` object
+    Attributes
+    ----------
+    location :class:`~astropy.coordinates.EarthLocation`
         Underlying object used for pointing calculations
-    pressure :class:`astropy.units.Quantity`
-        Atrmospheric pressure used to refraction calculations
-    ref_earth_location :class:`astropy.coordinates.EarthLocation` object
+    ref_location :class:`~astropy.coordinates.EarthLocation`
         Array reference location for antenna in an array (same as
-        *earth_location* for a stand-alone antenna)
-    ref_pressure :class:`astropy.units.Quantity`
-        Atrmospheric pressure used to refraction calculations
+        `location` for a stand-alone antenna)
 
     Raises
     ------
     ValueError
         If description string has wrong format or parameters are incorrect
-
-    Notes
-    -----
-    The only reason for the existence of
-    *ref_observer* is that it is a nice container for the reference latitude,
-    longitude and altitude.
-
-    It is a bad idea to edit the coordinates of the antenna in-place, as the
-    various position tuples will not be updated - reconstruct a new antenna
-    object instead.
-
-    Also note that the description string of the new Antenna could differ from
-    the original description string if the original string had higher precision
-    in its latitude and longitude coordinates than what ephem can handle
-    internally. Generally the latitude and longitude should be specified up to
-    0.1 arcsecond precision, while altitude should be in metres and East, North
-    and Up offsets are generally specified up to millimetres.
     """
 
-    def __init__(self, name, latitude=None, longitude=None, altitude=None,
-                 diameter=0.0, delay_model=None, pointing_model=None,
-                 beamwidth=1.22):
-        if isinstance(name, Antenna):
-            name = name.description
-        if not name and latitude is None:
-            raise ValueError('Empty antenna description string %r' % (name,))
-        # The presence of a comma indicates that a description string is passed in - parse this string into parameters
-        if name.find(',') >= 0:
-            try:
-                name.encode('ascii')
-            except UnicodeError:
-                raise ValueError("Antenna description string %r contains non-ASCII characters" % (name,))
-            # Cannot have other parameters if description string is given - this is a safety check
-            if not (latitude is None and longitude is None and altitude is None):
-                raise ValueError("First parameter '%s' contains comma" % (name,) +
-                                 'and is assumed to be description string - cannot have other parameters')
-            # Split description string on commas
-            fields = [s.strip() for s in name.split(',')]
-            # Extract required fields
-            if len(fields) < 4:
-                raise ValueError("Antenna description string '%s' has less than four fields" % (name,))
-            name, latitude, longitude, altitude = fields[:4]
-            # Extract optional fields
-            try:
-                diameter = fields.pop(4)
-                delay_model = fields.pop(4)
-                pointing_model = fields.pop(4)
-                beamwidth = fields.pop(4)
-            except IndexError:
-                pass
+    def __init__(self, antenna, name=_DEFAULT, diameter=_DEFAULT, delay_model=_DEFAULT,
+                 pointing_model=_DEFAULT, beamwidth=_DEFAULT):
+        default = SimpleNamespace(name='', diameter=0.0, delay_model=None,
+                                  pointing_model=None, beamwidth=1.22)
+        if isinstance(antenna, str):
+            # Create a temporary Antenna object to serve up default parameters instead
+            antenna = Antenna.from_description(antenna)
+        if isinstance(antenna, Antenna):
+            default = antenna
+            antenna = default.ref_location
 
+        name = default.name if name is _DEFAULT else name
+        diameter = default.diameter if diameter is _DEFAULT else diameter
+        delay_model = default.delay_model if delay_model is _DEFAULT else delay_model
+        pointing_model = default.pointing_model if pointing_model is _DEFAULT else pointing_model
+        beamwidth = default.beamwidth if beamwidth is _DEFAULT else beamwidth
+
+        if ',' in name:
+            raise ValueError(f"Antenna name '{name}' may not contain commas")
         self.name = name
-        self.diameter = float(diameter)
+        self.diameter = diameter << u.m
         self.delay_model = DelayModel(delay_model)
         self.pointing_model = PointingModel(pointing_model)
         self.beamwidth = float(beamwidth)
-
-        # Set up reference earth location first
-        if type(latitude) == str:
-            lat = Latitude(latitude, unit=u.deg)
-        else:
-            lat = Latitude(latitude, unit=u.rad)
-        if type(longitude) == str:
-            lon = Longitude(longitude, unit=u.deg)
-        else:
-            lon = Longitude(longitude, unit=u.rad)
-        if isinstance(altitude, u.Quantity):
-            height = altitude
-        else:
-            height = float(altitude) * u.meter
-        # Disable astropy's built-in refraction model.
-        self.ref_pressure = 0.0 * u.bar
-        self.ref_earth_location = EarthLocation(lat=lat, lon=lon, height=height)
-
-        self.ref_position_wgs84 = (self.ref_earth_location.lat.rad,
-                                   self.ref_earth_location.lon.rad,
-                                   self.ref_earth_location.height.to(u.meter).value)
-
+        self.ref_location = self.location = antenna
         if self.delay_model:
-            dm = self.delay_model
-            self.position_enu = (dm['POS_E'], dm['POS_N'], dm['POS_U'])
-            # Convert ENU offset to ECEF coordinates of antenna, and then to WGS84 coordinates
-            self.position_ecef = enu_to_ecef(self.ref_earth_location.lat.rad,
-                                             self.ref_earth_location.lon.rad,
-                                             self.ref_earth_location.height.to(u.meter).value,
-                                             *self.position_enu)
-            lat, lon, elevation = ecef_to_lla(*self.position_ecef)
-            lat = Latitude(lat, unit=u.rad)
-            lon = Longitude(lon, unit=u.rad)
-            self.pressure = 0.0
-            self.earth_location = EarthLocation(lat=lat, lon=lon, height=height)
-            self.position_wgs84 = (self.earth_location.lat.rad,
-                                   self.earth_location.lon.rad,
-                                   self.earth_location.height.to(u.meter).value)
-        else:
-            self.earth_location = self.ref_earth_location
-            self.pressure = self.ref_pressure
-            self.position_enu = (0.0, 0.0, 0.0)
-            self.position_wgs84 = lat, lon, alt = (self.earth_location.lat.rad,
-                                                   self.earth_location.lon.rad,
-                                                   self.earth_location.height.to(u.meter).value)
-            self.position_ecef = enu_to_ecef(lat, lon, alt, *self.position_enu)
+            # Convert ENU offset to ECEF coordinates of antenna
+            xyz = enu_to_ecef(*self.ref_position_wgs84, *self.position_enu)
+            self.location = EarthLocation.from_geocentric(*xyz, unit=u.m)
 
     def __str__(self):
-        """Verbose human-friendly string representation of antenna object."""
-        if np.any(self.position_enu):
-            return "%s: %d-m dish at ENU offset %s m from lat %s, lon %s, alt %s m" % \
-                   tuple([self.name, self.diameter, np.array(self.position_enu)]
-                         + list(self.ref_position_wgs84))
-        else:
-            return "%s: %d-m dish at lat %s, lon %s, alt %s m" % \
-                   tuple([self.name, self.diameter] + list(self.position_wgs84))
+        """Complete string representation of antenna object, sufficient to reconstruct it."""
+        return self.description
 
     def __repr__(self):
         """Short human-friendly string representation of antenna object."""
-        return "<katpoint.Antenna '%s' diam=%sm at 0x%x>" % (self.name, self.diameter, id(self))
+        return f'<katpoint.Antenna {self.name!r} diam={self.diameter} at 0x{id(self):x}>'
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -259,10 +179,6 @@ class Antenna:
     def __eq__(self, other):
         """Equality comparison operator."""
         return self.description == (other.description if isinstance(other, Antenna) else other)
-
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not (self == other)
 
     def __lt__(self, other):
         """Less-than comparison operator (needed for sorting and np.unique)."""
@@ -273,26 +189,66 @@ class Antenna:
         return hash(self.description)
 
     @property
+    def ref_position_wgs84(self):
+        """WGS84 reference position (latitude and longitude in radians, and altitude in metres)"""
+        lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
+        return (lat.rad, lon.rad, height.to_value(u.m))
+
+    @property
+    def position_wgs84(self):
+        """WGS84 position (latitude and longitude in radians, and altitude in metres)."""
+        lon, lat, height = self.location.to_geodetic(ellipsoid='WGS84')
+        return (lat.rad, lon.rad, height.to_value(u.m))
+
+    @property
+    def position_enu(self):
+        """East-North-Up offset from WGS84 reference position, in metres."""
+        dm = self.delay_model
+        return (dm['POS_E'], dm['POS_N'], dm['POS_U'])
+
+    @property
+    def position_ecef(self):
+        """ECEF (Earth-centred Earth-fixed) position of antenna (in metres)."""
+        return tuple(self.location.itrs.cartesian.xyz.to_value(u.m))
+
+    @property
     def description(self):
         """Complete string representation of antenna object, sufficient to reconstruct it."""
         # These fields are used to build up the antenna description string
         fields = [self.name]
-        location = self.ref_earth_location if self.delay_model else self.earth_location
-        fields += [location.lat.to_string(sep=':', unit=u.deg)]
-        fields += [location.lon.to_string(sep=':', unit=u.deg)]
+        # Store `EarthLocation` as WGS84 coordinates
+        lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
+        # Strip off redundant zeros from coordinate strings (similar to {:.8g})
+        fields += [_strip_zeros(lat.to_string(sep=':', unit=u.deg, precision=8))]
+        fields += [_strip_zeros(lon.to_string(sep=':', unit=u.deg, precision=8))]
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        height_m = location.height.to(u.meter).value
-        fields += ['{:.6f}'.format(height_m).rstrip('0').rstrip('.')]
-        fields += [str(self.diameter)]
+        fields += [_strip_zeros('{:.6f}'.format(height.to_value(u.m)))]
+        fields += [_strip_zeros('{:.6f}'.format(self.diameter.to_value(u.m)))]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
         fields += [str(self.beamwidth)]
         return ', '.join(fields)
 
-    def format_katcp(self):
-        """String representation if object is passed as parameter to KATCP command."""
-        return self.description
+    @classmethod
+    def from_description(cls, description):
+        """Construct antenna object from description string."""
+        errmsg_prefix = f"Antenna description string '{description}' "
+        if not description:
+            raise ValueError(errmsg_prefix + 'is empty')
+        try:
+            description.encode('ascii')
+        except UnicodeError:
+            raise ValueError(errmsg_prefix + 'contains non-ASCII characters')
+        # Split description string on commas
+        fields = [s.strip() for s in description.split(',')]
+        # Extract required fields
+        if len(fields) < 4:
+            raise ValueError(errmsg_prefix + 'has fewer than four fields')
+        name, latitude, longitude, altitude = fields[:4]
+        # Construct Earth location from WGS84 coordinates
+        location = EarthLocation(lat=to_angle(latitude), lon=to_angle(longitude), height=altitude)
+        return cls(location, name, *fields[4:8])
 
     def baseline_toward(self, antenna2):
         """Baseline vector pointing toward second antenna, in ENU coordinates.
@@ -315,8 +271,7 @@ class Antenna:
         if self.position_wgs84 == antenna2.ref_position_wgs84:
             return antenna2.position_enu
         else:
-            lat, lon, alt = self.position_wgs84
-            return ecef_to_enu(lat, lon, alt, *lla_to_ecef(*antenna2.position_wgs84))
+            return ecef_to_enu(*self.position_wgs84, *lla_to_ecef(*antenna2.position_wgs84))
 
     def local_sidereal_time(self, timestamp=None):
         """Calculate local apparent sidereal time at antenna for timestamp(s).
@@ -335,7 +290,7 @@ class Antenna:
             Local apparent sidereal time(s)
         """
         time = Timestamp(timestamp).time
-        return time.sidereal_time('apparent', longitude=self.earth_location.lon)
+        return time.sidereal_time('apparent', longitude=self.location.lon)
 
     def array_reference_antenna(self, name='array'):
         """Synthetic antenna at the delay model reference position of this antenna.
@@ -348,5 +303,4 @@ class Antenna:
         intended to be used only for its position and does not correspond to a
         physical antenna.
         """
-        pos = self.ref_position_wgs84 if self.delay_model else self.position_wgs84
-        return Antenna(name, pos[0], pos[1], pos[2], self.diameter, beamwidth=self.beamwidth)
+        return Antenna(self.ref_location, name)
