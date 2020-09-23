@@ -38,9 +38,9 @@ from .delay import DelayModel
 _DEFAULT = object()
 
 
-def _strip_zeros(number, format_str='{}'):
-    """An alternate {:g} that avoids scientific notation but adjusts precision."""
-    return format_str.format(number).rstrip('0').rstrip('.')
+def _strip_zeros(numerical_str):
+    """Remove trailing zeros and unnecessary decimal points from numerical strings."""
+    return numerical_str.rstrip('0').rstrip('.')
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  Antenna
@@ -138,12 +138,11 @@ class Antenna:
                  pointing_model=_DEFAULT, beamwidth=_DEFAULT):
         default = SimpleNamespace(name='', diameter=0.0, delay_model=None,
                                   pointing_model=None, beamwidth=1.22)
-        if isinstance(antenna, Antenna):
-            # A simple way to make a deep copy of the Antenna object
-            antenna = antenna.description
         if isinstance(antenna, str):
             # Create a temporary Antenna object to serve up default parameters instead
-            default = Antenna.from_description(antenna)
+            antenna = Antenna.from_description(antenna)
+        if isinstance(antenna, Antenna):
+            default = antenna
             antenna = default.ref_location
 
         name = default.name if name is _DEFAULT else name
@@ -224,8 +223,8 @@ class Antenna:
         fields += [_strip_zeros(lon.to_string(sep=':', unit=u.deg, precision=8))]
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        fields += [_strip_zeros(height.to_value(u.m), '{:.6f}')]
-        fields += [_strip_zeros(self.diameter.to_value(u.m), '{:.6f}')]
+        fields += [_strip_zeros('{:.6f}'.format(height.to_value(u.m)))]
+        fields += [_strip_zeros('{:.6f}'.format(self.diameter.to_value(u.m)))]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
         fields += [str(self.beamwidth)]

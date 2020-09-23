@@ -56,22 +56,29 @@ def test_construct_invalid_antenna(description):
 
 
 def test_construct_antenna():
-    """Test various ways to construct and compare antennas."""
+    """Test various ways to construct antennas, also with parameters that are overridden."""
     a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0, 1 2 3, 1 2 3, 1.14')
     # Construct Antenna from Antenna
     assert katpoint.Antenna(a0) == a0
     # Construct Antenna from description string
     assert katpoint.Antenna(a0.description) == a0
+    # Construct Antenna from EarthLocation
+    fields = a0.description.split(', ')
+    name = fields[0]
+    location = EarthLocation.from_geodetic(lat=fields[1], lon=fields[2], height=fields[3])
+    assert katpoint.Antenna(location, name, *fields[4:]).description == a0.description
+    with pytest.raises(ValueError):
+        katpoint.Antenna(location, name + ', oops', *fields[4:])
     # Exercise repr() and str()
     print('{!r} {}'.format(a0, a0))
     # Override some parameters
-    a0b = katpoint.Antenna(a0.description, name='bloop', beamwidth=3.14)
+    a0b = katpoint.Antenna(a0.description, name='bloop', beamwidth=np.pi)
     assert a0b.location == a0.location
     assert a0b.name == 'bloop'
     assert a0b.diameter == a0.diameter
     assert a0b.delay_model == a0.delay_model
     assert a0b.pointing_model == a0.pointing_model
-    assert a0b.beamwidth == 3.14
+    assert a0b.beamwidth == np.pi
     # Check that we can also replace non-default parameters with defaults
     a0c = katpoint.Antenna(a0, name='', diameter=0.0, delay_model=None, pointing_model=None)
     assert a0c.location == a0.ref_location
@@ -80,22 +87,26 @@ def test_construct_antenna():
     assert not a0c.delay_model
     assert not a0c.pointing_model
     assert a0c.beamwidth == a0.beamwidth
-    # Construct Antenna from EarthLocation
-    descr = a0.description
-    fields = descr.split(', ')
-    name = fields[0]
-    location = EarthLocation.from_geodetic(lat=fields[1], lon=fields[2], height=fields[3])
-    assert katpoint.Antenna(location, name, *fields[4:]).description == descr
-    with pytest.raises(ValueError):
-        katpoint.Antenna(location, name + ', oops', *fields[4:])
-    # Check that description string updates when object is updated
+    # Check that construction from Antenna is exact
+    location = EarthLocation.from_geodetic(lat=np.pi, lon=np.pi, height=np.e)
+    a1 = katpoint.Antenna(location, name='pangolin', diameter=np.e, beamwidth=np.pi)
+    a2 = katpoint.Antenna(a1)
+    assert a1.location == a2.location == location
+    assert a1.name == a2.name
+    assert a1.diameter == a2.diameter
+    assert a1.beamwidth == a2.beamwidth
+
+
+def test_compare_update_antenna():
+    """Test various ways to compare and update antennas."""
     a1 = katpoint.Antenna('FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0')
     a2 = katpoint.Antenna('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 13.0, 18.4 -8.7 0.0, 0.1, 1.22')
     assert a1 != a2, 'Antennas should be inequal'
     assert a1 < a2, 'Antenna a1 should come before a2 when sorted by description string'
     assert a1 <= a2, 'Antenna a1 should come before a2 when sorted by description string'
-    assert a2 > a1, 'Antenna a1 should come before a2 when sorted by description string'
-    assert a2 >= a1, 'Antenna a1 should come before a2 when sorted by description string'
+    assert a2 > a1, 'Antenna a2 should come after a1 when sorted by description string'
+    assert a2 >= a1, 'Antenna a2 should come after a1 when sorted by description string'
+    # Check that description string updates when object is updated
     a1.name = 'FF2'
     a1.diameter = 13.0 * u.m
     a1.pointing_model = katpoint.PointingModel('0.1')
