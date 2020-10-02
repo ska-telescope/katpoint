@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -18,23 +18,15 @@
 
 This provides a base class for pointing and delay models, handling the loading,
 saving and display of parameters.
-
 """
-from __future__ import print_function, division, absolute_import
-import future.utils
-from builtins import object, zip
-from past.builtins import basestring
 
-try:
-    import ConfigParser as configparser  # python2
-except ImportError:
-    import configparser  # python3
+import configparser
 from collections import OrderedDict
 
 import numpy as np
 
 
-class Parameter(object):
+class Parameter:
     """Generic model parameter.
 
     This represents a single model parameter, bundling together its attributes
@@ -61,8 +53,8 @@ class Parameter(object):
     Attributes
     ----------
     value_str
-
     """
+
     def __init__(self, name, units, doc, from_str=float, to_str=str,
                  value=None, default_value=0.0):
         self.name = name
@@ -100,7 +92,7 @@ class BadModelFile(Exception):
     pass
 
 
-class Model(object):
+class Model:
     """Base class for models (e.g. pointing and delay models).
 
     The base class handles the construction / loading, saving, display and
@@ -120,8 +112,8 @@ class Model(object):
     ----------
     params : sequence of :class:`Parameter` objects
         Full set of model parameters in the expected order
-
     """
+
     def __init__(self, params):
         self.header = {}
         self.params = OrderedDict((p.name, p) for p in params)
@@ -229,7 +221,6 @@ class Model(object):
         ----------
         file-like : object
             File-like object with write() method representing config file
-
         """
         cfg = configparser.ConfigParser()
         cfg.add_section('header')
@@ -247,13 +238,9 @@ class Model(object):
         ----------
         file-like : object
             File-like object with readline() method representing config file
-
         """
         defaults = dict((p.name, p._to_str(p.default_value)) for p in self)
-        if future.utils.PY2:
-            cfg = configparser.ConfigParser(defaults)
-        else:
-            cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(';', '#'))
+        cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(';', '#'))
         try:
             cfg.read_file(file_like)
             if cfg.sections() != ['header', 'params']:
@@ -283,7 +270,6 @@ class Model(object):
             string, interpret it as a comma-separated (or whitespace-
             separated) sequence of parameters in their string form (i.e. a
             description string). The default is an empty model.
-
         """
         if isinstance(model, Model):
             if not isinstance(model, type(self)):
@@ -292,7 +278,7 @@ class Model(object):
                                     model.__class__.__name__))
             self.fromlist(model.values())
             self.header = dict(model.header)
-        elif isinstance(model, basestring):
+        elif isinstance(model, str):
             self.fromstring(model)
         else:
             array = np.atleast_1d(model)

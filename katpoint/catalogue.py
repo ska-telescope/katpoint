@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,19 +15,17 @@
 ################################################################################
 
 """Target catalogue."""
-from __future__ import print_function, division, absolute_import
-from builtins import object
-from past.builtins import basestring
 
 import logging
 from collections import defaultdict
 
 import numpy as np
+import astropy.units as u
+from astropy.time import Time
 
 from .target import Target
 from .timestamp import Timestamp
-from .ephem_extra import rad2deg
-from .stars import stars
+from .stars import STARS
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +41,7 @@ def _normalised(name):
 # --------------------------------------------------------------------------------------------------
 
 
-class Catalogue(object):
+class Catalogue:
     """A searchable and filterable catalogue of targets.
 
     Overview
@@ -298,6 +296,7 @@ class Catalogue(object):
     the *same* catalogue. It also allows us to preserve the order in which the
     catalogue was assembled, which seems the most natural.
     """
+
     def __init__(self, targets=None, tags=None, add_specials=False, add_stars=False,
                  antenna=None, flux_freq_MHz=None):
         self.lookup = defaultdict(list)
@@ -308,7 +307,7 @@ class Catalogue(object):
             self.add(['%s, special' % (name,) for name in specials], tags)
             self.add('Zenith, azel, 0, 90', tags)
         if add_stars:
-            self.add(['%s, star' % (name,) for name in sorted(stars.keys())], tags)
+            self.add(['%s, star' % (name,) for name in sorted(STARS)], tags)
         if targets is None:
             targets = []
         self.add(targets, tags)
@@ -369,7 +368,6 @@ class Catalogue(object):
         -------
         target : :class:`Target` object, or None
             Associated target object, or None if no target was found
-
         """
         try:
             return self._targets_with_name(name)[-1]
@@ -432,12 +430,11 @@ class Catalogue(object):
         >>> cat.add('Sun, special')
         >>> cat2 = Catalogue()
         >>> cat2.add(cat.targets)
-
         """
-        if isinstance(targets, basestring) or isinstance(targets, Target):
+        if isinstance(targets, str) or isinstance(targets, Target):
             targets = [targets]
         for target in targets:
-            if isinstance(target, basestring):
+            if isinstance(target, str):
                 # Ignore strings starting with a hash (assumed to be comments)
                 # or only containing whitespace
                 if (len(target.strip()) == 0) or (target[0] == '#'):
@@ -490,7 +487,6 @@ class Catalogue(object):
                      '1 33442U 98067BL  09195.86837279  .00241454  37518-4  34022-3 0  3424\n',
                      '2 33442  51.6315 144.2681 0003376 120.1747 240.0135 16.05240536 37575\n']
         >>> cat2.add_tle(lines)
-
         """
         targets, tle = [], []
         for line in lines:
@@ -498,42 +494,42 @@ class Catalogue(object):
                 continue
             tle += [line]
             if len(tle) == 3:
-                targets.append('tle,' + ' '.join(tle))
+                name, line1, line2 = [raw_line.strip() for raw_line in tle]
+                targets.append(Target(f'{name}, tle, {line1}, {line2}'))
                 tle = []
         if len(tle) > 0:
             logger.warning('Did not receive a multiple of three lines when constructing TLEs')
 
-        # Check TLE epochs and warn if some are too far in past or future, which would make TLE inaccurate right now
-        max_epoch_diff_days, num_outdated, worst = 0, 0, None
+        # Check TLE epochs and warn if some are too far in past or future,
+        # which would make TLE inaccurate right now
+        max_epoch_age = 0 * u.day
+        num_outdated = 0
+        worst = None
         for target in targets:
-            # Extract name, epoch and mean motion (revolutions per day)
-            name = target.split('\n')[0][4:].strip()
-            epoch_year, epoch_day = float(target.split('\n')[1][19:21]), float(target.split('\n')[1][21:33])
-            epoch_year = epoch_year + 1900 if epoch_year >= 57 else epoch_year + 2000
-            epoch = Timestamp('%d' % (epoch_year,)) + (epoch_day - 1.0) * 24. * 3600.
-            revs_per_day = float(target.split('\n')[2][53:64])
-            # Use orbital period to distinguish near-earth and deep-space objects (which have different accuracies)
-            orbital_period_mins = 24. / revs_per_day * 60.
-            now = Timestamp()
-            epoch_diff_days = np.abs(now - epoch) / 3600. / 24.
-            direction = 'past' if epoch < now else 'future'
+            # Use orbital period to distinguish near-earth and deep-space objects
+            # (which have different accuracies)
+            mean_motion = target.body.satellite.no_kozai * u.rad / u.minute
+            orbital_period = 1 * u.cycle / mean_motion
+            epoch_age = Time.now() - target.body.epoch
+            direction = 'past' if epoch_age > 0 else 'future'
+            epoch_age = abs(epoch_age)
             # Near-earth models should be good for about a week (conservative estimate)
-            if orbital_period_mins < 225 and epoch_diff_days > 7:
+            if orbital_period < 225 * u.minute and epoch_age > 7 * u.day:
                 num_outdated += 1
-                if epoch_diff_days > max_epoch_diff_days:
-                    worst = "Worst case: TLE epoch for '%s' is %d days in %s, should be <= 7 for near-earth model" % \
-                            (name, epoch_diff_days, direction)
-                    max_epoch_diff_days = epoch_diff_days
+                if epoch_age > max_epoch_age:
+                    worst = (f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
+                             f"days in the {direction}, should be <= 7 for near-Earth model")
+                    max_epoch_age = epoch_age
             # Deep-space models are more accurate (three weeks for a conservative estimate)
-            if orbital_period_mins >= 225 and epoch_diff_days > 21:
+            if orbital_period >= 225 * u.minute and epoch_age > 21 * u.day:
                 num_outdated += 1
-                if epoch_diff_days > max_epoch_diff_days:
-                    worst = "Worst case: TLE epoch for '%s' is %d days in %s, should be <= 21 for deep-space model" % \
-                            (name, epoch_diff_days, direction)
-                    max_epoch_diff_days = epoch_diff_days
+                if epoch_age > max_epoch_age:
+                    worst = (f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
+                             f"days in the {direction}, should be <= 21 for deep-space model")
+                    max_epoch_age = epoch_age
         if num_outdated > 0:
-            logger.warning('%d of %d TLE set(s) are outdated, probably making them inaccurate for use right now',
-                           num_outdated, len(targets))
+            logger.warning('%d of %d TLE set(s) are outdated, probably making them inaccurate '
+                           'for use right now', num_outdated, len(targets))
             logger.warning(worst)
         self.add(targets, tags)
 
@@ -579,7 +575,6 @@ class Catalogue(object):
         ----------
         name : string
             Name of target to remove (may also be an alternate name of target)
-
         """
         target = self[name]
         if target is not None:
@@ -597,7 +592,6 @@ class Catalogue(object):
         ----------
         filename : string
             Name of file to write catalogue to (overwriting existing contents)
-
         """
         open(filename, 'w').writelines([t.description + '\n' for t in self.targets])
 
@@ -611,9 +605,8 @@ class Catalogue(object):
         ----------
         target : :class:`Target` object
             Target with which catalogue targets are compared
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -624,11 +617,10 @@ class Catalogue(object):
             catalogue is empty
         min_dist : float
             Angular separation between *target* and *closest_target*, in degrees
-
         """
         if len(self.targets) == 0:
             return None, 180.0
-        dist = rad2deg(np.array([target.separation(tgt, timestamp, antenna) for tgt in self.targets]))
+        dist = np.array([target.separation(tgt, timestamp, antenna).deg for tgt in self.targets])
         closest = dist.argmin()
         return self.targets[closest], dist[closest]
 
@@ -673,9 +665,9 @@ class Catalogue(object):
             takes the form [lower, upper]. If None, any distance is accepted.
         proximity_targets : :class:`Target` object, or sequence of objects
             Target or list of targets used in proximity filter
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds since
-            Unix epoch. If None, the current time *at each iteration* is used.
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions.
+            If None, the current time *at each iteration* is used.
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -699,7 +691,6 @@ class Catalogue(object):
         >>> for t in cat.iterfilter(el_limit_deg=10):
                 # Observe target t
                 pass
-
         """
         tag_filter = tags is not None
         flux_filter = flux_limit_Jy is not None
@@ -711,7 +702,7 @@ class Catalogue(object):
 
         # First apply static criteria (tags, flux) which do not depend on timestamp
         if tag_filter:
-            if isinstance(tags, basestring):
+            if isinstance(tags, str):
                 tags = tags.split()
             desired_tags = set([tag for tag in tags if tag[0] != '~'])
             undesired_tags = set([tag[1:] for tag in tags if tag[0] == '~'])
@@ -763,7 +754,7 @@ class Catalogue(object):
                     if (el_deg < el_limit_deg[0]) or (el_deg > el_limit_deg[1]):
                         continue
                 if proximity_filter:
-                    dist_deg = np.array([rad2deg(target.separation(prox_target, latest_timestamp, antenna))
+                    dist_deg = np.array([target.separation(prox_target, latest_timestamp, antenna).deg
                                          for prox_target in proximity_targets])
                     if (dist_deg < dist_limit_deg[0]).any() or (dist_deg > dist_limit_deg[1]).any():
                         continue
@@ -814,9 +805,8 @@ class Catalogue(object):
             takes the form [lower, upper]. If None, any distance is accepted.
         proximity_targets : :class:`Target` object, or sequence of objects
             Target or list of targets used in proximity filter
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -842,7 +832,6 @@ class Catalogue(object):
         >>> cat3 = cat.filter(flux_limit_Jy=10)
         >>> cat4 = cat.filter(tags='special ~radec')
         >>> cat5 = cat.filter(dist_limit_deg=5, proximity_targets=cat['Sun'])
-
         """
         return Catalogue([target for target in
                           self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg, el_limit_deg,
@@ -863,9 +852,8 @@ class Catalogue(object):
             True if key should be sorted in ascending order
         flux_freq_MHz : float, optional
             Frequency at which to evaluate the flux density, in MHz
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
 
@@ -878,7 +866,6 @@ class Catalogue(object):
         ------
         ValueError
             If some required parameters are missing or key is unknown
-
         """
         # Set up index list that will be sorted
         if key == 'name':
@@ -903,7 +890,7 @@ class Catalogue(object):
         return self
 
     def visibility_list(self, timestamp=None, antenna=None, flux_freq_MHz=None, antenna2=None):
-        """Print out list of targets in catalogue, sorted by decreasing elevation.
+        r"""Print out list of targets in catalogue, sorted by decreasing elevation.
 
         This prints out the name, azimuth and elevation of each target in the
         catalogue, in order of decreasing elevation. The motion of the target at
@@ -919,9 +906,8 @@ class Catalogue(object):
 
         Parameters
         ----------
-        timestamp : :class:`Timestamp` object or equivalent, optional
-            Timestamp at which to evaluate target positions, in UTC seconds
-            since Unix epoch (defaults to now)
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
         flux_freq_MHz : float, optional
@@ -930,7 +916,6 @@ class Catalogue(object):
             Second antenna of baseline pair (baseline vector points from
             *antenna* to *antenna2*), used to calculate delays and fringe rates
             per target
-
         """
         above_horizon = True
         timestamp = Timestamp(timestamp)
@@ -949,10 +934,13 @@ class Catalogue(object):
         print()
         print('Target                        Azimuth    Elevation <    Flux Fringe period')
         print('------                        -------    --------- -    ---- -------------')
-        for target in self.sort('el', timestamp=timestamp, antenna=antenna, ascending=False):
-            azel = target.azel(timestamp, antenna)
-            delta_el = target.azel(timestamp + 30.0, antenna).alt.deg - target.azel(timestamp - 30.0, antenna).alt.deg
-            el_code = '-' if (np.abs(delta_el) < 1.0 / 60.0) else ('/' if delta_el > 0.0 else '\\')
+        azels = [target.azel(timestamp + (-30.0, 0.0, 30.0), antenna) for target in self.targets]
+        elevations = [azel[1].alt.deg for azel in azels]
+        for index in np.argsort(elevations)[::-1]:
+            target = self.targets[index]
+            azel = azels[index][1]
+            delta_el = azels[index][2].alt.deg - azels[index][0].alt.deg
+            el_code = '-' if (np.abs(delta_el) < 1 / 60) else ('/' if delta_el > 0 else '\\')
             # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
             flux = target.flux_density(flux_freq_MHz) if flux_freq_MHz is not None else np.nan
             if antenna2 is not None and flux_freq_MHz is not None:
@@ -964,7 +952,9 @@ class Catalogue(object):
                 # Draw horizon line
                 print('--------------------------------------------------------------------------')
                 above_horizon = False
-            line = '%-24s %12s %12s %c' % (target.name, azel.az.rad, azel.alt.rad, el_code)
+            az = azel.az.wrap_at('180deg').to_string(sep=':', precision=1)
+            el = azel.alt.to_string(sep=':', precision=1)
+            line = '%-24s %12s %12s %c' % (target.name, az, el, el_code)
             line = line + ' %7.1f' % (flux,) if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
                 line += '    %10.2f' % (fringe_period,)

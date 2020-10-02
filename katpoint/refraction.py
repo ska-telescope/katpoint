@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -17,16 +17,12 @@
 """Refraction correction.
 
 This implements correction for refractive bending in the atmosphere.
-
 """
-from __future__ import print_function, division, absolute_import
-from builtins import object, range
 
 import logging
 
 import numpy as np
 
-from .ephem_extra import rad2deg, deg2rad, is_iterable
 
 logger = logging.getLogger(__name__)
 
@@ -97,17 +93,17 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     sn = 77.6 * (pressure_hPa + (4810.0 * cvt * pp) / temperature_K) / temperature_K
 
     # Compute refraction at elevation (clipped at 1 degree to avoid cot(el) blow-up at horizon)
-    el_deg = np.clip(rad2deg(el), 1.0, 90.0)
+    el_deg = np.clip(np.degrees(el), 1.0, 90.0)
     aphi = a / ((el_deg + b) ** c)
     dele = -d / ((el_deg + e) ** f)
-    zenith_angle = deg2rad(90. - el_deg)
+    zenith_angle = np.radians(90. - el_deg)
     bphi = g * (np.tan(zenith_angle) + dele)
     # Threw out an (el < 0.01) check here, which will never succeed because el is clipped to be above 1.0 [LS]
 
-    return deg2rad(bphi * sn - aphi)
+    return np.radians(bphi * sn - aphi)
 
 
-class RefractionCorrection(object):
+class RefractionCorrection:
     """Correct pointing for refractive bending in atmosphere.
 
     This uses the specified refraction model to calculate a correction to a
@@ -125,8 +121,8 @@ class RefractionCorrection(object):
     ------
     ValueError
         If the specified refraction model is unknown
-
     """
+
     def __init__(self, model='VLBI Field System'):
         self.models = {'VLBI Field System': refraction_offset_vlbi}
         try:
@@ -173,7 +169,6 @@ class RefractionCorrection(object):
         -------
         refracted_el : float or array
             Elevation angle(s), corrected for refraction, in radians
-
         """
         return el + self.offset(el, temperature_C, pressure_hPa, humidity_percent)
 
@@ -198,15 +193,14 @@ class RefractionCorrection(object):
         -------
         el : float or array
             Elevation angle(s) before refraction correction, in radians
-
         """
         # Maximum difference between input elevation and refraction-corrected version of final output elevation
-        tolerance = deg2rad(0.01 / 3600)
+        tolerance = np.radians(0.01 / 3600)
         # Assume offset from corrected el is similar to offset from uncorrected el -> get lower bound on desired el
         close_offset = self.offset(refracted_el, temperature_C, pressure_hPa, humidity_percent)
         lower = refracted_el - 4 * np.abs(close_offset)
         # We know that corrected el > uncorrected el (mostly) -> this becomes upper bound on desired el
-        upper = refracted_el + deg2rad(1. / 3600.)
+        upper = refracted_el + np.radians(1. / 3600.)
         # Do binary search for desired el within this range (but cap iterations in case of a mishap)
         # This assumes that refraction-corrected elevation is monotone function of uncorrected elevation
         for iteration in range(40):
@@ -214,17 +208,10 @@ class RefractionCorrection(object):
             test_el = self.apply(el, temperature_C, pressure_hPa, humidity_percent)
             if np.all(np.abs(test_el - refracted_el) < tolerance):
                 break
-            # Handle both scalars and arrays (and lists) as cleanly as possible
-            if not is_iterable(refracted_el):
-                if test_el < refracted_el:
-                    lower = el
-                else:
-                    upper = el
-            else:
-                lower = np.where(test_el < refracted_el, el, lower)
-                upper = np.where(test_el > refracted_el, el, upper)
+            lower = np.where(test_el < refracted_el, el, lower)
+            upper = np.where(test_el > refracted_el, el, upper)
         else:
             logger.warning('Reverse refraction correction did not converge in '
                            '%d iterations - elevation differs by at most %f arcsecs',
-                           iteration + 1, rad2deg(np.abs(test_el - refracted_el).max()) * 3600.)
-        return el
+                           iteration + 1, np.degrees(np.abs(test_el - refracted_el).max()) * 3600.)
+        return el if el.ndim else el.item()

@@ -1,7 +1,6 @@
-nose
-coverage
-nosexcover
-virtualenv
-unittest2
+astropy>=4.1rc1
 numpy
-
+pytest
+pytest-cov
+sgp4>=2.7
+virtualenv

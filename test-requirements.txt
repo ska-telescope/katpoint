@@ -1,7 +1,16 @@
-argparse               # via unittest2
-nose
-coverage
-linecache2             # via traceback2
-six                    # via unittest2
-traceback2             # via unittest2
-unittest2
+attrs                   # via pytest
+certifi                 # via skyfield
+coverage                # via pytest-cov
+importlib-metadata      # via pytest
+jplephem==2.14          # via skyfield
+more-itertools          # via pytest
+packaging               # via pytest
+pluggy                  # via pytest
+py                      # via pytest
+pyparsing               # via packaging
+pytest
+pytest-cov
+six                     # via packaging
+skyfield==1.26
+wcwidth                 # via pytest
+zipp                    # via importlib-metadata

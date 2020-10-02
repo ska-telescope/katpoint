@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -19,27 +19,27 @@
 This implements the basic delay model used to calculate the delay
 contribution from each antenna, as well as a class that performs
 delay correction for a correlator.
-
 """
-from __future__ import print_function, division, absolute_import
-from builtins import object, zip
-from past.builtins import basestring
 
 import logging
 import json
 
 import numpy as np
+import astropy.units as u
+import astropy.constants as const
+from astropy.time import Time
 
 from .model import Parameter, Model
 from .conversion import azel_to_enu
-from .ephem_extra import lightspeed, is_iterable, _just_gimme_an_ascii_string
 from .target import construct_radec_target
+from .timestamp import Timestamp
 
 
 # Speed of EM wave in fixed path (typically due to cables / clock distribution).
 # This number is not critical - only meant to convert delays to "nice" lengths.
 # Typical factors are: fibre = 0.7, coax = 0.84.
-FIXEDSPEED = 0.7 * lightspeed
+LIGHTSPEED = const.c.to_value(u.m / u.s)
+FIXEDSPEED = 0.7 * LIGHTSPEED
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +61,8 @@ class DelayModel(Model):
         string, interpret it as a comma-separated (or whitespace-separated)
         sequence of parameters in their string form (i.e. a description
         string). The default is an empty model.
-
     """
+
     def __init__(self, model=None):
         # Instantiate the relevant model parameters and register with base class
         params = []
@@ -75,7 +75,7 @@ class DelayModel(Model):
         Model.__init__(self, params)
         self.set(model)
         # The EM wave velocity associated with each parameter
-        self._speeds = np.array([lightspeed] * 3 + [FIXEDSPEED] * 2 + [lightspeed])
+        self._speeds = np.array([LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED])
 
     @property
     def delay_params(self):
@@ -89,12 +89,11 @@ class DelayModel(Model):
         ----------
         delays : sequence of floats
             Model parameters in delay form (i.e. in seconds)
-
         """
         self.fromlist(delays * self._speeds)
 
 
-class DelayCorrection(object):
+class DelayCorrection:
     """Calculate delay corrections for a set of correlator inputs / antennas.
 
     This uses delay models from multiple antennas connected to a correlator to
@@ -132,7 +131,6 @@ class DelayCorrection(object):
     ValueError
         If all antennas do not share the same reference position as `ref_ant`
         or `ref_ant` was not specified, or description string is invalid
-
     """
 
     # Maximum size for delay cache
@@ -140,14 +138,13 @@ class DelayCorrection(object):
 
     def __init__(self, ants, ref_ant=None, sky_centre_freq=0.0, extra_delay=None):
         # Unpack JSON-encoded description string
-        if isinstance(ants, basestring):
+        if isinstance(ants, str):
             try:
                 descr = json.loads(ants)
             except ValueError:
                 raise ValueError("Trying to construct DelayCorrection with an "
                                  "invalid description string %r" % (ants,))
-            # JSON only returns Unicode, even on Python 2... Remedy this.
-            ref_ant_str = _just_gimme_an_ascii_string(descr['ref_ant'])
+            ref_ant_str = descr['ref_ant']
             # Antenna needs DelayModel which also lives in this module...
             # This is messy but avoids a circular dependency and having to
             # split this file into two small bits.
@@ -158,8 +155,8 @@ class DelayCorrection(object):
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():
                 ant_model = DelayModel()
-                ant_model.fromstring(_just_gimme_an_ascii_string(ant_model_str))
-                ant_models[_just_gimme_an_ascii_string(ant_name)] = ant_model
+                ant_model.fromstring(ant_model_str)
+                ant_models[ant_name] = ant_model
         else:
             # `ants` is a sequence of Antennas - verify and extract delay models
             if ref_ant is None:
@@ -220,8 +217,8 @@ class DelayCorrection(object):
         ----------
         target : :class:`Target` object
             Target providing direction for geometric delays
-        timestamp : :class:`Timestamp` object or equivalent
-            Timestamp in UTC seconds since Unix epoch
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
+            Timestamp when wavefront from target passes reference position
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
@@ -230,7 +227,6 @@ class DelayCorrection(object):
         -------
         delays : sequence of *2M* floats
             Delays (one per correlator input) in seconds
-
         """
         if not offset:
             azel = target.azel(timestamp, self.ref_ant)
@@ -264,7 +260,6 @@ class DelayCorrection(object):
 
         See :meth:`_calculate_delays` for parameter and return lists,
         as these two methods can be used interchangeably.
-
         """
         delays = self._cache.pop(timestamp, None)
         if delays is None:
@@ -292,12 +287,12 @@ class DelayCorrection(object):
         ----------
         target : :class:`Target` object
             Target providing direction for geometric delays
-        timestamp : :class:`Timestamp` object or equivalent, or sequence, optional
-            Timestamp(s) in UTC seconds since Unix epoch when delays are
-            evaluated (default is now). If more than one timestamp is given,
-            the corrections will include slopes to be used for linear
-            interpolation between the times
-        next_timestamp : :class:`Timestamp` object or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp(s) when delays are evaluated (default is now). If an array
+            of timestamps is given (in which case, it must contain at least two
+            elements), the corrections will include slopes to be used for linear
+            interpolation between the times.
+        next_timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp when next delay will be evaluated, used to determine
             a slope for linear interpolation (default is no slope). This is
             ignored if *timestamp* is a sequence.
@@ -319,33 +314,34 @@ class DelayCorrection(object):
             fringe rate value (in radians per second). If a sequence of *T*
             timestamps are provided, each input maps to an array of shape
             (*T*, 2).
-
         """
-        if is_iterable(timestamp):
+        time = Timestamp(timestamp).time
+        if time.shape == ():
+            # Use cache for a single timestamp
+            delays = self._cached_delays(target, time, offset)
+            next_time = None if next_timestamp is None else Timestamp(next_timestamp).time
+        else:
             # Append one more timestamp to get a slope for the last timestamp
-            last_step = timestamp[-1] - timestamp[-2]
-            all_times = np.r_[timestamp, [timestamp[-1] + last_step]]
-            next_timestamp = all_times[1:]
+            last_step = time[-1] - time[-2]
+            all_times = np.r_[time, [time[-1] + last_step]]
+            next_time = Time(all_times[1:])
             # Don't use cache, as the next_times are included in all_delays
             all_delays = np.array([self._calculate_delays(target, t, offset)
                                    for t in all_times]).T
             delays, next_delays = all_delays[:, :-1], all_delays[:, 1:]
-        else:
-            # Use cache for a single timestamp
-            delays = self._cached_delays(target, timestamp, offset)
 
         def phase(t0):
             """The phase associated with delay t0 at the centre frequency."""
             return - 2.0 * np.pi * self.sky_centre_freq * t0
         delay_corrections = self.extra_delay - delays
         phase_corrections = - phase(delays)
-        if next_timestamp is None:
+        if next_time is None:
             return (dict(zip(self._inputs, delay_corrections)),
                     dict(zip(self._inputs, phase_corrections)))
-        step = next_timestamp - timestamp
+        step = (next_time - time).sec
         # We still have to get next_delays in the single timestamp case
-        if not is_iterable(next_timestamp):
-            next_delays = self._cached_delays(target, next_timestamp, offset)
+        if next_time.shape == ():
+            next_delays = self._cached_delays(target, next_time, offset)
         next_delay_corrections = self.extra_delay - next_delays
         next_phase_corrections = - phase(next_delays)
         delay_slopes = (next_delay_corrections - delay_corrections) / step

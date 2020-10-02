@@ -1,5 +1,3 @@
-future
+astropy==4.1rc1
 numpy
-astroppy
-sgp4
-pyorbital
+sgp4==2.12

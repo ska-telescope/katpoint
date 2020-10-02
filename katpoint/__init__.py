@@ -25,19 +25,16 @@ Currently it only caters for PyEphem, but it could be extended to include ACSM
 and CASA.
 
 """
-from __future__ import print_function, division, absolute_import
 
 import logging as _logging
-import warnings as _warnings
 
-import future.utils
+import numpy as _np
 
 from .target import Target, construct_azel_target, construct_radec_target, NonAsciiError
 from .antenna import Antenna
 from .timestamp import Timestamp
 from .flux import FluxDensityModel, FluxError
 from .catalogue import Catalogue, specials
-from .ephem_extra import lightspeed, rad2deg, deg2rad, wrap_angle, is_iterable
 from .conversion import (lla_to_ecef, ecef_to_lla, enu_to_ecef, ecef_to_enu,
                          azel_to_enu, enu_to_azel, hadec_to_enu, enu_to_xyz)
 from .projection import sphere_to_plane, plane_to_sphere
@@ -45,6 +42,15 @@ from .model import Parameter, Model, BadModelFile
 from .pointing import PointingModel
 from .refraction import RefractionCorrection
 from .delay import DelayModel, DelayCorrection
+
+
+def wrap_angle(angle, period=2.0 * _np.pi):
+    """Wrap angle into interval centred on zero.
+
+    This wraps the *angle* into the interval -*period* / 2 ... *period* / 2.
+    """
+    return (angle + 0.5 * period) % period - 0.5 * period
+
 
 # Hide submodules in module namespace, to avoid confusion with corresponding class names
 # If the module is reloaded, this will fail - ignore the resulting NameError
@@ -62,6 +68,7 @@ except NameError:
 # Setup library logger and add a print-like handler used when no logging is configured
 class _NoConfigFilter(_logging.Filter):
     """Filter which only allows event if top-level logging is not configured."""
+
     def filter(self, record):
         return 1 if not _logging.root.handlers else 0
 
@@ -71,14 +78,6 @@ _no_config_handler.setFormatter(_logging.Formatter(_logging.BASIC_FORMAT))
 _no_config_handler.addFilter(_NoConfigFilter())
 logger = _logging.getLogger(__name__)
 logger.addHandler(_no_config_handler)
-
-if future.utils.PY2:
-    _PY2_WARNING = (
-        "Python 2 has reached End-of-Life, and a future version of katpoint "
-        "will remove support for it. Please update your scripts to Python 3 "
-        "as soon as possible."
-    )
-    _warnings.warn(_PY2_WARNING, FutureWarning)
 
 # BEGIN VERSION CHECK
 # Get package version when locally imported from repo or via -e develop install
@@ -90,4 +89,3 @@ except ImportError:
 else:
     __version__ = _katversion.get_version(__path__[0])
 # END VERSION CHECK
-

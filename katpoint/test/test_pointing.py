@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2019, National Research Foundation (Square Kilometre Array)
+# Copyright (c) 2009-2020, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -15,80 +15,87 @@
 ################################################################################
 
 """Tests for the pointing module."""
-from __future__ import print_function, division, absolute_import
 
-import unittest
-
+import pytest
 import numpy as np
 
 import katpoint
 
-
-def assert_angles_almost_equal(x, y, **kwargs):
-    def primary_angle(x):
-        return x - np.round(x / (2.0 * np.pi)) * 2.0 * np.pi
-    np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), **kwargs)
+from .helper import assert_angles_almost_equal
 
 
-class TestPointingModel(unittest.TestCase):
-    """Test pointing model."""
-    def setUp(self):
-        az_range = katpoint.deg2rad(np.arange(-185.0, 275.0, 5.0))
-        el_range = katpoint.deg2rad(np.arange(0.0, 86.0, 1.0))
-        mesh_az, mesh_el = np.meshgrid(az_range, el_range)
-        self.az = mesh_az.ravel()
-        self.el = mesh_el.ravel()
-        # Generate random parameter values with this spread
-        self.param_stdev = katpoint.deg2rad(20. / 60.)
-        self.num_params = len(katpoint.PointingModel())
+@pytest.fixture
+def pointing_grid():
+    """Generate a grid of (az, el) values in natural antenna coordinates."""
+    az_range = np.radians(np.arange(-185.0, 275.0, 5.0))
+    el_range = np.radians(np.arange(0.0, 86.0, 1.0))
+    mesh_az, mesh_el = np.meshgrid(az_range, el_range)
+    az = mesh_az.ravel()
+    el = mesh_el.ravel()
+    return az, el
 
-    def test_pointing_model_load_save(self):
-        """Test construction / load / save of pointing model."""
-        params = katpoint.deg2rad(np.random.randn(self.num_params + 1))
-        pm = katpoint.PointingModel(params[:-1])
-        print('%r %s' % (pm, pm))
-        pm2 = katpoint.PointingModel(params[:-2])
-        self.assertEqual(pm2.values()[-1], 0.0, 'Unspecified pointing model params not zeroed')
-        pm3 = katpoint.PointingModel(params)
-        self.assertEqual(pm3.values()[-1], params[-2], 'Superfluous pointing model params not handled correctly')
-        pm4 = katpoint.PointingModel(pm.description)
-        self.assertEqual(pm4.description, pm.description, 'Saving pointing model to string and loading it again failed')
-        self.assertEqual(pm4, pm, 'Pointing models should be equal')
-        self.assertNotEqual(pm2, pm, 'Pointing models should be inequal')
-        #np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
-        for (v4, v) in zip(pm4.values(), pm.values()):
-            if type(v4) == float:
-                np.testing.assert_almost_equal(v4, v, decimal=6)
-            else:
-                np.testing.assert_almost_equal(v4.rad, v, decimal=6)
-        try:
-            self.assertEqual(hash(pm4), hash(pm), 'Pointing model hashes not equal')
-        except TypeError:
-            self.fail('PointingModel object not hashable')
 
-    def test_pointing_closure(self):
-        """Test closure between pointing correction and its reverse operation."""
-        # Generate random pointing model
-        params = self.param_stdev * np.random.randn(self.num_params)
-        pm = katpoint.PointingModel(params)
-        # Test closure on (az, el) grid
-        pointed_az, pointed_el = pm.apply(self.az, self.el)
-        az, el = pm.reverse(pointed_az, pointed_el)
-        assert_angles_almost_equal(az, self.az, decimal=6, err_msg='Azimuth closure error for params=%s' % (params,))
-        assert_angles_almost_equal(el, self.el, decimal=7, err_msg='Elevation closure error for params=%s' % (params,))
+@pytest.fixture
+def params():
+    """Generate random parameters for a pointing model."""
+    # Generate random parameter values with this spread
+    param_stdev = np.radians(20. / 60.)
+    num_params = len(katpoint.PointingModel())
+    params = param_stdev * np.random.randn(num_params)
+    return params
 
-    def test_pointing_fit(self):
-        """Test fitting of pointing model."""
-        # Generate random pointing model and corresponding offsets on (az, el) grid
-        params = self.param_stdev * np.random.randn(self.num_params)
-        params[1] = params[9] = 0.0
-        pm = katpoint.PointingModel(params.copy())
-        delta_az, delta_el = pm.offset(self.az, self.el)
-        enabled_params = (np.arange(self.num_params) + 1).tolist()
-        # Comment out these removes, thereby testing more code paths in PointingModel
-        # enabled_params.remove(2)
-        # enabled_params.remove(10)
-        fitted_params, sigma_params = pm.fit(self.az, self.el, delta_az, delta_el, enabled_params=[])
-        np.testing.assert_equal(fitted_params, np.zeros(self.num_params))
-        fitted_params, sigma_params = pm.fit(self.az, self.el, delta_az, delta_el, enabled_params=enabled_params)
-        np.testing.assert_almost_equal(fitted_params, params, decimal=9)
+
+def test_pointing_model_load_save(params):
+    """Test construction / load / save of pointing model."""
+    pm = katpoint.PointingModel(params)
+    print('%r %s' % (pm, pm))
+    pm2 = katpoint.PointingModel(params[:-1])
+    assert pm2.values()[-1] == 0.0, 'Unspecified pointing model params not zeroed'
+    pm3 = katpoint.PointingModel(np.r_[params, 1.0])
+    assert pm3.values()[-1] == params[-1], (
+        'Superfluous pointing model params not handled correctly')
+    pm4 = katpoint.PointingModel(pm.description)
+    assert pm4.description == pm.description, (
+        'Saving pointing model to string and loading it again failed')
+    assert pm4 == pm, 'Pointing models should be equal'
+    assert pm2 != pm, 'Pointing models should be inequal'
+    # np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
+    for (v4, v) in zip(pm4.values(), pm.values()):
+        if type(v4) == float:
+            np.testing.assert_almost_equal(v4, v, decimal=6)
+        else:
+            np.testing.assert_almost_equal(v4.rad, v, decimal=6)
+    try:
+        assert hash(pm4) == hash(pm), 'Pointing model hashes not equal'
+    except TypeError:
+        pytest.fail('PointingModel object not hashable')
+
+
+def test_pointing_closure(params, pointing_grid):
+    """Test closure between pointing correction and its reverse operation."""
+    pm = katpoint.PointingModel(params)
+    # Test closure on (az, el) grid
+    grid_az, grid_el = pointing_grid
+    pointed_az, pointed_el = pm.apply(grid_az, grid_el)
+    az, el = pm.reverse(pointed_az, pointed_el)
+    assert_angles_almost_equal(az, grid_az, decimal=6,
+                               err_msg='Azimuth closure error for params=%s' % (params,))
+    assert_angles_almost_equal(el, grid_el, decimal=7,
+                               err_msg='Elevation closure error for params=%s' % (params,))
+
+
+def test_pointing_fit(params, pointing_grid):
+    """Test fitting of pointing model."""
+    # Generate random pointing model and corresponding offsets on (az, el) grid
+    params[1] = params[9] = 0.0
+    pm = katpoint.PointingModel(params.copy())
+    grid_az, grid_el = pointing_grid
+    delta_az, delta_el = pm.offset(grid_az, grid_el)
+    enabled_params = (np.arange(len(pm)) + 1).tolist()
+    # Comment out these removes, thereby testing more code paths in PointingModel
+    # enabled_params.remove(2)
+    # enabled_params.remove(10)
+    fitted_params, sigma_params = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=[])
+    np.testing.assert_equal(fitted_params, np.zeros(len(pm)))
+    fitted_params, sigma_params = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=enabled_params)
+    np.testing.assert_almost_equal(fitted_params, params, decimal=9)
