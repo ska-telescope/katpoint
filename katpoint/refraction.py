@@ -215,3 +215,81 @@ class RefractionCorrection:
                            '%d iterations - elevation differs by at most %f arcsecs',
                            iteration + 1, np.degrees(np.abs(test_el - refracted_el).max()) * 3600.)
         return el if el.ndim else el.item()
+
+
+class SaastamoinenZenithDelay:
+    """"""
+
+    def __init__(self, location):
+        self.location = location
+
+    def hydrostatic(self, temperature, pressure, humidity):
+        pass
+
+    def wet(self, temperature, pressure, humidity):
+        pass
+
+
+ZENITH_DELAY = {'SaastamoinenZD': SaastamoinenZenithDelay}
+
+
+class GlobalMappingFunction:
+    """"""
+
+    def init(self, location):
+        self.location = location
+
+    def hydrostatic(self, elevation, timestamp):
+        pass
+
+    def wet(self, elevation, timestamp):
+        pass
+
+
+MAPPING_FUNCTION = {'GlobalMF': GlobalMappingFunction}
+
+
+class TroposphericDelay:
+    """"""
+
+    def __init__(self, location, model_id='SaastamoinenZD-GlobalMF'):
+        # These will effectively be read-only attributes because setattr is disabled
+        super().__setattr__('location', location)
+        super().__setattr__('model_id', model_id)
+        # Parse model identifier string
+        model_parts = model_id.split('-')
+        if len(model_parts) == 2:
+            model_parts.append('total')
+        if len(model_parts) != 3:
+            raise ValueError(f"Format for tropospheric delay model ID is '<zenith delay>-"
+                             f"<mapping function>[-<hydrostatic/wet>]', not {model_id:!r}")
+
+        def get(mapping, key, name):
+            try:
+                return mapping[key]
+            except KeyError as err:
+                raise ValueError(f"Tropospheric delay model {model_id:!r} has unknown {name} "
+                                 f"{key:!r}, available ones are {list(mapping.keys())}") from err
+
+        zenith_delay = get(ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
+        mapping_function = get(MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
+
+        def hydrostatic(t, p, h, el, ts):
+            return zenith_delay.hydrostatic(t, p, h) * mapping_function.hydrostatic(el, ts)
+
+        def wet(t, p, h, el, ts):
+            return zenith_delay.wet(t, p, h) * mapping_function.wet(el, ts)
+
+        def total(t, p, h, el, ts):
+            return hydrostatic(t, p, h, el, ts) + wet(t, p, h, el, ts)
+
+        model_types = {'hydrostatic': hydrostatic, 'wet': wet, 'total': total}
+        super().__setattr__('_delay', get(model_types, model_parts[2], 'type'))
+
+    def __setattr__(self, name, value):
+        """Prevent modification of attributes (the model is read-only)."""
+        raise AttributeError('Tropospheric delay models are immutable')
+
+    def __call__(self, temperature, pressure, humidity, elevation, timestamp):
+        """"""
+        return self._delay(temperature, pressure, humidity, elevation, timestamp)
