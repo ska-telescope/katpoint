@@ -22,6 +22,8 @@ This implements correction for refractive bending in the atmosphere.
 import logging
 
 import numpy as np
+import astropy.units as u
+import astropy.constants as const
 
 
 logger = logging.getLogger(__name__)
@@ -218,16 +220,97 @@ class RefractionCorrection:
 
 
 class SaastamoinenZenithDelay:
-    """"""
+    """Zenith delay due to the neutral gas in the troposphere and stratosphere.
+
+    This provides separate methods for the "dry" (hydrostatic) and "wet"
+    (non-hydrostatic) components of the atmosphere.
+
+    Parameters
+    ----------
+    location : `~astropy.coordinates.EarthLocation`
+        Location on Earth of observer (used to correct local gravity)
+
+    Notes
+    -----
+    This is a direct translation of the SASTD and SASTW subroutines in the
+    atmospheric module (catmm.f) of Calc 11. It is based on the formulas of
+    Saastamoinen [1]_ as implemented by Davis et al [2]_. The saturation
+    water vapour pressure is calculated by the venerable but still practical
+    August-Roche-Magnus formula as discussed in [3]_.
+
+    References
+    ----------
+    .. [1] J. Saastamoinen, “Atmospheric correction for the troposphere and
+       stratosphere in radio ranging satellites,” in The Use of Artificial
+       Satellites for Geodesy (Geophysical Monograph Series), edited by
+       S. W. Henriksen et al, Washington, D.C., vol. 15, pp. 247-251, 1972.
+       DOI: 10.1029/GM015p0247
+
+    .. [2] J. L. Davis, T. A. Herring, I. I. Shapiro, A. E. E. Rogers, and
+       G. Elgered, “Geodesy by radio interferometry: Effects of atmospheric
+       modeling errors on estimates of baseline length,” Radio Science,
+       vol. 20, no. 6, pp. 1593-1607, 1985. DOI: 10.1029/rs020i006p01593
+
+    .. [3] F. W. Murray, “On the computation of saturation vapor pressure,”
+        Journal of Applied Meteorology, vol. 6, no. 1, pp. 203-204, Feb 1967.
+        DOI: 10.1175/1520-0450(1967)006<0203:OTCOSV>2.0.CO;2
+    """
 
     def __init__(self, location):
-        self.location = location
+        # Reduce local gravity to the value at the centroid of the atmospheric column,
+        # which depends on the location of the observer
+        latitude_rad = location.lat.rad
+        height_km = location.height.to_value(u.km)
+        self._gravity_correction = 1. - 0.00266 * np.cos(2. * latitude_rad) - 0.00028 * height_km
 
     def hydrostatic(self, temperature, pressure, humidity):
-        pass
+        """Zenith delay due to "dry" (hydrostatic) component of the atmosphere.
+
+        Parameters
+        ----------
+        temperature : :class:`~astropy.units.Quantity`, float or array
+            Ambient air temperature at surface (ignored)
+        pressure : :class:`~astropy.units.Quantity`, float or array
+            Total barometric pressure at surface (hectopascal if not a `Quantity`)
+        humidity : float or array
+            Relative humidity at surface (ignored)
+
+        Returns
+        -------
+        delay : :class:`~astropy.units.Quantity`
+            Zenith delay due to hydrostatic component, in seconds
+        """
+        excess_path_per_hPa = 0.0022768 * u.m
+        pressure_hPa = (pressure << u.hectopascal).value
+        return excess_path_per_hPa * pressure_hPa / self._gravity_correction / const.c
 
     def wet(self, temperature, pressure, humidity):
-        pass
+        """Zenith delay due to "wet" (non-hydrostatic) component of atmosphere.
+
+        Parameters
+        ----------
+        temperature : :class:`~astropy.units.Quantity`, float or array
+            Ambient air temperature at surface (degrees Celsius if not a `Quantity`)
+        pressure : :class:`~astropy.units.Quantity`, float or array
+            Total barometric pressure at surface (ignored)
+        humidity : float or array
+            Relative humidity at surface, as a fraction in range [0, 1]
+
+        Returns
+        -------
+        delay : :class:`~astropy.units.Quantity`
+            Zenith delay due to non-hydrostatic component, in seconds
+        """
+        temperature_C = (temperature << u.deg_C).value
+        # This resembles the version of the August-Roche-Magnus formula in Murray (1967)
+        saturation_pressure_hPa = 6.11 * np.exp(17.269 * temperature_C / (temperature_C + 237.3))
+        # The Tetens (1930) version, which serves as the reference, is
+        # saturation_pressure_hPa = 10 ** (7.5 * temperature_C / (temperature_C + 237.3) + 0.7858)
+        partial_pressure_hPa = humidity * saturation_pressure_hPa
+        # Saastamoinen suggested 273.2, Astropy units has 273.15 but Murray and CODATA likes 273.16
+        temperature_K = temperature_C + 273.16
+        excess_path_per_hPa = 0.002277 * (1255. / temperature_K + 0.05) * u.m
+        return excess_path_per_hPa * partial_pressure_hPa / const.c
 
 
 ZENITH_DELAY = {'SaastamoinenZD': SaastamoinenZenithDelay}
