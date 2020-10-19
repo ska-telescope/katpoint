@@ -27,6 +27,7 @@ and CASA.
 """
 
 import logging as _logging
+from types import ModuleType as _ModuleType
 
 import numpy as _np
 
@@ -52,19 +53,6 @@ def wrap_angle(angle, period=2.0 * _np.pi):
     return (angle + 0.5 * period) % period - 0.5 * period
 
 
-# Hide submodules in module namespace, to avoid confusion with corresponding class names
-# If the module is reloaded, this will fail - ignore the resulting NameError
-try:
-    _target, _antenna, _timestamp, _flux, _catalogue, _ephem_extra, \
-        _conversion, _projection, _pointing, _refraction, _delay = \
-        target, antenna, timestamp, flux, catalogue, ephem_extra, \
-        conversion, projection, pointing, refraction, delay
-    del target, antenna, timestamp, flux, catalogue, ephem_extra, \
-        conversion, projection, pointing, refraction, delay
-except NameError:
-    pass
-
-
 # Setup library logger and add a print-like handler used when no logging is configured
 class _NoConfigFilter(_logging.Filter):
     """Filter which only allows event if top-level logging is not configured."""
@@ -78,6 +66,17 @@ _no_config_handler.setFormatter(_logging.Formatter(_logging.BASIC_FORMAT))
 _no_config_handler.addFilter(_NoConfigFilter())
 logger = _logging.getLogger(__name__)
 logger.addHandler(_no_config_handler)
+
+# Document the public API in __all__ / __dir__ by discarding modules and private variables
+__all__ = [n for n, o in globals().items()
+           if not isinstance(o, _ModuleType) and not n.startswith('_')]
+__all__ += ['__version__']
+
+
+def __dir__():
+    """IPython tab completion seems to respect this."""
+    return __all__
+
 
 # BEGIN VERSION CHECK
 # Get package version when locally imported from repo or via -e develop install
