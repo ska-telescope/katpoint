@@ -34,7 +34,6 @@ from .stars import STARS
 
 class NonAsciiError(ValueError):
     """Exception when non-ascii characters are found."""
-    pass
 
 
 class Target:
@@ -520,7 +519,7 @@ class Target:
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)
+        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)  # noqa: E1130
         return delays[..., 1], delays[..., 2] - delays[..., 0]
 
     def uvw_basis(self, timestamp=None, antenna=None):
@@ -639,8 +638,7 @@ class Target:
         # Apply linear coordinate transformation. A single call np.dot won't
         # work for both the scalar and array case, so we explicitly specify the
         # axes to sum over.
-        u, v, w = np.tensordot(basis, baseline_m, ([1], [-1]))
-        return u, v, w
+        return np.tensordot(basis, baseline_m, ([1], [-1]))
 
     def lmn(self, ra, dec, timestamp=None, antenna=None):
         """Calculate (l, m, n) coordinates for another target, while pointing at

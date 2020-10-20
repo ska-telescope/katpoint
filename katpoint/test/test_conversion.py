@@ -47,11 +47,11 @@ def test_lla_to_ecef(random_geoid):
     np.testing.assert_almost_equal(new_x, x, decimal=8)
     np.testing.assert_almost_equal(new_y, y, decimal=8)
     np.testing.assert_almost_equal(new_z, z, decimal=6)
-    if hasattr(katpoint, '_conversion'):
-        new_lat2, new_lon2, new_alt2 = katpoint._conversion.ecef_to_lla2(x, y, z)
-        assert_angles_almost_equal(new_lat2, lat, decimal=12)
-        assert_angles_almost_equal(new_lon2, lon, decimal=12)
-        assert_angles_almost_equal(new_alt2, alt, decimal=6)
+    # Test alternate version of ecef_to_lla2
+    new_lat2, new_lon2, new_alt2 = katpoint.conversion.ecef_to_lla2(x, y, z)
+    assert_angles_almost_equal(new_lat2, lat, decimal=12)
+    assert_angles_almost_equal(new_lon2, lon, decimal=12)
+    assert_angles_almost_equal(new_alt2, alt, decimal=6)
 
 
 def test_ecef_to_enu(random_geoid):

@@ -131,8 +131,9 @@ class PointingModel(Model):
            Reference Manual, Version 8.2, 1 September 1993.
         """
         # Unpack parameters to make the code correspond to the maths
-        P1, P2, P3, P4, P5, P6, P7, P8, \
-            P9, P10, P11, P12, P13, P14, P15, \
+        # P2 and P10 are not used because they are identically zero for alt-az mounts
+        P1, _, P3, P4, P5, P6, P7, P8, \
+            P9, _, P11, P12, P13, P14, P15, \
             P16, P17, P18, P19, P20, P21, P22 = self.values()
         # Compute each trig term only once and store it
         sin_az, cos_az, sin_2az, cos_2az = np.sin(az), np.cos(az), np.sin(2 * az), np.cos(2 * az)
@@ -189,8 +190,10 @@ class PointingModel(Model):
             Elements of Jacobian matrix (or matrices)
         """
         # Unpack parameters to make the code correspond to the maths
-        P1, P2, P3, P4, P5, P6, P7, P8, \
-            P9, P10, P11, P12, P13, P14, P15, \
+        # P1 and P7 are not used because they are constant terms with zero partial derivatives
+        # P2 and P10 are not used because they are identically zero for alt-az mounts
+        _, _, P3, P4, P5, P6, _, P8, \
+            P9, _, P11, P12, P13, P14, P15, \
             P16, P17, P18, P19, P20, P21, P22 = self.values()
         # Compute each trig term only once and store it
         sin_az, cos_az, sin_2az, cos_2az = np.sin(az), np.cos(az), np.sin(2 * az), np.cos(2 * az)

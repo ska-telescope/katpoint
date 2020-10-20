@@ -23,7 +23,6 @@ import numpy as np
 
 class FluxError(ValueError):
     """Exception for a flux parsing error."""
-    pass
 
 
 class FluxDensityModel:

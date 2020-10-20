@@ -211,7 +211,7 @@ class SolarSystemBody(Body):
     """
 
     def __init__(self, name):
-        if name.lower() not in solar_system_ephemeris.bodies:
+        if name.lower() not in solar_system_ephemeris.bodies:  # noqa: E1135
             raise ValueError("Unknown Solar System body '{}' - should be one of {}"
                              .format(name.lower(), solar_system_ephemeris.bodies))
         super().__init__(name)

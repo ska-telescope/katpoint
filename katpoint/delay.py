@@ -141,9 +141,9 @@ class DelayCorrection:
         if isinstance(ants, str):
             try:
                 descr = json.loads(ants)
-            except ValueError:
+            except ValueError as err:
                 raise ValueError("Trying to construct DelayCorrection with an "
-                                 "invalid description string %r" % (ants,))
+                                 f"invalid description string {ants!r}") from err
             ref_ant_str = descr['ref_ant']
             # Antenna needs DelayModel which also lives in this module...
             # This is messy but avoids a circular dependency and having to
@@ -327,8 +327,9 @@ class DelayCorrection:
             next_time = Time(all_times[1:])
             # Don't use cache, as the next_times are included in all_delays
             all_delays = np.array([self._calculate_delays(target, t, offset)
-                                   for t in all_times]).T
-            delays, next_delays = all_delays[:, :-1], all_delays[:, 1:]
+                                   for t in all_times])
+            delays = all_delays[:-1].T
+            next_delays = all_delays[1:].T
 
         def phase(t0):
             """The phase associated with delay t0 at the centre frequency."""
