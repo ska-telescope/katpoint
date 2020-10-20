@@ -89,7 +89,6 @@ class Parameter:
 
 class BadModelFile(Exception):
     """Unable to load model from config file (unrecognised format)."""
-    pass
 
 
 class Model:
@@ -247,11 +246,9 @@ class Model:
                 raise configparser.Error('Expected sections not found in model file')
         except configparser.Error as exc:
             filename = getattr(file_like, 'name', '')
-            msg = 'Could not construct %s from %s\n\nOriginal exception: %s' % \
-                  (self.__class__.__name__,
-                   ('file %r' % (filename,)) if filename else 'file-like object',
-                   str(exc))
-            raise BadModelFile(msg)
+            input_descr = f'file {filename!r}' if filename else 'file-like object'
+            msg = f'Could not construct {self.__class__.__name__} from {input_descr}'
+            raise BadModelFile(msg) from exc
         self.header = dict(cfg.items('header'))
         for param in defaults:
             self.header.pop(param.lower())

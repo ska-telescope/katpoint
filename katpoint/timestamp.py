@@ -106,18 +106,18 @@ class Timestamp:
             # Turn array of Timestamps into array of corresponding internal Time objects
             if val.size > 0 and isinstance(val.flat[0], Timestamp):
                 val = np.vectorize(lambda ts: ts.time)(val)
-            format = None
+            time_format = None
             if val.dtype.kind == 'U':
                 # Convert default PyEphem timestamp strings to ISO strings
                 val = np.char.replace(np.char.strip(val), '/', '-')
-                format = 'iso'
+                time_format = 'iso'
             elif val.dtype.kind == 'S':
                 val = np.char.replace(np.char.strip(val), b'/', b'-')
-                format = 'iso'
+                time_format = 'iso'
             elif val.dtype.kind in 'iuf':
                 # Consider any number to be a Unix timestamp
-                format = 'unix'
-            self.time = Time(val, format=format, scale='utc', precision=3)
+                time_format = 'unix'
+            self.time = Time(val, format=time_format, scale='utc', precision=3)
 
     @property
     def secs(self):
