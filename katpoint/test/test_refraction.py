@@ -16,12 +16,21 @@
 
 """Tests for the refraction module."""
 
-import numpy as np
 import pytest
+import numpy as np
+import astropy.constants as const
+from astropy.coordinates import EarthLocation
 
 import katpoint
+from katpoint.refraction import SaastamoinenZenithDelay
+from katpoint.test.helper import assert_angles_almost_equal
 
-from .helper import assert_angles_almost_equal
+try:
+    from almacalc.lowlevel import sastd, sastw, gmf11
+except ImportError:
+    HAS_ALMACALC = False
+else:
+    HAS_ALMACALC = True
 
 
 def test_refraction_basic():
@@ -62,3 +71,29 @@ def test_refraction_closure():
     assert_angles_almost_equal(reversed_el, el, decimal=7,
                                err_msg='Elevation closure error for temp=%s, pressure=%s, humidity=%s' %
                                        (temp, pressure, humidity))
+
+
+@pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
+@pytest.mark.parametrize(
+    "latitude,longitude,height",
+    [
+        ('-25:53:23.0', '27:41:03.0', 1406.0),
+        ('35:00:00.0', '-40:00:00.0', 0.0),
+        ('85:00:00.0', '170:00:00.0', -200.0),
+        ('-35:00:00.0', '-40:00:00.0', 6000.0),
+        ('-90:00:00.0', '180:00:00.0', 200.0),
+    ]
+)
+def test_zenith_delay(latitude, longitude, height):
+    """Test hydrostatic and wet zenith delays against AlmaCalc."""
+    location = EarthLocation.from_geodetic(longitude, latitude, height)
+    zd = SaastamoinenZenithDelay(location)
+    pressure = np.arange(800., 1000., 5.)
+    actual = zd.hydrostatic(0, pressure, 0) * const.c
+    expected = sastd(pressure, location.lat.rad, location.height.value)
+    np.testing.assert_allclose(actual.value, expected, atol=1e-14)
+    for temperature in np.arange(-5., 45., 5.):
+        for humidity in np.arange(0., 1.05, 0.05):
+            actual = zd.wet(temperature, 0, humidity) * const.c
+            expected = sastw(humidity, temperature)
+            assert actual.value == pytest.approx(expected, abs=1e-14)
