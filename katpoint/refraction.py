@@ -319,14 +319,14 @@ ZENITH_DELAY = {'SaastamoinenZD': SaastamoinenZenithDelay}
 class GlobalMappingFunction:
     """"""
 
-    def init(self, location):
+    def __init__(self, location):
         self.location = location
 
     def hydrostatic(self, elevation, timestamp):
-        pass
+        return 1.0
 
     def wet(self, elevation, timestamp):
-        pass
+        return 1.0
 
 
 MAPPING_FUNCTION = {'GlobalMF': GlobalMappingFunction}
