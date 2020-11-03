@@ -24,7 +24,7 @@ from astropy.time import Time
 from astropy.coordinates import EarthLocation, AltAz, ICRS
 
 import katpoint
-from katpoint.refraction import SaastamoinenZenithDelay, TroposphericDelay
+from katpoint.refraction import SaastamoinenZenithDelay, GlobalMappingFunction, TroposphericDelay
 from katpoint.test.helper import assert_angles_almost_equal
 
 try:
@@ -100,6 +100,32 @@ def test_zenith_delay(latitude, longitude, height):
             actual = zd.wet(temperature, 0, humidity) * const.c
             expected = sastw(humidity, temperature)
             assert actual.value == pytest.approx(expected, abs=1e-14)
+
+
+@pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
+@pytest.mark.parametrize(
+    "latitude,longitude,height,date",
+    [
+        ('-25:53:23.0', '27:41:03.0', 1406.0, '2020-12-25'),
+        ('35:00:00.0', '-40:00:00.0', 0.0, '2019-01-28'),
+        ('85:00:00.0', '170:00:00.0', -200.0, '2000-06-01'),
+        ('-35:00:00.0', '-40:00:00.0', 6000.0, '2001-03-14'),
+        ('-90:00:00.0', '180:00:00.0', 200.0, '2020-07-14'),
+    ]
+)
+def test_mapping_function(latitude, longitude, height, date):
+    """Test hydrostatic and wet mapping functions against AlmaCalc."""
+    location = EarthLocation.from_geodetic(longitude, latitude, height)
+    timestamp = Time(date)
+    elevation = np.arange(1, 90) * u.deg
+    mf = GlobalMappingFunction(location)
+    actual_hydrostatic = mf.hydrostatic(elevation, timestamp)
+    actual_wet = mf.wet(elevation, timestamp)
+    expected_hydrostatic, expected_wet = gmf11(
+        timestamp.jd, location.lat.rad, location.lon.rad,
+        location.height.to_value(u.m), elevation.to_value(u.rad))
+    np.testing.assert_allclose(actual_hydrostatic, expected_hydrostatic, atol=1e-30)
+    np.testing.assert_allclose(actual_wet, expected_wet, atol=1e-30)
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
