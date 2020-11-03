@@ -16,7 +16,8 @@
 
 """Refraction correction.
 
-This implements correction for refractive bending in the atmosphere.
+This implements corrections for refractive bending and propagation delay
+in the atmosphere (mostly the troposphere and stratosphere).
 """
 
 import logging
@@ -234,26 +235,26 @@ class SaastamoinenZenithDelay:
     -----
     This is a direct translation of the SASTD and SASTW subroutines in the
     atmospheric module (catmm.f) of Calc 11. It is based on the formulas of
-    Saastamoinen [1]_ as implemented by Davis et al [2]_. The saturation
-    water vapour pressure is calculated by the venerable but still practical
-    August-Roche-Magnus formula as discussed in [3]_.
+    Saastamoinen [Saas1972]_ as implemented by Davis et al [Davis1985]_. The
+    saturation water vapour pressure is calculated by the venerable but still
+    practical August-Roche-Magnus formula as discussed in [Murray1967]_.
 
     References
     ----------
-    .. [1] J. Saastamoinen, “Atmospheric correction for the troposphere and
-       stratosphere in radio ranging satellites,” in The Use of Artificial
+    .. [Saas1972] J. Saastamoinen, “Atmospheric correction for the troposphere
+       and stratosphere in radio ranging satellites,” in The Use of Artificial
        Satellites for Geodesy (Geophysical Monograph Series), edited by
        S. W. Henriksen et al, Washington, D.C., vol. 15, pp. 247-251, 1972.
        DOI: 10.1029/GM015p0247
 
-    .. [2] J. L. Davis, T. A. Herring, I. I. Shapiro, A. E. E. Rogers, and
+    .. [Davis1985] J. L. Davis, T. A. Herring, I. I. Shapiro, A. E. E. Rogers,
        G. Elgered, “Geodesy by radio interferometry: Effects of atmospheric
        modeling errors on estimates of baseline length,” Radio Science,
        vol. 20, no. 6, pp. 1593-1607, 1985. DOI: 10.1029/rs020i006p01593
 
-    .. [3] F. W. Murray, “On the computation of saturation vapor pressure,”
-        Journal of Applied Meteorology, vol. 6, no. 1, pp. 203-204, Feb 1967.
-        DOI: 10.1175/1520-0450(1967)006<0203:OTCOSV>2.0.CO;2
+    .. [Murray1967] F. W. Murray, “On the computation of saturation vapor
+       pressure,” Journal of Applied Meteorology, vol. 6, no. 1, pp. 203-204,
+       Feb 1967. DOI: 10.1175/1520-0450(1967)006<0203:OTCOSV>2.0.CO;2
     """
 
     def __init__(self, location):
@@ -263,7 +264,7 @@ class SaastamoinenZenithDelay:
         height_km = location.height.to_value(u.km)
         self._gravity_correction = 1. - 0.00266 * np.cos(2. * latitude_rad) - 0.00028 * height_km
 
-    def hydrostatic(self, temperature, pressure, humidity):
+    def hydrostatic(self, temperature, pressure, humidity):  # noqa: W0613
         """Zenith delay due to "dry" (hydrostatic) component of the atmosphere.
 
         Parameters
@@ -284,7 +285,7 @@ class SaastamoinenZenithDelay:
         pressure_hPa = (pressure << u.hectopascal).value
         return excess_path_per_hPa * pressure_hPa / self._gravity_correction / const.c
 
-    def wet(self, temperature, pressure, humidity):
+    def wet(self, temperature, pressure, humidity):  # noqa: W0613
         """Zenith delay due to "wet" (non-hydrostatic) component of atmosphere.
 
         Parameters
@@ -600,7 +601,24 @@ MAPPING_FUNCTION = {'GlobalMF': GlobalMappingFunction}
 
 
 class TroposphericDelay:
-    """"""
+    """Propagation delay due to neutral gas in the troposphere and stratosphere.
+
+    Set up a tropospheric delay model as specified by the model ID with format::
+
+         "<zenith delay>-<mapping function>[-<hydrostatic/wet>]"
+
+    This picks an appropriate zenith delay formula and mapping function, and
+    optionally restricts the delays to hydrostatic or wet components only.
+    The delays are calculated by calling this object like a function.
+
+    Parameters
+    ----------
+    location : `~astropy.coordinates.EarthLocation`
+        Location on Earth of observer
+    model_id : str, optional
+        Unique identifier of tropospheric model (defaults to the only model
+        implemented so far)
+    """
 
     def __init__(self, location, model_id='SaastamoinenZD-GlobalMF'):
         # These will effectively be read-only attributes because setattr is disabled
@@ -641,5 +659,24 @@ class TroposphericDelay:
         raise AttributeError('Tropospheric delay models are immutable')
 
     def __call__(self, temperature, pressure, humidity, elevation, timestamp):
-        """"""
-        return self._delay(temperature, pressure, humidity, elevation, timestamp)
+        """Propagation delay due to neutral gas in the troposphere and stratosphere.
+
+        Parameters
+        ----------
+        temperature : :class:`~astropy.units.Quantity`, float or array
+            Ambient air temperature at surface (degrees Celsius if not a `Quantity`)
+        pressure : :class:`~astropy.units.Quantity`, float or array
+            Total barometric pressure at surface (hectopascal if not a `Quantity`)
+        humidity : float or array
+            Relative humidity at surface, as a fraction in range [0, 1]
+        elevation : :class:`~astropy.units.Quantity`, float or array
+            Elevation angle
+        timestamp : :class:`~astropy.time.Time`
+            Observation time (to incorporate seasonal weather patterns)
+
+        Returns
+        -------
+        delay : :class:`~astropy.units.Quantity`
+            Tropospheric propagation delay, in seconds
+        """
+        return self._delay(temperature, pressure, humidity, elevation, timestamp)  # noqa: E1101
