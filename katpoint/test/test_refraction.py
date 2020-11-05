@@ -94,7 +94,7 @@ def test_zenith_delay(latitude, longitude, height):
     pressure = np.arange(800., 1000., 5.)
     actual = zd.hydrostatic(0, pressure, 0) * const.c
     expected = sastd(pressure, location.lat.rad, location.height.value)
-    np.testing.assert_allclose(actual.value, expected, atol=1e-14)
+    np.testing.assert_allclose(actual.to_value(u.m), expected, atol=1e-14)
     for temperature in np.arange(-5., 45., 5.):
         for humidity in np.arange(0., 1.05, 0.05):
             actual = zd.wet(temperature, 0, humidity) * const.c
