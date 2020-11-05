@@ -26,6 +26,8 @@ import numpy as np
 import astropy.units as u
 import astropy.constants as const
 
+from .timestamp import Timestamp
+
 
 logger = logging.getLogger(__name__)
 
@@ -264,17 +266,13 @@ class SaastamoinenZenithDelay:
         height_km = location.height.to_value(u.km)
         self._gravity_correction = 1. - 0.00266 * np.cos(2. * latitude_rad) - 0.00028 * height_km
 
-    def hydrostatic(self, temperature, pressure, humidity):  # noqa: W0613
+    def hydrostatic(self, pressure):
         """Zenith delay due to "dry" (hydrostatic) component of the atmosphere.
 
         Parameters
         ----------
-        temperature : :class:`~astropy.units.Quantity`, float or array
-            Ambient air temperature at surface (ignored)
         pressure : :class:`~astropy.units.Quantity`, float or array
             Total barometric pressure at surface (hectopascal if not a `Quantity`)
-        humidity : float or array
-            Relative humidity at surface (ignored)
 
         Returns
         -------
@@ -285,15 +283,13 @@ class SaastamoinenZenithDelay:
         pressure_hPa = (pressure << u.hectopascal).value
         return excess_path_per_hPa * pressure_hPa / self._gravity_correction / const.c
 
-    def wet(self, temperature, pressure, humidity):  # noqa: W0613
+    def wet(self, temperature, humidity):
         """Zenith delay due to "wet" (non-hydrostatic) component of atmosphere.
 
         Parameters
         ----------
         temperature : :class:`~astropy.units.Quantity`, float or array
             Ambient air temperature at surface (degrees Celsius if not a `Quantity`)
-        pressure : :class:`~astropy.units.Quantity`, float or array
-            Total barometric pressure at surface (ignored)
         humidity : float or array
             Relative humidity at surface, as a fraction in range [0, 1]
 
@@ -314,7 +310,7 @@ class SaastamoinenZenithDelay:
         return excess_path_per_hPa * partial_pressure_hPa / const.c
 
 
-ZENITH_DELAY = {'SaastamoinenZD': SaastamoinenZenithDelay}
+ZENITH_DELAY = {'SaastamoinenZenithDelay': SaastamoinenZenithDelay}
 
 _GMF_H_MEAN_COEFS = np.array([
     +1.2517e+02, +8.503e-01, +6.936e-02, -6.760e+00, +1.771e-01,  # ah_mean
@@ -456,7 +452,7 @@ def _associated_legendre_polynomials(n, m, x):
     P = np.zeros((n + 1, m + 1))
     for i in range(n + 1):
         for j in range(min(i, m) + 1):
-            ir = int((i - j) / 2)
+            ir = (i - j) // 2
             s = 0
             for k in range(ir + 1):
                 s += ((-1)**k * fact[2*i - 2*k] / fact[k] / fact[i - k]
@@ -475,9 +471,10 @@ def _continued_fraction(el_rad, a, b, c):
 
 def _niell_season(timestamp):
     """Seasonal sinusoidal variation as used in Niell's mapping functions."""
+    time = Timestamp(timestamp).time
     # Subtract the first day of an arbitrary year (1980) to line up the phase.
     # Reference day is 28 January, consistent with Niell (1996).
-    day_of_year = timestamp.mjd - 44239 + 1 - 28
+    day_of_year = time.utc.mjd - 44239 + 1 - 28
     # Middle of winter = +1, middle of summer = -1 (assumes Northern hemisphere)
     return np.cos(2.0 * np.pi * day_of_year / 365.25)
 
@@ -536,7 +533,7 @@ class GlobalMappingFunction:
         ----------
         elevation : :class:`~astropy.units.Quantity`, float or array
             Elevation angle
-        timestamp : :class:`~astropy.time.Time`
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
 
         Returns
@@ -579,7 +576,7 @@ class GlobalMappingFunction:
         ----------
         elevation : :class:`~astropy.units.Quantity`, float or array
             Elevation angle
-        timestamp : :class:`~astropy.time.Time`
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
 
         Returns
@@ -597,7 +594,7 @@ class GlobalMappingFunction:
         return _continued_fraction(el_rad, a, b, c)
 
 
-MAPPING_FUNCTION = {'GlobalMF': GlobalMappingFunction}
+MAPPING_FUNCTION = {'GlobalMappingFunction': GlobalMappingFunction}
 
 
 class TroposphericDelay:
@@ -620,7 +617,7 @@ class TroposphericDelay:
         implemented so far)
     """
 
-    def __init__(self, location, model_id='SaastamoinenZD-GlobalMF'):
+    def __init__(self, location, model_id='SaastamoinenZenithDelay-GlobalMappingFunction'):
         # These will effectively be read-only attributes because setattr is disabled
         super().__setattr__('location', location)
         super().__setattr__('model_id', model_id)
@@ -636,17 +633,17 @@ class TroposphericDelay:
             try:
                 return mapping[key]
             except KeyError as err:
-                raise ValueError(f"Tropospheric delay model {model_id:!r} has unknown {name} "
-                                 f"{key:!r}, available ones are {list(mapping.keys())}") from err
+                raise ValueError(f"Tropospheric delay model {model_id!r} has unknown {name} "
+                                 f"{key!r}, available ones are {list(mapping.keys())}") from err
 
         zenith_delay = get(ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
         mapping_function = get(MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
 
-        def hydrostatic(t, p, h, el, ts):
-            return zenith_delay.hydrostatic(t, p, h) * mapping_function.hydrostatic(el, ts)
+        def hydrostatic(t, p, h, el, ts):  # noqa: W0613
+            return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(el, ts)
 
-        def wet(t, p, h, el, ts):
-            return zenith_delay.wet(t, p, h) * mapping_function.wet(el, ts)
+        def wet(t, p, h, el, ts):  # noqa: W0613
+            return zenith_delay.wet(t, h) * mapping_function.wet(el, ts)
 
         def total(t, p, h, el, ts):
             return hydrostatic(t, p, h, el, ts) + wet(t, p, h, el, ts)
@@ -671,7 +668,7 @@ class TroposphericDelay:
             Relative humidity at surface, as a fraction in range [0, 1]
         elevation : :class:`~astropy.units.Quantity`, float or array
             Elevation angle
-        timestamp : :class:`~astropy.time.Time`
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
 
         Returns

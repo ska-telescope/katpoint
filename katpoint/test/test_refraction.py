@@ -20,7 +20,6 @@ import pytest
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
-from astropy.time import Time
 from astropy.coordinates import EarthLocation, AltAz, ICRS
 
 import katpoint
@@ -92,37 +91,37 @@ def test_zenith_delay(latitude, longitude, height):
     location = EarthLocation.from_geodetic(longitude, latitude, height)
     zd = SaastamoinenZenithDelay(location)
     pressure = np.arange(800., 1000., 5.)
-    actual = zd.hydrostatic(0, pressure, 0) * const.c
+    actual = zd.hydrostatic(pressure) * const.c
     expected = sastd(pressure, location.lat.rad, location.height.value)
     np.testing.assert_allclose(actual.to_value(u.m), expected, atol=1e-14)
     for temperature in np.arange(-5., 45., 5.):
         for humidity in np.arange(0., 1.05, 0.05):
-            actual = zd.wet(temperature, 0, humidity) * const.c
+            actual = zd.wet(temperature, humidity) * const.c
             expected = sastw(humidity, temperature)
             assert actual.value == pytest.approx(expected, abs=1e-14)
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize(
-    "latitude,longitude,height,date",
+    "latitude,longitude,height,timestamp",
     [
         ('-25:53:23.0', '27:41:03.0', 1406.0, '2020-12-25'),
         ('35:00:00.0', '-40:00:00.0', 0.0, '2019-01-28'),
         ('85:00:00.0', '170:00:00.0', -200.0, '2000-06-01'),
         ('-35:00:00.0', '-40:00:00.0', 6000.0, '2001-03-14'),
-        ('-90:00:00.0', '180:00:00.0', 200.0, '2020-07-14'),
+        ('-90:00:00.0', '180:00:00.0', 200.0, 1234567890.0),
     ]
 )
-def test_mapping_function(latitude, longitude, height, date):
+def test_mapping_function(latitude, longitude, height, timestamp):
     """Test hydrostatic and wet mapping functions against AlmaCalc."""
     location = EarthLocation.from_geodetic(longitude, latitude, height)
-    timestamp = Time(date)
     elevation = np.arange(1, 90) * u.deg
     mf = GlobalMappingFunction(location)
     actual_hydrostatic = mf.hydrostatic(elevation, timestamp)
     actual_wet = mf.wet(elevation, timestamp)
+    time = katpoint.Timestamp(timestamp).time
     expected_hydrostatic, expected_wet = gmf11(
-        timestamp.jd, location.lat.rad, location.lon.rad,
+        time.utc.jd, location.lat.rad, location.lon.rad,
         location.height.to_value(u.m), elevation.to_value(u.rad))
     np.testing.assert_allclose(actual_hydrostatic, expected_hydrostatic, atol=1e-30)
     np.testing.assert_allclose(actual_wet, expected_wet, atol=1e-30)
@@ -133,9 +132,9 @@ def test_mapping_function(latitude, longitude, height, date):
     "model_id,elevation,enable_dry_delay,enable_wet_delay",
     [
         # Calc spits out NaNs at 90 degrees elevation (probably due to arcsin in ATMG)
-        ('SaastamoinenZD-GlobalMF-hydrostatic', 89.99 * u.deg, 1, 0),
-        ('SaastamoinenZD-GlobalMF-wet', 89.99 * u.deg, 0, 1),
-        ('SaastamoinenZD-GlobalMF', 89.99 * u.deg, 1, 1),
+        ('SaastamoinenZenithDelay-GlobalMappingFunction-hydrostatic', 89.99 * u.deg, 1, 0),
+        ('SaastamoinenZenithDelay-GlobalMappingFunction-wet', 89.99 * u.deg, 0, 1),
+        ('SaastamoinenZenithDelay-GlobalMappingFunction', 89.99 * u.deg, 1, 1),
     ]
 )
 def test_tropospheric_delay(model_id, elevation, enable_dry_delay, enable_wet_delay):
@@ -144,12 +143,13 @@ def test_tropospheric_delay(model_id, elevation, enable_dry_delay, enable_wet_de
     temperature = 25.0 * u.deg_C
     pressure = 905. * u.hectopascal
     humidity = 0.2
-    timestamp = Time('2020-11-01 22:13:00')
+    timestamp = katpoint.Timestamp('2020-11-01 22:13:00')
+    obstime = timestamp.time
     td = TroposphericDelay(location, model_id=model_id)
     actual = td(temperature, pressure, humidity, elevation, timestamp)
-    azel = AltAz(az=0 * u.deg, alt=elevation, location=location, obstime=timestamp)
+    azel = AltAz(az=0 * u.deg, alt=elevation, location=location, obstime=obstime)
     radec = azel.transform_to(ICRS)
-    expected = calc(location, radec, timestamp,
+    expected = calc(location, radec, obstime,
                     temperature=temperature,
                     pressure=enable_dry_delay * pressure,
                     humidity=enable_wet_delay * humidity)
