@@ -228,7 +228,7 @@ class SaastamoinenZenithDelay:
 
     Parameters
     ----------
-    location : `~astropy.coordinates.EarthLocation`
+    location : :class:`~astropy.coordinates.EarthLocation`
         Location on Earth of observer (used to correct local gravity)
 
     Notes
@@ -491,7 +491,7 @@ class GlobalMappingFunction:
 
     Parameters
     ----------
-    location : `~astropy.coordinates.EarthLocation`
+    location : :class:`~astropy.coordinates.EarthLocation`
         Location on Earth of observer (used in global weather model)
 
     Notes
@@ -613,7 +613,7 @@ class TroposphericDelay:
 
     Parameters
     ----------
-    location : `~astropy.coordinates.EarthLocation`
+    location : :class:`~astropy.coordinates.EarthLocation`
         Location on Earth of observer
     model_id : str, optional
         Unique identifier of tropospheric model (defaults to the only model
