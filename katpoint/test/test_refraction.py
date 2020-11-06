@@ -90,15 +90,15 @@ def test_zenith_delay(latitude, longitude, height):
     """Test hydrostatic and wet zenith delays against AlmaCalc."""
     location = EarthLocation.from_geodetic(longitude, latitude, height)
     zd = SaastamoinenZenithDelay(location)
-    pressure = np.arange(800., 1000., 5.)
-    actual = zd.hydrostatic(pressure) * const.c
-    expected = sastd(pressure, location.lat.rad, location.height.value)
-    np.testing.assert_allclose(actual.to_value(u.m), expected, atol=1e-14)
-    for temperature in np.arange(-5., 45., 5.):
+    pressure = np.arange(800., 1000., 5.) * u.hPa
+    actual = zd.hydrostatic(pressure)
+    expected = sastd(pressure.value, location.lat.rad, location.height.value) * u.m / const.c
+    assert np.allclose(actual, expected, atol=0.01 * u.ps)
+    for temperature in np.arange(-5., 45., 5.) * u.deg_C:
         for humidity in np.arange(0., 1.05, 0.05):
-            actual = zd.wet(temperature, humidity) * const.c
-            expected = sastw(humidity, temperature)
-            assert actual.value == pytest.approx(expected, abs=1e-14)
+            actual = zd.wet(temperature, humidity)
+            expected = sastw(humidity, temperature.value) * u.m / const.c
+            assert np.allclose(actual, expected, atol=0.15 * u.ps)
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
@@ -141,7 +141,7 @@ def test_tropospheric_delay(model_id, elevation, enable_dry_delay, enable_wet_de
     """Test hydrostatic and wet tropospheric delays against AlmaCalc."""
     location = EarthLocation.from_geodetic('-25:53:23.0', '27:41:03.0', 1406.0)
     temperature = 25.0 * u.deg_C
-    pressure = 905. * u.hectopascal
+    pressure = 905. * u.hPa
     humidity = 0.2
     timestamp = katpoint.Timestamp('2020-11-01 22:13:00')
     obstime = timestamp.time
@@ -153,4 +153,4 @@ def test_tropospheric_delay(model_id, elevation, enable_dry_delay, enable_wet_de
                     temperature=temperature,
                     pressure=enable_dry_delay * pressure,
                     humidity=enable_wet_delay * humidity)
-    assert actual.value == pytest.approx(expected.value, abs=1e-14)
+    assert np.allclose(actual, expected, atol=0.01 * u.ps)

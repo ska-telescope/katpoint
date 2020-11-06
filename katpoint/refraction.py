@@ -222,6 +222,9 @@ class RefractionCorrection:
         return el if el.ndim else el.item()
 
 
+_EXCESS_PATH_PER_PRESSURE = 2.2768 * u.m / u.bar
+
+
 class SaastamoinenZenithDelay:
     """Zenith delay due to the neutral gas in the troposphere and stratosphere.
 
@@ -262,52 +265,51 @@ class SaastamoinenZenithDelay:
     def __init__(self, location):
         # Reduce local gravity to the value at the centroid of the atmospheric column,
         # which depends on the location of the observer
-        latitude_rad = location.lat.rad
-        height_km = location.height.to_value(u.km)
-        self._gravity_correction = 1. - 0.00266 * np.cos(2. * latitude_rad) - 0.00028 * height_km
+        self._gravity_correction = (1. - 0.00266 * np.cos(2 * location.lat)
+                                    - 0.00028 / u.km * location.height)
 
-    def hydrostatic(self, pressure):
+    @u.quantity_input
+    def hydrostatic(self, pressure: u.hPa) -> u.s:
         """Zenith delay due to "dry" (hydrostatic) component of the atmosphere.
 
         Parameters
         ----------
-        pressure : :class:`~astropy.units.Quantity`, float or array
-            Total barometric pressure at surface (hectopascal if not a `Quantity`)
+        pressure : :class:`~astropy.units.Quantity`
+            Total barometric pressure at surface
 
         Returns
         -------
         delay : :class:`~astropy.units.Quantity`
-            Zenith delay due to hydrostatic component, in seconds
+            Zenith delay due to hydrostatic component
         """
-        excess_path_per_hPa = 0.0022768 * u.m
-        pressure_hPa = (pressure << u.hectopascal).value
-        return excess_path_per_hPa * pressure_hPa / self._gravity_correction / const.c
+        return _EXCESS_PATH_PER_PRESSURE * pressure / self._gravity_correction / const.c
 
-    def wet(self, temperature, humidity):
+    @u.quantity_input(equivalencies=u.temperature())
+    def wet(self, temperature: u.deg_C, humidity: u.dimensionless_unscaled) -> u.s:
         """Zenith delay due to "wet" (non-hydrostatic) component of atmosphere.
 
         Parameters
         ----------
-        temperature : :class:`~astropy.units.Quantity`, float or array
-            Ambient air temperature at surface (degrees Celsius if not a `Quantity`)
-        humidity : float or array
+        temperature : :class:`~astropy.units.Quantity`
+            Ambient air temperature at surface
+        humidity : :class:`~astropy.units.Quantity`
             Relative humidity at surface, as a fraction in range [0, 1]
 
         Returns
         -------
         delay : :class:`~astropy.units.Quantity`
-            Zenith delay due to non-hydrostatic component, in seconds
+            Zenith delay due to non-hydrostatic component
         """
-        temperature_C = (temperature << u.deg_C).value
-        # This resembles the version of the August-Roche-Magnus formula in Murray (1967)
-        saturation_pressure_hPa = 6.11 * np.exp(17.269 * temperature_C / (temperature_C + 237.3))
+        temp_C = temperature.to_value(u.deg_C, equivalencies=u.temperature())
+        temp_K = temperature.to_value(u.K, equivalencies=u.temperature())
+        # Get the partial pressure of water vapour for saturated air at given temperature.
+        # This resembles the version of the August-Roche-Magnus formula in Murray (1967).
         # The Tetens (1930) version, which serves as the reference, is
         # saturation_pressure_hPa = 10 ** (7.5 * temperature_C / (temperature_C + 237.3) + 0.7858)
-        partial_pressure_hPa = humidity * saturation_pressure_hPa
-        # Saastamoinen suggested 273.2, Astropy units has 273.15 but Murray and CODATA likes 273.16
-        temperature_K = temperature_C + 273.16
-        excess_path_per_hPa = 0.002277 * (1255. / temperature_K + 0.05) * u.m
-        return excess_path_per_hPa * partial_pressure_hPa / const.c
+        saturation_pressure = 6.11 * np.exp(17.269 * temp_C / (temp_C + 237.3)) * u.hPa
+        partial_pressure = humidity * saturation_pressure
+        excess_path_per_pressure = _EXCESS_PATH_PER_PRESSURE * (1255. / temp_K + 0.05)
+        return excess_path_per_pressure * partial_pressure / const.c
 
 
 ZENITH_DELAY = {'SaastamoinenZenithDelay': SaastamoinenZenithDelay}
@@ -461,10 +463,10 @@ def _associated_legendre_polynomials(n, m, x):
     return P
 
 
-def _continued_fraction(el_rad, a, b, c):
-    """Marini-style continued fraction evaluated at elevation angle `el_rad`."""
+def _continued_fraction(elevation, a, b, c):
+    """Marini-style continued fraction evaluated at given elevation angle."""
     # Express formula in terms of zenith angle z to match notation in references
-    cos_z = np.sin(el_rad)
+    cos_z = np.sin(elevation)
     topcon = (1.0 + a / (1.0 + b / (1.0 + c)))
     return topcon / (cos_z + a / (cos_z + b / (cos_z + c)))
 
@@ -510,48 +512,47 @@ class GlobalMappingFunction:
 
     def __init__(self, location):
         self.location = location
-        latitude_rad = location.lat.rad
-        longitude_rad = location.lon.rad
         # Obtain 10x10 matrix of Legendre values evaluated at cos(colatitude)
-        P = _associated_legendre_polynomials(n=9, m=9, x=np.sin(latitude_rad))
-        m_longitude_rad = np.arange(P.shape[1]) * longitude_rad
+        P = _associated_legendre_polynomials(n=9, m=9, x=np.sin(location.lat))
+        m_longitude = np.arange(P.shape[1]) * location.lon
         # aP and bP are related to the output of SciPy's spherical harmonic function.
         # Given y_mn = scipy.special.sph_harm(m, n, theta, phi):
         #  - m and n have the same meaning (order and degree)
         #  - theta -> longitude, phi -> colatitude (90 degrees - latitude)
         #  - aP / bP -> real / imag part of y_mn, without sqrt scale factor and for all m and n
-        aP = P * np.cos(m_longitude_rad)
-        bP = P * np.sin(m_longitude_rad)
+        aP = P * np.cos(m_longitude)
+        bP = P * np.sin(m_longitude)
         tril = np.tril_indices_from(P)
         # Unravel matrices into basis vector of length 110, include coef scale factor of 1e-5
         self._spherical_harmonic_basis = 1e-5 * np.r_[aP[tril], bP[tril]]
 
-    def hydrostatic(self, elevation, timestamp):
+    @u.quantity_input
+    def hydrostatic(self, elevation: u.rad, timestamp) -> u.dimensionless_unscaled:
         """Mapping function for "dry" (hydrostatic) component of the atmosphere.
 
         Parameters
         ----------
-        elevation : :class:`~astropy.units.Quantity`, float or array
+        elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
             Elevation angle
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
 
         Returns
         -------
-        gmf : float or array
+        gmf : :class:`~astropy.units.Quantity`
             Scale factor that turns zenith delay into delay at elevation angle
         """
-        latitude_rad = self.location.lat.rad
-        height_km = self.location.height.to_value(u.km)
+        latitude = self.location.lat
+        height = self.location.height
         a_mean = _GMF_H_MEAN_COEFS @ self._spherical_harmonic_basis
         a_amplitude = _GMF_H_AMPLITUDE_COEFS @ self._spherical_harmonic_basis
         season = _niell_season(timestamp)
         a = a_mean + a_amplitude * season
         b = 0.0029
         c0 = 0.062
-        if latitude_rad < 0:
+        if latitude < 0:
             # Southern hemisphere has the opposite season
-            # We flip the season for c but not a, since a has spherical model
+            # We flip the season for c but not a, since a already has a global model
             season = -season
             c11 = 0.007
             c10 = 0.002
@@ -559,29 +560,27 @@ class GlobalMappingFunction:
             # Northern hemisphere
             c11 = 0.005
             c10 = 0.001
-        c = c0 + ((season + 1) * c11/2 + c10) * (1 - np.cos(latitude_rad))
-        el_rad = elevation.to_value(u.rad)
-        gmf = _continued_fraction(el_rad, a, b, c)
+        c = c0 + ((season + 1) * c11/2 + c10) * (1 - np.cos(latitude))
+        gmf = _continued_fraction(elevation, a, b, c)
         # Niell's hydrostatic height correction (<0.05% for 1 km altitude)
-        a_ht = 2.53e-5
-        b_ht = 5.49e-3
-        c_ht = 1.14e-3
-        correction = 1.0 / np.sin(el_rad) - _continued_fraction(el_rad, a_ht, b_ht, c_ht)
-        return gmf + correction * height_km
+        correction = (1. / np.sin(elevation)
+                      - _continued_fraction(elevation, a=2.53e-5, b=5.49e-3, c=1.14e-3))
+        return gmf + correction / u.km * height
 
-    def wet(self, elevation, timestamp):
+    @u.quantity_input
+    def wet(self, elevation: u.rad, timestamp) -> u.dimensionless_unscaled:
         """Mapping function for "wet" (non-hydrostatic) component of the atmosphere.
 
         Parameters
         ----------
-        elevation : :class:`~astropy.units.Quantity`, float or array
+        elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
             Elevation angle
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
 
         Returns
         -------
-        gmf : float or array
+        gmf : :class:`~astropy.units.Quantity`
             Scale factor that turns zenith delay into delay at elevation angle
         """
         a_mean = _GMF_W_MEAN_COEFS @ self._spherical_harmonic_basis
@@ -590,8 +589,7 @@ class GlobalMappingFunction:
         a = a_mean + a_amplitude * season
         b = 0.00146
         c = 0.04391
-        el_rad = elevation.to_value(u.rad)
-        return _continued_fraction(el_rad, a, b, c)
+        return _continued_fraction(elevation, a, b, c)
 
 
 MAPPING_FUNCTION = {'GlobalMappingFunction': GlobalMappingFunction}
@@ -655,18 +653,20 @@ class TroposphericDelay:
         """Prevent modification of attributes (the model is read-only)."""
         raise AttributeError('Tropospheric delay models are immutable')
 
-    def __call__(self, temperature, pressure, humidity, elevation, timestamp):
+    @u.quantity_input(equivalencies=u.temperature())
+    def __call__(self, temperature: u.deg_C, pressure: u.hPa,
+                 humidity: u.dimensionless_unscaled, elevation: u.rad, timestamp) -> u.s:
         """Propagation delay due to neutral gas in the troposphere and stratosphere.
 
         Parameters
         ----------
-        temperature : :class:`~astropy.units.Quantity`, float or array
-            Ambient air temperature at surface (degrees Celsius if not a `Quantity`)
-        pressure : :class:`~astropy.units.Quantity`, float or array
-            Total barometric pressure at surface (hectopascal if not a `Quantity`)
-        humidity : float or array
+        temperature : :class:`~astropy.units.Quantity`
+            Ambient air temperature at surface
+        pressure : :class:`~astropy.units.Quantity`
+            Total barometric pressure at surface
+        humidity : :class:`~astropy.units.Quantity`
             Relative humidity at surface, as a fraction in range [0, 1]
-        elevation : :class:`~astropy.units.Quantity`, float or array
+        elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
             Elevation angle
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
@@ -674,6 +674,6 @@ class TroposphericDelay:
         Returns
         -------
         delay : :class:`~astropy.units.Quantity`
-            Tropospheric propagation delay, in seconds
+            Tropospheric propagation delay
         """
         return self._delay(temperature, pressure, humidity, elevation, timestamp)  # noqa: E1101
