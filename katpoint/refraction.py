@@ -642,14 +642,14 @@ class TroposphericDelay:
         zenith_delay = get(_ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
         mapping_function = get(_MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
 
-        def hydrostatic(t, p, h, el, ts):  # noqa: W0613
+        def hydrostatic(p, t, h, el, ts):  # noqa: W0613
             return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(el, ts)
 
-        def wet(t, p, h, el, ts):  # noqa: W0613
+        def wet(p, t, h, el, ts):  # noqa: W0613
             return zenith_delay.wet(t, h) * mapping_function.wet(el, ts)
 
-        def total(t, p, h, el, ts):
-            return hydrostatic(t, p, h, el, ts) + wet(t, p, h, el, ts)
+        def total(p, t, h, el, ts):
+            return hydrostatic(p, t, h, el, ts) + wet(p, t, h, el, ts)
 
         model_types = {'hydrostatic': hydrostatic, 'wet': wet, 'total': total}
         super().__setattr__('_delay', get(model_types, model_parts[2], 'type'))
@@ -659,17 +659,17 @@ class TroposphericDelay:
         raise AttributeError('Tropospheric delay models are immutable')
 
     @u.quantity_input(equivalencies=u.temperature())
-    def __call__(self, temperature: u.deg_C, pressure: u.hPa,
+    def __call__(self, pressure: u.hPa, temperature: u.deg_C,
                  relative_humidity: u.dimensionless_unscaled,
                  elevation: u.rad, timestamp) -> u.s:
         """Propagation delay due to neutral gas in the troposphere and stratosphere.
 
         Parameters
         ----------
-        temperature : :class:`~astropy.units.Quantity`
-            Ambient air temperature at surface
         pressure : :class:`~astropy.units.Quantity`
             Total barometric pressure at surface
+        temperature : :class:`~astropy.units.Quantity`
+            Ambient air temperature at surface
         relative_humidity : :class:`~astropy.units.Quantity`
             Relative humidity at surface, as a fraction in range [0, 1]
         elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
@@ -682,5 +682,5 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
-        return self._delay(temperature, pressure, relative_humidity,  # noqa: E1101
+        return self._delay(pressure, temperature, relative_humidity,  # noqa: E1101
                            elevation, timestamp)

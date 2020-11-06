@@ -164,7 +164,7 @@ def test_tropospheric_delay(model_id, elevation, atol):
     timestamp = katpoint.Timestamp('2020-11-01 22:13:00')
     obstime = timestamp.time
     td = TroposphericDelay(location, model_id)
-    actual = td(temperature, pressure, relative_humidity, elevation, timestamp)
+    actual = td(pressure, temperature, relative_humidity, elevation, timestamp)
     azel = AltAz(az=0 * u.deg, alt=elevation, location=location, obstime=obstime)
     radec = azel.transform_to(ICRS)
     enable_dry_delay = not model_id.endswith('-wet')
