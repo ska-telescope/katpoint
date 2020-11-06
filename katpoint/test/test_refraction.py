@@ -75,47 +75,50 @@ def test_refraction_closure():
                                        (temp, pressure, humidity))
 
 
+_locations_and_times = [
+    ('-25:53:23.0', '27:41:03.0', 1406.0, '2020-12-25'),
+    ('35:00:00.0', '-40:00:00.0', 0.0, '2019-01-28'),
+    ('85:00:00.0', '170:00:00.0', -200.0, '2000-06-01'),
+    ('-35:00:00.0', '-40:00:00.0', 6000.0, '2001-03-14'),
+    ('-90:00:00.0', '180:00:00.0', 200.0, 1234567890.0),
+]
+
+
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
-@pytest.mark.parametrize(
-    "latitude,longitude,height",
-    [
-        ('-25:53:23.0', '27:41:03.0', 1406.0),
-        ('35:00:00.0', '-40:00:00.0', 0.0),
-        ('85:00:00.0', '170:00:00.0', -200.0),
-        ('-35:00:00.0', '-40:00:00.0', 6000.0),
-        ('-90:00:00.0', '180:00:00.0', 200.0),
-    ]
-)
-def test_zenith_delay(latitude, longitude, height):
+@pytest.mark.parametrize("latitude,longitude,height,timestamp", _locations_and_times)
+def test_zenith_delay(latitude, longitude, height, timestamp):  # noqa: W0613
     """Test hydrostatic and wet zenith delays against AlmaCalc."""
     location = EarthLocation.from_geodetic(longitude, latitude, height)
     zd = SaastamoinenZenithDelay(location)
     pressure = np.arange(800., 1000., 5.) * u.hPa
     actual = zd.hydrostatic(pressure)
     expected = sastd(pressure.value, location.lat.rad, location.height.value) * u.m / const.c
-    assert np.allclose(actual, expected, atol=0.01 * u.ps)
-    for temperature in np.arange(-5., 45., 5.) * u.deg_C:
-        for humidity in np.arange(0., 1.05, 0.05):
-            actual = zd.wet(temperature, humidity)
-            expected = sastw(humidity, temperature.value) * u.m / const.c
-            assert np.allclose(actual, expected, atol=0.15 * u.ps)
+    assert np.allclose(actual, expected, rtol=0, atol=0.01 * u.ps)
+    # Check alternative units
+    pressure = np.arange(0.8, 1.0, 0.005) * u.bar
+    actual = zd.hydrostatic(pressure)
+    assert np.allclose(actual, expected, rtol=0, atol=0.01 * u.ps)
+    temperature, humidity = np.meshgrid(np.arange(-5., 45., 5.) * u.deg_C,
+                                        np.arange(0., 1.05, 0.05))
+    actual = zd.wet(temperature, humidity)
+    expected = sastw(humidity, temperature.value) * u.m / const.c
+    assert np.allclose(actual, expected, rtol=0, atol=0.15 * u.ps)
+    # Add a little realism to check the practical impact of tweaks to wet zenith delay
+    dry_site = humidity <= 2.06 - temperature / (20 * u.deg_C)
+    assert np.allclose(actual[dry_site], expected[dry_site], rtol=0, atol=0.05 * u.ps)
+    # Check alternative units
+    temperature, humidity = np.meshgrid((np.arange(-5., 45., 5.) + 273.15) * u.K,
+                                        np.arange(0., 105.0, 5.0) * u.percent)
+    actual = zd.wet(temperature, humidity)
+    assert np.allclose(actual, expected, rtol=0, atol=0.15 * u.ps)
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
-@pytest.mark.parametrize(
-    "latitude,longitude,height,timestamp",
-    [
-        ('-25:53:23.0', '27:41:03.0', 1406.0, '2020-12-25'),
-        ('35:00:00.0', '-40:00:00.0', 0.0, '2019-01-28'),
-        ('85:00:00.0', '170:00:00.0', -200.0, '2000-06-01'),
-        ('-35:00:00.0', '-40:00:00.0', 6000.0, '2001-03-14'),
-        ('-90:00:00.0', '180:00:00.0', 200.0, 1234567890.0),
-    ]
-)
+@pytest.mark.parametrize("latitude,longitude,height,timestamp", _locations_and_times)
 def test_mapping_function(latitude, longitude, height, timestamp):
     """Test hydrostatic and wet mapping functions against AlmaCalc."""
     location = EarthLocation.from_geodetic(longitude, latitude, height)
-    elevation = np.arange(1, 90) * u.deg
+    elevation = np.arange(1, 91) * u.deg
     mf = GlobalMappingFunction(location)
     actual_hydrostatic = mf.hydrostatic(elevation, timestamp)
     actual_wet = mf.wet(elevation, timestamp)
@@ -123,34 +126,51 @@ def test_mapping_function(latitude, longitude, height, timestamp):
     expected_hydrostatic, expected_wet = gmf11(
         time.utc.jd, location.lat.rad, location.lon.rad,
         location.height.to_value(u.m), elevation.to_value(u.rad))
-    np.testing.assert_allclose(actual_hydrostatic, expected_hydrostatic, atol=1e-30)
-    np.testing.assert_allclose(actual_wet, expected_wet, atol=1e-30)
+    # Measure relative tolerance because mapping function is a scale factor
+    np.testing.assert_allclose(actual_hydrostatic, expected_hydrostatic, rtol=1e-9)
+    np.testing.assert_allclose(actual_wet, expected_wet, rtol=1e-8)
+
+
+_default_model = 'SaastamoinenZenithDelay-GlobalMappingFunction'
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize(
-    "model_id,elevation,enable_dry_delay,enable_wet_delay",
+    "model_id,elevation,atol",
     [
         # Calc spits out NaNs at 90 degrees elevation (probably due to arcsin in ATMG)
-        ('SaastamoinenZenithDelay-GlobalMappingFunction-hydrostatic', 89.99 * u.deg, 1, 0),
-        ('SaastamoinenZenithDelay-GlobalMappingFunction-wet', 89.99 * u.deg, 0, 1),
-        ('SaastamoinenZenithDelay-GlobalMappingFunction', 89.99 * u.deg, 1, 1),
+        (_default_model + '-hydrostatic', 89.99 * u.deg, 0.01 * u.ps),
+        (_default_model + '-hydrostatic', 30 * u.deg, 0.01 * u.ps),
+        (_default_model + '-hydrostatic', 15 * u.deg, 0.01 * u.ps),
+        # The wet comparison suffers at low elevations due to slight tweaks to Python version
+        (_default_model + '-wet', 89.99 * u.deg, 0.02 * u.ps),
+        (_default_model + '-wet', 30 * u.deg, 0.03 * u.ps),
+        (_default_model + '-wet', 15 * u.deg, 0.05 * u.ps),
+        (_default_model + '-total', 89.99 * u.deg, 0.02 * u.ps),
+        (_default_model, 65 * u.deg, 0.02 * u.ps),
+        (_default_model, 45 * u.deg, 0.02 * u.ps),
+        (_default_model, 30 * u.deg, 0.03 * u.ps),
+        (_default_model, 15 * u.deg, 0.06 * u.ps),
+        (_default_model, 5 * u.deg, 0.25 * u.ps),
+        (_default_model, 1 * u.deg, 1.2 * u.ps),
     ]
 )
-def test_tropospheric_delay(model_id, elevation, enable_dry_delay, enable_wet_delay):
+def test_tropospheric_delay(model_id, elevation, atol):
     """Test hydrostatic and wet tropospheric delays against AlmaCalc."""
-    location = EarthLocation.from_geodetic('-25:53:23.0', '27:41:03.0', 1406.0)
+    location = EarthLocation.from_geodetic('21:26:38.0', '-30:42:39.8', 1086.6)
     temperature = 25.0 * u.deg_C
     pressure = 905. * u.hPa
     humidity = 0.2
     timestamp = katpoint.Timestamp('2020-11-01 22:13:00')
     obstime = timestamp.time
-    td = TroposphericDelay(location, model_id=model_id)
+    td = TroposphericDelay(location, model_id)
     actual = td(temperature, pressure, humidity, elevation, timestamp)
     azel = AltAz(az=0 * u.deg, alt=elevation, location=location, obstime=obstime)
     radec = azel.transform_to(ICRS)
+    enable_dry_delay = not model_id.endswith('-wet')
+    enable_wet_delay = not model_id.endswith('-hydrostatic')
     expected = calc(location, radec, obstime,
                     temperature=temperature,
                     pressure=enable_dry_delay * pressure,
                     humidity=enable_wet_delay * humidity)
-    assert np.allclose(actual, expected, atol=0.01 * u.ps)
+    assert np.allclose(actual, expected, rtol=0, atol=atol)
