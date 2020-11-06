@@ -98,18 +98,18 @@ def test_zenith_delay(latitude, longitude, height, timestamp):  # noqa: W0613
     pressure = np.arange(0.8, 1.0, 0.005) * u.bar
     actual = zd.hydrostatic(pressure)
     assert np.allclose(actual, expected, rtol=0, atol=0.01 * u.ps)
-    temperature, humidity = np.meshgrid(np.arange(-5., 45., 5.) * u.deg_C,
-                                        np.arange(0., 1.05, 0.05))
-    actual = zd.wet(temperature, humidity)
-    expected = sastw(humidity, temperature.value) * u.m / const.c
+    temperature, relative_humidity = np.meshgrid(np.arange(-5., 45., 5.) * u.deg_C,
+                                                 np.arange(0., 1.05, 0.05))
+    actual = zd.wet(temperature, relative_humidity)
+    expected = sastw(relative_humidity, temperature.value) * u.m / const.c
     assert np.allclose(actual, expected, rtol=0, atol=0.15 * u.ps)
     # Add a little realism to check the practical impact of tweaks to wet zenith delay
-    dry_site = humidity <= 2.06 - temperature / (20 * u.deg_C)
+    dry_site = relative_humidity <= 2.06 - temperature / (20 * u.deg_C)
     assert np.allclose(actual[dry_site], expected[dry_site], rtol=0, atol=0.05 * u.ps)
     # Check alternative units
-    temperature, humidity = np.meshgrid((np.arange(-5., 45., 5.) + 273.15) * u.K,
-                                        np.arange(0., 105.0, 5.0) * u.percent)
-    actual = zd.wet(temperature, humidity)
+    temperature, relative_humidity = np.meshgrid((np.arange(-5., 45., 5.) + 273.15) * u.K,
+                                                 np.arange(0., 105.0, 5.0) * u.percent)
+    actual = zd.wet(temperature, relative_humidity)
     assert np.allclose(actual, expected, rtol=0, atol=0.15 * u.ps)
 
 
@@ -160,11 +160,11 @@ def test_tropospheric_delay(model_id, elevation, atol):
     location = EarthLocation.from_geodetic('21:26:38.0', '-30:42:39.8', 1086.6)
     temperature = 25.0 * u.deg_C
     pressure = 905. * u.hPa
-    humidity = 0.2
+    relative_humidity = 0.2
     timestamp = katpoint.Timestamp('2020-11-01 22:13:00')
     obstime = timestamp.time
     td = TroposphericDelay(location, model_id)
-    actual = td(temperature, pressure, humidity, elevation, timestamp)
+    actual = td(temperature, pressure, relative_humidity, elevation, timestamp)
     azel = AltAz(az=0 * u.deg, alt=elevation, location=location, obstime=obstime)
     radec = azel.transform_to(ICRS)
     enable_dry_delay = not model_id.endswith('-wet')
@@ -172,5 +172,5 @@ def test_tropospheric_delay(model_id, elevation, atol):
     expected = calc(location, radec, obstime,
                     temperature=temperature,
                     pressure=enable_dry_delay * pressure,
-                    humidity=enable_wet_delay * humidity)
+                    humidity=enable_wet_delay * relative_humidity)
     assert np.allclose(actual, expected, rtol=0, atol=atol)

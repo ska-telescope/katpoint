@@ -285,14 +285,14 @@ class SaastamoinenZenithDelay:
         return _EXCESS_PATH_PER_PRESSURE * pressure / self._gravity_correction / const.c
 
     @u.quantity_input(equivalencies=u.temperature())
-    def wet(self, temperature: u.deg_C, humidity: u.dimensionless_unscaled) -> u.s:
+    def wet(self, temperature: u.deg_C, relative_humidity: u.dimensionless_unscaled) -> u.s:
         """Zenith delay due to "wet" (non-hydrostatic) component of atmosphere.
 
         Parameters
         ----------
         temperature : :class:`~astropy.units.Quantity`
             Ambient air temperature at surface
-        humidity : :class:`~astropy.units.Quantity`
+        relative_humidity : :class:`~astropy.units.Quantity`
             Relative humidity at surface, as a fraction in range [0, 1]
 
         Returns
@@ -307,7 +307,7 @@ class SaastamoinenZenithDelay:
         # The Tetens (1930) version, which serves as the reference, is
         # saturation_pressure_hPa = 10 ** (7.5 * temperature_C / (temperature_C + 237.3) + 0.7858)
         saturation_pressure = 6.11 * np.exp(17.269 * temp_C / (temp_C + 237.3)) * u.hPa
-        partial_pressure = humidity * saturation_pressure
+        partial_pressure = relative_humidity * saturation_pressure
         excess_path_per_pressure = _EXCESS_PATH_PER_PRESSURE * (1255. / temp_K + 0.05)
         return excess_path_per_pressure * partial_pressure / const.c
 
@@ -660,7 +660,8 @@ class TroposphericDelay:
 
     @u.quantity_input(equivalencies=u.temperature())
     def __call__(self, temperature: u.deg_C, pressure: u.hPa,
-                 humidity: u.dimensionless_unscaled, elevation: u.rad, timestamp) -> u.s:
+                 relative_humidity: u.dimensionless_unscaled,
+                 elevation: u.rad, timestamp) -> u.s:
         """Propagation delay due to neutral gas in the troposphere and stratosphere.
 
         Parameters
@@ -669,7 +670,7 @@ class TroposphericDelay:
             Ambient air temperature at surface
         pressure : :class:`~astropy.units.Quantity`
             Total barometric pressure at surface
-        humidity : :class:`~astropy.units.Quantity`
+        relative_humidity : :class:`~astropy.units.Quantity`
             Relative humidity at surface, as a fraction in range [0, 1]
         elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
             Elevation angle
@@ -681,4 +682,5 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
-        return self._delay(temperature, pressure, humidity, elevation, timestamp)  # noqa: E1101
+        return self._delay(temperature, pressure, relative_humidity,  # noqa: E1101
+                           elevation, timestamp)
