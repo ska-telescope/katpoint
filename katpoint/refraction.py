@@ -312,7 +312,7 @@ class SaastamoinenZenithDelay:
         return excess_path_per_pressure * partial_pressure / const.c
 
 
-ZENITH_DELAY = {'SaastamoinenZenithDelay': SaastamoinenZenithDelay}
+_ZENITH_DELAY = {'SaastamoinenZenithDelay': SaastamoinenZenithDelay}
 
 _GMF_H_MEAN_COEFS = np.array([
     +1.2517e+02, +8.503e-01, +6.936e-02, -6.760e+00, +1.771e-01,  # ah_mean
@@ -597,7 +597,7 @@ class GlobalMappingFunction:
         return _continued_fraction(elevation, a, b, c)
 
 
-MAPPING_FUNCTION = {'GlobalMappingFunction': GlobalMappingFunction}
+_MAPPING_FUNCTION = {'GlobalMappingFunction': GlobalMappingFunction}
 
 
 class TroposphericDelay:
@@ -639,8 +639,8 @@ class TroposphericDelay:
                 raise ValueError(f"Tropospheric delay model {model_id!r} has unknown {name} "
                                  f"{key!r}, available ones are {list(mapping.keys())}") from err
 
-        zenith_delay = get(ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
-        mapping_function = get(MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
+        zenith_delay = get(_ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
+        mapping_function = get(_MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
 
         def hydrostatic(t, p, h, el, ts):  # noqa: W0613
             return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(el, ts)
