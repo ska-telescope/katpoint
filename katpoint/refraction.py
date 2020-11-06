@@ -472,12 +472,12 @@ def _continued_fraction(elevation, a, b, c):
 
 
 def _niell_season(timestamp):
-    """Seasonal sinusoidal variation as used in Niell's mapping functions."""
+    """Seasonal sinusoidal variation as used in Niell's mapping function."""
     time = Timestamp(timestamp).time
     # Subtract the first day of an arbitrary year (1980) to line up the phase.
     # Reference day is 28 January, consistent with Niell (1996).
     day_of_year = time.utc.mjd - 44239 + 1 - 28
-    # Middle of winter = +1, middle of summer = -1 (assumes Northern hemisphere)
+    # Middle of Northern hemisphere winter = +1, middle of summer = -1
     return np.cos(2.0 * np.pi * day_of_year / 365.25)
 
 
@@ -500,7 +500,8 @@ class GlobalMappingFunction:
     associated with [Boehm2006]_. This paper describes the Global Mapping
     Function (GMF), a static model describing average weather conditions
     as a function of latitude, longitude, height and the day of year, which
-    was fit to three years of global weather data.
+    was fit to three years of global weather data. This is a refinement of
+    Niell's mapping function [Niell1996]_ and shares some of its formulas.
 
     References
     ----------
@@ -508,6 +509,10 @@ class GlobalMappingFunction:
        Function (GMF): A new empirical mapping function based on numerical
        weather model data,” Geophysical Research Letters, vol. 33, no. L07304,
        Apr 2006. DOI: 10.1029/2005GL025546
+
+    .. [Niell1996] A.E. Niell, “Global mapping functions for the atmosphere delay
+       at radio wavelengths,” Journal of Geophysical Research: Solid Earth, vol.
+       101, no. B2, pp. 3227–3246, Feb 1996. DOI: 10.1029/95JB03048
     """
 
     def __init__(self, location):
