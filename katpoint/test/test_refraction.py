@@ -172,5 +172,5 @@ def test_tropospheric_delay(model_id, elevation, atol):
     expected = calc(location, radec, obstime,
                     temperature=temperature,
                     pressure=enable_dry_delay * pressure,
-                    humidity=enable_wet_delay * relative_humidity)
+                    relative_humidity=enable_wet_delay * relative_humidity)
     assert np.allclose(actual, expected, rtol=0, atol=atol)
