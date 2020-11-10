@@ -292,7 +292,7 @@ class SaastamoinenZenithDelay:
         ----------
         temperature : :class:`~astropy.units.Quantity`
             Ambient air temperature at surface
-        relative_humidity : :class:`~astropy.units.Quantity`
+        relative_humidity : :class:`~astropy.units.Quantity` or float or array
             Relative humidity at surface, as a fraction in range [0, 1]
 
         Returns
@@ -670,7 +670,7 @@ class TroposphericDelay:
             Total barometric pressure at surface
         temperature : :class:`~astropy.units.Quantity`
             Ambient air temperature at surface
-        relative_humidity : :class:`~astropy.units.Quantity`
+        relative_humidity : :class:`~astropy.units.Quantity` or float or array
             Relative humidity at surface, as a fraction in range [0, 1]
         elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
             Elevation angle
