@@ -133,9 +133,6 @@ class DelayCorrection:
         or `ref_ant` was not specified, or description string is invalid
     """
 
-    # Maximum size for delay cache
-    CACHE_SIZE = 1000
-
     def __init__(self, ants, ref_ant=None, sky_centre_freq=0.0, extra_delay=None):
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
@@ -179,7 +176,6 @@ class DelayCorrection:
         # With no antennas, let params still have correct shape
         if not ant_models:
             self._params = np.empty((0, len(DelayModel())))
-        self._cache = {}
 
         # Now calculate and store public attributes
         self.ant_models = ant_models
@@ -250,26 +246,6 @@ class DelayCorrection:
                                np.r_[-targetdir, 0.0, 1.0, cos_el]])
         return np.dot(self._params, design_mat.T).ravel()
 
-    def _cached_delays(self, target, timestamp, offset=None):
-        """Try to load delays from cache, else calculate it.
-
-        This uses the timestamp to look up previously calculated delays in
-        a cache. If not found, calculate the delays and store it in the
-        cache instead. Each cache value is used only once. Clean out the
-        oldest timestamp if cache is full.
-
-        See :meth:`_calculate_delays` for parameter and return lists,
-        as these two methods can be used interchangeably.
-        """
-        delays = self._cache.pop(timestamp, None)
-        if delays is None:
-            delays = self._calculate_delays(target, timestamp, offset)
-            # Clean out the oldest timestamp if cache is full
-            while len(self._cache) >= DelayCorrection.CACHE_SIZE:
-                self._cache.pop(min(self._cache.keys()))
-            self._cache[timestamp] = delays
-        return delays
-
     def corrections(self, target, timestamp=None, next_timestamp=None,
                     offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
@@ -317,15 +293,13 @@ class DelayCorrection:
         """
         time = Timestamp(timestamp).time
         if time.shape == ():
-            # Use cache for a single timestamp
-            delays = self._cached_delays(target, time, offset)
+            delays = self._calculate_delays(target, time, offset)
             next_time = None if next_timestamp is None else Timestamp(next_timestamp).time
         else:
             # Append one more timestamp to get a slope for the last timestamp
             last_step = time[-1] - time[-2]
             all_times = np.r_[time, [time[-1] + last_step]]
             next_time = Time(all_times[1:])
-            # Don't use cache, as the next_times are included in all_delays
             all_delays = np.array([self._calculate_delays(target, t, offset)
                                    for t in all_times])
             delays = all_delays[:-1].T
@@ -342,7 +316,7 @@ class DelayCorrection:
         step = (next_time - time).sec
         # We still have to get next_delays in the single timestamp case
         if next_time.shape == ():
-            next_delays = self._cached_delays(target, next_time, offset)
+            next_delays = self._calculate_delays(target, next_time, offset)
         next_delay_corrections = self.extra_delay - next_delays
         next_phase_corrections = - phase(next_delays)
         delay_slopes = (next_delay_corrections - delay_corrections) / step

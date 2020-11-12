@@ -112,13 +112,6 @@ class TestDelayCorrection:
         np.testing.assert_equal(delay2['A2h'][0], delay1['A2h'])
         np.testing.assert_equal(phase2['A2h'][0], phase1['A2h'])
 
-    def test_delay_cache(self):
-        """Test delay correction cache limit."""
-        max_size = katpoint.DelayCorrection.CACHE_SIZE
-        for n in range(max_size + 10):
-            delay0, phase0 = self.delays.corrections(self.target1, self.ts + n)
-        assert len(self.delays._cache) == max_size, 'Delay cache grew past limit'
-
     def test_offset(self):
         """Test target offset."""
         azel = self.target1.azel(self.ts, self.ant1)
