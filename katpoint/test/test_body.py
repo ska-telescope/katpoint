@@ -82,13 +82,13 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
         # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
         # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
-         '14:05:58.9201h', '-12:13:51.9009d', '118:10:05.1129d', '27:23:12.8499d', 1 * u.mas),
+         '14:05:58.9201h', '-12:13:51.9009d', '118:10:05.1121d', '27:23:12.8454d', 1 * u.mas),
         # (PyEphem radec is geocentric)        118:10:06.1d       27:23:13.3d  (PyEphem)
         (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
-         '6:44:11.9332h', '23:02:08.402d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
+         '6:44:11.9332h', '23:02:08.4027d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
         # (PyEphem radec is geocentric)     127:15:23.6d       60:05:13.7d  (PyEphem)
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
-         '7:56:36.7964h', '20:53:59.4553d', '234:53:19.4762d', '31:38:11.4248d', 1 * u.mas),
+         '7:56:36.7961h', '20:53:59.4561d', '234:53:19.4763d', '31:38:11.4248d', 1 * u.mas),
         # (PyEphem radec is geocentric)      234:53:20.8d       31:38:09.4d  (PyEphem)
         (EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
          '0:00:38.5009h', '00:03:56.0093d', TLE_AZ, TLE_EL, 1 * u.mas),
