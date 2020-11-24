@@ -125,6 +125,8 @@ class DelayCorrection:
     ----------
     ant_models : dict mapping string to :class:`DelayModel` object
         Dict mapping antenna name to corresponding delay model
+    inputs : list of strings
+        List of correlator input labels corresponding to output of :meth:`delays`
 
     Raises
     ------
@@ -170,7 +172,6 @@ class DelayCorrection:
             ant_models = {ant.name: ant.delay_model for ant in ants}
 
         # Initialise private attributes
-        self._inputs = [ant + pol for ant in ant_models for pol in 'hv']
         self._params = np.array([ant_models[ant].delay_params
                                  for ant in ant_models])
         # With no antennas, let params still have correct shape
@@ -178,6 +179,7 @@ class DelayCorrection:
             self._params = np.empty((0, len(DelayModel())))
 
         # Now calculate and store public attributes
+        self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
         self.ant_models = ant_models
         self.ref_ant = ref_ant
         self.sky_centre_freq = sky_centre_freq
@@ -206,7 +208,7 @@ class DelayCorrection:
                                 for ant, model in self.ant_models.items()}}
         return json.dumps(descr, sort_keys=True)
 
-    def _calculate_delays(self, target, timestamp, offset=None):
+    def delays(self, target, timestamp, offset=None):
         """Calculate delays for all inputs / antennas for a given target.
 
         Parameters
@@ -293,15 +295,14 @@ class DelayCorrection:
         """
         time = Timestamp(timestamp).time
         if time.shape == ():
-            delays = self._calculate_delays(target, time, offset)
+            delays = self.delays(target, time, offset)
             next_time = None if next_timestamp is None else Timestamp(next_timestamp).time
         else:
             # Append one more timestamp to get a slope for the last timestamp
             last_step = time[-1] - time[-2]
             all_times = np.r_[time, [time[-1] + last_step]]
             next_time = Time(all_times[1:])
-            all_delays = np.array([self._calculate_delays(target, t, offset)
-                                   for t in all_times])
+            all_delays = np.array([self.delays(target, t, offset) for t in all_times])
             delays = all_delays[:-1].T
             next_delays = all_delays[1:].T
 
@@ -311,12 +312,12 @@ class DelayCorrection:
         delay_corrections = self.extra_delay - delays
         phase_corrections = - phase(delays)
         if next_time is None:
-            return (dict(zip(self._inputs, delay_corrections)),
-                    dict(zip(self._inputs, phase_corrections)))
+            return (dict(zip(self.inputs, delay_corrections)),
+                    dict(zip(self.inputs, phase_corrections)))
         step = (next_time - time).sec
         # We still have to get next_delays in the single timestamp case
         if next_time.shape == ():
-            next_delays = self._calculate_delays(target, next_time, offset)
+            next_delays = self.delays(target, next_time, offset)
         next_delay_corrections = self.extra_delay - next_delays
         next_phase_corrections = - phase(next_delays)
         delay_slopes = (next_delay_corrections - delay_corrections) / step
@@ -328,5 +329,5 @@ class DelayCorrection:
         # number of polynomial terms is 2 by design).
         delay_polys = np.dstack((delay_corrections, delay_slopes)).squeeze()
         phase_polys = np.dstack((phase_corrections, phase_slopes)).squeeze()
-        return (dict(zip(self._inputs, delay_polys)),
-                dict(zip(self._inputs, phase_polys)))
+        return (dict(zip(self.inputs, delay_polys)),
+                dict(zip(self.inputs, phase_polys)))

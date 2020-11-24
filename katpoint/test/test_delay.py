@@ -68,6 +68,7 @@ class TestDelayCorrection:
     def test_construction(self):
         """Test construction of DelayCorrection object."""
         descr = self.delays.description
+        assert self.delays.inputs == ['A2h', 'A2v', 'A3h', 'A3v']
         delays2 = katpoint.DelayCorrection(descr)
         delays_dict = json.loads(descr)
         delays2_dict = json.loads(delays2.description)
