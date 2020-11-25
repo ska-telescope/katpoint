@@ -87,31 +87,25 @@ class TestDelayCorrection:
         """Test delay correction."""
         extra_delay = self.delays.extra_delay
         delay0, phase0 = self.delays.corrections(self.target1, self.ts)
-        delay1, phase1 = self.delays.corrections(self.target1, self.ts, self.ts + 1.0)
+        delay1, phase1 = self.delays.corrections(self.target1, [self.ts, self.ts + 1.0])
         # First check dimensions
-        assert np.shape(delay0['A2h']) == ()
-        assert np.shape(phase0['A2h']) == ()
-        assert np.shape(delay1['A2h']) == (2,)
-        assert np.shape(phase1['A2h']) == (2,)
+        assert np.shape(delay0['A2h']) == (2,)
+        assert np.shape(phase0['A2h']) == (2,)
+        assert np.shape(delay1['A2h']) == (2, 2)
+        assert np.shape(phase1['A2h']) == (2, 2)
         # This target is special - direction perpendicular to baseline (and stationary)
-        assert delay0['A2h'] == extra_delay, 'Delay for ant2h should be zero'
-        assert delay0['A2v'] == extra_delay, 'Delay for ant2v should be zero'
-        assert delay1['A2h'][0] == extra_delay, 'Delay for ant2h should be zero'
-        assert delay1['A2v'][0] == extra_delay, 'Delay for ant2v should be zero'
-        assert delay1['A2h'][1] == 0.0, 'Delay rate for ant2h should be zero'
-        assert delay1['A2v'][1] == 0.0, 'Delay rate for ant2v should be zero'
+        assert delay0['A2h'][0] == extra_delay, 'Delay for ant2h should be zero'
+        assert delay0['A2v'][0] == extra_delay, 'Delay for ant2v should be zero'
+        assert delay0['A2h'][1] == 0.0, 'Delay rate for ant2h should be zero'
+        assert delay0['A2v'][1] == 0.0, 'Delay rate for ant2v should be zero'
+        np.testing.assert_array_equal(delay1['A2h'], [[extra_delay, 0.0], [extra_delay, 0.0]])
+        np.testing.assert_array_equal(delay1['A2v'], [[extra_delay, 0.0], [extra_delay, 0.0]])
         # Compare to target geometric delay calculations
         delay0, phase0 = self.delays.corrections(self.target2, self.ts)
-        delay1, phase1 = self.delays.corrections(self.target2, self.ts - 0.5, self.ts + 0.5)
+        delay1, phase1 = self.delays.corrections(self.target2, (self.ts - 0.5, self.ts + 0.5))
         tgt_delay, tgt_delay_rate = self.target2.geometric_delay(self.ant2, self.ts, self.ant1)
-        np.testing.assert_almost_equal(delay0['A2h'], extra_delay - tgt_delay, decimal=15)
-        np.testing.assert_almost_equal(delay1['A2h'][1], -tgt_delay_rate, decimal=13)
-        # Test vector version
-        delay2, phase2 = self.delays.corrections(self.target2, (self.ts - 0.5, self.ts + 0.5))
-        assert np.shape(delay2['A2h']) == (2, 2)
-        assert np.shape(phase2['A2h']) == (2, 2)
-        np.testing.assert_equal(delay2['A2h'][0], delay1['A2h'])
-        np.testing.assert_equal(phase2['A2h'][0], phase1['A2h'])
+        np.testing.assert_almost_equal(delay0['A2h'][0], extra_delay - tgt_delay, decimal=15)
+        np.testing.assert_almost_equal(delay1['A2h'][0, 1], -tgt_delay_rate, decimal=13)
 
     def test_offset(self):
         """Test target offset."""
@@ -124,14 +118,12 @@ class TestDelayCorrection:
         offset['y'] = y
         extra_delay = self.delays.extra_delay
         delay0, phase0 = self.delays.corrections(target3, self.ts, offset=offset)
-        delay1, phase1 = self.delays.corrections(target3, self.ts, self.ts + 1.0, offset)
+        delay1, phase1 = self.delays.corrections(target3, (self.ts, self.ts + 1.0), offset)
         # Conspire to return to special target1
-        assert delay0['A2h'] == extra_delay, 'Delay for ant2h should be zero'
-        assert delay0['A2v'] == extra_delay, 'Delay for ant2v should be zero'
-        assert delay1['A2h'][0] == extra_delay, 'Delay for ant2h should be zero'
-        assert delay1['A2v'][0] == extra_delay, 'Delay for ant2v should be zero'
-        assert delay1['A2h'][1] == 0.0, 'Delay rate for ant2h should be zero'
-        assert delay1['A2v'][1] == 0.0, 'Delay rate for ant2v should be zero'
+        assert delay0['A2h'][0] == extra_delay, 'Delay for ant2h should be zero'
+        assert delay0['A2v'][0] == extra_delay, 'Delay for ant2v should be zero'
+        np.testing.assert_array_equal(delay1['A2h'], [[extra_delay, 0.0], [extra_delay, 0.0]])
+        np.testing.assert_array_equal(delay1['A2v'], [[extra_delay, 0.0], [extra_delay, 0.0]])
         # Now try (ra, dec) coordinate system
         radec = self.target1.radec(self.ts, self.ant1)
         offset = dict(projection_type='ARC', coord_system='radec')
@@ -142,11 +134,11 @@ class TestDelayCorrection:
         offset['y'] = y
         extra_delay = self.delays.extra_delay
         delay0, phase0 = self.delays.corrections(target4, self.ts, offset=offset)
-        delay1, phase1 = self.delays.corrections(target4, self.ts, self.ts + 1.0, offset)
+        delay1, phase1 = self.delays.corrections(target4, (self.ts, self.ts + 1.0), offset)
         # Conspire to return to special target1
-        np.testing.assert_almost_equal(delay0['A2h'], extra_delay, decimal=15)
-        np.testing.assert_almost_equal(delay0['A2v'], extra_delay, decimal=15)
-        np.testing.assert_almost_equal(delay1['A2h'][0], extra_delay, decimal=15)
-        np.testing.assert_almost_equal(delay1['A2v'][0], extra_delay, decimal=15)
-        np.testing.assert_almost_equal(delay1['A2h'][1], 0.0, decimal=11)
-        np.testing.assert_almost_equal(delay1['A2v'][1], 0.0, decimal=11)
+        np.testing.assert_almost_equal(delay0['A2h'][0], extra_delay, decimal=15)
+        np.testing.assert_almost_equal(delay0['A2v'][0], extra_delay, decimal=15)
+        np.testing.assert_almost_equal(delay1['A2h'][0, 0], extra_delay, decimal=15)
+        np.testing.assert_almost_equal(delay1['A2v'][0, 0], extra_delay, decimal=15)
+        np.testing.assert_almost_equal(delay1['A2h'][0, 1], 0.0, decimal=11)
+        np.testing.assert_almost_equal(delay1['A2v'][0, 1], 0.0, decimal=11)

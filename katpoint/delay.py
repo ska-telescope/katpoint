@@ -209,24 +209,24 @@ class DelayCorrection:
         return json.dumps(descr, sort_keys=True)
 
     def delays(self, target, timestamp, offset=None):
-        """Calculate delays for all inputs / antennas for a given target.
+        """Calculate delays for all timestamps and inputs for a given target.
 
         Parameters
         ----------
         target : :class:`Target` object
             Target providing direction for geometric delays
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
-            Timestamp when wavefront from target passes reference position
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, shape T
+            Timestamp(s) when wavefront from target passes reference position
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
 
         Returns
         -------
-        delays : sequence of *2M* floats
-            Delays (one per correlator input) in seconds
+        delays : array of float, shape T + (N,)
+            Delays for timestamps with shape T and *N* correlator inputs, in seconds
         """
-        if not offset:
+        if offset is None:
             azel = target.azel(timestamp, self.ref_ant)
             az = azel.az.rad
             el = azel.alt.rad
@@ -242,24 +242,24 @@ class DelayCorrection:
             else:
                 az, el = target.plane_to_sphere(timestamp=timestamp,
                                                 antenna=self.ref_ant, **offset)
-        targetdir = np.array(azel_to_enu(az, el))
+        targetdir = np.array(azel_to_enu(az, el)).reshape((3, -1))
         cos_el = np.cos(el)
-        design_mat = np.array([np.r_[-targetdir, 1.0, 0.0, cos_el],
-                               np.r_[-targetdir, 0.0, 1.0, cos_el]])
-        return np.dot(self._params, design_mat.T).ravel()
+        T = el.shape
+        design_mat = np.stack((
+            np.vstack((-targetdir, np.ones(T), np.zeros(T), cos_el)),
+            np.vstack((-targetdir, np.zeros(T), np.ones(T), cos_el)),
+        ), axis=1)
+        return np.tensordot(self._params, design_mat, axes=1).reshape((-1,) + T).T
 
-    def corrections(self, target, timestamp=None, next_timestamp=None,
-                    offset=None):
+    def corrections(self, target, timestamp=None, offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
 
         Calculate delay and phase corrections for the direction towards
-        *target* at *timestamp*. If the timestamp of the next delay
-        calculation is provided, it is used to calculate a delay rate that can
-        be used for linear interpolation in the period up to the next update.
-        This process is repeated if a sequence of timestamps is given. Both
-        delay (aka phase slope) and phase (aka phase offset or fringe phase)
-        corrections are provided, and optionally their derivatives with
-        respect to time (delay rate and fringe rate, respectively).
+        `target` at `timestamp`. Both delay (aka phase slope across frequency)
+        and phase (aka phase offset or fringe phase) corrections are provided,
+        and their derivatives with respect to time (delay rate and fringe rate,
+        respectively). The derivatives allow linear interpolation of delay
+        and phase if a sequence of timestamps is provided.
 
         Parameters
         ----------
@@ -267,57 +267,46 @@ class DelayCorrection:
             Target providing direction for geometric delays
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s) when delays are evaluated (default is now). If an array
-            of timestamps is given (in which case, it must contain at least two
-            elements), the corrections will include slopes to be used for linear
-            interpolation between the times.
-        next_timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp when next delay will be evaluated, used to determine
-            a slope for linear interpolation (default is no slope). This is
-            ignored if *timestamp* is a sequence.
+            of timestamps is given, the corrections will include slopes to be used
+            for linear interpolation between the times.
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
 
         Returns
         -------
-        delays : dict mapping string to float or array of floats
+        delays : dict mapping string to array of floats
             Dict mapping correlator input name to delay correction,
-            which consists of a delay value (in seconds) and optionally
-            a delay rate value (in seconds per second). If a sequence
-            of *T* timestamps are provided, each input maps to an array
+            which consists of a delay value (in seconds) and a delay
+            rate value (in seconds per second). If a sequence of *T*
+            timestamps are provided, each input maps to an array
             of shape (*T*, 2).
-        phases : dict mapping string to float or array of floats
+        phases : dict mapping string to array of floats
             Dict mapping correlator input name to phase correction, which
-            consists of a fringe phase value (in radians) and optionally a
-            fringe rate value (in radians per second). If a sequence of *T*
-            timestamps are provided, each input maps to an array of shape
-            (*T*, 2).
+            consists of a fringe phase value (in radians) and a fringe rate
+            value (in radians per second). If a sequence of *T* timestamps
+            are provided, each input maps to an array of shape (*T*, 2).
         """
         time = Timestamp(timestamp).time
-        if time.shape == ():
-            delays = self.delays(target, time, offset)
-            next_time = None if next_timestamp is None else Timestamp(next_timestamp).time
-        else:
-            # Append one more timestamp to get a slope for the last timestamp
-            last_step = time[-1] - time[-2]
-            all_times = np.r_[time, [time[-1] + last_step]]
-            next_time = Time(all_times[1:])
-            all_delays = np.array([self.delays(target, t, offset) for t in all_times])
-            delays = all_delays[:-1].T
-            next_delays = all_delays[1:].T
+        T = time.shape
+        time = np.atleast_1d(time)
+        # Append one more timestamp to get a slope for the last timestamp.
+        # Repeat the last time increment or fall back to a reasonable default.
+        last_step = time[-1] - time[-2] if len(time) > 1 else 1 * u.s
+        all_times = Time(np.concatenate((time, [time[-1] + last_step])))
+        # XXX Astropy 4.2 will support np.atleast_1d(Time) and make this line obsolete
+        time = all_times[:-1]
+        next_time = all_times[1:]
+        all_delays = self.delays(target, all_times, offset)
+        delays = all_delays[:-1].reshape(T + (-1,)).T
+        next_delays = all_delays[1:].reshape(T + (-1,)).T
 
         def phase(t0):
             """The phase associated with delay t0 at the centre frequency."""
             return - 2.0 * np.pi * self.sky_centre_freq * t0
         delay_corrections = self.extra_delay - delays
         phase_corrections = - phase(delays)
-        if next_time is None:
-            return (dict(zip(self.inputs, delay_corrections)),
-                    dict(zip(self.inputs, phase_corrections)))
         step = (next_time - time).sec
-        # We still have to get next_delays in the single timestamp case
-        if next_time.shape == ():
-            next_delays = self.delays(target, next_time, offset)
         next_delay_corrections = self.extra_delay - next_delays
         next_phase_corrections = - phase(next_delays)
         delay_slopes = (next_delay_corrections - delay_corrections) / step
