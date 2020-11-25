@@ -26,6 +26,13 @@ from astropy.coordinates import Angle
 
 import katpoint
 
+try:
+    from almacalc.highlevel import calc
+except ImportError:
+    HAS_ALMACALC = False
+else:
+    HAS_ALMACALC = True
+
 
 def test_construct_save_load():
     """Test construction / save / load of delay model."""
@@ -142,3 +149,32 @@ class TestDelayCorrection:
         np.testing.assert_almost_equal(delay1['A2v'][0, 0], extra_delay, decimal=15)
         np.testing.assert_almost_equal(delay1['A2h'][0, 1], 0.0, decimal=11)
         np.testing.assert_almost_equal(delay1['A2v'][0, 1], 0.0, decimal=11)
+
+
+TARGET = katpoint.Target('J1939-6342, radec, 19:39:25.03, -63:42:45.6')
+DELAY_MODEL = {'ref_ant': 'array, -30:42:39.8, 21:26:38, 1086.6, 0',
+               'extra_delay': 0.0, 'sky_centre_freq': 1284000000.0}
+
+
+@pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
+@pytest.mark.parametrize(
+    "times,ant_models,atol",
+    [
+        (1605646800.0 + np.linspace(0, 86400, 9),
+         {'m063': '-3419.5845 -1840.48 16.3825'}, 16 * u.ps),
+        (1571219913.0 + np.arange(0, 54000, 6000),
+         {'m048': '-2805.653 2686.863 -9.7545',
+          'm058': '2805.764 2686.873 -3.6595',
+          's0121': '-3545.28803 -10207.44399 -9.18584'}, 16 * u.ps),
+    ]
+)
+def test_against_calc(times, ant_models, atol):
+    times = katpoint.Timestamp(times)
+    model = dict(ant_models=ant_models, **DELAY_MODEL)
+    dc = katpoint.DelayCorrection(json.dumps(model))
+    delay = dc.delays(TARGET, times)[:, ::2] * u.s
+    ref_location = katpoint.Antenna(model['ref_ant']).location
+    locations = np.stack([katpoint.Antenna(f"{model['ref_ant']}, {dm}").location
+                          for dm in model['ant_models'].values()])
+    expected_delay = calc(locations, TARGET.body.coord, times.time, ref_location)
+    assert np.allclose(delay, expected_delay, rtol=0, atol=atol)
