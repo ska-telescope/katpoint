@@ -27,7 +27,7 @@ import json
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
-from astropy.time import Time
+from astropy.coordinates import Angle
 
 from .model import Parameter, Model
 from .conversion import azel_to_enu
@@ -213,9 +213,9 @@ class DelayCorrection:
 
         Parameters
         ----------
-        target : :class:`Target` object
+        target : :class:`Target`
             Target providing direction for geometric delays
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, shape T
+        timestamp : :class:`Timestamp` or equivalent, shape T
             Timestamp(s) when wavefront from target passes reference position
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
@@ -223,9 +223,12 @@ class DelayCorrection:
 
         Returns
         -------
-        delays : array of float, shape T + (N,)
-            Delays for timestamps with shape T and *N* correlator inputs, in seconds
+        delays : :class:`~astropy.units.Quantity`, shape T + (N,)
+            Delays for timestamps with shape T and *N* correlator inputs
         """
+        # Ensure a single consistent timestamp in the case of "now"
+        if timestamp is None:
+            timestamp = Timestamp()
         if offset is None:
             azel = target.azel(timestamp, self.ref_ant)
             az = azel.az.rad
@@ -242,14 +245,18 @@ class DelayCorrection:
             else:
                 az, el = target.plane_to_sphere(timestamp=timestamp,
                                                 antenna=self.ref_ant, **offset)
-        targetdir = np.array(azel_to_enu(az, el)).reshape((3, -1))
-        cos_el = np.cos(el)
         T = el.shape
+        target_dir = np.array(azel_to_enu(az.ravel(), el.ravel()))  # shape (3, prod(T))
+        cos_el = np.cos(el.ravel())
         design_mat = np.stack((
-            np.vstack((-targetdir, np.ones(T), np.zeros(T), cos_el)),
-            np.vstack((-targetdir, np.zeros(T), np.ones(T), cos_el)),
-        ), axis=1)
-        return np.tensordot(self._params, design_mat, axes=1).reshape((-1,) + T).T
+            np.vstack((-target_dir, np.ones_like(cos_el), np.zeros_like(cos_el), cos_el)),
+            np.vstack((-target_dir, np.zeros_like(cos_el), np.ones_like(cos_el), cos_el)),
+        ), axis=1)  # shape (6, 2, prod(T))
+        # (A, 6) * (6, 2, prod(T)) => (A, 2, prod(T)) for N inputs, A antennas and N = 2A
+        delays = np.tensordot(self._params, design_mat, axes=1)
+        # Collapse input dimensions and restore time dimensions, and swap these groups
+        delays = np.moveaxis(delays.reshape((-1,) + T), 0, -1)
+        return delays * u.s
 
     def corrections(self, target, timestamp=None, offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
@@ -263,60 +270,47 @@ class DelayCorrection:
 
         Parameters
         ----------
-        target : :class:`Target` object
+        target : :class:`Target`
             Target providing direction for geometric delays
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp(s) when delays are evaluated (default is now). If an array
-            of timestamps is given, the corrections will include slopes to be used
-            for linear interpolation between the times.
+        timestamp : :class:`Timestamp` or equivalent, shape T, optional
+            Timestamp(s) when delays are evaluated (default is now)
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
 
         Returns
         -------
-        delays : dict mapping string to array of floats
-            Dict mapping correlator input name to delay correction,
-            which consists of a delay value (in seconds) and a delay
-            rate value (in seconds per second). If a sequence of *T*
-            timestamps are provided, each input maps to an array
-            of shape (*T*, 2).
-        phases : dict mapping string to array of floats
-            Dict mapping correlator input name to phase correction, which
-            consists of a fringe phase value (in radians) and a fringe rate
-            value (in radians per second). If a sequence of *T* timestamps
-            are provided, each input maps to an array of shape (*T*, 2).
+        delays : dict mapping str to :class:`~astropy.units.Quantity`, shape T
+            Delay correction per correlator input name and timestamp
+        phases : dict mapping str to :class:`~astropy.coordinates.Angle`, shape T
+            Phase correction per correlator input name and timestamp
+        delay_rates : dict mapping str to :class:`~astropy.units.Quantity`
+            Delay rate correction per correlator input name and timestamp. The
+            quantity shape is like T, except the first dimension is 1 smaller.
+            The quantity will be an empty array if there are fewer than 2 times.
+        fringe_rates : dict mapping str to :class:`~astropy.units.Quantity`
+            Fringe rate correction per correlator input name and timestamp. The
+            quantity shape is like T, except the first dimension is 1 smaller.
+            The quantity will be an empty array if there are fewer than 2 times.
         """
         time = Timestamp(timestamp).time
         T = time.shape
-        time = np.atleast_1d(time)
-        # Append one more timestamp to get a slope for the last timestamp.
-        # Repeat the last time increment or fall back to a reasonable default.
-        last_step = time[-1] - time[-2] if len(time) > 1 else 1 * u.s
-        all_times = Time(np.concatenate((time, [time[-1] + last_step])))
-        # XXX Astropy 4.2 will support np.atleast_1d(Time) and make this line obsolete
-        time = all_times[:-1]
-        next_time = all_times[1:]
-        all_delays = self.delays(target, all_times, offset)
-        delays = all_delays[:-1].reshape(T + (-1,)).T
-        next_delays = all_delays[1:].reshape(T + (-1,)).T
-
-        def phase(t0):
-            """The phase associated with delay t0 at the centre frequency."""
-            return - 2.0 * np.pi * self.sky_centre_freq * t0
-        delay_corrections = self.extra_delay - delays
-        phase_corrections = - phase(delays)
-        step = (next_time - time).sec
-        next_delay_corrections = self.extra_delay - next_delays
-        next_phase_corrections = - phase(next_delays)
-        delay_slopes = (next_delay_corrections - delay_corrections) / step
-        phase_slopes = (next_phase_corrections - phase_corrections) / step
-        # This construction works for both the scalar and vector cases.
-        # The squeeze() gets rid of an extra singleton in the scalar case.
-        # It is safe to squeeze as the other two dimensions involved will
-        # never be singletons (number of inputs >= 2 even for 1 antenna, and
-        # number of polynomial terms is 2 by design).
-        delay_polys = np.dstack((delay_corrections, delay_slopes)).squeeze()
-        phase_polys = np.dstack((phase_corrections, phase_slopes)).squeeze()
-        return (dict(zip(self.inputs, delay_polys)),
-                dict(zip(self.inputs, phase_polys)))
+        # Ensure that times are at least 1-D (and delays 2-D) so that we can calculate deltas
+        # XXX Astropy 4.2 supports np.atleast_1d(time)
+        if time.isscalar:
+            time = time[np.newaxis]
+        delays = self.delays(target, time, offset)
+        delay_corrections = self.extra_delay * u.s - delays
+        phase_corrections = Angle(2. * np.pi * self.sky_centre_freq * (u.rad/u.s) * delays)
+        delta_time = (time[1:] - time[:-1])[:, np.newaxis].to(u.s)
+        delta_delay_corrections = delay_corrections[1:] - delay_corrections[:-1]
+        delay_rate_corrections = delta_delay_corrections / delta_time
+        delta_phase_corrections = phase_corrections[1:] - phase_corrections[:-1]
+        fringe_rate_corrections = delta_phase_corrections / delta_time
+        return (
+            # Restore time dimensions and swap input dimension to front to get zipped into dict
+            dict(zip(self.inputs, np.moveaxis(delay_corrections.reshape(T + (-1,)), -1, 0))),
+            dict(zip(self.inputs, np.moveaxis(phase_corrections.reshape(T + (-1,)), -1, 0))),
+            dict(zip(self.inputs, np.moveaxis(delay_rate_corrections, -1, 0))),
+            dict(zip(self.inputs, np.moveaxis(fringe_rate_corrections, -1, 0))),
+        )
