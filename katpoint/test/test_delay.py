@@ -116,7 +116,7 @@ class TestDelayCorrection:
         _, _, drate1, _ = self.delays.corrections(self.target2, (self.ts - 0.5, self.ts + 0.5))
         tgt_delay, tgt_delay_rate = self.target2.geometric_delay(self.ant2, self.ts, self.ant1)
         assert np.allclose(delay0['A2h'], (extra_delay - tgt_delay) * u.s, atol=0, rtol=1e-15)
-        assert np.allclose(drate1['A2h'][0], -tgt_delay_rate * u.s / u.s, atol=0, rtol=1e-12)
+        assert np.allclose(drate1['A2h'][0], -tgt_delay_rate * u.s / u.s, atol=0, rtol=1e-11)
 
     def test_offset(self):
         """Test target offset."""
