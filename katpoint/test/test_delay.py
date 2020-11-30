@@ -87,8 +87,8 @@ class TestDelayCorrection:
         with pytest.raises(ValueError):
             katpoint.DelayCorrection('')
         delays3 = katpoint.DelayCorrection([], self.ant1)
-        assert delays3._params.shape == (0, len(katpoint.DelayModel())), (
-            "Delay correction with no antennas should fail gracefully")
+        d = delays3.delays(self.target1, self.ts + np.arange(3))
+        assert d.shape == (3, 0), "Delay correction with no antennas should fail gracefully"
 
     def test_correction(self):
         """Test delay correction."""
@@ -128,7 +128,7 @@ class TestDelayCorrection:
         offset['x'] = x
         offset['y'] = y
         extra_delay = self.delays.extra_delay
-        delay0, _, _, _  = self.delays.corrections(target3, self.ts, offset=offset)
+        delay0, _, _, _ = self.delays.corrections(target3, self.ts, offset=offset)
         delay1, _, drate1, _ = self.delays.corrections(target3, (self.ts, self.ts + 1.0), offset)
         # Conspire to return to special target1
         assert delay0['A2h'] == extra_delay * u.s, 'Delay for ant2h should be zero'
@@ -164,17 +164,17 @@ DELAY_MODEL = {'ref_ant': 'array, -30:42:39.8, 21:26:38, 1086.6, 0',
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize(
-    "times,ant_models,atol",
+    "times,ant_models,min_diff,max_diff",
     [
         (1605646800.0 + np.linspace(0, 86400, 9),
-         {'m063': '-3419.5845 -1840.48 16.3825'}, 16 * u.ps),
+         {'m063': '-3419.5845 -1840.48 16.3825'}, 14 * u.ps, 16 * u.ps),
         (1571219913.0 + np.arange(0, 54000, 6000),
          {'m048': '-2805.653 2686.863 -9.7545',
           'm058': '2805.764 2686.873 -3.6595',
-          's0121': '-3545.28803 -10207.44399 -9.18584'}, 16 * u.ps),
+          's0121': '-3545.28803 -10207.44399 -9.18584'}, 12 * u.ps, 16 * u.ps),
     ]
 )
-def test_against_calc(times, ant_models, atol):
+def test_against_calc(times, ant_models, min_diff, max_diff):
     times = katpoint.Timestamp(times)
     model = dict(ant_models=ant_models, **DELAY_MODEL)
     dc = katpoint.DelayCorrection(json.dumps(model))
@@ -183,4 +183,5 @@ def test_against_calc(times, ant_models, atol):
     locations = np.stack([katpoint.Antenna(f"{model['ref_ant']}, {dm}").location
                           for dm in model['ant_models'].values()])
     expected_delay = calc(locations, TARGET.body.coord, times.time, ref_location)
-    assert np.allclose(delay, expected_delay, rtol=0, atol=atol)
+    abs_diff = np.abs(delay - expected_delay)
+    assert np.all(abs_diff == np.clip(abs_diff, min_diff, max_diff))
