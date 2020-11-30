@@ -81,14 +81,17 @@ class TestDelayCorrection:
         delays2_dict = json.loads(delays2.description)
         assert delays2_dict == delays_dict, 'Objects created through description strings differ'
         with pytest.raises(ValueError):
-            katpoint.DelayCorrection([self.ant1, self.ant2], self.ant3)
-        with pytest.raises(ValueError):
             katpoint.DelayCorrection([self.ant1, self.ant2])
         with pytest.raises(ValueError):
             katpoint.DelayCorrection('')
         delays3 = katpoint.DelayCorrection([], self.ant1)
         d = delays3.delays(self.target1, self.ts + np.arange(3))
         assert d.shape == (3, 0), "Delay correction with no antennas should fail gracefully"
+        # Check construction with different antenna reference positions
+        delays4 = katpoint.DelayCorrection([self.ant1, self.ant2], self.ant3)
+        ant1_vs_ant3 = np.array(delays4.ant_models['A1'].values())
+        ant3_vs_ant1 = np.array(self.delays.ant_models['A3'].values())
+        assert np.allclose(ant3_vs_ant1, -ant1_vs_ant3, rtol=0, atol=2e-5)
 
     def test_correction(self):
         """Test delay correction."""

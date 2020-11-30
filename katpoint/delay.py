@@ -30,7 +30,7 @@ import astropy.constants as const
 from astropy.coordinates import Angle
 
 from .model import Parameter, Model
-from .conversion import azel_to_enu
+from .conversion import azel_to_enu, ecef_to_enu
 from .target import construct_radec_target
 from .timestamp import Timestamp
 
@@ -102,12 +102,6 @@ class DelayCorrection:
     strictly positive. Each antenna is assumed to have two polarisations (H
     and V), resulting in two correlator inputs per antenna.
 
-    For now, the reference antenna position must match the reference positions
-    of each antenna in the array, so that the ENU offset in each antenna's
-    delay model directly represent the baseline between that antenna and the
-    reference antenna. This should be fine as this is the standard case, but
-    may cause problems for e.g. VLBI with a geocentric reference antenna.
-
     Parameters
     ----------
     ants : sequence of *M* :class:`Antenna` objects or string
@@ -131,8 +125,7 @@ class DelayCorrection:
     Raises
     ------
     ValueError
-        If all antennas do not share the same reference position as `ref_ant`
-        or `ref_ant` was not specified, or description string is invalid
+        If `ref_ant` was not specified or description string is invalid
     """
 
     def __init__(self, ants, ref_ant=None, sky_centre_freq=0.0, extra_delay=None):
@@ -160,16 +153,17 @@ class DelayCorrection:
             # `ants` is a sequence of Antennas - verify and extract delay models
             if ref_ant is None:
                 raise ValueError('No reference antenna provided')
-            # Tolerances translate to micrometre differences (assume float64)
-            if any([not np.allclose(ant.ref_position_wgs84,
-                                    ref_ant.position_wgs84, rtol=0., atol=1e-14)
-                    for ant in list(ants) + [ref_ant]]):
-                msg = "Antennas '%s' do not all share the same reference " \
-                      "position of the reference antenna %r" % \
-                      ("', '".join(ant.description for ant in ants),
-                       ref_ant.description)
-                raise ValueError(msg)
-            ant_models = {ant.name: ant.delay_model for ant in ants}
+            ant_models = {}
+            for ant in ants:
+                model = DelayModel(ant.delay_model)
+                # If reference positions agree, keep model to avoid small rounding errors
+                if ref_ant.position_wgs84 != ant.ref_position_wgs84:
+                    # Remap antenna ENU offset to the common reference position
+                    enu = ecef_to_enu(*ref_ant.position_wgs84, *ant.position_ecef)
+                    model['POS_E'] = enu[0]
+                    model['POS_N'] = enu[1]
+                    model['POS_U'] = enu[2]
+                ant_models[ant.name] = model
 
         # Initialise private attributes
         self._params = np.array([ant_models[ant].delay_params
