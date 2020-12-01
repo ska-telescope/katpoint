@@ -219,7 +219,12 @@ TS = katpoint.Timestamp('2013-08-14 09:25')
 def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=()):
     """Check that `func` output for ndarray of inputs is array of corresponding scalar outputs."""
     array_out = func(array_in)
-    assert np.shape(array_out) == pre_shape + array_in.shape + post_shape
+    # XXX Workaround for Astropy 4.2 regression (np.shape used to work, now TypeError)
+    try:
+        out_shape = np.shape(array_out)
+    except TypeError:
+        out_shape = array_out.shape
+    assert out_shape == pre_shape + array_in.shape + post_shape
     all_pre = len(pre_shape) * (np.s_[:],)
     all_post = len(post_shape) * (np.s_[:],)
     for index_in in np.ndindex(array_in.shape):
