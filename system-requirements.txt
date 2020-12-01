@@ -1,4 +1,4 @@
-astropy>=4.1
+astropy>=4.2
 numpy
 pytest
 pytest-cov

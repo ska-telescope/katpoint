@@ -120,15 +120,15 @@ def test_numerical_timestamp():
     t = katpoint.Timestamp(t1)
     t += 2.0
     t -= 2.0
-    assert t.time == t1
+    assert t.time.isclose(t1)
     t += 2.0 * u.year
     t -= 2.0 * u.year
-    assert t.time == t1
+    assert t.time.isclose(t1)
     t2 = t + 1 * u.day
     assert (t2 - t) << u.second == 1 * u.day
     assert t / 2.0 == t * 0.5
     assert 1.0 + t == t + 1.0
-    assert t - 1.0 * u.day == t1 - 1
+    assert (t - 1.0 * u.day).time.isclose(t1 - 1)
     try:
         assert hash(t) == hash(t + 0.0), 'Timestamp hashes not equal'
     except TypeError:

@@ -53,7 +53,7 @@ setup(name="katpoint",
       setup_requires=['katversion'],
       use_katversion=True,
       install_requires=[
-          "astropy>=4.1",
+          "astropy>=4.2",
           "numpy",
           "sgp4>=2.7",
       ],
