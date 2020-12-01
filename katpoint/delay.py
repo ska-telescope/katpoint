@@ -109,11 +109,11 @@ class DelayCorrection:
         alternatively, a description string representing the entire object
     ref_ant : :class:`Antenna` object or None, optional
         Reference antenna for the array (only optional if `ants` is a string)
-    sky_centre_freq : float, optional
+    sky_centre_freq : :class:`~astropy.units.Quantity`, optional
         RF centre frequency that serves as reference for fringe phase
-    extra_delay : None or float, optional
-        Additional delay, in seconds, added to all inputs to ensure strictly
-        positive delay corrections (automatically calculated if None)
+    extra_delay : :class:`~astropy.units.Quantity`, optional
+        Additional delay added to all inputs to ensure strictly positive delay
+        corrections (automatically calculated by default)
 
     Attributes
     ----------
@@ -128,7 +128,9 @@ class DelayCorrection:
         If `ref_ant` was not specified or description string is invalid
     """
 
-    def __init__(self, ants, ref_ant=None, sky_centre_freq=0.0, extra_delay=None):
+    @u.quantity_input
+    def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
+                 extra_delay: u.s = None):
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
             try:
@@ -142,8 +144,8 @@ class DelayCorrection:
             # split this file into two small bits.
             from .antenna import Antenna
             ref_ant = Antenna(ref_ant_str)
-            sky_centre_freq = descr['sky_centre_freq']
-            extra_delay = descr['extra_delay']
+            sky_centre_freq = descr['sky_centre_freq'] * u.Hz
+            extra_delay = descr['extra_delay'] * u.s
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():
                 ant_model = DelayModel()
@@ -182,27 +184,29 @@ class DelayCorrection:
             if extra_delay is None else extra_delay
 
     @property
-    def max_delay(self):
-        """The maximum (absolute) delay achievable in the array, in seconds."""
+    @u.quantity_input
+    def max_delay(self) -> u.s:
+        """The maximum (absolute) delay achievable in the array."""
         # Worst case is wavefront moving along baseline connecting ant to ref
         max_delay_per_ant = np.sqrt((self._params[:, :3] ** 2).sum(axis=1))
         # Pick largest fixed delay
         max_delay_per_ant += self._params[:, 3:5].max(axis=1)
         # Worst case for NIAO is looking at the horizon
         max_delay_per_ant += self._params[:, 5]
-        return max(max_delay_per_ant) if self.ant_models else 0.0
+        return max(max_delay_per_ant) * u.s if self.ant_models else 0.0 * u.s
 
     @property
     def description(self):
         """Complete string representation of object that allows reconstruction."""
         descr = {'ref_ant': self.ref_ant.description,
-                 'sky_centre_freq': self.sky_centre_freq,
-                 'extra_delay': self.extra_delay,
+                 'sky_centre_freq': self.sky_centre_freq.to_value(u.Hz),
+                 'extra_delay': self.extra_delay.to_value(u.s),
                  'ant_models': {ant: model.description
                                 for ant, model in self.ant_models.items()}}
         return json.dumps(descr, sort_keys=True)
 
-    def delays(self, target, timestamp, offset=None):
+    @u.quantity_input
+    def delays(self, target, timestamp, offset=None) -> u.s:
         """Calculate delays for all timestamps and inputs for a given target.
 
         Parameters
@@ -294,8 +298,10 @@ class DelayCorrection:
         if time.isscalar:
             time = time[np.newaxis]
         delays = self.delays(target, time, offset)
-        delay_corrections = self.extra_delay * u.s - delays
-        phase_corrections = Angle(2. * np.pi * self.sky_centre_freq * (u.rad/u.s) * delays)
+        delay_corrections = self.extra_delay - delays
+        # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
+        turns = (self.sky_centre_freq * delays).decompose()
+        phase_corrections = Angle(2. * np.pi * u.rad) * turns
         delta_time = (time[1:] - time[:-1])[:, np.newaxis].to(u.s)
         delta_delay_corrections = delay_corrections[1:] - delay_corrections[:-1]
         delay_rate_corrections = delta_delay_corrections / delta_time

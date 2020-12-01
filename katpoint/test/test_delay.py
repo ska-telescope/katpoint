@@ -70,7 +70,8 @@ class TestDelayCorrection:
         self.ant2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
         self.ant3 = katpoint.Antenna('A3, -31.0, 18.0, 0.0, 12.0, 5.0 10.0 3.0')
         self.ts = katpoint.Timestamp('2013-08-14 08:25')
-        self.delays = katpoint.DelayCorrection([self.ant2, self.ant3], self.ant1, 1.285e9)
+        self.delays = katpoint.DelayCorrection([self.ant2, self.ant3], self.ant1,
+                                               1.285 * u.GHz)
 
     def test_construction(self):
         """Test construction of DelayCorrection object."""
@@ -105,11 +106,11 @@ class TestDelayCorrection:
         assert np.shape(delay1['A2h']) == np.shape(phase1['A2h']) == (2,)
         assert np.shape(drate1['A2h']) == np.shape(frate1['A2h']) == (1,)
         # This target is special - direction perpendicular to baseline (and stationary)
-        assert delay0['A2h'] == delay0['A2v'] == extra_delay * u.s
+        assert delay0['A2h'] == delay0['A2v'] == extra_delay
         assert drate1['A2h'] == drate1['A2v'] == [0.0]
         assert frate1['A2h'] == frate1['A2v'] == [0.0]
-        np.testing.assert_array_equal(delay1['A2h'], np.full(2, extra_delay) * u.s)
-        np.testing.assert_array_equal(delay1['A2v'], np.full(2, extra_delay) * u.s)
+        np.testing.assert_array_equal(delay1['A2h'], extra_delay.repeat(2))
+        np.testing.assert_array_equal(delay1['A2v'], extra_delay.repeat(2))
         np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
         np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
         np.testing.assert_array_equal(frate1['A2h'], np.array([0.0]) * u.rad / u.s)
@@ -118,7 +119,7 @@ class TestDelayCorrection:
         delay0, _, _, _ = self.delays.corrections(self.target2, self.ts)
         _, _, drate1, _ = self.delays.corrections(self.target2, (self.ts - 0.5, self.ts + 0.5))
         tgt_delay, tgt_delay_rate = self.target2.geometric_delay(self.ant2, self.ts, self.ant1)
-        assert np.allclose(delay0['A2h'], (extra_delay - tgt_delay) * u.s, atol=0, rtol=1e-15)
+        assert np.allclose(delay0['A2h'], extra_delay - tgt_delay * u.s, atol=0, rtol=1e-15)
         assert np.allclose(drate1['A2h'][0], -tgt_delay_rate * u.s / u.s, atol=0, rtol=1e-11)
 
     def test_offset(self):
@@ -134,10 +135,10 @@ class TestDelayCorrection:
         delay0, _, _, _ = self.delays.corrections(target3, self.ts, offset=offset)
         delay1, _, drate1, _ = self.delays.corrections(target3, (self.ts, self.ts + 1.0), offset)
         # Conspire to return to special target1
-        assert delay0['A2h'] == extra_delay * u.s, 'Delay for ant2h should be zero'
-        assert delay0['A2v'] == extra_delay * u.s, 'Delay for ant2v should be zero'
-        np.testing.assert_array_equal(delay1['A2h'], np.full(2, extra_delay) * u.s)
-        np.testing.assert_array_equal(delay1['A2v'], np.full(2, extra_delay) * u.s)
+        assert delay0['A2h'] == extra_delay, 'Delay for ant2h should be zero'
+        assert delay0['A2v'] == extra_delay, 'Delay for ant2v should be zero'
+        np.testing.assert_array_equal(delay1['A2h'], extra_delay.repeat(2))
+        np.testing.assert_array_equal(delay1['A2v'], extra_delay.repeat(2))
         np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
         np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
         # Now try (ra, dec) coordinate system
@@ -152,10 +153,10 @@ class TestDelayCorrection:
         delay0, _, _, _ = self.delays.corrections(target4, self.ts, offset=offset)
         delay1, _, drate1, _ = self.delays.corrections(target4, (self.ts, self.ts + 1.0), offset)
         # Conspire to return to special target1
-        assert np.allclose(delay0['A2h'], extra_delay * u.s, atol=0, rtol=1e-12)
-        assert np.allclose(delay0['A2v'], extra_delay * u.s, atol=0, rtol=1e-12)
-        assert np.allclose(delay1['A2h'][0], extra_delay * u.s, atol=0, rtol=1e-12)
-        assert np.allclose(delay1['A2v'][0], extra_delay * u.s, atol=0, rtol=1e-12)
+        assert np.allclose(delay0['A2h'], extra_delay, atol=0, rtol=1e-12)
+        assert np.allclose(delay0['A2v'], extra_delay, atol=0, rtol=1e-12)
+        assert np.allclose(delay1['A2h'][0], extra_delay, atol=0, rtol=1e-12)
+        assert np.allclose(delay1['A2v'][0], extra_delay, atol=0, rtol=1e-12)
         assert np.allclose(drate1['A2h'], [0.0], atol=5e-12)
         assert np.allclose(drate1['A2v'], [0.0], atol=5e-12)
 
