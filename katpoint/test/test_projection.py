@@ -229,26 +229,32 @@ def test_aips_compatibility(projection, aips_code, decimal, N=100):
         ('SSN', (0.0, PI/2, -PI/2, 0.0), [0.0, 1.0]),
     ]
 )
-def test_sphere_to_plane(projection, sphere, plane):
+def test_sphere_to_plane(projection, sphere, plane, decimal=12):
     """Test specific cases (sphere -> plane)."""
     sphere_to_plane = katpoint.sphere_to_plane[projection]
     xy = np.array(sphere_to_plane(*sphere))
-    np.testing.assert_almost_equal(xy, plane, decimal=12)
+    np.testing.assert_almost_equal(xy, plane, decimal)
 
 
-@pytest.mark.parametrize("projection, sphere", [('ARC', (0.0, 0.0, 0.0, PI))])
-def test_sphere_to_plane_invalid(projection, sphere):
+def sphere_to_plane_invalid(projection, sphere, clipped, decimal):
     """Test points outside allowed domain on sphere (sphere -> plane)."""
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    with pytest.raises(ValueError):
-        sphere_to_plane(*sphere)
+    with OutOfRange.set_treatment('raise'):
+        with pytest.raises(OutOfRangeError):
+            sphere_to_plane(*sphere)
+    with OutOfRange.set_treatment('clip'):
+        test_sphere_to_plane(projection, sphere, clipped, decimal)
 
 
-@pytest.mark.parametrize("projection", ['SIN', 'TAN', 'STG', 'SSN'])
-def test_sphere_to_plane_outside_domain(projection):
+@pytest.mark.parametrize("projection, clip_y, decimal",
+                         [('SIN', 1.0, 12), ('TAN', 1e5, 11), ('ARC', PI/2, 12),
+                          ('STG', 2.0, 10), ('SSN', -1.0, 12)])
+def test_sphere_to_plane_outside_domain(projection, clip_y, decimal):
     """Test points outside allowed domain on sphere (sphere -> plane)."""
-    test_sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0))
-    test_sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI))
+    sphere_to_plane_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, -clip_y], decimal)
+    if projection != 'ARC':
+        sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0), [0.0, 0.0], decimal)
+    sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI), [0.0, +clip_y], decimal)
 
 
 def test_sphere_to_plane_special():
@@ -282,18 +288,28 @@ def test_plane_to_sphere(projection, plane, sphere):
     assert_angles_almost_equal(ae, sphere, decimal=12)
 
 
-def plane_to_sphere_invalid(projection, plane):
+def plane_to_sphere_invalid(projection, plane, clipped):
     """Test points outside allowed domain in plane (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
-    with pytest.raises(ValueError):
-        plane_to_sphere(*plane)
+    with OutOfRange.set_treatment('raise'):
+        with pytest.raises(OutOfRangeError):
+            plane_to_sphere(*plane)
+    with OutOfRange.set_treatment('clip'):
+        test_plane_to_sphere(projection, plane, clipped)
 
 
-@pytest.mark.parametrize("projection, offset_p", [('SIN', 2.0), ('ARC', 4.0), ('SSN', 2.0)])
+@pytest.mark.parametrize("projection, offset_p",
+                         [('SIN', 2.0), ('TAN', np.nan), ('ARC', 4.0),
+                          ('STG', np.nan), ('SSN', -2.0)])
 def test_plane_to_sphere_outside_domain(projection, offset_p):
     """Test points outside allowed domain in plane (plane -> sphere)."""
-    plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0))
-    plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p))
+    plane_to_sphere_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, PI/2])
+    if projection == 'ARC':
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [PI, 0.0])
+    elif not np.isnan(offset_p):
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI/2, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [0.0, PI/2])
 
 
 def sphere_to_plane_to_sphere(projection, reference, sphere, plane):
