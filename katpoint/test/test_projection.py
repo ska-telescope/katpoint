@@ -246,14 +246,21 @@ def sphere_to_plane_invalid(projection, sphere, clipped, decimal):
         test_sphere_to_plane(projection, sphere, clipped, decimal)
 
 
-@pytest.mark.parametrize("projection, clip_y, decimal",
-                         [('SIN', 1.0, 12), ('TAN', 1e5, 11), ('ARC', PI/2, 12),
-                          ('STG', 2.0, 10), ('SSN', -1.0, 12)])
-def test_sphere_to_plane_outside_domain(projection, clip_y, decimal):
+@pytest.mark.parametrize(
+    "projection, clip_x, clip_y, decimal",
+    [
+        ('SIN', -1.0, 1.0, 12),
+        ('TAN', -1e6, 1e6, 4),
+        ('ARC', np.nan, PI/2, 12),
+        ('STG', -888.8873888868487, 2.0, 12),
+        ('SSN', -1.0, -1.0, 12)
+    ]
+)
+def test_sphere_to_plane_outside_domain(projection, clip_x, clip_y, decimal):
     """Test points outside allowed domain on sphere (sphere -> plane)."""
     sphere_to_plane_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, -clip_y], decimal)
     if projection != 'ARC':
-        sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0), [0.0, 0.0], decimal)
+        sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0), [clip_x, 0.0], decimal)
     sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI), [0.0, +clip_y], decimal)
 
 
