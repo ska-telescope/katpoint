@@ -44,6 +44,8 @@ def test_treatment_setup(restore_treatment):
     """Check that we can set out-of-range treatment appropriately."""
     OutOfRange.set_treatment('raise')
     assert OutOfRange.get_treatment() == 'raise'
+    OutOfRange.set_treatment('nan')
+    assert OutOfRange.get_treatment() == 'nan'
     OutOfRange.set_treatment('clip')
     assert OutOfRange.get_treatment() == 'clip'
     with pytest.raises(ValueError):
@@ -61,9 +63,9 @@ def test_out_of_range_handling_scalar(restore_treatment):
     with OutOfRange.set_treatment('raise'):
         with pytest.raises(OutOfRangeError):
             y = OutOfRange.treat(x, 'Out of range', lower=2.1)
-    # with OutOfRange.set_treatment('nan'):
-    #     y = OutOfRange.treat(x, 'Out of range', lower=2.1)
-    #     np.testing.assert_array_equal(y, np.nan)
+    with OutOfRange.set_treatment('nan'):
+        y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+        np.testing.assert_array_equal(y, np.nan)
     with OutOfRange.set_treatment('clip'):
         y = OutOfRange.treat(x, 'Out of range', upper=1.1)
         np.testing.assert_array_equal(y, 1.1)
@@ -77,9 +79,9 @@ def test_out_of_range_handling_array(restore_treatment):
     with OutOfRange.set_treatment('raise'):
         with pytest.raises(OutOfRangeError):
             y = OutOfRange.treat(x, 'Out of range', lower=2.1)
-    # with OutOfRange.set_treatment('nan'):
-    #     y = OutOfRange.treat(x, 'Out of range', lower=2.1)
-    #     np.testing.assert_array_equal(y, [np.nan, np.nan, 3.0, 4.0])
+    with OutOfRange.set_treatment('nan'):
+        y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+        np.testing.assert_array_equal(y, [np.nan, np.nan, 3.0, 4.0])
     with OutOfRange.set_treatment('clip'):
         y = OutOfRange.treat(x, 'Out of range', upper=1.1)
         np.testing.assert_array_equal(y, [1.0, 1.1, 1.1, 1.1])
@@ -242,6 +244,8 @@ def sphere_to_plane_invalid(projection, sphere, clipped, decimal):
     with OutOfRange.set_treatment('raise'):
         with pytest.raises(OutOfRangeError):
             sphere_to_plane(*sphere)
+    with OutOfRange.set_treatment('nan'):
+        np.testing.assert_array_equal(sphere_to_plane(*sphere), [np.nan, np.nan])
     with OutOfRange.set_treatment('clip'):
         test_sphere_to_plane(projection, sphere, clipped, decimal)
 
@@ -288,21 +292,23 @@ def test_sphere_to_plane_special():
         ('SSN', (0.0, -1.0, 0.0, np.cos(1.0)), [0.0, -PI/2]),
     ]
 )
-def test_plane_to_sphere(projection, plane, sphere):
+def test_plane_to_sphere(projection, plane, sphere, decimal=12):
     """Test specific cases (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     ae = np.array(plane_to_sphere(*plane))
-    assert_angles_almost_equal(ae, sphere, decimal=12)
+    assert_angles_almost_equal(ae, sphere, decimal=decimal)
 
 
-def plane_to_sphere_invalid(projection, plane, clipped):
+def plane_to_sphere_invalid(projection, plane, clipped, decimal):
     """Test points outside allowed domain in plane (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     with OutOfRange.set_treatment('raise'):
         with pytest.raises(OutOfRangeError):
             plane_to_sphere(*plane)
+    with OutOfRange.set_treatment('nan'):
+        np.testing.assert_array_equal(plane_to_sphere(*plane), [np.nan, np.nan])
     with OutOfRange.set_treatment('clip'):
-        test_plane_to_sphere(projection, plane, clipped)
+        test_plane_to_sphere(projection, plane, clipped, decimal)
 
 
 @pytest.mark.parametrize("projection, offset_p",
@@ -310,13 +316,21 @@ def plane_to_sphere_invalid(projection, plane, clipped):
                           ('STG', np.nan), ('SSN', -2.0)])
 def test_plane_to_sphere_outside_domain(projection, offset_p):
     """Test points outside allowed domain in plane (plane -> sphere)."""
-    plane_to_sphere_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, PI/2])
+    # Bad el0 > 90 degrees
+    plane_to_sphere_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, PI/2], 12)
     if projection == 'ARC':
-        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI, 0.0])
-        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [PI, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI, 0.0], 12)
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [PI, 0.0], 12)
     elif not np.isnan(offset_p):
-        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI/2, 0.0])
-        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [0.0, PI/2])
+        # Bad (x, y) vector length > 1.0
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI/2, 0.0], 12)
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [0.0, PI/2], 12)
+    if projection == 'SSN':
+        # Bad x coordinate > cos(el0)
+        plane_to_sphere_invalid(projection, (0.0, PI/2, 1.0, 0.0), [-PI/2, 0.0], 12)
+        plane_to_sphere_invalid(projection, (0.0, PI/2, -1.0, 0.0), [PI/2, 0.0], 12)
+        # Bad y coordinate -> den < 0
+        plane_to_sphere_invalid(projection, (0.0, PI/2, 0.0, -1.0), [0.0, PI], 4)
 
 
 def sphere_to_plane_to_sphere(projection, reference, sphere, plane):
