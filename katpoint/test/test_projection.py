@@ -256,7 +256,7 @@ def sphere_to_plane_invalid(projection, sphere, clipped, decimal):
         ('SIN', -1.0, 1.0, 12),
         ('TAN', -1e6, 1e6, 4),
         ('ARC', np.nan, PI/2, 12),
-        ('STG', -888.8873888868487, 2.0, 12),
+        ('STG', -894.42495493, 2.0, 8),
         ('SSN', -1.0, -1.0, 12)
     ]
 )
