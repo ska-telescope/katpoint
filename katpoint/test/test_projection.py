@@ -330,7 +330,7 @@ def test_plane_to_sphere_outside_domain(projection, offset_p):
         plane_to_sphere_invalid(projection, (0.0, PI/2, 1.0, 0.0), [-PI/2, 0.0], 12)
         plane_to_sphere_invalid(projection, (0.0, PI/2, -1.0, 0.0), [PI/2, 0.0], 12)
         # Bad y coordinate -> den < 0
-        plane_to_sphere_invalid(projection, (0.0, PI/2, 0.0, -1.0), [0.0, PI], 4)
+        plane_to_sphere_invalid(projection, (0.0, PI/2, 0.0, -1.0), [0.0, PI/2], 12)
 
 
 def sphere_to_plane_to_sphere(projection, reference, sphere, plane):
