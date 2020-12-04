@@ -119,7 +119,7 @@ class DelayCorrection:
     ----------
     ant_models : dict mapping str to :class:`DelayModel`
         Dict mapping antenna name to corresponding delay model
-    inputs : list of str
+    inputs : list of str, length *2M*
         List of correlator input labels corresponding to output of :meth:`delays`
 
     Raises
@@ -209,6 +209,10 @@ class DelayCorrection:
     def delays(self, target, timestamp, offset=None) -> u.s:
         """Calculate delays for all timestamps and inputs for a given target.
 
+        These delays include all geometric effects (also non-intersecting axis
+        offsets) and known fixed/cable delays, but not the :attr:`extra_delay`
+        needed to make delays strictly positive.
+
         Parameters
         ----------
         target : :class:`Target`
@@ -221,8 +225,9 @@ class DelayCorrection:
 
         Returns
         -------
-        delays : :class:`~astropy.units.Quantity`, shape T + (N,)
-            Delays for timestamps with shape T and *N* correlator inputs
+        delays : :class:`~astropy.units.Quantity`, shape T + (2 * M,)
+            Delays for timestamps with shape T and *2M* correlator inputs, with
+            ordering on the final axis matching the labels in :attr:`inputs`
         """
         # Ensure a single consistent timestamp in the case of "now"
         if timestamp is None:
