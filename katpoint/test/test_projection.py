@@ -21,7 +21,7 @@ from numpy import pi as PI   # Unorthodox but shortens those parametrization lin
 import pytest
 
 import katpoint
-from katpoint.projection import OutOfRange, OutOfRangeError
+from katpoint import OutOfRange, OutOfRangeError
 
 from .helper import assert_angles_almost_equal
 
