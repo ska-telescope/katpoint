@@ -104,11 +104,11 @@ class DelayCorrection:
 
     Parameters
     ----------
-    ants : sequence of *M* :class:`Antenna` objects or string
+    ants : sequence of *M* :class:`Antenna` objects or str
         Sequence of antennas forming an array and connected to correlator;
         alternatively, a description string representing the entire object
-    ref_ant : :class:`Antenna` object or None, optional
-        Reference antenna for the array (only optional if `ants` is a string)
+    ref_ant : :class:`Antenna`, optional
+        Reference antenna for the array (defaults to first antenna in `ants`)
     sky_centre_freq : :class:`~astropy.units.Quantity`, optional
         RF centre frequency that serves as reference for fringe phase
     extra_delay : :class:`~astropy.units.Quantity`, optional
@@ -117,15 +117,15 @@ class DelayCorrection:
 
     Attributes
     ----------
-    ant_models : dict mapping string to :class:`DelayModel` object
+    ant_models : dict mapping str to :class:`DelayModel`
         Dict mapping antenna name to corresponding delay model
-    inputs : list of strings
+    inputs : list of str
         List of correlator input labels corresponding to output of :meth:`delays`
 
     Raises
     ------
     ValueError
-        If `ref_ant` was not specified or description string is invalid
+        If description string is invalid
     """
 
     @u.quantity_input
@@ -154,7 +154,7 @@ class DelayCorrection:
         else:
             # `ants` is a sequence of Antennas - verify and extract delay models
             if ref_ant is None:
-                raise ValueError('No reference antenna provided')
+                ref_ant = ants[0]
             ant_models = {}
             for ant in ants:
                 model = DelayModel(ant.delay_model)
