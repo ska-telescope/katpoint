@@ -211,7 +211,7 @@ class DelayCorrection:
 
         These delays include all geometric effects (also non-intersecting axis
         offsets) and known fixed/cable delays, but not the :attr:`extra_delay`
-        needed to make delays strictly positive.
+        needed to make delay corrections strictly positive.
 
         Parameters
         ----------
@@ -241,6 +241,9 @@ class DelayCorrection:
             if coord_system == 'radec':
                 ra, dec = target.plane_to_sphere(timestamp=timestamp,
                                                  antenna=self.ref_ant, **offset)
+                # XXX This target is vectorised (contrary to popular belief) by having an
+                # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
+                # It is probably better to support this explicitly somehow.
                 offset_target = construct_radec_target(ra, dec)
                 azel = offset_target.azel(timestamp, self.ref_ant)
                 az = azel.az.rad

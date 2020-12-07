@@ -168,6 +168,7 @@ DELAY_MODEL = {'ref_ant': 'array, -30:42:39.8, 21:26:38, 1086.6, 0',
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize(
+    # Check minimum error with min_diff for now, to detect improvements to delay model
     "times,ant_models,min_diff,max_diff",
     [
         (1605646800.0 + np.linspace(0, 86400, 9),
