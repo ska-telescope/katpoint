@@ -111,8 +111,8 @@ class DelayCorrection:
         Reference antenna for the array (defaults to first antenna in `ants`)
     sky_centre_freq : :class:`~astropy.units.Quantity`, optional
         RF centre frequency that serves as reference for fringe phase
-    extra_delay : :class:`~astropy.units.Quantity`, optional
-        Additional delay added to all inputs to ensure strictly positive delay
+    extra_correction : :class:`~astropy.units.Quantity`, optional
+        Additional correction added to all inputs to ensure strictly positive
         corrections (automatically calculated by default)
 
     Attributes
@@ -130,7 +130,7 @@ class DelayCorrection:
 
     @u.quantity_input
     def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
-                 extra_delay: u.s = None):
+                 extra_correction: u.s = None):
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
             try:
@@ -145,7 +145,14 @@ class DelayCorrection:
             from .antenna import Antenna
             ref_ant = Antenna(ref_ant_str)
             sky_centre_freq = descr['sky_centre_freq'] * u.Hz
-            extra_delay = descr['extra_delay'] * u.s
+            try:
+                extra_correction = descr['extra_correction'] * u.s
+            except KeyError:
+                # Also try the older name of this attribute to remain backwards compatible
+                try:
+                    extra_correction = descr['extra_delay'] * u.s
+                except KeyError:
+                    raise KeyError("no 'extra_correction' or 'extra_delay'")
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():
                 ant_model = DelayModel()
@@ -180,8 +187,8 @@ class DelayCorrection:
         self.ref_ant = ref_ant
         self.sky_centre_freq = sky_centre_freq
         # Add a 1% safety margin to guarantee positive delay corrections
-        self.extra_delay = 1.01 * self.max_delay \
-            if extra_delay is None else extra_delay
+        self.extra_correction = 1.01 * self.max_delay \
+            if extra_correction is None else extra_correction
 
     @property
     @u.quantity_input
@@ -200,7 +207,7 @@ class DelayCorrection:
         """Complete string representation of object that allows reconstruction."""
         descr = {'ref_ant': self.ref_ant.description,
                  'sky_centre_freq': self.sky_centre_freq.to_value(u.Hz),
-                 'extra_delay': self.extra_delay.to_value(u.s),
+                 'extra_correction': self.extra_correction.to_value(u.s),
                  'ant_models': {ant: model.description
                                 for ant, model in self.ant_models.items()}}
         return json.dumps(descr, sort_keys=True)
@@ -210,7 +217,7 @@ class DelayCorrection:
         """Calculate delays for all timestamps and inputs for a given target.
 
         These delays include all geometric effects (also non-intersecting axis
-        offsets) and known fixed/cable delays, but not the :attr:`extra_delay`
+        offsets) and known fixed/cable delays, but not the :attr:`extra_correction`
         needed to make delay corrections strictly positive.
 
         Parameters
@@ -304,7 +311,7 @@ class DelayCorrection:
         # Ensure that times are at least 1-D (and delays 2-D) so that we can calculate deltas
         time = np.atleast_1d(time)
         delays = self.delays(target, time, offset)
-        delay_corrections = self.extra_delay - delays
+        delay_corrections = self.extra_correction - delays
         # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
         turns = (self.sky_centre_freq * delays).decompose()
         phase_corrections = Angle(2. * np.pi * u.rad) * turns

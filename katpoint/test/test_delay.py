@@ -93,10 +93,19 @@ class TestDelayCorrection:
         assert np.allclose(ant3_vs_ant1, -ant1_vs_ant3, rtol=0, atol=2e-5)
         delays5 = katpoint.DelayCorrection([self.ant1, self.ant2])
         assert delays5.ref_ant == self.ant1
+        # Check that older extra_delay attribute still works in description dict
+        older_dict = dict(delays_dict)
+        older_dict['extra_delay'] = older_dict['extra_correction']
+        del older_dict['extra_correction']
+        delays6 = katpoint.DelayCorrection(json.dumps(older_dict))
+        assert delays6.extra_correction == self.delays.extra_correction
+        del older_dict['extra_delay']
+        with pytest.raises(KeyError):
+            katpoint.DelayCorrection(json.dumps(older_dict))
 
     def test_correction(self):
         """Test delay correction."""
-        extra_delay = self.delays.extra_delay
+        extra_correction = self.delays.extra_correction
         delay0, phase0, drate0, frate0 = self.delays.corrections(self.target1, self.ts)
         delay1, phase1, drate1, frate1 = self.delays.corrections(self.target1,
                                                                  [self.ts, self.ts + 1.0])
@@ -106,11 +115,11 @@ class TestDelayCorrection:
         assert np.shape(delay1['A2h']) == np.shape(phase1['A2h']) == (2,)
         assert np.shape(drate1['A2h']) == np.shape(frate1['A2h']) == (1,)
         # This target is special - direction perpendicular to baseline (and stationary)
-        assert delay0['A2h'] == delay0['A2v'] == extra_delay
+        assert delay0['A2h'] == delay0['A2v'] == extra_correction
         assert drate1['A2h'] == drate1['A2v'] == [0.0]
         assert frate1['A2h'] == frate1['A2v'] == [0.0]
-        np.testing.assert_array_equal(delay1['A2h'], extra_delay.repeat(2))
-        np.testing.assert_array_equal(delay1['A2v'], extra_delay.repeat(2))
+        np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
+        np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
         np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
         np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
         np.testing.assert_array_equal(frate1['A2h'], np.array([0.0]) * u.rad / u.s)
@@ -119,7 +128,7 @@ class TestDelayCorrection:
         delay0, _, _, _ = self.delays.corrections(self.target2, self.ts)
         _, _, drate1, _ = self.delays.corrections(self.target2, (self.ts - 0.5, self.ts + 0.5))
         tgt_delay, tgt_delay_rate = self.target2.geometric_delay(self.ant2, self.ts, self.ant1)
-        assert np.allclose(delay0['A2h'], extra_delay - tgt_delay * u.s, atol=0, rtol=1e-15)
+        assert np.allclose(delay0['A2h'], extra_correction - tgt_delay * u.s, atol=0, rtol=1e-15)
         assert np.allclose(drate1['A2h'][0], -tgt_delay_rate * u.s / u.s, atol=0, rtol=1e-11)
 
     def test_offset(self):
@@ -131,14 +140,14 @@ class TestDelayCorrection:
         x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
-        extra_delay = self.delays.extra_delay
+        extra_correction = self.delays.extra_correction
         delay0, _, _, _ = self.delays.corrections(target3, self.ts, offset=offset)
         delay1, _, drate1, _ = self.delays.corrections(target3, (self.ts, self.ts + 1.0), offset)
         # Conspire to return to special target1
-        assert delay0['A2h'] == extra_delay, 'Delay for ant2h should be zero'
-        assert delay0['A2v'] == extra_delay, 'Delay for ant2v should be zero'
-        np.testing.assert_array_equal(delay1['A2h'], extra_delay.repeat(2))
-        np.testing.assert_array_equal(delay1['A2v'], extra_delay.repeat(2))
+        assert delay0['A2h'] == extra_correction, 'Delay for ant2h should be zero'
+        assert delay0['A2v'] == extra_correction, 'Delay for ant2v should be zero'
+        np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
+        np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
         np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
         np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
         # Now try (ra, dec) coordinate system
@@ -149,21 +158,21 @@ class TestDelayCorrection:
         x, y = target4.sphere_to_plane(radec.ra.rad, radec.dec.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
-        extra_delay = self.delays.extra_delay
+        extra_correction = self.delays.extra_correction
         delay0, _, _, _ = self.delays.corrections(target4, self.ts, offset=offset)
         delay1, _, drate1, _ = self.delays.corrections(target4, (self.ts, self.ts + 1.0), offset)
         # Conspire to return to special target1
-        assert np.allclose(delay0['A2h'], extra_delay, atol=0, rtol=1e-12)
-        assert np.allclose(delay0['A2v'], extra_delay, atol=0, rtol=1e-12)
-        assert np.allclose(delay1['A2h'][0], extra_delay, atol=0, rtol=1e-12)
-        assert np.allclose(delay1['A2v'][0], extra_delay, atol=0, rtol=1e-12)
+        assert np.allclose(delay0['A2h'], extra_correction, atol=0, rtol=1e-12)
+        assert np.allclose(delay0['A2v'], extra_correction, atol=0, rtol=1e-12)
+        assert np.allclose(delay1['A2h'][0], extra_correction, atol=0, rtol=1e-12)
+        assert np.allclose(delay1['A2v'][0], extra_correction, atol=0, rtol=1e-12)
         assert np.allclose(drate1['A2h'], [0.0], atol=5e-12)
         assert np.allclose(drate1['A2v'], [0.0], atol=5e-12)
 
 
 TARGET = katpoint.Target('J1939-6342, radec, 19:39:25.03, -63:42:45.6')
 DELAY_MODEL = {'ref_ant': 'array, -30:42:39.8, 21:26:38, 1086.6, 0',
-               'extra_delay': 0.0, 'sky_centre_freq': 1284000000.0}
+               'extra_correction': 0.0, 'sky_centre_freq': 1284000000.0}
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
