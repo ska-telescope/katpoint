@@ -116,19 +116,21 @@ def test_numerical_timestamp():
     assert t == eval('katpoint.' + repr(t))
     assert float(t) == t0
 
+    # XXX Reimplement Astropy 4.2's Time.isclose for now to avoid depending on Python 3.7
+    atol = 2 * np.finfo(float).eps * u.day
     t1 = Time('2009-07-21 02:52:12.34')
     t = katpoint.Timestamp(t1)
     t += 2.0
     t -= 2.0
-    assert t.time.isclose(t1)
+    assert abs(t.time - t1) <= atol
     t += 2.0 * u.year
     t -= 2.0 * u.year
-    assert t.time.isclose(t1)
+    assert abs(t.time - t1) <= atol
     t2 = t + 1 * u.day
     assert (t2 - t) << u.second == 1 * u.day
     assert t / 2.0 == t * 0.5
     assert 1.0 + t == t + 1.0
-    assert (t - 1.0 * u.day).time.isclose(t1 - 1)
+    assert abs((t - 1.0 * u.day).time - (t1 - 1)) < atol
     try:
         assert hash(t) == hash(t + 0.0), 'Timestamp hashes not equal'
     except TypeError:

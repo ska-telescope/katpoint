@@ -309,7 +309,9 @@ class DelayCorrection:
         time = Timestamp(timestamp).time
         T = time.shape
         # Ensure that times are at least 1-D (and delays 2-D) so that we can calculate deltas
-        time = np.atleast_1d(time)
+        # XXX Astropy 4.2 supports np.atleast_1d(time)
+        if time.isscalar:
+            time = time[np.newaxis]
         delays = self.delays(target, time, offset)
         delay_corrections = self.extra_correction - delays
         # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
