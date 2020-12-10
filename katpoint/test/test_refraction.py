@@ -166,7 +166,7 @@ def test_tropospheric_delay(model_id, elevation, atol):
     td = TroposphericDelay(location, model_id)
     actual = td(pressure, temperature, relative_humidity, elevation, timestamp)
     azel = AltAz(az=0 * u.deg, alt=elevation, location=location, obstime=obstime)
-    radec = azel.transform_to(ICRS)
+    radec = azel.transform_to(ICRS())
     enable_dry_delay = not model_id.endswith('-wet')
     enable_wet_delay = not model_id.endswith('-hydrostatic')
     expected = calc(location, radec, obstime,

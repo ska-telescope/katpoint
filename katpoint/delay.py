@@ -27,10 +27,10 @@ import json
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
-from astropy.time import Time
+from astropy.coordinates import Angle
 
 from .model import Parameter, Model
-from .conversion import azel_to_enu
+from .conversion import azel_to_enu, ecef_to_enu
 from .target import construct_radec_target
 from .timestamp import Timestamp
 
@@ -102,41 +102,35 @@ class DelayCorrection:
     strictly positive. Each antenna is assumed to have two polarisations (H
     and V), resulting in two correlator inputs per antenna.
 
-    For now, the reference antenna position must match the reference positions
-    of each antenna in the array, so that the ENU offset in each antenna's
-    delay model directly represent the baseline between that antenna and the
-    reference antenna. This should be fine as this is the standard case, but
-    may cause problems for e.g. VLBI with a geocentric reference antenna.
-
     Parameters
     ----------
-    ants : sequence of *M* :class:`Antenna` objects or string
+    ants : sequence of *M* :class:`Antenna` objects or str
         Sequence of antennas forming an array and connected to correlator;
         alternatively, a description string representing the entire object
-    ref_ant : :class:`Antenna` object or None, optional
-        Reference antenna for the array (only optional if `ants` is a string)
-    sky_centre_freq : float, optional
+    ref_ant : :class:`Antenna`, optional
+        Reference antenna for the array (defaults to first antenna in `ants`)
+    sky_centre_freq : :class:`~astropy.units.Quantity`, optional
         RF centre frequency that serves as reference for fringe phase
-    extra_delay : None or float, optional
-        Additional delay, in seconds, added to all inputs to ensure strictly
-        positive delay corrections (automatically calculated if None)
+    extra_correction : :class:`~astropy.units.Quantity`, optional
+        Additional correction added to all inputs to ensure strictly positive
+        corrections (automatically calculated by default)
 
     Attributes
     ----------
-    ant_models : dict mapping string to :class:`DelayModel` object
+    ant_models : dict mapping str to :class:`DelayModel`
         Dict mapping antenna name to corresponding delay model
+    inputs : list of str, length *2M*
+        List of correlator input labels corresponding to output of :meth:`delays`
 
     Raises
     ------
     ValueError
-        If all antennas do not share the same reference position as `ref_ant`
-        or `ref_ant` was not specified, or description string is invalid
+        If description string is invalid
     """
 
-    # Maximum size for delay cache
-    CACHE_SIZE = 1000
-
-    def __init__(self, ants, ref_ant=None, sky_centre_freq=0.0, extra_delay=None):
+    @u.quantity_input
+    def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
+                 extra_correction: u.s = None):
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
             try:
@@ -150,8 +144,15 @@ class DelayCorrection:
             # split this file into two small bits.
             from .antenna import Antenna
             ref_ant = Antenna(ref_ant_str)
-            sky_centre_freq = descr['sky_centre_freq']
-            extra_delay = descr['extra_delay']
+            sky_centre_freq = descr['sky_centre_freq'] * u.Hz
+            try:
+                extra_correction = descr['extra_correction'] * u.s
+            except KeyError:
+                # Also try the older name of this attribute to remain backwards compatible
+                try:
+                    extra_correction = descr['extra_delay'] * u.s
+                except KeyError:
+                    raise KeyError("no 'extra_correction' or 'extra_delay'")
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():
                 ant_model = DelayModel()
@@ -160,75 +161,85 @@ class DelayCorrection:
         else:
             # `ants` is a sequence of Antennas - verify and extract delay models
             if ref_ant is None:
-                raise ValueError('No reference antenna provided')
-            # Tolerances translate to micrometre differences (assume float64)
-            if any([not np.allclose(ant.ref_position_wgs84,
-                                    ref_ant.position_wgs84, rtol=0., atol=1e-14)
-                    for ant in list(ants) + [ref_ant]]):
-                msg = "Antennas '%s' do not all share the same reference " \
-                      "position of the reference antenna %r" % \
-                      ("', '".join(ant.description for ant in ants),
-                       ref_ant.description)
-                raise ValueError(msg)
-            ant_models = {ant.name: ant.delay_model for ant in ants}
+                ref_ant = ants[0]
+            ant_models = {}
+            for ant in ants:
+                model = DelayModel(ant.delay_model)
+                # If reference positions agree, keep model to avoid small rounding errors
+                if ref_ant.position_wgs84 != ant.ref_position_wgs84:
+                    # Remap antenna ENU offset to the common reference position
+                    enu = ecef_to_enu(*ref_ant.position_wgs84, *ant.position_ecef)
+                    model['POS_E'] = enu[0]
+                    model['POS_N'] = enu[1]
+                    model['POS_U'] = enu[2]
+                ant_models[ant.name] = model
 
         # Initialise private attributes
-        self._inputs = [ant + pol for ant in ant_models for pol in 'hv']
         self._params = np.array([ant_models[ant].delay_params
                                  for ant in ant_models])
         # With no antennas, let params still have correct shape
         if not ant_models:
             self._params = np.empty((0, len(DelayModel())))
-        self._cache = {}
 
         # Now calculate and store public attributes
+        self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
         self.ant_models = ant_models
         self.ref_ant = ref_ant
         self.sky_centre_freq = sky_centre_freq
         # Add a 1% safety margin to guarantee positive delay corrections
-        self.extra_delay = 1.01 * self.max_delay \
-            if extra_delay is None else extra_delay
+        self.extra_correction = 1.01 * self.max_delay \
+            if extra_correction is None else extra_correction
 
     @property
-    def max_delay(self):
-        """The maximum (absolute) delay achievable in the array, in seconds."""
+    @u.quantity_input
+    def max_delay(self) -> u.s:
+        """The maximum (absolute) delay achievable in the array."""
         # Worst case is wavefront moving along baseline connecting ant to ref
         max_delay_per_ant = np.sqrt((self._params[:, :3] ** 2).sum(axis=1))
         # Pick largest fixed delay
         max_delay_per_ant += self._params[:, 3:5].max(axis=1)
         # Worst case for NIAO is looking at the horizon
         max_delay_per_ant += self._params[:, 5]
-        return max(max_delay_per_ant) if self.ant_models else 0.0
+        return max(max_delay_per_ant) * u.s if self.ant_models else 0.0 * u.s
 
     @property
     def description(self):
         """Complete string representation of object that allows reconstruction."""
         descr = {'ref_ant': self.ref_ant.description,
-                 'sky_centre_freq': self.sky_centre_freq,
-                 'extra_delay': self.extra_delay,
+                 'sky_centre_freq': self.sky_centre_freq.to_value(u.Hz),
+                 'extra_correction': self.extra_correction.to_value(u.s),
                  'ant_models': {ant: model.description
                                 for ant, model in self.ant_models.items()}}
         return json.dumps(descr, sort_keys=True)
 
-    def _calculate_delays(self, target, timestamp, offset=None):
-        """Calculate delays for all inputs / antennas for a given target.
+    @u.quantity_input
+    def delays(self, target, timestamp, offset=None) -> u.s:
+        """Calculate delays for all timestamps and inputs for a given target.
+
+        These delays include all geometric effects (also non-intersecting axis
+        offsets) and known fixed/cable delays, but not the :attr:`extra_correction`
+        needed to make delay corrections strictly positive.
 
         Parameters
         ----------
-        target : :class:`Target` object
+        target : :class:`Target`
             Target providing direction for geometric delays
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
-            Timestamp when wavefront from target passes reference position
+        timestamp : :class:`Timestamp` or equivalent, shape T
+            Timestamp(s) when wavefront from target passes reference position
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
 
         Returns
         -------
-        delays : sequence of *2M* floats
-            Delays (one per correlator input) in seconds
+        delays : :class:`~astropy.units.Quantity`, shape T + (2 * M,)
+            Delays for timestamps with shape T and *2M* correlator inputs, with
+            ordering on the final axis matching the labels in :attr:`inputs`
         """
-        if not offset:
+        # Ensure a single consistent timestamp in the case of "now"
+        if timestamp is None:
+            timestamp = Timestamp()
+        if offset is None:
             azel = target.azel(timestamp, self.ref_ant)
             az = azel.az.rad
             el = azel.alt.rad
@@ -237,6 +248,9 @@ class DelayCorrection:
             if coord_system == 'radec':
                 ra, dec = target.plane_to_sphere(timestamp=timestamp,
                                                  antenna=self.ref_ant, **offset)
+                # XXX This target is vectorised (contrary to popular belief) by having an
+                # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
+                # It is probably better to support this explicitly somehow.
                 offset_target = construct_radec_target(ra, dec)
                 azel = offset_target.azel(timestamp, self.ref_ant)
                 az = azel.az.rad
@@ -244,115 +258,74 @@ class DelayCorrection:
             else:
                 az, el = target.plane_to_sphere(timestamp=timestamp,
                                                 antenna=self.ref_ant, **offset)
-        targetdir = np.array(azel_to_enu(az, el))
-        cos_el = np.cos(el)
-        design_mat = np.array([np.r_[-targetdir, 1.0, 0.0, cos_el],
-                               np.r_[-targetdir, 0.0, 1.0, cos_el]])
-        return np.dot(self._params, design_mat.T).ravel()
+        T = el.shape
+        target_dir = np.array(azel_to_enu(az.ravel(), el.ravel()))  # shape (3, prod(T))
+        cos_el = np.cos(el.ravel())
+        design_mat = np.stack((
+            np.vstack((-target_dir, np.ones_like(cos_el), np.zeros_like(cos_el), cos_el)),
+            np.vstack((-target_dir, np.zeros_like(cos_el), np.ones_like(cos_el), cos_el)),
+        ), axis=1)  # shape (6, 2, prod(T))
+        # (A, 6) * (6, 2, prod(T)) => (A, 2, prod(T)) for N inputs, A antennas and N = 2A
+        delays = np.tensordot(self._params, design_mat, axes=1)
+        # Collapse input dimensions and restore time dimensions, and swap these groups
+        delays = np.moveaxis(delays.reshape((-1,) + T), 0, -1)
+        return delays * u.s
 
-    def _cached_delays(self, target, timestamp, offset=None):
-        """Try to load delays from cache, else calculate it.
-
-        This uses the timestamp to look up previously calculated delays in
-        a cache. If not found, calculate the delays and store it in the
-        cache instead. Each cache value is used only once. Clean out the
-        oldest timestamp if cache is full.
-
-        See :meth:`_calculate_delays` for parameter and return lists,
-        as these two methods can be used interchangeably.
-        """
-        delays = self._cache.pop(timestamp, None)
-        if delays is None:
-            delays = self._calculate_delays(target, timestamp, offset)
-            # Clean out the oldest timestamp if cache is full
-            while len(self._cache) >= DelayCorrection.CACHE_SIZE:
-                self._cache.pop(min(self._cache.keys()))
-            self._cache[timestamp] = delays
-        return delays
-
-    def corrections(self, target, timestamp=None, next_timestamp=None,
-                    offset=None):
+    def corrections(self, target, timestamp=None, offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
 
         Calculate delay and phase corrections for the direction towards
-        *target* at *timestamp*. If the timestamp of the next delay
-        calculation is provided, it is used to calculate a delay rate that can
-        be used for linear interpolation in the period up to the next update.
-        This process is repeated if a sequence of timestamps is given. Both
-        delay (aka phase slope) and phase (aka phase offset or fringe phase)
-        corrections are provided, and optionally their derivatives with
-        respect to time (delay rate and fringe rate, respectively).
+        `target` at `timestamp`. Both delay (aka phase slope across frequency)
+        and phase (aka phase offset or fringe phase) corrections are provided,
+        and their derivatives with respect to time (delay rate and fringe rate,
+        respectively). The derivatives allow linear interpolation of delay
+        and phase if a sequence of timestamps is provided.
 
         Parameters
         ----------
-        target : :class:`Target` object
+        target : :class:`Target`
             Target providing direction for geometric delays
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp(s) when delays are evaluated (default is now). If an array
-            of timestamps is given (in which case, it must contain at least two
-            elements), the corrections will include slopes to be used for linear
-            interpolation between the times.
-        next_timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp when next delay will be evaluated, used to determine
-            a slope for linear interpolation (default is no slope). This is
-            ignored if *timestamp* is a sequence.
+        timestamp : :class:`Timestamp` or equivalent, shape T, optional
+            Timestamp(s) when delays are evaluated (default is now)
         offset : dict or None, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
 
         Returns
         -------
-        delays : dict mapping string to float or array of floats
-            Dict mapping correlator input name to delay correction,
-            which consists of a delay value (in seconds) and optionally
-            a delay rate value (in seconds per second). If a sequence
-            of *T* timestamps are provided, each input maps to an array
-            of shape (*T*, 2).
-        phases : dict mapping string to float or array of floats
-            Dict mapping correlator input name to phase correction, which
-            consists of a fringe phase value (in radians) and optionally a
-            fringe rate value (in radians per second). If a sequence of *T*
-            timestamps are provided, each input maps to an array of shape
-            (*T*, 2).
+        delays : dict mapping str to :class:`~astropy.units.Quantity`, shape T
+            Delay correction per correlator input name and timestamp
+        phases : dict mapping str to :class:`~astropy.coordinates.Angle`, shape T
+            Phase correction per correlator input name and timestamp
+        delay_rates : dict mapping str to :class:`~astropy.units.Quantity`
+            Delay rate correction per correlator input name and timestamp. The
+            quantity shape is like T, except the first dimension is 1 smaller.
+            The quantity will be an empty array if there are fewer than 2 times.
+        fringe_rates : dict mapping str to :class:`~astropy.units.Quantity`
+            Fringe rate correction per correlator input name and timestamp. The
+            quantity shape is like T, except the first dimension is 1 smaller.
+            The quantity will be an empty array if there are fewer than 2 times.
         """
         time = Timestamp(timestamp).time
-        if time.shape == ():
-            # Use cache for a single timestamp
-            delays = self._cached_delays(target, time, offset)
-            next_time = None if next_timestamp is None else Timestamp(next_timestamp).time
-        else:
-            # Append one more timestamp to get a slope for the last timestamp
-            last_step = time[-1] - time[-2]
-            all_times = np.r_[time, [time[-1] + last_step]]
-            next_time = Time(all_times[1:])
-            # Don't use cache, as the next_times are included in all_delays
-            all_delays = np.array([self._calculate_delays(target, t, offset)
-                                   for t in all_times])
-            delays = all_delays[:-1].T
-            next_delays = all_delays[1:].T
-
-        def phase(t0):
-            """The phase associated with delay t0 at the centre frequency."""
-            return - 2.0 * np.pi * self.sky_centre_freq * t0
-        delay_corrections = self.extra_delay - delays
-        phase_corrections = - phase(delays)
-        if next_time is None:
-            return (dict(zip(self._inputs, delay_corrections)),
-                    dict(zip(self._inputs, phase_corrections)))
-        step = (next_time - time).sec
-        # We still have to get next_delays in the single timestamp case
-        if next_time.shape == ():
-            next_delays = self._cached_delays(target, next_time, offset)
-        next_delay_corrections = self.extra_delay - next_delays
-        next_phase_corrections = - phase(next_delays)
-        delay_slopes = (next_delay_corrections - delay_corrections) / step
-        phase_slopes = (next_phase_corrections - phase_corrections) / step
-        # This construction works for both the scalar and vector cases.
-        # The squeeze() gets rid of an extra singleton in the scalar case.
-        # It is safe to squeeze as the other two dimensions involved will
-        # never be singletons (number of inputs >= 2 even for 1 antenna, and
-        # number of polynomial terms is 2 by design).
-        delay_polys = np.dstack((delay_corrections, delay_slopes)).squeeze()
-        phase_polys = np.dstack((phase_corrections, phase_slopes)).squeeze()
-        return (dict(zip(self._inputs, delay_polys)),
-                dict(zip(self._inputs, phase_polys)))
+        T = time.shape
+        # Ensure that times are at least 1-D (and delays 2-D) so that we can calculate deltas
+        # XXX Astropy 4.2 supports np.atleast_1d(time)
+        if time.isscalar:
+            time = time[np.newaxis]
+        delays = self.delays(target, time, offset)
+        delay_corrections = self.extra_correction - delays
+        # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
+        turns = (self.sky_centre_freq * delays).decompose()
+        phase_corrections = Angle(2. * np.pi * u.rad) * turns
+        delta_time = (time[1:] - time[:-1])[:, np.newaxis].to(u.s)
+        delta_delay_corrections = delay_corrections[1:] - delay_corrections[:-1]
+        delay_rate_corrections = delta_delay_corrections / delta_time
+        delta_phase_corrections = phase_corrections[1:] - phase_corrections[:-1]
+        fringe_rate_corrections = delta_phase_corrections / delta_time
+        return (
+            # Restore time dimensions and swap input dimension to front to get zipped into dict
+            dict(zip(self.inputs, np.moveaxis(delay_corrections.reshape(T + (-1,)), -1, 0))),
+            dict(zip(self.inputs, np.moveaxis(phase_corrections.reshape(T + (-1,)), -1, 0))),
+            dict(zip(self.inputs, np.moveaxis(delay_rate_corrections, -1, 0))),
+            dict(zip(self.inputs, np.moveaxis(fringe_rate_corrections, -1, 0))),
+        )
