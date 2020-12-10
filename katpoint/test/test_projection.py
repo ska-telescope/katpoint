@@ -21,7 +21,13 @@ from numpy import pi as PI   # Unorthodox but shortens those parametrization lin
 import pytest
 
 import katpoint
-from katpoint import OutOfRange, OutOfRangeError
+from katpoint.projection import (
+    OutOfRangeError,
+    out_of_range_context,
+    treat_out_of_range_values,
+    set_out_of_range_treatment,
+    get_out_of_range_treatment,
+)
 
 from .helper import assert_angles_almost_equal
 
@@ -35,55 +41,55 @@ except ImportError:
 @pytest.fixture(name='restore_treatment')
 def fixture_restore_treatment():
     """Backup existing OutOfRange treatment and restore afterwards."""
-    old_treatment = OutOfRange.get_treatment()
+    old_treatment = get_out_of_range_treatment()
     yield old_treatment
-    OutOfRange.set_treatment(old_treatment)
+    set_out_of_range_treatment(old_treatment)
 
 
 def test_treatment_setup(restore_treatment):
     """Check that we can set out-of-range treatment appropriately."""
-    OutOfRange.set_treatment('raise')
-    assert OutOfRange.get_treatment() == 'raise'
-    OutOfRange.set_treatment('nan')
-    assert OutOfRange.get_treatment() == 'nan'
-    OutOfRange.set_treatment('clip')
-    assert OutOfRange.get_treatment() == 'clip'
+    set_out_of_range_treatment('raise')
+    assert get_out_of_range_treatment() == 'raise'
+    set_out_of_range_treatment('nan')
+    assert get_out_of_range_treatment() == 'nan'
+    set_out_of_range_treatment('clip')
+    assert get_out_of_range_treatment() == 'clip'
     with pytest.raises(ValueError):
-        OutOfRange.set_treatment('bad treatment')
-    with OutOfRange.set_treatment('raise'):
-        assert OutOfRange.get_treatment() == 'raise'
-    assert OutOfRange.get_treatment() == 'clip'
+        set_out_of_range_treatment('bad treatment')
+    with out_of_range_context('raise'):
+        assert get_out_of_range_treatment() == 'raise'
+    assert get_out_of_range_treatment() == 'clip'
 
 
 def test_out_of_range_handling_scalar(restore_treatment):
     """Test out-of-range handling for a scalar value."""
     x = 2
-    y = OutOfRange.treat(x, 'Should not happen', lower=0, upper=5)
+    y = treat_out_of_range_values(x, 'Should not happen', lower=0, upper=5)
     np.testing.assert_array_equal(y, x)
-    with OutOfRange.set_treatment('raise'):
+    with out_of_range_context('raise'):
         with pytest.raises(OutOfRangeError):
-            y = OutOfRange.treat(x, 'Out of range', lower=2.1)
-    with OutOfRange.set_treatment('nan'):
-        y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+            y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
+    with out_of_range_context('nan'):
+        y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
         np.testing.assert_array_equal(y, np.nan)
-    with OutOfRange.set_treatment('clip'):
-        y = OutOfRange.treat(x, 'Out of range', upper=1.1)
+    with out_of_range_context('clip'):
+        y = treat_out_of_range_values(x, 'Out of range', upper=1.1)
         np.testing.assert_array_equal(y, 1.1)
 
 
 def test_out_of_range_handling_array(restore_treatment):
     """Test out-of-range handling for an array of values."""
     x = [1, 2, 3, 4]
-    y = OutOfRange.treat(x, 'Should not happen', lower=0, upper=5)
+    y = treat_out_of_range_values(x, 'Should not happen', lower=0, upper=5)
     np.testing.assert_array_equal(y, x)
-    with OutOfRange.set_treatment('raise'):
+    with out_of_range_context('raise'):
         with pytest.raises(OutOfRangeError):
-            y = OutOfRange.treat(x, 'Out of range', lower=2.1)
-    with OutOfRange.set_treatment('nan'):
-        y = OutOfRange.treat(x, 'Out of range', lower=2.1)
+            y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
+    with out_of_range_context('nan'):
+        y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
         np.testing.assert_array_equal(y, [np.nan, np.nan, 3.0, 4.0])
-    with OutOfRange.set_treatment('clip'):
-        y = OutOfRange.treat(x, 'Out of range', upper=1.1)
+    with out_of_range_context('clip'):
+        y = treat_out_of_range_values(x, 'Out of range', upper=1.1)
         np.testing.assert_array_equal(y, [1.0, 1.1, 1.1, 1.1])
 
 
@@ -241,12 +247,12 @@ def test_sphere_to_plane(projection, sphere, plane, decimal=12):
 def sphere_to_plane_invalid(projection, sphere, clipped, decimal):
     """Test points outside allowed domain on sphere (sphere -> plane)."""
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    with OutOfRange.set_treatment('raise'):
+    with out_of_range_context('raise'):
         with pytest.raises(OutOfRangeError):
             sphere_to_plane(*sphere)
-    with OutOfRange.set_treatment('nan'):
+    with out_of_range_context('nan'):
         np.testing.assert_array_equal(sphere_to_plane(*sphere), [np.nan, np.nan])
-    with OutOfRange.set_treatment('clip'):
+    with out_of_range_context('clip'):
         test_sphere_to_plane(projection, sphere, clipped, decimal)
 
 
@@ -302,12 +308,12 @@ def test_plane_to_sphere(projection, plane, sphere):
 def plane_to_sphere_invalid(projection, plane, clipped):
     """Test points outside allowed domain in plane (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
-    with OutOfRange.set_treatment('raise'):
+    with out_of_range_context('raise'):
         with pytest.raises(OutOfRangeError):
             plane_to_sphere(*plane)
-    with OutOfRange.set_treatment('nan'):
+    with out_of_range_context('nan'):
         np.testing.assert_array_equal(plane_to_sphere(*plane), [np.nan, np.nan])
-    with OutOfRange.set_treatment('clip'):
+    with out_of_range_context('clip'):
         test_plane_to_sphere(projection, plane, clipped)
 
 
