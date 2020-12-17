@@ -526,9 +526,7 @@ class Target:
         """Calculate the coordinate transformation from local ENU coordinates
         to (u,v,w) coordinates while pointing at target.
 
-        For simple cases, use :meth:`uvw` directly. This method is useful for
-        computing (u,v,w) coordinates for all antennas in an array more
-        efficiently than calling :meth:`uvw` for each antenna in turn.
+        In most cases you should use :meth:`uvw` directly.
 
         Refer to :meth:`uvw` for details about how the (u,v,w) coordinate
         system is defined.
@@ -547,8 +545,8 @@ class Target:
             Orthogonal basis vectors for the transformation. If `timestamp` is
             scalar, the return value is a matrix to multiply by ENU column
             vectors to produce UVW vectors. If `timestamp` is a vector,
-            the first two dimensions correspond to the matrix and the final
-            dimension to the timestamp.
+            the first two dimensions correspond to the matrix and the
+            remaining dimension(s) to the timestamp.
         """
         time = Timestamp(timestamp).time
         antenna, _ = self._normalise_antenna(antenna, required=True)
@@ -614,10 +612,12 @@ class Target:
 
         Returns
         -------
-        u, v, w : float or array
-            (u, v, w) coordinates of baseline, in metres. If `timestamp` and/or
-            `antenna2` is a sequence, returns an array, with axes in that
-            order.
+        uvw : array
+            (u, v, w) coordinates of baseline, in metres. The axes are:
+
+            - u/v/w
+            - time, if `timestamp` is not scalar
+            - antenna, if `antenna2` is a sequence
 
         Notes
         -----
