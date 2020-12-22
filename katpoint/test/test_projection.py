@@ -93,6 +93,21 @@ def test_out_of_range_handling_array(restore_treatment):
         np.testing.assert_array_equal(y, [1.0, 1.1, 1.1, 1.1])
 
 
+@pytest.mark.parametrize('x, scalar', [(2.0, True), (np.array(2.0), False)])
+def test_scalar_vs_0d(x, scalar, restore_treatment):
+    with out_of_range_context('clip'):
+        y = treat_out_of_range_values(x, 'Out of range', upper=1.1)
+        assert np.isscalar(y) is scalar
+
+
+@pytest.mark.parametrize('treatment', ['raise', 'nan', 'clip'])
+def test_clipping_of_minor_outliers(treatment, restore_treatment):
+    x = 1.0 + np.finfo(float).eps
+    with out_of_range_context(treatment):
+        y = treat_out_of_range_values(x, 'Should not trigger false alarm', upper=1.0)
+        assert y == 1.0
+
+
 def random_sphere(N, include_poles=False):
     """Generate `N` random points on a 3D sphere in (longitude, latitude) form."""
     az = PI * (2.0 * np.random.rand(N) - 1.0)
