@@ -108,81 +108,85 @@ def test_clipping_of_minor_outliers(treatment, restore_treatment):
         assert y == 1.0
 
 
-def random_sphere(N, include_poles=False):
+def random_sphere(random, N, include_poles=False):
     """Generate `N` random points on a 3D sphere in (longitude, latitude) form."""
-    az = PI * (2.0 * np.random.rand(N) - 1.0)
-    el = PI * (np.random.rand(N) - 0.5)
+    az = PI * (2.0 * random.rand(N) - 1.0)
+    el = PI * (random.rand(N) - 0.5)
     if not include_poles:
         # Keep away from poles (leave them as corner cases)
         el *= 0.999
     return az, el
 
 
-def random_disk(N, radius_warp, max_theta):
+def random_disk(random, N, radius_warp, max_theta):
     """Generate `N` random points on a 2D circular disk in (x, y) form."""
-    theta = max_theta * np.random.rand(N)
-    phi = 2 * PI * np.random.rand(N)
+    theta = max_theta * random.rand(N)
+    phi = 2 * PI * random.rand(N)
     r = radius_warp(theta)
     return r * np.cos(phi), r * np.sin(phi)
 
 
-def generate_data_sin(N):
+def generate_data_sin(random, N):
     """Generate test data for orthographic (SIN) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # (x, y) points within unit circle
-    x, y = random_disk(N, np.sin, max_theta=PI/2)
+    x, y = random_disk(random, N, np.sin, max_theta=PI/2)
     return az0, el0, x, y
 
 
-def generate_data_tan(N):
+def generate_data_tan(random, N):
     """Generate test data for gnomonic (TAN) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # Perform inverse TAN mapping to spread out points on plane
     # Stay away from edge of hemisphere
-    x, y = random_disk(N, np.tan, max_theta=PI/2 - 0.01)
+    x, y = random_disk(random, N, np.tan, max_theta=PI/2 - 0.01)
     return az0, el0, x, y
 
 
-def generate_data_arc(N):
+def generate_data_arc(random, N):
     """Generate test data for zenithal equidistant (ARC) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # (x, y) points within circle of radius pi
     # Stay away from edge of circle
-    x, y = random_disk(N, lambda theta: theta, max_theta=PI - 0.01)
+    x, y = random_disk(random, N, lambda theta: theta, max_theta=PI - 0.01)
     return az0, el0, x, y
 
 
-def generate_data_stg(N):
+def generate_data_stg(random, N):
     """Generate test data for stereographic (STG) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # Perform inverse STG mapping to spread out points on plane
     # Stay well away from point of projection
-    x, y = random_disk(N, lambda theta: 2.0 * np.sin(theta) / (1.0 + np.cos(theta)),
-                       max_theta=0.8 * PI)
+    x, y = random_disk(
+        random,
+        N,
+        lambda theta: 2.0 * np.sin(theta) / (1.0 + np.cos(theta)),
+        max_theta=0.8 * PI
+    )
     return az0, el0, x, y
 
 
-def generate_data_car(N):
+def generate_data_car(random, N):
     """Generate test data for plate carree (CAR) projection."""
     # Unrestricted (az0, el0) points on sphere
-    az0, el0 = random_sphere(N, include_poles=True)
+    az0, el0 = random_sphere(random, N, include_poles=True)
     # Unrestricted (x, y) points on corresponding plane
-    x, y = random_sphere(N, include_poles=True)
+    x, y = random_sphere(random, N, include_poles=True)
     return az0, el0, x, y
 
 
-def generate_data_ssn(N):
+def generate_data_ssn(random, N):
     """Generate test data for swapped orthographic (SSN) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # (x, y) points within complicated SSN domain - clipped unit circle
     cos_el0 = np.cos(el0)
     # The x coordinate is bounded by +- cos(el0)
-    x = (2.0 * np.random.rand(N) - 1.0) * cos_el0
+    x = (2.0 * random.rand(N) - 1.0) * cos_el0
     # The y coordinate ranges between two (semi-)circles centred on origin:
     # the unit circle on one side and circle of radius cos(el0) on other side
     y_offset = -np.sqrt(cos_el0 ** 2 - x ** 2)
     y_range = -y_offset + np.sqrt(1.0 - x ** 2)
-    y = (y_range * np.random.rand(N) + y_offset) * np.sign(el0)
+    y = (y_range * random.rand(N) + y_offset) * np.sign(el0)
     return az0, el0, x, y
 
 
@@ -196,11 +200,11 @@ generate_data = {'SIN': generate_data_sin, 'TAN': generate_data_tan,
 @pytest.mark.parametrize('projection, decimal',
                          [('SIN', 10), ('TAN', 8), ('ARC', 8),
                           ('STG', 9), ('CAR', 12), ('SSN', 10)])
-def test_random_closure(projection, decimal, N=100):
+def test_random_closure(random, projection, decimal, N=100):
     """Do random projections and check closure."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    az0, el0, x, y = generate_data[projection](N)
+    az0, el0, x, y = generate_data[projection](random, N)
     az, el = plane_to_sphere(az0, el0, x, y)
     xx, yy = sphere_to_plane(az0, el0, az, el)
     aa, ee = plane_to_sphere(az0, el0, xx, yy)
@@ -215,11 +219,11 @@ def test_random_closure(projection, decimal, N=100):
 @pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
 @pytest.mark.parametrize('projection, aips_code, decimal',
                          [('SIN', 2, 9), ('TAN', 3, 10), ('ARC', 4, 8), ('STG', 6, 9)])
-def test_aips_compatibility(projection, aips_code, decimal, N=100):
+def test_aips_compatibility(random, projection, aips_code, decimal, N=100):
     """Compare with original AIPS routine (if available)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    az0, el0, x, y = generate_data[projection](N)
+    az0, el0, x, y = generate_data[projection](random, N)
     if projection == 'TAN':
         # AIPS TAN only deprojects (x, y) coordinates within unit circle
         r = x * x + y * y
@@ -401,10 +405,10 @@ def plane_to_sphere_original_ssn(target_az, target_el, ll, mm):
     return scan_az, scan_el
 
 
-def test_vs_original_ssn(decimal=10, N=100):
+def test_vs_original_ssn(random, decimal=10, N=100):
     """SSN projection: compare against Mattieu's original version."""
     plane_to_sphere = katpoint.plane_to_sphere['SSN']
-    az0, el0, x, y = generate_data['SSN'](N)
+    az0, el0, x, y = generate_data['SSN'](random, N)
     az, el = plane_to_sphere(az0, el0, x, y)
     ll, mm = sphere_to_plane_original_ssn(az0, el0, az, el)
     aa, ee = plane_to_sphere_original_ssn(az0, el0, ll, mm)

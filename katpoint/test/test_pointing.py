@@ -36,12 +36,12 @@ def fixture_pointing_grid():
 
 
 @pytest.fixture(name='params')
-def fixture_params():
+def fixture_params(random):
     """Generate random parameters for a pointing model."""
     # Generate random parameter values with this spread
     param_stdev = np.radians(20. / 60.)
     num_params = len(katpoint.PointingModel())
-    params = param_stdev * np.random.randn(num_params)
+    params = param_stdev * random.randn(num_params)
     return params
 
 
