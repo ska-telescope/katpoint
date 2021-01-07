@@ -16,6 +16,8 @@
 
 """Tests for the projection module."""
 
+import threading
+
 import numpy as np
 from numpy import pi as PI   # Unorthodox but shortens those parametrization lines a lot
 import pytest
@@ -106,6 +108,22 @@ def test_clipping_of_minor_outliers(treatment, restore_treatment):
     with out_of_range_context(treatment):
         y = treat_out_of_range_values(x, 'Should not trigger false alarm', upper=1.0)
         assert y == 1.0
+
+
+def test_out_of_range_initialisation_in_new_thread():
+    def my_thread():
+        try:
+            result.append(treat_out_of_range_values(2.0, 'Should raise', upper=1.0))
+        except Exception as exc:
+            result.append(exc)
+
+    result = []
+    thread = threading.Thread(target=my_thread)
+    with out_of_range_context('nan'):
+        # Make sure the thread code runs inside our out_of_range_context
+        thread.start()
+        thread.join()
+    assert isinstance(result[0], OutOfRangeError)
 
 
 def random_sphere(random, N, include_poles=False):
