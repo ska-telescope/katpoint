@@ -226,7 +226,7 @@ class DelayCorrection:
             Target providing direction for geometric delays
         timestamp : :class:`Timestamp` or equivalent, shape T
             Timestamp(s) when wavefront from target passes reference position
-        offset : dict or None, optional
+        offset : dict, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
 
@@ -239,7 +239,7 @@ class DelayCorrection:
         # Ensure a single consistent timestamp in the case of "now"
         if timestamp is None:
             timestamp = Timestamp()
-        if offset is None:
+        if not offset:
             azel = target.azel(timestamp, self.ref_ant)
             az = azel.az.rad
             el = azel.alt.rad
@@ -287,7 +287,7 @@ class DelayCorrection:
             Target providing direction for geometric delays
         timestamp : :class:`Timestamp` or equivalent, shape T, optional
             Timestamp(s) when delays are evaluated (default is now)
-        offset : dict or None, optional
+        offset : dict, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
             delay centre relative to target (see method for details)
 
