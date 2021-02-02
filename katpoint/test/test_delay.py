@@ -133,6 +133,8 @@ class TestDelayCorrection:
 
     def test_offset(self):
         """Test target offset."""
+        assert np.allclose(self.delays.delays(self.target1, self.ts, offset=None),
+                           self.delays.delays(self.target1, self.ts, offset={}), atol=0, rtol=1e-15)
         azel = self.target1.azel(self.ts, self.ant1)
         offset = dict(projection_type='SIN')
         target3 = katpoint.construct_azel_target(azel.az - Angle(1.0, unit=u.deg),
