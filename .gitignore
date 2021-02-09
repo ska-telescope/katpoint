@@ -33,6 +33,9 @@ docs/apidocs
 .eclipse
 .vscode
 
+# macOS detritus
+.DS_Store
+
 # Downloaded AIPS source files
 katpoint/test/aips_projection/*.F
 katpoint/test/aips_projection/*.INC
