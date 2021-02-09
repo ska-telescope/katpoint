@@ -104,7 +104,7 @@ class DelayCorrection:
 
     Parameters
     ----------
-    ants : sequence of *M* :class:`Antenna` objects or str
+    ants : sequence of *A* :class:`Antenna` objects or str
         Sequence of antennas forming an array and connected to correlator;
         alternatively, a description string representing the entire object
     ref_ant : :class:`Antenna`, optional
@@ -119,7 +119,7 @@ class DelayCorrection:
     ----------
     ant_models : dict mapping str to :class:`DelayModel`
         Dict mapping antenna name to corresponding delay model
-    inputs : list of str, length *2M*
+    inputs : list of str, length *2A*
         List of correlator input labels corresponding to output of :meth:`delays`
 
     Raises
@@ -232,9 +232,9 @@ class DelayCorrection:
 
         Returns
         -------
-        delays : :class:`~astropy.units.Quantity`, shape T + (2 * M,)
-            Delays for timestamps with shape T and *2M* correlator inputs, with
-            ordering on the final axis matching the labels in :attr:`inputs`
+        delays : :class:`~astropy.units.Quantity`, shape (2 * A,) + T
+            Delays for *2A* correlator inputs and timestamps with shape T, with
+            ordering on the first axis matching the labels in :attr:`inputs`
         """
         # Ensure a single consistent timestamp in the case of "now"
         if timestamp is None:
@@ -267,9 +267,8 @@ class DelayCorrection:
         ), axis=1)  # shape (6, 2, prod(T))
         # (A, 6) * (6, 2, prod(T)) => (A, 2, prod(T)) for N inputs, A antennas and N = 2A
         delays = np.tensordot(self._params, design_mat, axes=1)
-        # Collapse input dimensions and restore time dimensions, and swap these groups
-        delays = np.moveaxis(delays.reshape((-1,) + T), 0, -1)
-        return delays * u.s
+        # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
+        return delays.reshape((-1,) + T) * u.s
 
     def corrections(self, target, timestamp=None, offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
@@ -317,15 +316,15 @@ class DelayCorrection:
         # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
         turns = (self.sky_centre_freq * delays).decompose()
         phase_corrections = Angle(2. * np.pi * u.rad) * turns
-        delta_time = (time[1:] - time[:-1])[:, np.newaxis].to(u.s)
-        delta_delay_corrections = delay_corrections[1:] - delay_corrections[:-1]
+        delta_time = (time[1:] - time[:-1]).to(u.s)
+        delta_delay_corrections = delay_corrections[:, 1:] - delay_corrections[:, :-1]
         delay_rate_corrections = delta_delay_corrections / delta_time
-        delta_phase_corrections = phase_corrections[1:] - phase_corrections[:-1]
+        delta_phase_corrections = phase_corrections[:, 1:] - phase_corrections[:, :-1]
         fringe_rate_corrections = delta_phase_corrections / delta_time
         return (
-            # Restore time dimensions and swap input dimension to front to get zipped into dict
-            dict(zip(self.inputs, np.moveaxis(delay_corrections.reshape(T + (-1,)), -1, 0))),
-            dict(zip(self.inputs, np.moveaxis(phase_corrections.reshape(T + (-1,)), -1, 0))),
-            dict(zip(self.inputs, np.moveaxis(delay_rate_corrections, -1, 0))),
-            dict(zip(self.inputs, np.moveaxis(fringe_rate_corrections, -1, 0))),
+            # Restore time dimensions to recover scalar times
+            dict(zip(self.inputs, delay_corrections.reshape((-1,) + T))),
+            dict(zip(self.inputs, phase_corrections.reshape((-1,) + T))),
+            dict(zip(self.inputs, delay_rate_corrections)),
+            dict(zip(self.inputs, fringe_rate_corrections)),
         )
