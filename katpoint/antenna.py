@@ -267,6 +267,7 @@ class Antenna:
         e_m, n_m, u_m : float or array
             East, North, Up coordinates of baseline vector, in metres
         """
+        antenna2 = Antenna(antenna2)
         # If this antenna is at reference position of second antenna, simply return its ENU offset
         if self.position_wgs84 == antenna2.ref_position_wgs84:
             return antenna2.position_enu

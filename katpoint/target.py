@@ -24,6 +24,7 @@ from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS
 from astropy.time import Time
 
 from .timestamp import Timestamp, delta_seconds
+from .antenna import Antenna
 from .flux import FluxDensityModel
 from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
@@ -271,38 +272,55 @@ class Target:
                     self.tags.append(tag)
         return self
 
-    def _normalise_antenna(self, antenna, required=False):
-        """Set default antenna if unspecified and check that antenna is valid.
-
-        If `antenna` is `None`, it is replaced by the default antenna for the
-        target (which could also be `None`). Raise a :class:`ValueError` if
-        an antenna is required and none is provided.
+    def _astropy_funnel(self, timestamp, antenna):
+        """Turn time and location objects into their Astropy equivalents.
 
         Parameters
         ----------
-        antenna : :class:`Antenna` or None
-            Antenna which points at target
-        required : bool, optional
-            True if it is an error to have no valid antenna
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
+            Timestamp(s) in katpoint or Astropy format
+        antenna : :class:`~astropy.coordinates.EarthLocation`, :class:`Antenna` or None
+            Antenna location(s) in katpoint or Astropy format (None uses default antenna)
 
         Returns
         -------
-        antenna : :class:`Antenna` or None
-            Antenna which points at target (not None if `required` is True)
+        time : :class:`~astropy.time.Time`
+            Timestamp(s) in Astropy format
         location : :class:`~astropy.coordinates.EarthLocation` or None
-            Location of antenna on Earth (not None if `required` is True)
+            Antenna location(s) in Astropy format
+        """
+        time = Timestamp(timestamp).time
+        if antenna is None:
+            antenna = self.antenna
+        location = antenna.location if isinstance(antenna, Antenna) else antenna
+        return time, location
+
+    def _valid_antenna(self, antenna):
+        """Set default antenna if unspecified and check that antenna is valid.
+
+        If `antenna` is `None`, it is replaced by the default antenna for the
+        target (which could also be `None`, raising a :class:`ValueError`).
+
+        Parameters
+        ----------
+        antenna : :class:`~astropy.coordinates.EarthLocation`, :class:`Antenna` or None
+            Antenna which points at target (or equivalent Astropy location)
+
+        Returns
+        -------
+        antenna : :class:`Antenna`
+            A valid katpoint Antenna
 
         Raises
         ------
         ValueError
-            If an antenna is required and none could be found
+            If both `antenna` and default antenna are `None`
         """
         if antenna is None:
             antenna = self.antenna
-        if required and antenna is None:
+        if antenna is None:
             raise ValueError('Antenna object needed to calculate target position')
-        location = antenna.location if antenna is not None else None
-        return antenna, location
+        return Antenna(antenna)
 
     def azel(self, timestamp=None, antenna=None):
         """Calculate target (az, el) coordinates as seen from antenna at time(s).
@@ -324,8 +342,7 @@ class Target:
         ValueError
             If no antenna is specified and body type requires it for (az, el)
         """
-        time = Timestamp(timestamp).time
-        _, location = self._normalise_antenna(antenna)
+        time, location = self._astropy_funnel(timestamp, antenna)
         altaz = AltAz(obstime=time, location=location)
         return self.body.compute(altaz, obstime=time, location=location)
 
@@ -356,8 +373,7 @@ class Target:
         ValueError
             If no antenna is specified and body type requires it for (ra, dec)
         """
-        time = Timestamp(timestamp).time
-        _, location = self._normalise_antenna(antenna)
+        time, location = self._astropy_funnel(timestamp, antenna)
         return self.body.compute(CIRS(obstime=time), obstime=time, location=location)
 
     def astrometric_radec(self, timestamp=None, antenna=None):
@@ -385,8 +401,7 @@ class Target:
         ValueError
             If no antenna is specified and body type requires it for (ra, dec)
         """
-        time = Timestamp(timestamp).time
-        _, location = self._normalise_antenna(antenna)
+        time, location = self._astropy_funnel(timestamp, antenna)
         return self.body.compute(ICRS(), obstime=time, location=location)
 
     # The default (ra, dec) coordinates are the astrometric ones
@@ -416,8 +431,7 @@ class Target:
         ValueError
             If no antenna is specified and body type requires it for (l, b)
         """
-        time = Timestamp(timestamp).time
-        _, location = self._normalise_antenna(antenna)
+        time, location = self._astropy_funnel(timestamp, antenna)
         return self.body.compute(Galactic(), obstime=time, location=location)
 
     def parallactic_angle(self, timestamp=None, antenna=None):
@@ -457,10 +471,10 @@ class Target:
         .. _`AIPS++ Glossary`: http://www.astron.nl/aips++/docs/glossary/p.html
         .. _`Starlink Project`: http://www.starlink.rl.ac.uk
         """
-        time = Timestamp(timestamp).time
-        antenna, location = self._normalise_antenna(antenna, required=True)
+        time, location = self._astropy_funnel(timestamp, antenna)
+        antenna = self._valid_antenna(antenna)
         # Get apparent hour angle and declination
-        radec = self.apparent_radec(time, antenna)
+        radec = self.apparent_radec(time, location)
         ha = antenna.local_sidereal_time(time) - radec.ra
         y = np.sin(ha)
         x = np.tan(location.lat.rad) * np.cos(radec.dec) - np.sin(radec.dec) * np.cos(ha)
@@ -508,14 +522,14 @@ class Target:
         pointing from the reference antenna to the second antenna, all in local
         ENU coordinates relative to the reference antenna.
         """
-        time = Timestamp(timestamp).time
-        antenna, _ = self._normalise_antenna(antenna, required=True)
+        time, location = self._astropy_funnel(timestamp, antenna)
+        antenna = self._valid_antenna(antenna)
         # Obtain baseline vector from reference antenna to second antenna
         baseline_m = antenna.baseline_toward(antenna2)
         # Obtain direction vector(s) from reference antenna to target, and numerically
         # estimate delay rate from difference across 1-second interval spanning timestamp(s)
         times = time[..., np.newaxis] + delta_seconds([-0.5, 0.0, 0.5])
-        azel = self.azel(times, antenna)
+        azel = self.azel(times, location)
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
@@ -548,8 +562,8 @@ class Target:
             the first two dimensions correspond to the matrix and the
             remaining dimension(s) to the timestamp.
         """
-        time = Timestamp(timestamp).time
-        antenna, _ = self._normalise_antenna(antenna, required=True)
+        time, location = self._astropy_funnel(timestamp, antenna)
+        self._valid_antenna(antenna)
         if not time.isscalar and self.body_type != 'radec':
             # Some calculations depend on ra/dec in a way that won't easily
             # vectorise.
@@ -570,17 +584,17 @@ class Target:
         if not time.isscalar:
             # Due to the test above, this is a radec target and so timestamp
             # doesn't matter. But we want a scalar.
-            radec = self.radec(None, antenna)
+            radec = self.radec(None, location)
         else:
-            radec = self.radec(time, antenna)
+            radec = self.radec(time, location)
         offset_sign = -1 if radec.dec > 0 else 1
         offset = construct_radec_target(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
         # Get offset az-el vector at current epoch pointed to by reference antenna
-        offset_azel = offset.azel(time, antenna)
+        offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
         z = np.array(azel_to_enu(offset_azel.az.rad, offset_azel.alt.rad))
         # Obtain direction vector(s) from reference antenna to target
-        azel = self.azel(time, antenna)
+        azel = self.azel(time, location)
         # w axis points toward target
         w = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # u axis is orthogonal to z and w
@@ -626,8 +640,8 @@ class Target:
         This avoids having to convert (az, el) angles to (ha, dec) angles and
         uses linear algebra throughout instead.
         """
-        time = Timestamp(timestamp).time
-        antenna, _ = self._normalise_antenna(antenna, required=True)
+        time, _ = self._astropy_funnel(timestamp, antenna)
+        antenna = self._valid_antenna(antenna)
         # Obtain basis vectors
         basis = self.uvw_basis(time, antenna)
         # Obtain baseline vector from reference antenna to second antenna
@@ -768,10 +782,9 @@ class Target:
         time and finds the angular distance between the two sets of coordinates.
         """
         # Get a common timestamp and antenna for both targets
-        time = Timestamp(timestamp).time
-        antenna, _ = self._normalise_antenna(antenna)
-        this_azel = self.azel(time, antenna)
-        other_azel = other_target.azel(time, antenna)
+        time, location = self._astropy_funnel(timestamp, antenna)
+        this_azel = self.azel(time, location)
+        other_azel = other_target.azel(time, location)
         return this_azel.separation(other_azel)
 
     def sphere_to_plane(self, az, el, timestamp=None, antenna=None, projection_type='ARC', coord_system='azel'):
