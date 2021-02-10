@@ -26,6 +26,7 @@ import astropy.units as u
 from astropy.coordinates import Angle
 
 from .delay_model import DelayModel
+from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
 from .target import construct_radec_target
 from .timestamp import Timestamp
@@ -72,10 +73,6 @@ class DelayCorrection:
     @u.quantity_input
     def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
                  extra_correction: u.s = None):
-        # Antenna needs DelayModel which also lives in this module...
-        # This is messy but avoids a circular dependency and having to
-        # split this file into two small bits.
-        from .antenna import Antenna
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
             try:
