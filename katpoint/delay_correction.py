@@ -25,7 +25,7 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import Angle
 
-from .delay import DelayModel
+from .delay_model import DelayModel
 from .conversion import azel_to_enu, ecef_to_enu
 from .target import construct_radec_target
 from .timestamp import Timestamp

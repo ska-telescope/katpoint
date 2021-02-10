@@ -31,7 +31,7 @@ from .body import to_angle
 from .timestamp import Timestamp
 from .conversion import enu_to_ecef, lla_to_ecef, ecef_to_enu
 from .pointing import PointingModel
-from .delay import DelayModel
+from .delay_model import DelayModel
 
 
 # Singleton that identifies default antenna parameters
