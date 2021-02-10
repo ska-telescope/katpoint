@@ -121,6 +121,9 @@ class DelayCorrection:
         Dict mapping antenna name to corresponding delay model
     inputs : list of str, length *2A*
         List of correlator input labels corresponding to output of :meth:`delays`
+    locations : :class:`~astropy.coordinates.EarthLocation`, shape (1 + A,)
+        Combined locations of reference antenna and *A* antennas (in that order),
+        used to vectorise pointing calculations
 
     Raises
     ------
@@ -131,6 +134,10 @@ class DelayCorrection:
     @u.quantity_input
     def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
                  extra_correction: u.s = None):
+        # Antenna needs DelayModel which also lives in this module...
+        # This is messy but avoids a circular dependency and having to
+        # split this file into two small bits.
+        from .antenna import Antenna
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
             try:
@@ -139,10 +146,6 @@ class DelayCorrection:
                 raise ValueError("Trying to construct DelayCorrection with an "
                                  f"invalid description string {ants!r}") from err
             ref_ant_str = descr['ref_ant']
-            # Antenna needs DelayModel which also lives in this module...
-            # This is messy but avoids a circular dependency and having to
-            # split this file into two small bits.
-            from .antenna import Antenna
             ref_ant = Antenna(ref_ant_str)
             sky_centre_freq = descr['sky_centre_freq'] * u.Hz
             try:
@@ -182,13 +185,16 @@ class DelayCorrection:
             self._params = np.empty((0, len(DelayModel())))
 
         # Now calculate and store public attributes
-        self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
         self.ant_models = ant_models
         self.ref_ant = ref_ant
         self.sky_centre_freq = sky_centre_freq
         # Add a 1% safety margin to guarantee positive delay corrections
         self.extra_correction = 1.01 * self.max_delay \
             if extra_correction is None else extra_correction
+        self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
+        self.locations = np.stack([ref_ant.location]
+                                  + [Antenna(ref_ant, delay_model=dm).location
+                                     for dm in ant_models.values()])
 
     @property
     @u.quantity_input
