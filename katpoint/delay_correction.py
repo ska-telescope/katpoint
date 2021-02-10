@@ -14,83 +14,21 @@
 # limitations under the License.
 ################################################################################
 
-"""Delay model and correction.
+"""Delay correction.
 
-This implements the basic delay model used to calculate the delay
-contribution from each antenna, as well as a class that performs
-delay correction for a correlator.
+This implements a class that performs delay correction for a correlator.
 """
 
-import logging
 import json
 
 import numpy as np
 import astropy.units as u
-import astropy.constants as const
 from astropy.coordinates import Angle
 
-from .model import Parameter, Model
+from .delay import DelayModel
 from .conversion import azel_to_enu, ecef_to_enu
 from .target import construct_radec_target
 from .timestamp import Timestamp
-
-
-# Speed of EM wave in fixed path (typically due to cables / clock distribution).
-# This number is not critical - only meant to convert delays to "nice" lengths.
-# Typical factors are: fibre = 0.7, coax = 0.84.
-LIGHTSPEED = const.c.to_value(u.m / u.s)
-FIXEDSPEED = 0.7 * LIGHTSPEED
-
-logger = logging.getLogger(__name__)
-
-
-class DelayModel(Model):
-    """Model of the delay contribution from a single antenna.
-
-    This object is purely used as a repository for model parameters, allowing
-    easy construction, inspection and saving of the delay model. The actual
-    calculations happen in :class:`DelayCorrection`, which is more efficient
-    as it handles multiple antenna delays simultaneously.
-
-    Parameters
-    ----------
-    model : file-like or model object, sequence of floats, or string, optional
-        Model specification. If this is a file-like or model object, load the
-        model from it. If this is a sequence of floats, accept it directly as
-        the model parameters (defaults to sequence of zeroes). If it is a
-        string, interpret it as a comma-separated (or whitespace-separated)
-        sequence of parameters in their string form (i.e. a description
-        string). The default is an empty model.
-    """
-
-    def __init__(self, model=None):
-        # Instantiate the relevant model parameters and register with base class
-        params = []
-        params.append(Parameter('POS_E', 'm', 'antenna position: offset East of reference position'))
-        params.append(Parameter('POS_N', 'm', 'antenna position: offset North of reference position'))
-        params.append(Parameter('POS_U', 'm', 'antenna position: offset above reference position'))
-        params.append(Parameter('FIX_H', 'm', 'fixed additional path length for H feed due to electronics / cables'))
-        params.append(Parameter('FIX_V', 'm', 'fixed additional path length for V feed due to electronics / cables'))
-        params.append(Parameter('NIAO', 'm', 'non-intersecting axis offset - distance between az and el axes'))
-        Model.__init__(self, params)
-        self.set(model)
-        # The EM wave velocity associated with each parameter
-        self._speeds = np.array([LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED])
-
-    @property
-    def delay_params(self):
-        """The model parameters converted to delays in seconds."""
-        return np.array(self.values()) / self._speeds
-
-    def fromdelays(self, delays):
-        """Update model from a sequence of delay parameters.
-
-        Parameters
-        ----------
-        delays : sequence of floats
-            Model parameters in delay form (i.e. in seconds)
-        """
-        self.fromlist(delays * self._speeds)
 
 
 class DelayCorrection:

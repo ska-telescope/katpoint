@@ -42,7 +42,8 @@ from .projection import sphere_to_plane, plane_to_sphere
 from .model import Parameter, Model, BadModelFile
 from .pointing import PointingModel
 from .refraction import RefractionCorrection
-from .delay import DelayModel, DelayCorrection
+from .delay import DelayModel
+from .delay_correction import DelayCorrection
 
 
 def wrap_angle(angle, period=2.0 * _np.pi):

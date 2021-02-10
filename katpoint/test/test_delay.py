@@ -14,7 +14,7 @@
 # limitations under the License.
 ################################################################################
 
-"""Tests for the delay module."""
+"""Tests for the delay modules."""
 
 import json
 from io import StringIO
