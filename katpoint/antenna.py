@@ -259,7 +259,7 @@ class Antenna:
 
         Parameters
         ----------
-        antenna2 : :class:`Antenna` object
+        antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`
             Second antenna of baseline pair (baseline vector points toward it)
 
         Returns

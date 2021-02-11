@@ -99,8 +99,8 @@ class Target:
         Alternate names of target
     flux_model : :class:`FluxDensity` object, optional
         Object encapsulating spectral flux density model
-    antenna : :class:`Antenna` object, optional
-        Default antenna to use for position calculations
+    antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        Default antenna / location to use for position calculations
     flux_freq_MHz : float, optional
         Default frequency at which to evaluate flux density, in MHz
 
@@ -329,7 +329,7 @@ class Target:
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -360,7 +360,7 @@ class Target:
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -388,7 +388,7 @@ class Target:
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -418,7 +418,7 @@ class Target:
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -449,7 +449,7 @@ class Target:
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -495,11 +495,11 @@ class Target:
 
         Parameters
         ----------
-        antenna2 : :class:`Antenna` object
+        antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`
             Second antenna of baseline pair (baseline vector points toward it)
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
 
@@ -549,7 +549,7 @@ class Target:
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Reference antenna of baseline pairs, which also serves as
             pointing reference (defaults to default antenna)
 
@@ -616,11 +616,11 @@ class Target:
 
         Parameters
         ----------
-        antenna2 : :class:`Antenna` object or sequence
+        antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna` or sequence
             Second antenna of baseline pair (baseline vector points toward it)
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
 
@@ -670,7 +670,7 @@ class Target:
             Declination of the other target, in radians
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Pointing reference (defaults to default antenna)
 
         Returns
@@ -767,7 +767,7 @@ class Target:
             The other target
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s) when separation is measured (defaults to now)
-        antenna : class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna that observes both targets, from where separation is measured
             (defaults to default antenna of this target)
 
@@ -804,7 +804,7 @@ class Target:
             Elevation or declination, in radians
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna pointing at target (defaults to default antenna)
         projection_type : {'ARC', 'SIN', 'TAN', 'STG', 'CAR', 'SSN'}, optional
             Type of spherical projection
@@ -844,7 +844,7 @@ class Target:
             Elevation-like coordinate(s) on plane, in radians
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s), defaults to now
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Antenna pointing at target (defaults to default antenna)
         projection_type : {'ARC', 'SIN', 'TAN', 'STG', 'CAR', 'SSN'}, optional
             Type of spherical projection
