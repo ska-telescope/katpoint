@@ -375,6 +375,11 @@ def test_separation():
                                            azel_sun.alt + Angle(0.01, unit=u.rad))
     sep = azel.separation(azel2, TS, ANT1)
     np.testing.assert_almost_equal(sep.rad, 0.01, decimal=12)
+    # Check that different default antennas are handled correctly
+    azel.antenna = ANT1
+    sun.antenna = ANT2
+    sep = azel.separation(sun, TS)
+    np.testing.assert_almost_equal(sep.rad, 0.0)
 
 
 def test_projection():
@@ -384,3 +389,38 @@ def test_projection():
     re_az, re_el = TARGET.plane_to_sphere(x, y, TS, ANT1)
     np.testing.assert_almost_equal(re_az, az, decimal=12)
     np.testing.assert_almost_equal(re_el, el, decimal=12)
+
+
+def _ant_vs_location(func, atol=0.0):
+    """Check that `func(ant1, ant2)` output is the same for Antennas and EarthLocations."""
+    ant_output = func(ANT1, ANT2)
+    location_output = func(ANT1.location, ANT2.location)
+    try:
+        # Use sky coordinate separation to obtain floating-point difference
+        separation = location_output.separation(ant_output)
+        np.testing.assert_allclose(separation, 0.0, rtol=0.0, atol=atol)
+    except AttributeError:
+        np.testing.assert_allclose(location_output, ant_output, rtol=0.0, atol=atol)
+
+
+def test_earth_location():
+    """Test that Antenna parameters accept EarthLocations."""
+    offsets = np.array([[[0, 1, 2, 3], [4, 5, 6, 7]]])
+    timestamps = katpoint.Timestamp('2021-02-11 14:28:00') + offsets
+    target = katpoint.Target('radec, 20, -20')
+    _ant_vs_location(lambda a1, a2: target.azel(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.apparent_radec(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.astrometric_radec(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.galactic(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.parallactic_angle(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.geometric_delay(a2, timestamps, a1)[0], atol=1e-16)
+    _ant_vs_location(lambda a1, a2: target.geometric_delay(a2, timestamps, a1)[1], atol=1e-21)
+    _ant_vs_location(lambda a1, a2: target.uvw_basis(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.uvw([a1, a2], timestamps, a1), atol=1e-9)
+    _ant_vs_location(lambda a1, a2: target.uvw(np.stack([a1, a2]), timestamps, a1), atol=1e-9)
+    _ant_vs_location(lambda a1, a2: target.lmn(0.0, 0.0, timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.separation(target, timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[0])
+    _ant_vs_location(lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[1])
+    _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[0])
+    _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[1])

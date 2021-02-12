@@ -14,83 +14,22 @@
 # limitations under the License.
 ################################################################################
 
-"""Delay model and correction.
+"""Delay correction.
 
-This implements the basic delay model used to calculate the delay
-contribution from each antenna, as well as a class that performs
-delay correction for a correlator.
+This implements a class that performs delay correction for a correlator.
 """
 
-import logging
 import json
 
 import numpy as np
 import astropy.units as u
-import astropy.constants as const
 from astropy.coordinates import Angle
 
-from .model import Parameter, Model
+from .delay_model import DelayModel
+from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
 from .target import construct_radec_target
 from .timestamp import Timestamp
-
-
-# Speed of EM wave in fixed path (typically due to cables / clock distribution).
-# This number is not critical - only meant to convert delays to "nice" lengths.
-# Typical factors are: fibre = 0.7, coax = 0.84.
-LIGHTSPEED = const.c.to_value(u.m / u.s)
-FIXEDSPEED = 0.7 * LIGHTSPEED
-
-logger = logging.getLogger(__name__)
-
-
-class DelayModel(Model):
-    """Model of the delay contribution from a single antenna.
-
-    This object is purely used as a repository for model parameters, allowing
-    easy construction, inspection and saving of the delay model. The actual
-    calculations happen in :class:`DelayCorrection`, which is more efficient
-    as it handles multiple antenna delays simultaneously.
-
-    Parameters
-    ----------
-    model : file-like or model object, sequence of floats, or string, optional
-        Model specification. If this is a file-like or model object, load the
-        model from it. If this is a sequence of floats, accept it directly as
-        the model parameters (defaults to sequence of zeroes). If it is a
-        string, interpret it as a comma-separated (or whitespace-separated)
-        sequence of parameters in their string form (i.e. a description
-        string). The default is an empty model.
-    """
-
-    def __init__(self, model=None):
-        # Instantiate the relevant model parameters and register with base class
-        params = []
-        params.append(Parameter('POS_E', 'm', 'antenna position: offset East of reference position'))
-        params.append(Parameter('POS_N', 'm', 'antenna position: offset North of reference position'))
-        params.append(Parameter('POS_U', 'm', 'antenna position: offset above reference position'))
-        params.append(Parameter('FIX_H', 'm', 'fixed additional path length for H feed due to electronics / cables'))
-        params.append(Parameter('FIX_V', 'm', 'fixed additional path length for V feed due to electronics / cables'))
-        params.append(Parameter('NIAO', 'm', 'non-intersecting axis offset - distance between az and el axes'))
-        Model.__init__(self, params)
-        self.set(model)
-        # The EM wave velocity associated with each parameter
-        self._speeds = np.array([LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED])
-
-    @property
-    def delay_params(self):
-        """The model parameters converted to delays in seconds."""
-        return np.array(self.values()) / self._speeds
-
-    def fromdelays(self, delays):
-        """Update model from a sequence of delay parameters.
-
-        Parameters
-        ----------
-        delays : sequence of floats
-            Model parameters in delay form (i.e. in seconds)
-        """
-        self.fromlist(delays * self._speeds)
 
 
 class DelayCorrection:
@@ -104,7 +43,7 @@ class DelayCorrection:
 
     Parameters
     ----------
-    ants : sequence of *M* :class:`Antenna` objects or str
+    ants : sequence of *A* :class:`Antenna` objects or str
         Sequence of antennas forming an array and connected to correlator;
         alternatively, a description string representing the entire object
     ref_ant : :class:`Antenna`, optional
@@ -119,8 +58,11 @@ class DelayCorrection:
     ----------
     ant_models : dict mapping str to :class:`DelayModel`
         Dict mapping antenna name to corresponding delay model
-    inputs : list of str, length *2M*
+    inputs : list of str, length *2A*
         List of correlator input labels corresponding to output of :meth:`delays`
+    locations : :class:`~astropy.coordinates.EarthLocation`, shape (A + 1,)
+        Combined locations of *A* antennas and reference antenna (in that order),
+        used to vectorise pointing calculations
 
     Raises
     ------
@@ -139,10 +81,6 @@ class DelayCorrection:
                 raise ValueError("Trying to construct DelayCorrection with an "
                                  f"invalid description string {ants!r}") from err
             ref_ant_str = descr['ref_ant']
-            # Antenna needs DelayModel which also lives in this module...
-            # This is messy but avoids a circular dependency and having to
-            # split this file into two small bits.
-            from .antenna import Antenna
             ref_ant = Antenna(ref_ant_str)
             sky_centre_freq = descr['sky_centre_freq'] * u.Hz
             try:
@@ -182,13 +120,15 @@ class DelayCorrection:
             self._params = np.empty((0, len(DelayModel())))
 
         # Now calculate and store public attributes
-        self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
         self.ant_models = ant_models
         self.ref_ant = ref_ant
         self.sky_centre_freq = sky_centre_freq
         # Add a 1% safety margin to guarantee positive delay corrections
         self.extra_correction = 1.01 * self.max_delay \
             if extra_correction is None else extra_correction
+        self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
+        self.locations = np.stack([Antenna(ref_ant, delay_model=dm).location
+                                   for dm in ant_models.values()] + [ref_ant.location])
 
     @property
     @u.quantity_input
@@ -232,9 +172,9 @@ class DelayCorrection:
 
         Returns
         -------
-        delays : :class:`~astropy.units.Quantity`, shape T + (2 * M,)
-            Delays for timestamps with shape T and *2M* correlator inputs, with
-            ordering on the final axis matching the labels in :attr:`inputs`
+        delays : :class:`~astropy.units.Quantity`, shape (2 * A,) + T
+            Delays for *2A* correlator inputs and timestamps with shape T, with
+            ordering on the first axis matching the labels in :attr:`inputs`
         """
         # Ensure a single consistent timestamp in the case of "now"
         if timestamp is None:
@@ -267,9 +207,8 @@ class DelayCorrection:
         ), axis=1)  # shape (6, 2, prod(T))
         # (A, 6) * (6, 2, prod(T)) => (A, 2, prod(T)) for N inputs, A antennas and N = 2A
         delays = np.tensordot(self._params, design_mat, axes=1)
-        # Collapse input dimensions and restore time dimensions, and swap these groups
-        delays = np.moveaxis(delays.reshape((-1,) + T), 0, -1)
-        return delays * u.s
+        # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
+        return delays.reshape((-1,) + T) * u.s
 
     def corrections(self, target, timestamp=None, offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
@@ -317,15 +256,15 @@ class DelayCorrection:
         # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
         turns = (self.sky_centre_freq * delays).decompose()
         phase_corrections = Angle(2. * np.pi * u.rad) * turns
-        delta_time = (time[1:] - time[:-1])[:, np.newaxis].to(u.s)
-        delta_delay_corrections = delay_corrections[1:] - delay_corrections[:-1]
+        delta_time = (time[1:] - time[:-1]).to(u.s)
+        delta_delay_corrections = delay_corrections[:, 1:] - delay_corrections[:, :-1]
         delay_rate_corrections = delta_delay_corrections / delta_time
-        delta_phase_corrections = phase_corrections[1:] - phase_corrections[:-1]
+        delta_phase_corrections = phase_corrections[:, 1:] - phase_corrections[:, :-1]
         fringe_rate_corrections = delta_phase_corrections / delta_time
         return (
-            # Restore time dimensions and swap input dimension to front to get zipped into dict
-            dict(zip(self.inputs, np.moveaxis(delay_corrections.reshape(T + (-1,)), -1, 0))),
-            dict(zip(self.inputs, np.moveaxis(phase_corrections.reshape(T + (-1,)), -1, 0))),
-            dict(zip(self.inputs, np.moveaxis(delay_rate_corrections, -1, 0))),
-            dict(zip(self.inputs, np.moveaxis(fringe_rate_corrections, -1, 0))),
+            # Restore time dimensions to recover scalar times
+            dict(zip(self.inputs, delay_corrections.reshape((-1,) + T))),
+            dict(zip(self.inputs, phase_corrections.reshape((-1,) + T))),
+            dict(zip(self.inputs, delay_rate_corrections)),
+            dict(zip(self.inputs, fringe_rate_corrections)),
         )

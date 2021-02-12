@@ -14,7 +14,7 @@
 # limitations under the License.
 ################################################################################
 
-"""Tests for the model module."""
+"""Tests for the delay modules."""
 
 import json
 from io import StringIO
@@ -77,6 +77,10 @@ class TestDelayCorrection:
         """Test construction of DelayCorrection object."""
         descr = self.delays.description
         assert self.delays.inputs == ['A2h', 'A2v', 'A3h', 'A3v']
+        assert self.delays.locations.shape == (3,), "Locations property has wrong size"
+        assert self.delays.locations[0] == self.ant2.location, "Wrong location for first antenna"
+        assert self.delays.locations[1] == self.ant3.location, "Wrong location for second antenna"
+        assert self.delays.locations[2] == self.ant1.location, "Wrong reference location"
         delays2 = katpoint.DelayCorrection(descr)
         delays_dict = json.loads(descr)
         delays2_dict = json.loads(delays2.description)
@@ -84,8 +88,9 @@ class TestDelayCorrection:
         with pytest.raises(ValueError):
             katpoint.DelayCorrection('')
         delays3 = katpoint.DelayCorrection([], self.ant1)
+        assert delays3.locations.shape == (1,), "Locations property has wrong size"
         d = delays3.delays(self.target1, self.ts + np.arange(3))
-        assert d.shape == (3, 0), "Delay correction with no antennas should fail gracefully"
+        assert d.shape == (0, 3), "Delay correction with no antennas should fail gracefully"
         # Check construction with different antenna reference positions
         delays4 = katpoint.DelayCorrection([self.ant1, self.ant2], self.ant3)
         ant1_vs_ant3 = np.array(delays4.ant_models['A1'].values())
@@ -102,6 +107,17 @@ class TestDelayCorrection:
         del older_dict['extra_delay']
         with pytest.raises(KeyError):
             katpoint.DelayCorrection(json.dumps(older_dict))
+
+    def test_delays(self):
+        """Test delay calculations."""
+        delay0 = self.delays.delays(self.target1, self.ts)
+        assert delay0.shape == (4,)
+        assert np.allclose(delay0[:2], 0.0, rtol=0, atol=1e-20)
+        delay1 = self.delays.delays(self.target1, [self.ts - 1.0, self.ts, self.ts + 1.0])
+        assert delay1.shape == (4, 3)
+        assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-20)
+        delay_now = self.delays.delays(self.target1, None)
+        np.testing.assert_array_equal(delay_now, delay0)
 
     def test_correction(self):
         """Test delay correction."""
@@ -194,10 +210,7 @@ def test_against_calc(times, ant_models, min_diff, max_diff):
     times = katpoint.Timestamp(times)
     model = dict(ant_models=ant_models, **DELAY_MODEL)
     dc = katpoint.DelayCorrection(json.dumps(model))
-    delay = dc.delays(TARGET, times)[:, ::2]
-    ref_location = katpoint.Antenna(model['ref_ant']).location
-    locations = np.stack([katpoint.Antenna(f"{model['ref_ant']}, {dm}").location
-                          for dm in model['ant_models'].values()])
-    expected_delay = calc(locations, TARGET.body.coord, times.time, ref_location)
+    delay = dc.delays(TARGET, times)[::2]
+    expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1]).T
     abs_diff = np.abs(delay - expected_delay)
     assert np.all(abs_diff == np.clip(abs_diff, min_diff, max_diff))

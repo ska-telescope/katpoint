@@ -31,7 +31,7 @@ from .body import to_angle
 from .timestamp import Timestamp
 from .conversion import enu_to_ecef, lla_to_ecef, ecef_to_enu
 from .pointing import PointingModel
-from .delay import DelayModel
+from .delay_model import DelayModel
 
 
 # Singleton that identifies default antenna parameters
@@ -259,7 +259,7 @@ class Antenna:
 
         Parameters
         ----------
-        antenna2 : :class:`Antenna` object
+        antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`
             Second antenna of baseline pair (baseline vector points toward it)
 
         Returns
@@ -267,6 +267,7 @@ class Antenna:
         e_m, n_m, u_m : float or array
             East, North, Up coordinates of baseline vector, in metres
         """
+        antenna2 = Antenna(antenna2)
         # If this antenna is at reference position of second antenna, simply return its ENU offset
         if self.position_wgs84 == antenna2.ref_position_wgs84:
             return antenna2.position_enu
