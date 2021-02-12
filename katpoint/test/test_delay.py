@@ -78,9 +78,9 @@ class TestDelayCorrection:
         descr = self.delays.description
         assert self.delays.inputs == ['A2h', 'A2v', 'A3h', 'A3v']
         assert self.delays.locations.shape == (3,), "Locations property has wrong size"
-        assert self.delays.locations[0] == self.ant1.location, "Wrong reference location"
-        assert self.delays.locations[1] == self.ant2.location, "Wrong location for first antenna"
-        assert self.delays.locations[2] == self.ant3.location, "Wrong location for second antenna"
+        assert self.delays.locations[0] == self.ant2.location, "Wrong location for first antenna"
+        assert self.delays.locations[1] == self.ant3.location, "Wrong location for second antenna"
+        assert self.delays.locations[2] == self.ant1.location, "Wrong reference location"
         delays2 = katpoint.DelayCorrection(descr)
         delays_dict = json.loads(descr)
         delays2_dict = json.loads(delays2.description)
@@ -110,13 +110,14 @@ class TestDelayCorrection:
 
     def test_delays(self):
         """Test delay calculations."""
-        self.delays.delays(self.target1, None)
         delay0 = self.delays.delays(self.target1, self.ts)
         assert delay0.shape == (4,)
         assert np.allclose(delay0[:2], 0.0, rtol=0, atol=1e-20)
         delay1 = self.delays.delays(self.target1, [self.ts - 1.0, self.ts, self.ts + 1.0])
         assert delay1.shape == (4, 3)
         assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-20)
+        delay_now = self.delays.delays(self.target1, None)
+        np.testing.assert_array_equal(delay_now, delay0)
 
     def test_correction(self):
         """Test delay correction."""
@@ -210,6 +211,6 @@ def test_against_calc(times, ant_models, min_diff, max_diff):
     model = dict(ant_models=ant_models, **DELAY_MODEL)
     dc = katpoint.DelayCorrection(json.dumps(model))
     delay = dc.delays(TARGET, times)[::2]
-    expected_delay = calc(dc.locations[1:], TARGET.body.coord, times.time, dc.locations[0]).T
+    expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1]).T
     abs_diff = np.abs(delay - expected_delay)
     assert np.all(abs_diff == np.clip(abs_diff, min_diff, max_diff))

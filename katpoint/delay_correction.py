@@ -60,8 +60,8 @@ class DelayCorrection:
         Dict mapping antenna name to corresponding delay model
     inputs : list of str, length *2A*
         List of correlator input labels corresponding to output of :meth:`delays`
-    locations : :class:`~astropy.coordinates.EarthLocation`, shape (1 + A,)
-        Combined locations of reference antenna and *A* antennas (in that order),
+    locations : :class:`~astropy.coordinates.EarthLocation`, shape (A + 1,)
+        Combined locations of *A* antennas and reference antenna (in that order),
         used to vectorise pointing calculations
 
     Raises
@@ -127,9 +127,8 @@ class DelayCorrection:
         self.extra_correction = 1.01 * self.max_delay \
             if extra_correction is None else extra_correction
         self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
-        self.locations = np.stack([ref_ant.location]
-                                  + [Antenna(ref_ant, delay_model=dm).location
-                                     for dm in ant_models.values()])
+        self.locations = np.stack([Antenna(ref_ant, delay_model=dm).location
+                                   for dm in ant_models.values()] + [ref_ant.location])
 
     @property
     @u.quantity_input

@@ -563,6 +563,7 @@ class Target:
             remaining dimension(s) to the timestamp.
         """
         time, location = self._astropy_funnel(timestamp, antenna)
+        # Check that antenna is valid to avoid more cryptic error messages in .azel and .radec
         self._valid_antenna(antenna)
         if not time.isscalar and self.body_type != 'radec':
             # Some calculations depend on ra/dec in a way that won't easily
@@ -640,10 +641,9 @@ class Target:
         This avoids having to convert (az, el) angles to (ha, dec) angles and
         uses linear algebra throughout instead.
         """
-        time, _ = self._astropy_funnel(timestamp, antenna)
-        antenna = self._valid_antenna(antenna)
         # Obtain basis vectors
-        basis = self.uvw_basis(time, antenna)
+        basis = self.uvw_basis(timestamp, antenna)
+        antenna = self._valid_antenna(antenna)
         # Obtain baseline vector from reference antenna to second antenna
         try:
             baseline_m = np.stack([antenna.baseline_toward(a2) for a2 in antenna2])

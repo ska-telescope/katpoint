@@ -375,6 +375,7 @@ def test_separation():
                                            azel_sun.alt + Angle(0.01, unit=u.rad))
     sep = azel.separation(azel2, TS, ANT1)
     np.testing.assert_almost_equal(sep.rad, 0.01, decimal=12)
+    # Check that different default antennas are handled correctly
     azel.antenna = ANT1
     sun.antenna = ANT2
     sep = azel.separation(sun, TS)
