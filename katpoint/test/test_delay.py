@@ -214,3 +214,26 @@ def test_against_calc(times, ant_models, min_diff, max_diff):
     expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1]).T
     abs_diff = np.abs(delay - expected_delay)
     assert np.all(abs_diff == np.clip(abs_diff, min_diff, max_diff))
+
+
+TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
+              '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054, '
+              '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282')
+
+
+@pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
+                                         'gal, 30, -30', 'Moon, special', TLE_TARGET])
+def test_astropy_broadcasting(description):
+    """Check that various Bodies can handle multiple times and antennas."""
+    times = katpoint.Timestamp(1605646800.0 + np.linspace(0, 86400, 4).reshape(1, 4))
+    ant_models = {'m048': '-2805.653 2686.863 -9.7545',
+                  'm058': '2805.764 2686.873 -3.6595',
+                  's0121': '-3545.28803 -10207.44399 -9.18584'}
+    model = dict(ant_models=ant_models, **DELAY_MODEL)
+    dc = katpoint.DelayCorrection(json.dumps(model))
+    target = katpoint.Target(description)
+    expected_shape = (2 * len(ant_models),) + times.time.shape
+    assert dc.delays(target, times).shape == expected_shape
+    # An (ra, dec) offset tests additional coordinate transformation paths
+    offset = dict(x=0.1, y=0.1, projection_type='TAN', coord_system='radec')
+    assert dc.delays(target, times, offset).shape == expected_shape
