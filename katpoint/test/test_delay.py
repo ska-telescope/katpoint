@@ -199,21 +199,24 @@ DELAY_MODEL = {'ref_ant': 'array, -30:42:39.8, 21:26:38, 1086.6, 0',
     "times,ant_models,min_diff,max_diff",
     [
         (1605646800.0 + np.linspace(0, 86400, 9),
-         {'m063': '-3419.5845 -1840.48 16.3825'}, 14 * u.ps, 16 * u.ps),
+         {'m063': '-3419.5845 -1840.48 16.3825 0 0 1'}, 14 * u.ps, 16 * u.ps),
         (1571219913.0 + np.arange(0, 54000, 6000),
-         {'m048': '-2805.653 2686.863 -9.7545',
-          'm058': '2805.764 2686.873 -3.6595',
-          's0121': '-3545.28803 -10207.44399 -9.18584'}, 12 * u.ps, 16 * u.ps),
+         {'m048': '-2805.653 2686.863 -9.7545 0 0 1.2',
+          'm058': '2805.764 2686.873 -3.6595 0 0 1',
+          's0121': '-3545.28803 -10207.44399 -9.18584 0 0 2'}, 12 * u.ps, 16 * u.ps),
     ]
 )
 def test_against_calc(times, ant_models, min_diff, max_diff):
     times = katpoint.Timestamp(times)
     model = dict(ant_models=ant_models, **DELAY_MODEL)
     dc = katpoint.DelayCorrection(json.dumps(model))
+    # Vector of axis offsets per antenna
+    niao = np.array([dm['NIAO'] for dm in dc.ant_models.values()]) * u.m
     delay = dc.delays(TARGET, times)[::2]
-    expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1]).T
+    expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1],
+                          axis_offset=niao).T
     abs_diff = np.abs(delay - expected_delay)
-    assert np.all(abs_diff == np.clip(abs_diff, min_diff, max_diff))
+    np.testing.assert_array_equal(abs_diff, np.clip(abs_diff, min_diff, max_diff))
 
 
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '

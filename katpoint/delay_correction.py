@@ -212,7 +212,7 @@ class DelayCorrection:
         niao = self._params[:, 5:6]  # shape (A, 1)
         # Combine all delays per antenna (geometric, NIAO) => shape (A, prod(T))
         ant_delays = enu_offset @ -target_dir
-        ant_delays += niao * np.cos(elevations)
+        ant_delays -= niao * np.cos(elevations)
         # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
         input_delays = np.stack([ant_delays, ant_delays], axis=1)
         input_delays += fixed_path_length[..., np.newaxis]
