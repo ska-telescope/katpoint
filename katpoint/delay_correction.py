@@ -112,9 +112,8 @@ class DelayCorrection:
                     model['POS_U'] = enu[2]
                 ant_models[ant.name] = model
 
-        # Initialise private attributes
-        self._params = np.array([ant_models[ant].delay_params
-                                 for ant in ant_models])
+        # Delay model parameters in units of seconds are combined in array of shape (A, 6)
+        self._params = np.array([ant_models[ant].delay_params for ant in ant_models])
         # With no antennas, let params still have correct shape
         if not ant_models:
             self._params = np.empty((0, len(DelayModel())))
@@ -135,7 +134,7 @@ class DelayCorrection:
     def max_delay(self) -> u.s:
         """The maximum (absolute) delay achievable in the array."""
         # Worst case is wavefront moving along baseline connecting ant to ref
-        max_delay_per_ant = np.sqrt((self._params[:, :3] ** 2).sum(axis=1))
+        max_delay_per_ant = np.linalg.norm(self._params[:, :3], axis=1)
         # Pick largest fixed delay
         max_delay_per_ant += self._params[:, 3:5].max(axis=1)
         # Worst case for NIAO is looking at the horizon
@@ -164,7 +163,7 @@ class DelayCorrection:
         ----------
         target : :class:`Target`
             Target providing direction for geometric delays
-        timestamp : :class:`Timestamp` or equivalent, shape T
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, shape T
             Timestamp(s) when wavefront from target passes reference position
         offset : dict, optional
             Keyword arguments for :meth:`Target.plane_to_sphere` to offset
@@ -177,38 +176,48 @@ class DelayCorrection:
             ordering on the first axis matching the labels in :attr:`inputs`
         """
         # Ensure a single consistent timestamp in the case of "now"
-        if timestamp is None:
-            timestamp = Timestamp()
+        time = Timestamp(timestamp).time
+        original_time_shape = time.shape  # shape T
+        # Manually broadcast both time and location to shape (A + 1, prod(T))
+        # XXX Astropy 4.2 has proper broadcasting support (at least for obstime)
+        time = time.ravel()
+        time_idx, location_idx = np.meshgrid(range(len(time)), range(len(self.locations)))
+        time = time.take(time_idx)
+        locations = self.locations.take(location_idx)
+        # Obtain (az, el) pointings per location and timestamp => shape (A + 1, prod(T))
         if not offset:
-            azel = target.azel(timestamp, self.ref_ant)
+            azel = target.azel(time, locations)
             az = azel.az.rad
             el = azel.alt.rad
         else:
             coord_system = offset.get('coord_system', 'azel')
             if coord_system == 'radec':
-                ra, dec = target.plane_to_sphere(timestamp=timestamp,
-                                                 antenna=self.ref_ant, **offset)
+                ra, dec = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
                 # XXX This target is vectorised (contrary to popular belief) by having an
                 # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
                 # It is probably better to support this explicitly somehow.
                 offset_target = construct_radec_target(ra, dec)
-                azel = offset_target.azel(timestamp, self.ref_ant)
+                azel = offset_target.azel(time, locations)
                 az = azel.az.rad
                 el = azel.alt.rad
             else:
-                az, el = target.plane_to_sphere(timestamp=timestamp,
-                                                antenna=self.ref_ant, **offset)
-        T = el.shape
-        target_dir = np.array(azel_to_enu(az.ravel(), el.ravel()))  # shape (3, prod(T))
-        cos_el = np.cos(el.ravel())
-        design_mat = np.stack((
-            np.vstack((-target_dir, np.ones_like(cos_el), np.zeros_like(cos_el), cos_el)),
-            np.vstack((-target_dir, np.zeros_like(cos_el), np.ones_like(cos_el), cos_el)),
-        ), axis=1)  # shape (6, 2, prod(T))
-        # (A, 6) * (6, 2, prod(T)) => (A, 2, prod(T)) for N inputs, A antennas and N = 2A
-        delays = np.tensordot(self._params, design_mat, axes=1)
+                az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+        # Elevations of antennas proper, shape (A, prod(T))
+        elevations = el[:-1]
+        # Obtain target direction as seen from reference location => shape (3, prod(T))
+        target_dir = np.array(azel_to_enu(az[-1], el[-1]))
+        # Split up delay model parameters into constituent parts (unit = seconds)
+        enu_offset = self._params[:, :3]  # shape (A, 3)
+        fixed_path_length = self._params[:, 3:5]  # shape (A, 2)
+        niao = self._params[:, 5:6]  # shape (A, 1)
+        # Combine all delays per antenna (geometric, NIAO) => shape (A, prod(T))
+        ant_delays = enu_offset @ -target_dir
+        ant_delays -= niao * np.cos(elevations)
+        # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
+        input_delays = np.stack([ant_delays, ant_delays], axis=1)
+        input_delays += fixed_path_length[..., np.newaxis]
         # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
-        return delays.reshape((-1,) + T) * u.s
+        return input_delays.reshape((-1,) + original_time_shape) * u.s
 
     def corrections(self, target, timestamp=None, offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
