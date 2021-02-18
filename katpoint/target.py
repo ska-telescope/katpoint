@@ -374,7 +374,9 @@ class Target:
             If no antenna is specified and body type requires it for (ra, dec)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(CIRS(obstime=time), obstime=time, location=location)
+        # XXX Astropy 4.2: This should really be TETE for the benefit of parallactic_angle
+        return self.body.compute(CIRS(obstime=time), obstime=time, location=location,
+                                 to_celestial_sphere=True)
 
     def astrometric_radec(self, timestamp=None, antenna=None):
         """Calculate target's astrometric (ra, dec) coordinates as seen from antenna at time(s).
@@ -402,7 +404,8 @@ class Target:
             If no antenna is specified and body type requires it for (ra, dec)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(ICRS(), obstime=time, location=location)
+        return self.body.compute(ICRS(), obstime=time, location=location,
+                                 to_celestial_sphere=True)
 
     # The default (ra, dec) coordinates are the astrometric ones
     radec = astrometric_radec
@@ -432,7 +435,8 @@ class Target:
             If no antenna is specified and body type requires it for (l, b)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(Galactic(), obstime=time, location=location)
+        return self.body.compute(Galactic(), obstime=time, location=location,
+                                 to_celestial_sphere=True)
 
     def parallactic_angle(self, timestamp=None, antenna=None):
         """Calculate parallactic angle on target as seen from antenna at time(s).
@@ -471,6 +475,7 @@ class Target:
         .. _`AIPS++ Glossary`: http://www.astron.nl/aips++/docs/glossary/p.html
         .. _`Starlink Project`: http://www.starlink.rl.ac.uk
         """
+        # XXX Hour angle ideally derives from TETE frame, not CIRS
         time, location = self._astropy_funnel(timestamp, antenna)
         antenna = self._valid_antenna(antenna)
         # Get apparent hour angle and declination

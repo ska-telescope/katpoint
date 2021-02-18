@@ -197,9 +197,9 @@ def does_not_raise(error):
         ('gal, 30, -30', 'azel', pytest.raises, ValueError),
         ('gal, 30, -30', NON_AZEL, does_not_raise, None),
         ('Sun, special', 'azel', pytest.raises, ValueError),
-        ('Sun, special', NON_AZEL, does_not_raise, None),
+        ('Sun, special', NON_AZEL, pytest.raises, ValueError),
         (TLE_TARGET, 'azel', pytest.raises, ValueError),
-        (TLE_TARGET, NON_AZEL, does_not_raise, None),
+        (TLE_TARGET, NON_AZEL, pytest.raises, ValueError),
     ]
 )
 def test_coord_methods_without_antenna(description, methods, raises, error):
@@ -424,3 +424,30 @@ def test_earth_location():
     _ant_vs_location(lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[1])
     _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[0])
     _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[1])
+
+
+def test_great_conjunction():
+    """Use the Great Conjunction to test astrometric (ra, dec) for different bodies."""
+    # Recreate Jason de Freitas's observation of the ISS passing between Jupiter and Saturn, based on
+    # https://petapixel.com/2020/12/22/photographer-captures-iss-passing-between-jupiter-and-saturn/
+    # The altitude is above sea level instead of WGS84, but should be close enough.
+    pentax = katpoint.Antenna('Jellore Lookout NSW, -34.462653, 150.427971, 864')
+    # The photo was taken "at around 9:54pm". Australian Eastern Daylight Time (AEDT)
+    # is 11 hours ahead of UTC => therefore around 10:54 UTC
+    timestamp = katpoint.Timestamp('2020-12-17 10:53:10')
+    jupiter = katpoint.Target('Jupiter, special')
+    saturn = katpoint.Target('Saturn, special')
+    moon = katpoint.Target('Moon, special')
+    # TLE for ISS on 2020-12-17
+    iss = katpoint.Target('ISS (ZARYA), tle,'
+                          '1 25544U 98067A   20351.71912775  .00000900  00000-0  24328-4 0  9992,'
+                          '2 25544  51.6442 165.2978 0001589 133.0028 320.9621 15.49190988260311')
+    j = jupiter.radec(timestamp, pentax)
+    s = saturn.radec(timestamp, pentax)
+    i = iss.radec(timestamp, pentax)
+    m = moon.radec(timestamp, pentax)
+    # This is a regression test, using separations measured by Astropy 4.1
+    assert np.allclose(j.separation(s), 0.48658589 * u.deg, atol=1 * u.mas)
+    assert np.allclose(j.separation(i), 0.20751171 * u.deg, atol=1 * u.mas)
+    assert np.allclose(i.separation(s), 0.27956242 * u.deg, atol=1 * u.mas)
+    assert np.allclose(m.separation(i), 3.25636362 * u.deg, atol=1 * u.mas)

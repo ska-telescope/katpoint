@@ -236,7 +236,10 @@ def test_astropy_broadcasting(description):
     dc = katpoint.DelayCorrection(json.dumps(model))
     target = katpoint.Target(description)
     expected_shape = (2 * len(ant_models),) + times.time.shape
-    assert dc.delays(target, times).shape == expected_shape
+    delay = dc.delays(target, times)
+    assert delay.shape == expected_shape
     # An (ra, dec) offset tests additional coordinate transformation paths
-    offset = dict(x=0.1, y=0.1, projection_type='TAN', coord_system='radec')
-    assert dc.delays(target, times, offset).shape == expected_shape
+    offset = dict(x=0.0, y=0.0, projection_type='TAN', coord_system='radec')
+    assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)
+    offset = dict(x=0.0, y=0.0, projection_type='STG', coord_system='azel')
+    assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)

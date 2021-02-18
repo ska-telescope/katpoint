@@ -82,22 +82,26 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
         # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
         # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
-         '14:05:58.9201h', '-12:13:51.9009d', '118:10:05.1121d', '27:23:12.8454d', 1 * u.mas),
-        # (PyEphem radec is geocentric)        118:10:06.1d       27:23:13.3d  (PyEphem)
+         '15:43:47.3413h', '-19:23:08.1339d', '118:10:05.1121d', '27:23:12.8454d', 1 * u.mas),
+        # 15:43:47.22       -19:23:07.0        118:10:06.1d       27:23:13.3d  (PyEphem)
         (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
-         '6:44:11.9332h', '23:02:08.4027d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
-        # (PyEphem radec is geocentric)     127:15:23.6d       60:05:13.7d  (PyEphem)
+         '23:35:44.1259h', '-8:32:55.5218d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
+        # 23:34:17.02       -8:16:33.4        127:15:23.6d       60:05:13.7d  (PyEphem)
+        # The Moon radec differs by quite a bit (16') because PyEphem's astrometric radec is
+        # geocentric while katpoint's version is topocentric (FWIW, Skyfield has both).
+        # Katpoint's geocentric astrometric radec is 23:34:17.5082, -8:16:28.6389.
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
-         '7:56:36.7961h', '20:53:59.4561d', '234:53:19.4763d', '31:38:11.4248d', 1 * u.mas),
-        # (PyEphem radec is geocentric)      234:53:20.8d       31:38:09.4d  (PyEphem)
+         '18:44:13.3715h', '-23:02:54.7436d', '234:53:19.4763d', '31:38:11.4248d', 1 * u.mas),
+        # 18:44:13.84       -23:02:51.2        234:53:20.8d       31:38:09.4d  (PyEphem)
         (EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
-         '0:00:38.5009h', '00:03:56.0093d', TLE_AZ, TLE_EL, 1 * u.mas),
+         '3:32:57.9297h', '-2:04:31.8995d', TLE_AZ, TLE_EL, 1 * u.mas),
+        # 3:33:00.26       -2:04:32.2  (PyEphem)
     ]
 )
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     """Test compute method"""
     obstime = Time(date_str)
-    radec = body.compute(ICRS(), obstime, LOCATION)
+    radec = body.compute(ICRS(), obstime, LOCATION, to_celestial_sphere=True)
     check_separation(radec, ra_str, dec_str, tol)
     altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
     check_separation(altaz, az_str, el_str, tol)
