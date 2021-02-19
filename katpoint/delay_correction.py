@@ -80,8 +80,7 @@ class DelayCorrection:
             except ValueError as err:
                 raise ValueError("Trying to construct DelayCorrection with an "
                                  f"invalid description string {ants!r}") from err
-            ref_ant_str = descr['ref_ant']
-            ref_ant = Antenna(ref_ant_str)
+            ref_ant = Antenna(descr['ref_ant'])
             sky_centre_freq = descr['sky_centre_freq'] * u.Hz
             try:
                 extra_correction = descr['extra_correction'] * u.s
@@ -113,10 +112,9 @@ class DelayCorrection:
                 ant_models[ant.name] = model
 
         # Delay model parameters in units of seconds are combined in array of shape (A, 6)
-        self._params = np.array([ant_models[ant].delay_params for ant in ant_models])
+        self._params = np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
         # With no antennas, let params still have correct shape
-        if not ant_models:
-            self._params = np.empty((0, len(DelayModel())))
+        self._params.shape = (-1, len(DelayModel()))
 
         # Now calculate and store public attributes
         self.ant_models = ant_models
@@ -139,7 +137,7 @@ class DelayCorrection:
         max_delay_per_ant += self._params[:, 3:5].max(axis=1)
         # Worst case for NIAO is looking at the horizon
         max_delay_per_ant += self._params[:, 5]
-        return max(max_delay_per_ant) * u.s if self.ant_models else 0.0 * u.s
+        return max(max_delay_per_ant) if self.ant_models else 0.0 * u.s
 
     @property
     def description(self):
@@ -177,7 +175,7 @@ class DelayCorrection:
         """
         # Ensure a single consistent timestamp in the case of "now"
         time = Timestamp(timestamp).time
-        original_time_shape = time.shape  # shape T
+        T = time.shape
         # Manually broadcast both time and location to shape (A + 1, prod(T))
         # XXX Astropy 4.2 has proper broadcasting support (at least for obstime)
         time = time.ravel()
@@ -217,7 +215,7 @@ class DelayCorrection:
         input_delays = np.stack([ant_delays, ant_delays], axis=1)
         input_delays += fixed_path_length[..., np.newaxis]
         # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
-        return input_delays.reshape((-1,) + original_time_shape) * u.s
+        return input_delays.reshape((-1,) + T)
 
     def corrections(self, target, timestamp=None, offset=None):
         """Delay and phase corrections for a given target and timestamp(s).
