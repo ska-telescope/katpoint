@@ -30,6 +30,7 @@ from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
 from .target import construct_radec_target
 from .timestamp import Timestamp
+from .refraction import TroposphericDelay
 
 
 class DelayCorrection:
@@ -53,6 +54,9 @@ class DelayCorrection:
     extra_correction : :class:`~astropy.units.Quantity`, optional
         Additional correction added to all inputs to ensure strictly positive
         corrections (automatically calculated by default)
+    tropospheric_model : str, optional
+        Unique identifier of tropospheric model, or 'None' if no tropospheric
+        correction will be done
 
     Attributes
     ----------
@@ -72,7 +76,7 @@ class DelayCorrection:
 
     @u.quantity_input
     def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
-                 extra_correction: u.s = None):
+                 extra_correction: u.s = None, tropospheric_model='None'):
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
             try:
@@ -90,6 +94,7 @@ class DelayCorrection:
                     extra_correction = descr['extra_delay'] * u.s
                 except KeyError:
                     raise KeyError("no 'extra_correction' or 'extra_delay'")
+            tropospheric_model = descr.get('tropospheric_model', 'None')
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():
                 ant_model = DelayModel()
@@ -115,6 +120,11 @@ class DelayCorrection:
         self._params = np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
         # With no antennas, let params still have correct shape
         self._params.shape = (-1, len(DelayModel()))
+        if tropospheric_model == 'None':
+            self._tropospheric_delay = None
+        else:
+            # XXX There should ideally be a TroposphericDelay object per actual antenna
+            self._tropospheric_delay = TroposphericDelay(ref_ant.location, tropospheric_model)
 
         # Now calculate and store public attributes
         self.ant_models = ant_models
@@ -126,6 +136,10 @@ class DelayCorrection:
         self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
         self.locations = np.stack([Antenna(ref_ant, delay_model=dm).location
                                    for dm in ant_models.values()] + [ref_ant.location])
+
+    @property
+    def tropospheric_model(self):
+        return self._tropospheric_delay.model_id if self._tropospheric_delay else 'None'
 
     @property
     @u.quantity_input
@@ -145,27 +159,41 @@ class DelayCorrection:
         descr = {'ref_ant': self.ref_ant.description,
                  'sky_centre_freq': self.sky_centre_freq.to_value(u.Hz),
                  'extra_correction': self.extra_correction.to_value(u.s),
+                 'tropospheric_model': self.tropospheric_model,
                  'ant_models': {ant: model.description
                                 for ant, model in self.ant_models.items()}}
         return json.dumps(descr, sort_keys=True)
 
-    @u.quantity_input
-    def delays(self, target, timestamp, offset=None) -> u.s:
+    _DELAY_PARAMETERS_DOCSTRING = """
+        Parameters
+        ----------
+        target : :class:`Target`
+            Target providing direction for geometric delays
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
+            Timestamp(s) when wavefront from target passes reference position, shape T
+        offset : dict, optional
+            Keyword arguments for :meth:`Target.plane_to_sphere` to offset
+            delay centre relative to target (see method for details)
+        pressure : :class:`~astropy.units.Quantity`, optional
+            Total barometric pressure at surface, broadcastable to shape (A, prod(T))
+        temperature : :class:`~astropy.units.Quantity`, optional
+            Ambient air temperature at surface, broadcastable to shape (A, prod(T))
+        relative_humidity : :class:`~astropy.units.Quantity` or array-like, optional
+            Relative humidity at surface, as a fraction in range [0, 1],
+            broadcastable to shape (A, prod(T))
+        """.strip()
+
+    @u.quantity_input(equivalencies=u.temperature())
+    def delays(self, target, timestamp, offset=None,
+               pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = 0 * u.deg_C,
+               relative_humidity: u.dimensionless_unscaled = 0) -> u.s:
         """Calculate delays for all timestamps and inputs for a given target.
 
         These delays include all geometric effects (also non-intersecting axis
         offsets) and known fixed/cable delays, but not the :attr:`extra_correction`
         needed to make delay corrections strictly positive.
 
-        Parameters
-        ----------
-        target : :class:`Target`
-            Target providing direction for geometric delays
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, shape T
-            Timestamp(s) when wavefront from target passes reference position
-        offset : dict, optional
-            Keyword arguments for :meth:`Target.plane_to_sphere` to offset
-            delay centre relative to target (see method for details)
+        {Parameters}
 
         Returns
         -------
@@ -201,23 +229,28 @@ class DelayCorrection:
             else:
                 az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
         # Elevations of antennas proper, shape (A, prod(T))
-        elevations = el[:-1]
+        elevations = el[:-1] * u.rad
         # Obtain target direction as seen from reference location => shape (3, prod(T))
         target_dir = np.array(azel_to_enu(az[-1], el[-1]))
         # Split up delay model parameters into constituent parts (unit = seconds)
         enu_offset = self._params[:, :3]  # shape (A, 3)
         fixed_path_length = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
-        # Combine all delays per antenna (geometric, NIAO) => shape (A, prod(T))
+        # Combine all delays per antenna (geometric, NIAO, troposphere) => shape (A, prod(T))
         ant_delays = enu_offset @ -target_dir
         ant_delays -= niao * np.cos(elevations)
+        if self._tropospheric_delay:
+            ant_delays += self._tropospheric_delay(pressure, temperature, relative_humidity,
+                                                   elevations, time[:-1])
         # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
         input_delays = np.stack([ant_delays, ant_delays], axis=1)
         input_delays += fixed_path_length[..., np.newaxis]
         # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
         return input_delays.reshape((-1,) + T)
 
-    def corrections(self, target, timestamp=None, offset=None):
+    def corrections(self, target, timestamp=None, offset=None,
+                    pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = 0 * u.deg_C,
+                    relative_humidity: u.dimensionless_unscaled = 0):
         """Delay and phase corrections for a given target and timestamp(s).
 
         Calculate delay and phase corrections for the direction towards
@@ -227,15 +260,7 @@ class DelayCorrection:
         respectively). The derivatives allow linear interpolation of delay
         and phase if a sequence of timestamps is provided.
 
-        Parameters
-        ----------
-        target : :class:`Target`
-            Target providing direction for geometric delays
-        timestamp : :class:`Timestamp` or equivalent, shape T, optional
-            Timestamp(s) when delays are evaluated (default is now)
-        offset : dict, optional
-            Keyword arguments for :meth:`Target.plane_to_sphere` to offset
-            delay centre relative to target (see method for details)
+        {Parameters}
 
         Returns
         -------
@@ -258,7 +283,7 @@ class DelayCorrection:
         # XXX Astropy 4.2 supports np.atleast_1d(time)
         if time.isscalar:
             time = time[np.newaxis]
-        delays = self.delays(target, time, offset)
+        delays = self.delays(target, time, offset, pressure, temperature, relative_humidity)
         delay_corrections = self.extra_correction - delays
         # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
         turns = (self.sky_centre_freq * delays).decompose()
@@ -275,3 +300,6 @@ class DelayCorrection:
             dict(zip(self.inputs, delay_rate_corrections)),
             dict(zip(self.inputs, fringe_rate_corrections)),
         )
+
+    delays.__doc__ = delays.__doc__.format(Parameters=_DELAY_PARAMETERS_DOCSTRING)
+    corrections.__doc__ = corrections.__doc__.format(Parameters=_DELAY_PARAMETERS_DOCSTRING)

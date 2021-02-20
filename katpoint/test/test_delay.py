@@ -106,6 +106,7 @@ class TestDelayCorrection:
         del older_dict['extra_correction']
         delays6 = katpoint.DelayCorrection(json.dumps(older_dict))
         assert delays6.extra_correction == self.delays.extra_correction
+        assert self.delays.tropospheric_model == 'None'
         del older_dict['extra_delay']
         with pytest.raises(KeyError):
             katpoint.DelayCorrection(json.dumps(older_dict))
@@ -191,34 +192,72 @@ class TestDelayCorrection:
 
 
 TARGET = katpoint.Target('J1939-6342, radec, 19:39:25.03, -63:42:45.6')
-DELAY_MODEL = {'ref_ant': 'array, -30:42:39.8, 21:26:38, 1086.6, 0',
-               'extra_correction': 0.0, 'sky_centre_freq': 1284000000.0}
+DELAY_MODEL = dict(ref_ant='array, -30:42:39.8, 21:26:38, 1086.6, 0',
+                   extra_correction=0.0, sky_centre_freq=1284000000.0,
+                   tropospheric_model='SaastamoinenZenithDelay-GlobalMappingFunction')
+ANT_MODELS = dict(m048='-2805.653 2686.863 -9.7545 0 0 1.2',
+                  m058='2805.764 2686.873 -3.6595 0 0 1',
+                  s0121='-3545.28803 -10207.44399 -9.18584 0 0 2')
+WEATHER = dict(temperature=20 * u.deg_C, pressure=1000 * u.mbar, relative_humidity=0.5)
+
+
+def test_tropospheric_delay():
+    model = dict(ant_models=ANT_MODELS, **DELAY_MODEL)
+    dc = katpoint.DelayCorrection(json.dumps(model))
+    tropospheric_delay = katpoint.refraction.TroposphericDelay(dc.locations[-1])
+    elevation = 15 * u.deg
+    target = katpoint.construct_azel_target(0, elevation.to_value(u.rad))
+    ts = katpoint.Timestamp(1605646800.0).time
+    expected_delay = tropospheric_delay(elevation=elevation, timestamp=ts, **WEATHER)
+    delay = dc.delays(target, ts, **WEATHER) - dc.delays(target, ts)
+    assert np.allclose(delay, expected_delay, rtol=0, atol=1e-8 * u.ps)
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize(
     # Check minimum error with min_diff for now, to detect improvements to delay model
-    "times,ant_models,min_diff,max_diff",
+    "times,ant_models,min_enu_diff,max_enu_diff",
     [
         (1605646800.0 + np.linspace(0, 86400, 9),
          {'m063': '-3419.5845 -1840.48 16.3825 0 0 1'}, 14 * u.ps, 16 * u.ps),
-        (1571219913.0 + np.arange(0, 54000, 6000),
-         {'m048': '-2805.653 2686.863 -9.7545 0 0 1.2',
-          'm058': '2805.764 2686.873 -3.6595 0 0 1',
-          's0121': '-3545.28803 -10207.44399 -9.18584 0 0 2'}, 12 * u.ps, 16 * u.ps),
+        (1571219913.0 + np.arange(0, 54000, 6000), ANT_MODELS, 12 * u.ps, 16 * u.ps),
     ]
 )
-def test_against_calc(times, ant_models, min_diff, max_diff):
+def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
     times = katpoint.Timestamp(times)
+    # Check the basic geometric contribution of ENU baselines, without NIAO or troposphere
+    model_enu = dict(ant_models={k: ' '.join(v.split()[:3]) for k, v in ant_models.items()},
+                     **DELAY_MODEL)
+    model_enu['tropospheric_model'] = 'None'
+    dc = katpoint.DelayCorrection(json.dumps(model_enu))
+    enu_delay = dc.delays(TARGET, times)[::2]
+    expected_enu_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1]).T
+    abs_diff = np.abs(enu_delay - expected_enu_delay)
+    np.testing.assert_array_equal(abs_diff, np.clip(abs_diff, min_enu_diff, max_enu_diff))
+
+    # Check the NIAO contribution independent of geometric and tropospheric contributions
     model = dict(ant_models=ant_models, **DELAY_MODEL)
+    model['tropospheric_model'] = 'None'
     dc = katpoint.DelayCorrection(json.dumps(model))
     # Vector of axis offsets per antenna
     niao = np.array([dm['NIAO'] for dm in dc.ant_models.values()]) * u.m
     delay = dc.delays(TARGET, times)[::2]
     expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1],
                           axis_offset=niao).T
-    abs_diff = np.abs(delay - expected_delay)
-    np.testing.assert_array_equal(abs_diff, np.clip(abs_diff, min_diff, max_diff))
+    niao_delay = delay - enu_delay
+    expected_niao_delay = expected_delay - expected_enu_delay
+    assert np.allclose(niao_delay, expected_niao_delay, rtol=0, atol=0.005 * u.ps)
+
+    # Check the tropospheric contribution independent of geometric or NIAO contributions
+    model_tropo = model_enu.copy()
+    model_tropo['tropospheric_model'] = DELAY_MODEL['tropospheric_model']
+    dc = katpoint.DelayCorrection(json.dumps(model_tropo))
+    delay = dc.delays(TARGET, times, **WEATHER)[::2]
+    expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time,
+                          dc.locations[-1], **WEATHER).T
+    tropo_delay = delay - enu_delay
+    expected_tropo_delay = expected_delay - expected_enu_delay
+    assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=5 * u.ps)
 
 
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
