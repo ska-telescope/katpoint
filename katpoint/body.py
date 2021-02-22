@@ -125,7 +125,9 @@ class Body:
         obstime : :class:`~astropy.time.Time`
             The time of observation
         location : :class:`~astropy.coordinates.EarthLocation`, optional
-            The location of the observer on the Earth
+            The location of the observer on the Earth. If not provided,
+            take it from `frame` or the body itself, or fall back to the
+            centre of the Earth if possible.
         to_celestial_sphere : bool, optional
             Project the body onto the topocentric celestial sphere
             before transforming to `frame`. This is useful to get
@@ -136,6 +138,11 @@ class Body:
         coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
                 :class:`~astropy.coordinates.SkyCoord`
             The computed coordinates as a new object
+
+        Raises
+        ------
+        ValueError
+            If `location` is needed but not provided (e.g. for AltAz)
         """
         raise NotImplementedError
 

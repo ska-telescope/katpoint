@@ -238,7 +238,7 @@ def test_astropy_broadcasting(description):
     expected_shape = (2 * len(ant_models),) + times.time.shape
     delay = dc.delays(target, times)
     assert delay.shape == expected_shape
-    # An (ra, dec) offset tests additional coordinate transformation paths
+    # Do a basic null offset check to verify additional coordinate transformation paths
     offset = dict(x=0.0, y=0.0, projection_type='TAN', coord_system='radec')
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)
     offset = dict(x=0.0, y=0.0, projection_type='STG', coord_system='azel')

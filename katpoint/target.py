@@ -374,17 +374,18 @@ class Target:
             If no antenna is specified and body type requires it for (ra, dec)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        # XXX Astropy 4.2: This should really be TETE for the benefit of parallactic_angle
+        # XXX This is a bit of mess... Consider going to TETE
+        # for the traditional geocentric apparent place or remove entirely
         return self.body.compute(CIRS(obstime=time), obstime=time, location=location,
                                  to_celestial_sphere=True)
 
     def astrometric_radec(self, timestamp=None, antenna=None):
         """Calculate target's astrometric (ra, dec) coordinates as seen from antenna at time(s).
 
-        This calculates the ICRS *astrometric barycentric position* of the
+        This calculates the ICRS *astrometric topocentric position* of the
         target, in equatorial coordinates. This is its star atlas position for
-        the epoch of J2000, as seen from the Solar System barycentre (also
-        called "catalog coordinates" in SOFA).
+        the epoch of J2000, as seen from the antenna (also called "catalog
+        coordinates" in SOFA).
 
         Parameters
         ----------
@@ -414,8 +415,9 @@ class Target:
         """Calculate target's galactic (l, b) coordinates as seen from antenna at time(s).
 
         This calculates the galactic coordinates of the target, based on the
-        ICRS *astrometric barycentric* coordinates. This is its position
-        relative to the `Galactic` frame for the epoch of J2000.
+        ICRS *astrometric topocentric* coordinates. This is its position
+        relative to the `Galactic` frame for the epoch of J2000 as seen from
+        the antenna.
 
         Parameters
         ----------
