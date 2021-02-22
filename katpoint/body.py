@@ -21,7 +21,7 @@ import re
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME,
+from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, ITRS, EarthLocation,
                                  solar_system_ephemeris, get_body, UnitSphericalRepresentation,
                                  CartesianDifferential, CartesianRepresentation)
 from sgp4.api import Satrec, WGS72
@@ -137,24 +137,20 @@ class Body:
                 :class:`~astropy.coordinates.SkyCoord`
             The computed coordinates as a new object
         """
-        if not to_celestial_sphere:
-            return self._compute(frame, obstime, location)
-        topocentre = AltAz(obstime=obstime, location=location)
-        altaz = self._compute(topocentre, obstime, location)
-        self._check_location(altaz)
-        # Discard distance from observer as well as differentials
-        no_distance = altaz.represent_as(UnitSphericalRepresentation,
-                                         s=None, in_frame_units=True)
-        just_altaz = altaz.realize_frame(no_distance)
-        return just_altaz.transform_to(frame)
-
-
-    def _compute(self, frame, obstime, location):
-        """Compute the coordinates of the body in the requested frame.
-
-        This implements the actual frame transformation for the specific body.
-        """
         raise NotImplementedError
+
+
+def _to_celestial_sphere(coord, obstime, location=None):
+    """Turn `coord` into ITRS direction vector relative to `location` at `obstime`."""
+    # Default to the centre of the Earth
+    if location is None:
+        location = EarthLocation.from_geocentric(0, 0, 0, unit=u.m)
+    body_itrs = coord.transform_to(ITRS(obstime=obstime))
+    location_itrs = location.get_itrs(obstime)
+    topocentric_body_itrs = body_itrs.data.without_differentials() - location_itrs.data
+    # Discard distance from observer (as well as differentials in previous step)
+    direction_itrs = topocentric_body_itrs.represent_as(UnitSphericalRepresentation)
+    return body_itrs.realize_frame(direction_itrs)
 
 
 class FixedBody(Body):
@@ -192,13 +188,9 @@ class FixedBody(Body):
         return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
                                    icrs.dec.to_string(sep=':', unit=u.deg))
 
-    def compute(self, frame, obstime=None, location=None, to_celestial_sphere=False):
+    def compute(self, frame, obstime=None, location=None, to_celestial_sphere=True):
         """Compute the coordinates of the fixed body in the requested frame."""
         # Ignore `to_celestial_sphere` setting since we are already on the celestial sphere :-)
-        return self._compute(frame, obstime, location)
-
-    def _compute(self, frame, obstime, location):
-        """Compute the coordinates of the fixed body in the requested frame."""
         Body._check_location(frame)
         # If obstime is array-valued and not contained in the output frame, the transform
         # will return a scalar SkyCoord. Repeat the value to match obstime shape instead.
@@ -225,11 +217,13 @@ class SolarSystemBody(Body):
                              .format(name.lower(), solar_system_ephemeris.bodies))
         super().__init__(name)
 
-    def _compute(self, frame, obstime, location):
+    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body for given time and location and transform to `frame`."""
         Body._check_location(frame)
-        gcrs = get_body(self.name, obstime, location)
-        return gcrs.transform_to(frame)
+        coord = get_body(self.name, obstime, location)
+        if to_celestial_sphere:
+            coord = _to_celestial_sphere(coord, obstime, location)
+        return coord.transform_to(frame)
 
 
 def _edb_to_time(edb_epoch):
@@ -382,7 +376,7 @@ class EarthSatelliteBody(Body):
                 f'{mean_anomaly:.8g},{mean_motion:.12g},{orbit_decay:.8g},'
                 f'{orbit_number:d},{drag_coef:.8g}')
 
-    def _compute(self, frame, obstime, location):
+    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body at the given time and transform to `frame`."""
         Body._check_location(frame)
         # Propagate the satellite according to SGP4 model (use array version if possible)
@@ -396,9 +390,11 @@ class EarthSatelliteBody(Body):
         # Represent the position and velocity in the appropriate TEME frame
         teme_p = CartesianRepresentation(r * u.km)
         teme_v = CartesianDifferential(v * (u.km / u.s))
-        teme = TEME(teme_p.with_differentials(teme_v), obstime=obstime)
+        satellite = TEME(teme_p.with_differentials(teme_v), obstime=obstime)
+        if to_celestial_sphere:
+            satellite = _to_celestial_sphere(satellite, obstime, location)
         # Convert to the desired output frame
-        return teme.transform_to(frame)
+        return satellite.transform_to(frame)
 
 
 class StationaryBody(Body):
@@ -422,8 +418,9 @@ class StationaryBody(Body):
                                           self.coord.alt.to_string(sep=':', unit=u.deg))
         super().__init__(name)
 
-    def _compute(self, frame, obstime, location):
+    def compute(self, frame, obstime, location=None, to_celestial_sphere=True):
         """Transform (az, el) at given location and time to requested `frame`."""
+        # Ignore `to_celestial_sphere` setting since we are already on the celestial sphere :-)
         # Ensure that coordinates have same shape as obstime (broadcasting fails)
         altaz = self.coord.take(np.zeros_like(obstime, dtype=int))
         altaz = altaz.replicate(obstime=obstime, location=location)
