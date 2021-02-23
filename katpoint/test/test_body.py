@@ -25,8 +25,8 @@ import pytest
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Angle
-
-from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, to_angle
+from katpoint.body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
+                           StationaryBody, to_angle)
 from katpoint.test.helper import check_separation
 
 try:
@@ -54,9 +54,9 @@ def test_angle_from_hours(angle, angle_hour):
     assert to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
 
 
-def _get_fixed_body(ra_str, dec_str):
+def _get_fixed_body(ra_str, dec_str, distance=None):
     return FixedBody('name', SkyCoord(ra=Angle(ra_str, unit=u.hour),
-                                      dec=Angle(dec_str, unit=u.deg)))
+                                      dec=Angle(dec_str, unit=u.deg), distance=distance))
 
 
 TLE_NAME = 'GPS BIIA-21 (PRN 09)'
@@ -81,6 +81,9 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
          '10:10:40.123h', '40:20:50.567d', '326:05:57.541d', '51:21:20.0119d', 1 * u.mas),
         # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
         # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
+        (_get_fixed_body('10:10:40.123', '40:20:50.567', 0 * u.m), '2020-01-01 00:00:00.000',
+         '18:43:01.1394h', '-23:04:13.1085d', '111:27:59.7729d', '-13:52:32.0916d', 1 * u.mas),
+        # Adding a distance of 0 m takes us to the barycentre, so way different (ra, dec)
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
          '15:43:47.3413h', '-19:23:08.1339d', '118:10:05.1121d', '27:23:12.8454d', 1 * u.mas),
         # 15:43:47.22       -19:23:07.0        118:10:06.1d       27:23:13.3d  (PyEphem)
@@ -96,16 +99,23 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
         (EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
          '3:32:57.9297h', '-2:04:31.8995d', TLE_AZ, TLE_EL, 1 * u.mas),
         # 3:33:00.26       -2:04:32.2  (PyEphem)
+        (StationaryBody('127:15:17.1418', '60:05:10.5475'), '2020-01-01 10:00:00.000',
+         '23:35:44.1259h', '-8:32:55.5218d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
+        # 23:35:44.31       -8:32:55.3        127:15:17.1        60:05:10.5  (PyEphem)
     ]
 )
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
-    """Test compute method"""
+    """Test compute method for the two ends of the coordinate chain."""
     obstime = Time(date_str)
+    # Go to the top of the coordinate chain: astrometric (ra, dec)
     radec = body.compute(ICRS(), obstime, LOCATION, to_celestial_sphere=True)
     check_separation(radec, ra_str, dec_str, tol)
+    # Go to the bottom of the coordinate chain: (az, el)
     altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
     check_separation(altaz, az_str, el_str, tol)
-
+    # Check that astrometric (ra, dec) results in the same (az, el) as a double-check
+    altaz2 = radec.transform_to(AltAz(obstime=obstime, location=LOCATION))
+    check_separation(altaz2, az_str, el_str, 0.2 * tol)
 
 @pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
 def test_earth_satellite_vs_skyfield():

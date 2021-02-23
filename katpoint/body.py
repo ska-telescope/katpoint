@@ -197,7 +197,6 @@ class FixedBody(Body):
 
     def compute(self, frame, obstime=None, location=None, to_celestial_sphere=True):
         """Compute the coordinates of the fixed body in the requested frame."""
-        # Ignore `to_celestial_sphere` setting since we are already on the celestial sphere :-)
         Body._check_location(frame)
         # If obstime is array-valued and not contained in the output frame, the transform
         # will return a scalar SkyCoord. Repeat the value to match obstime shape instead.
@@ -206,6 +205,9 @@ class FixedBody(Body):
             coord = self.coord.take(np.zeros_like(obstime, dtype=int))
         else:
             coord = self.coord
+        # If coordinate is dimensionless, it is already on the celestial sphere
+        if to_celestial_sphere and not coord.data.norm().unit.is_unity():
+            coord = _to_celestial_sphere(coord, obstime, location)
         return coord.transform_to(frame)
 
 
