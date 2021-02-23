@@ -447,7 +447,7 @@ def test_great_conjunction():
     i = iss.radec(timestamp, pentax)
     m = moon.radec(timestamp, pentax)
     # This is a regression test, using separations measured by Astropy 4.1
-    assert np.allclose(j.separation(s), 0.48658589 * u.deg, atol=1 * u.mas)
-    assert np.allclose(j.separation(i), 0.20751171 * u.deg, atol=1 * u.mas)
-    assert np.allclose(i.separation(s), 0.27956242 * u.deg, atol=1 * u.mas)
-    assert np.allclose(m.separation(i), 3.25636362 * u.deg, atol=1 * u.mas)
+    assert np.allclose(j.separation(s), 0.486585894 * u.deg, atol=1 * u.mas)
+    assert np.allclose(j.separation(i), 0.213263750 * u.deg, atol=1 * u.mas)
+    assert np.allclose(i.separation(s), 0.275048584 * u.deg, atol=1 * u.mas)
+    assert np.allclose(m.separation(i), 3.262286586 * u.deg, atol=1 * u.mas)

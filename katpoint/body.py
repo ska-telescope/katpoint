@@ -21,7 +21,7 @@ import re
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, ITRS, EarthLocation,
+from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS,
                                  solar_system_ephemeris, get_body, UnitSphericalRepresentation,
                                  CartesianDifferential, CartesianRepresentation)
 from sgp4.api import Satrec, WGS72
@@ -148,16 +148,18 @@ class Body:
 
 
 def _to_celestial_sphere(coord, obstime, location=None):
-    """Turn `coord` into ITRS direction vector relative to `location` at `obstime`."""
-    # Default to the centre of the Earth
+    """Turn `coord` into GCRS direction vector relative to `location` at `obstime`."""
+    # Use `location`, `coord.location` or the centre of the Earth
     if location is None:
-        location = EarthLocation.from_geocentric(0, 0, 0, unit=u.m)
-    body_itrs = coord.transform_to(ITRS(obstime=obstime))
-    location_itrs = location.get_itrs(obstime)
-    topocentric_body_itrs = body_itrs.data.without_differentials() - location_itrs.data
-    # Discard distance from observer (as well as differentials in previous step)
-    direction_itrs = topocentric_body_itrs.represent_as(UnitSphericalRepresentation)
-    return body_itrs.realize_frame(direction_itrs)
+        location = getattr(coord, 'location', None)
+    if location is None:
+        obsgeoloc, obsgeovel = None, None
+    else:
+        obsgeoloc, obsgeovel = location.get_gcrs_posvel(obstime)
+    # Get to topocentric GCRS
+    gcrs = coord.transform_to(GCRS(obstime=obstime, obsgeoloc=obsgeoloc, obsgeovel=obsgeovel))
+    # Discard distance from observer as well as any differentials
+    return gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation, s=None))
 
 
 class FixedBody(Body):
@@ -229,10 +231,11 @@ class SolarSystemBody(Body):
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body for given time and location and transform to `frame`."""
         Body._check_location(frame)
-        coord = get_body(self.name, obstime, location)
+        gcrs = get_body(self.name, obstime, location)
         if to_celestial_sphere:
-            coord = _to_celestial_sphere(coord, obstime, location)
-        return coord.transform_to(frame)
+            # Discard distance from observer
+            gcrs = gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation))
+        return gcrs.transform_to(frame)
 
 
 def _edb_to_time(edb_epoch):
