@@ -18,11 +18,13 @@
 
 import json
 from io import StringIO
+from distutils.version import LooseVersion
 
 import pytest
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import Angle
+from astropy import __version__ as astropy_version
 
 import katpoint
 
@@ -240,6 +242,10 @@ def test_astropy_broadcasting(description):
     assert delay.shape == expected_shape
     # Do a basic null offset check to verify additional coordinate transformation paths
     offset = dict(x=0.0, y=0.0, projection_type='TAN', coord_system='radec')
-    assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)
+    # XXX Astropy < 4.3 has AltAz errors on nearby objects (see astropy/astropy#10994).
+    # Since delays are based on (az, el), `delay` is actually out by 20 ps on the Moon
+    # and 80 ps on the GPS satellite, and the radec offset delay is correct...
+    tol = 0.0001 * u.ps if LooseVersion(astropy_version) >= '4.3' else 100 * u.ps
+    assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=tol)
     offset = dict(x=0.0, y=0.0, projection_type='STG', coord_system='azel')
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)

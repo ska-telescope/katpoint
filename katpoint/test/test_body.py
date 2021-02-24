@@ -21,9 +21,12 @@ pyephem package.
 
 """
 
+from distutils.version import LooseVersion
+
 import pytest
 import astropy.units as u
 from astropy.time import Time
+from astropy import __version__ as astropy_version
 from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Angle
 from katpoint.body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
                            StationaryBody, to_angle)
@@ -84,22 +87,22 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
         # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
         # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
         (_get_fixed_body('10:10:40.123', '40:20:50.567', 0 * u.m), '2020-01-01 00:00:00.000',
-         '18:43:01.1355h', '-23:04:13.1204d', '111:27:59.773d', '-13:52:32.0914d', 1 * u.mas),
+         '18:43:01.1355h', '-23:04:13.1204d', '111:27:59.773d', '-13:52:32.0914d', 60 * u.mas),
         # A distance of 0 m takes us to the barycentre, so way different (ra, dec); cf. Sun below
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
          '15:43:47.3413h', '-19:23:08.1338d', '118:10:05.112d', '27:23:12.8455d', 1 * u.mas),
         # 15:43:47.22       -19:23:07.0        118:10:06.1d       27:23:13.3d  (PyEphem)
         (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
-         '23:35:44.1395h', '-8:32:55.5551d', '127:15:16.9489d', '60:05:10.3679d', 1 * u.mas),
+         '23:35:44.1395h', '-8:32:55.5551d', '127:15:16.9489d', '60:05:10.3679d', 220 * u.mas),
         # 23:34:17.02       -8:16:33.4        127:15:23.6d       60:05:13.7d  (PyEphem)
         # The Moon radec differs by quite a bit (16') because PyEphem's astrometric radec is
         # geocentric while katpoint's version is topocentric (FWIW, Skyfield has both).
         # Katpoint's geocentric astrometric radec is 23:34:17.5082, -8:16:28.6389.
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
-         '18:44:13.362h', '-23:02:54.8156d', '234:53:19.4761d', '31:38:11.4251d', 1 * u.mas),
+         '18:44:13.362h', '-23:02:54.8156d', '234:53:19.4761d', '31:38:11.4251d', 160 * u.mas),
         # 18:44:13.84       -23:02:51.2        234:53:20.8d       31:38:09.4d  (PyEphem)
         (EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
-         '3:32:58.1741h', '-2:04:30.0658d', TLE_AZ, TLE_EL, 1 * u.mas),
+         '3:32:58.1741h', '-2:04:30.0658d', TLE_AZ, TLE_EL, 4200 * u.mas),
         # 3:33:00.26       -2:04:32.2  (PyEphem)
         (StationaryBody('127:15:17.1418', '60:05:10.5475'), '2020-01-01 10:00:00.000',
          '23:35:44.1259h', '-8:32:55.5217d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
@@ -109,15 +112,19 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     """Test compute method for the two ends of the coordinate chain."""
     obstime = Time(date_str)
+    if LooseVersion(astropy_version) >= '4.3':
+        tol = 1 * u.mas
     # Go to the bottom of the coordinate chain: (az, el)
     altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
     check_separation(altaz, az_str, el_str, tol)
     # Go to the top of the coordinate chain: astrometric (ra, dec)
     radec = body.compute(ICRS(), obstime, LOCATION, to_celestial_sphere=True)
-    check_separation(radec, ra_str, dec_str, tol)
+    check_separation(radec, ra_str, dec_str, 1 * u.mas)
     # Check that astrometric (ra, dec) results in the same (az, el) as a double-check
     altaz2 = radec.transform_to(AltAz(obstime=obstime, location=LOCATION))
-    check_separation(altaz2, az_str, el_str, 0.05 * tol)
+    if LooseVersion(astropy_version) >= '4.3':
+        tol *= 0.05
+    check_separation(altaz2, az_str, el_str, tol)
 
 @pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
 def test_earth_satellite_vs_skyfield():
