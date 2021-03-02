@@ -149,7 +149,7 @@ class Body:
 
 def _to_celestial_sphere(coord, obstime, location=None):
     """Turn `coord` into GCRS direction vector relative to `location` at `obstime`."""
-    # Use `location`, `coord.location` or the centre of the Earth
+    # Use `location`, `coord.location` or the centre of the Earth (i.e. geocentric GCRS)
     if location is None:
         location = getattr(coord, 'location', None)
     if location is None:
@@ -158,7 +158,7 @@ def _to_celestial_sphere(coord, obstime, location=None):
         obsgeoloc, obsgeovel = location.get_gcrs_posvel(obstime)
     # Get to topocentric GCRS
     gcrs = coord.transform_to(GCRS(obstime=obstime, obsgeoloc=obsgeoloc, obsgeovel=obsgeovel))
-    # Discard distance from observer as well as any differentials
+    # Discard distance from observer as well as any differentials (needed for EarthSatelliteBody)
     return gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation, s=None))
 
 
@@ -208,7 +208,9 @@ class FixedBody(Body):
         else:
             coord = self.coord
         # If coordinate is dimensionless, it is already on the celestial sphere
-        if to_celestial_sphere and not coord.data.norm().unit.is_unity():
+        is_unitspherical = (isinstance(coord.data, UnitSphericalRepresentation) or
+                            coord.cartesian.x.unit == u.one)
+        if to_celestial_sphere and not is_unitspherical:
             coord = _to_celestial_sphere(coord, obstime, location)
         return coord.transform_to(frame)
 

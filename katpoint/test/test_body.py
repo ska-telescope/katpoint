@@ -66,12 +66,12 @@ TLE_NAME = 'GPS BIIA-21 (PRN 09)'
 TLE_LINE1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
 TLE_LINE2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
 TLE_TS = '2019-09-23 07:45:36.000'
-TLE_AZ = '280:32:29.6594d'
+TLE_AZ = '280:32:29.6594d'  # Astropy 4.3
 # 1.      280:32:28.6175   Skyfield 1.37 (3.7" error)
 # 2.      280:32:28.1892   Astropy 4.1 (4.1" error)
 # 3.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (5.3" error)
 # 4.      280:32:07.2      PyEphem 3.7.7.0 (33.7" error)
-TLE_EL = '-54:06:29.1898d'
+TLE_EL = '-54:06:29.1898d'  # Astropy 4.3
 # 1.      -54:06:32.8635   Skyfield 1.37
 # 2.      -54:06:33.1950   Astropy 4.1
 # 3.      -54:06:34.5473   Astropy 4.0.1 + PyOrbital for TEME
@@ -79,6 +79,9 @@ TLE_EL = '-54:06:29.1898d'
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 
 
+# All reference coordinate values below are based on Astropy 4.3 with astropy/astropy#10994
+# (topocentric CIRS). This PR improved (az, el) for nearby objects, and their tolerances are
+# adjusted so that the tests still pass on Astropy 4.1.
 @pytest.mark.parametrize(
     "body, date_str, ra_str, dec_str, az_str, el_str, tol",
     [
@@ -110,8 +113,9 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
     ]
 )
 def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
-    """Test compute method for the two ends of the coordinate chain."""
+    """Test `body.compute()` for the two ends of the coordinate chain."""
     obstime = Time(date_str)
+    # Tighten the (az, el) tolerance if we have topocentric CIRS (first added in Astropy 4.3)
     if LooseVersion(astropy_version) >= '4.3':
         tol = 1 * u.mas
     # Go to the bottom of the coordinate chain: (az, el)
@@ -123,7 +127,7 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
     # Check that astrometric (ra, dec) results in the same (az, el) as a double-check
     altaz2 = radec.transform_to(AltAz(obstime=obstime, location=LOCATION))
     if LooseVersion(astropy_version) >= '4.3':
-        tol *= 0.05
+        tol = 0.05 * u.mas
     check_separation(altaz2, az_str, el_str, tol)
 
 @pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
