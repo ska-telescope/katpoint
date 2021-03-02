@@ -197,7 +197,7 @@ class FixedBody(Body):
         return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
                                    icrs.dec.to_string(sep=':', unit=u.deg))
 
-    def compute(self, frame, obstime=None, location=None, to_celestial_sphere=True):
+    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Compute the coordinates of the fixed body in the requested frame."""
         Body._check_location(frame)
         # If obstime is array-valued and not contained in the output frame, the transform
@@ -430,7 +430,7 @@ class StationaryBody(Body):
                                           self.coord.alt.to_string(sep=':', unit=u.deg))
         super().__init__(name)
 
-    def compute(self, frame, obstime, location=None, to_celestial_sphere=True):
+    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Transform (az, el) at given location and time to requested `frame`."""
         # Ignore `to_celestial_sphere` setting since we are already on the celestial sphere :-)
         # Ensure that coordinates have same shape as obstime (broadcasting fails)
