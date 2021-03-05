@@ -463,6 +463,6 @@ def test_improved_azel():
     timestamp = katpoint.Timestamp('2020-12-15 17:25:59')
     pentax = katpoint.Antenna('Jellore Lookout NSW, -34.462653, 150.427971, 864')
     azel = ISS.azel(timestamp, pentax)
-    # Check against Astropy 4.3 and relax tolerance for Astropy 4.1
+    # Check against Astropy 4.3 and relax tolerance for older versions
     tol = 1 * u.mas if LooseVersion(astropy_version) >= '4.3' else 4 * u.arcmin
     check_separation(azel, '137.91640267d', '83.42037043d', tol=tol)

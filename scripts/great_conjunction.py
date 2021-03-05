@@ -106,8 +106,8 @@ i_photo_x1, i_photo_y1, i_photo_x2, i_photo_y2 = 584, 875, 251, 753
 origin_pix = np.array([s_photo_x, s_photo_y])
 # Offset of the Moon from Saturn, in pixels
 m_dx, m_dy = m_photo_x - origin_pix[0], m_photo_y - origin_pix[1]
-ruler_deg = np.sqrt(m_lon ** 2 + m_lat ** 2)
-ruler_pix = np.sqrt(m_dx ** 2 + m_dy ** 2)
+ruler_deg = np.hypot(m_lon, m_lat)
+ruler_pix = np.hypot(m_dx, m_dy)
 scale = ruler_pix / ruler_deg
 # Flip the y axis because image coordinates run from top to bottom
 Fy = np.array([[1., 0.], [0., -1.]])

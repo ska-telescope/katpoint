@@ -474,7 +474,9 @@ class Target:
         .. _`AIPS++ Glossary`: http://www.astron.nl/aips++/docs/glossary/p.html
         .. _`Starlink Project`: http://www.starlink.rl.ac.uk
         """
-        # XXX Hour angle ideally derives from TETE frame, not CIRS
+        # XXX Right ascension and local time should use the same framework:
+        # either CIRS RA and earth rotation angle, or
+        # TETE RA and local sidereal time
         time, location = self._astropy_funnel(timestamp, antenna)
         antenna = self._valid_antenna(antenna)
         # Get apparent hour angle and declination
