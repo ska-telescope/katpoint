@@ -18,11 +18,13 @@
 
 import pickle
 from contextlib import contextmanager
+from distutils.version import LooseVersion
 
 import numpy as np
 import pytest
 import astropy.units as u
 from astropy.coordinates import Angle
+from astropy import __version__ as astropy_version
 
 import katpoint
 from katpoint.test.helper import check_separation
@@ -424,3 +426,43 @@ def test_earth_location():
     _ant_vs_location(lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[1])
     _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[0])
     _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[1])
+
+
+# TLE for ISS on 2020-12-17
+ISS = katpoint.Target('ISS (ZARYA), tle,'
+                      '1 25544U 98067A   20351.71912775  .00000900  00000-0  24328-4 0  9992,'
+                      '2 25544  51.6442 165.2978 0001589 133.0028 320.9621 15.49190988260311')
+
+
+def test_great_conjunction():
+    """Use the Great Conjunction to test astrometric (ra, dec) for different bodies."""
+    # Recreate Jason de Freitas's observation of the ISS passing between Jupiter and Saturn, based on
+    # https://petapixel.com/2020/12/22/photographer-captures-iss-passing-between-jupiter-and-saturn/
+    # The altitude is above sea level instead of WGS84, but should be close enough.
+    pentax = katpoint.Antenna('Jellore Lookout NSW, -34.462653, 150.427971, 864')
+    # The photo was taken "at around 9:54pm". Australian Eastern Daylight Time (AEDT)
+    # is 11 hours ahead of UTC => therefore around 10:54 UTC
+    timestamp = katpoint.Timestamp('2020-12-17 10:53:10')
+    jupiter = katpoint.Target('Jupiter, special')
+    saturn = katpoint.Target('Saturn, special')
+    moon = katpoint.Target('Moon, special')
+    j = jupiter.radec(timestamp, pentax)
+    s = saturn.radec(timestamp, pentax)
+    i = ISS.radec(timestamp, pentax)
+    m = moon.radec(timestamp, pentax)
+    # This is a regression test, using separations as measured by Astropy 4.3 (also valid for 4.1)
+    assert np.allclose(j.separation(s), 0.486585894 * u.deg, atol=1 * u.mas)
+    assert np.allclose(j.separation(i), 0.213263690 * u.deg, atol=1 * u.mas)
+    assert np.allclose(i.separation(s), 0.275048635 * u.deg, atol=1 * u.mas)
+    assert np.allclose(m.separation(i), 3.262286567 * u.deg, atol=1 * u.mas)
+
+
+def test_improved_azel():
+    """Check improved (az, el) for nearby objects due to topocentric CIRS in Astropy 4.3."""
+    # Check a more extreme case where the ISS is close to the observer (433 km)
+    timestamp = katpoint.Timestamp('2020-12-15 17:25:59')
+    pentax = katpoint.Antenna('Jellore Lookout NSW, -34.462653, 150.427971, 864')
+    azel = ISS.azel(timestamp, pentax)
+    # Check against Astropy 4.3 and relax tolerance for older versions
+    tol = 1 * u.mas if LooseVersion(astropy_version) >= '4.3' else 4 * u.arcmin
+    check_separation(azel, '137.91640267d', '83.42037043d', tol=tol)

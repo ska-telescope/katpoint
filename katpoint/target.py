@@ -146,7 +146,7 @@ class Target:
             descr += ', %s %s' % (self.body.coord.az.to_string(unit=u.deg),
                                   self.body.coord.alt.to_string(unit=u.deg))
         if self.body_type == 'gal':
-            gal = self.body.compute(Galactic())
+            gal = self.body.coord.galactic
             descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
         if self.flux_model is None:
             descr += ', no flux info'
@@ -221,7 +221,7 @@ class Target:
             # Check if it's an unnamed target with a default name
             if names.startswith('Galactic l:'):
                 fields = [tags]
-            gal = self.body.compute(Galactic())
+            gal = self.body.coord.galactic
             fields += ['%.4f' % (gal.l.deg,), '%.4f' % (gal.b.deg,)]
             if fluxinfo:
                 fields += [fluxinfo]
@@ -344,7 +344,7 @@ class Target:
         """
         time, location = self._astropy_funnel(timestamp, antenna)
         altaz = AltAz(obstime=time, location=location)
-        return self.body.compute(altaz, obstime=time, location=location)
+        return self.body.compute(altaz, time, location)
 
     def apparent_radec(self, timestamp=None, antenna=None):
         """Calculate target's apparent (ra, dec) coordinates as seen from antenna at time(s).
@@ -374,15 +374,17 @@ class Target:
             If no antenna is specified and body type requires it for (ra, dec)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(CIRS(obstime=time), obstime=time, location=location)
+        # XXX This is a bit of mess... Consider going to TETE
+        # for the traditional geocentric apparent place or remove entirely
+        return self.body.compute(CIRS(obstime=time), time, location, to_celestial_sphere=True)
 
     def astrometric_radec(self, timestamp=None, antenna=None):
         """Calculate target's astrometric (ra, dec) coordinates as seen from antenna at time(s).
 
-        This calculates the ICRS *astrometric barycentric position* of the
+        This calculates the ICRS *astrometric topocentric position* of the
         target, in equatorial coordinates. This is its star atlas position for
-        the epoch of J2000, as seen from the Solar System barycentre (also
-        called "catalog coordinates" in SOFA).
+        the epoch of J2000, as seen from the antenna (also called "catalog
+        coordinates" in SOFA).
 
         Parameters
         ----------
@@ -402,7 +404,7 @@ class Target:
             If no antenna is specified and body type requires it for (ra, dec)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(ICRS(), obstime=time, location=location)
+        return self.body.compute(ICRS(), time, location, to_celestial_sphere=True)
 
     # The default (ra, dec) coordinates are the astrometric ones
     radec = astrometric_radec
@@ -411,8 +413,9 @@ class Target:
         """Calculate target's galactic (l, b) coordinates as seen from antenna at time(s).
 
         This calculates the galactic coordinates of the target, based on the
-        ICRS *astrometric barycentric* coordinates. This is its position
-        relative to the `Galactic` frame for the epoch of J2000.
+        ICRS *astrometric topocentric* coordinates. This is its position
+        relative to the `Galactic` frame for the epoch of J2000 as seen from
+        the antenna.
 
         Parameters
         ----------
@@ -432,7 +435,7 @@ class Target:
             If no antenna is specified and body type requires it for (l, b)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(Galactic(), obstime=time, location=location)
+        return self.body.compute(Galactic(), time, location, to_celestial_sphere=True)
 
     def parallactic_angle(self, timestamp=None, antenna=None):
         """Calculate parallactic angle on target as seen from antenna at time(s).
@@ -471,6 +474,9 @@ class Target:
         .. _`AIPS++ Glossary`: http://www.astron.nl/aips++/docs/glossary/p.html
         .. _`Starlink Project`: http://www.starlink.rl.ac.uk
         """
+        # XXX Right ascension and local time should use the same framework:
+        # either CIRS RA and earth rotation angle, or
+        # TETE RA and local sidereal time
         time, location = self._astropy_funnel(timestamp, antenna)
         antenna = self._valid_antenna(antenna)
         # Get apparent hour angle and declination
