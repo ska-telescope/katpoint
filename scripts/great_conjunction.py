@@ -1,3 +1,21 @@
+#!/usr/bin/env python3
+
+################################################################################
+# Copyright (c) 2021, National Research Foundation (SARAO)
+#
+# Licensed under the BSD 3-Clause License (the "License"); you may not use
+# this file except in compliance with the License. You may obtain a copy
+# of the License at
+#
+#   https://opensource.org/licenses/BSD-3-Clause
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
 #
 # Annotate Jason de Freitas's epic Great Conjunction photograph.
 #
@@ -20,7 +38,7 @@ import matplotlib.image as mpimg
 from matplotlib.patches import Circle
 
 parser = argparse.ArgumentParser(description="Annotate Jason de Freitas's Great Conjunction photograph.")
-parser.add_argument('filename', nargs=1, help='the image filename')
+parser.add_argument('filename', help='the image filename')
 parser.add_argument('--azel', action='store_true', help='use (az, el) instead of (ra, dec)')
 parser.add_argument('--refracted-azel', action='store_true',
                     help='use (az, el) corrected for atmospheric refraction')
@@ -95,9 +113,9 @@ moon_width = (moon_diameter / moon.azel(timestamp, pentax).distance) * u.rad
 
 # Now for the photo parameters, in pixels (estimated in Gimp and refined in Matplotlib)
 photo_width, photo_height, dpi = 845, 1018, 144  # 5.87" x 7.07", very close to 6x7 negative
-j_photo_x, j_photo_y, j_width = 390 + 5, 834 + 5, 11
-s_photo_x, s_photo_y, s_width = 477.5 + 4, 788.2 + 4, 7  # Gimp: 478 + 4, 789 + 4, 7
-m_photo_x, m_photo_y, m_width = 377 + 53, 124.5 + 53, 106  # Gimp: 377 + 53, 125 + 53, 106
+j_photo_x, j_photo_y, j_width = 395, 839, 11
+s_photo_x, s_photo_y, s_width = 481.5, 792.2, 7  # Gimp: 482, 793, 7
+m_photo_x, m_photo_y, m_width = 430, 177.5, 106  # Gimp: 430, 178, 106
 i_photo_x1, i_photo_y1, i_photo_x2, i_photo_y2 = 584, 875, 251, 753
 
 # ALIGNMENT
@@ -117,10 +135,11 @@ scaled_sin = m_lon * (-m_dy) - m_lat * m_dx
 R = np.array([[scaled_cos, -scaled_sin],
               [scaled_sin,  scaled_cos]]) / ruler_pix / ruler_deg
 # Rotate, flip, uniformly scale and translate coordinates to match photo
-jupiter_pix = scale * Fy @ R @ [j_lon, j_lat] + origin_pix
-saturn_pix = scale * Fy @ R @ [s_lon, s_lat] + origin_pix  # same as s_photo_x, s_photo_y
-moon_pix = scale * Fy @ R @ [m_lon, m_lat] + origin_pix   # same as m_photo_x, m_photo_y
-iss_pix = scale * Fy @ R @ [i_lon, i_lat] + origin_pix[:, np.newaxis]
+A = scale * Fy @ R
+jupiter_pix = A @ [j_lon, j_lat] + origin_pix
+saturn_pix = A @ [s_lon, s_lat] + origin_pix  # same as s_photo_x, s_photo_y
+moon_pix = A @ [m_lon, m_lat] + origin_pix   # same as m_photo_x, m_photo_y
+iss_pix = A @ [i_lon, i_lat] + origin_pix[:, np.newaxis]
 moon_radius_pix = 0.5 * moon_width.to_value(u.deg) * scale
 
 # PLOT
@@ -128,7 +147,7 @@ moon_radius_pix = 0.5 * moon_width.to_value(u.deg) * scale
 # Plot photo as an image that fills the figure, with pixel indices as data coordinates
 fig = plt.figure(figsize=(photo_width / dpi, photo_height / dpi), facecolor='k')
 ax = fig.add_axes([0, 0, 1, 1])
-img = mpimg.imread(args.filename[0])
+img = mpimg.imread(args.filename)
 ax.imshow(img, aspect='equal')
 # Annotate the image (red = assumed positions, yellow = estimated from red positions)
 ax.add_patch(Circle(jupiter_pix, radius=20, ec='y', lw=1.5, fc='none'))
