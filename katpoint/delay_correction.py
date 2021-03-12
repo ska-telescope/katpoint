@@ -120,7 +120,7 @@ class DelayCorrection:
         self._params = np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
         # With no antennas, let params still have correct shape
         self._params.shape = (-1, len(DelayModel()))
-        if tropospheric_model == 'None':
+        if tropospheric_model in ('None', None):
             self._tropospheric_delay = None
         else:
             # XXX There should ideally be a TroposphericDelay object per actual antenna
@@ -248,6 +248,7 @@ class DelayCorrection:
         # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
         return input_delays.reshape((-1,) + T)
 
+    @u.quantity_input(equivalencies=u.temperature())
     def corrections(self, target, timestamp=None, offset=None,
                     pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = 0 * u.deg_C,
                     relative_humidity: u.dimensionless_unscaled = 0):

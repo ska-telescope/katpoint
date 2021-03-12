@@ -237,7 +237,7 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
 
     # Check the NIAO contribution independent of geometric and tropospheric contributions
     model = dict(ant_models=ant_models, **DELAY_MODEL)
-    model['tropospheric_model'] = 'None'
+    model['tropospheric_model'] = None
     dc = katpoint.DelayCorrection(json.dumps(model))
     # Vector of axis offsets per antenna
     niao = np.array([dm['NIAO'] for dm in dc.ant_models.values()]) * u.m
