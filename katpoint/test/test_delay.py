@@ -218,7 +218,7 @@ def test_tropospheric_delay():
     # Check minimum error with min_diff for now, to detect improvements to delay model
     "times,ant_models,min_enu_diff,max_enu_diff",
     [
-        (1605646800.0 + np.linspace(0, 86400, 9),
+        (1605680300.0 + np.linspace(0, 50000, 6),  # minimum elevation is 15 degrees
          {'m063': '-3419.5845 -1840.48 16.3825 0 0 1'}, 14 * u.ps, 16 * u.ps),
         (1571219913.0 + np.arange(0, 54000, 6000), ANT_MODELS, 12 * u.ps, 16 * u.ps),
     ]
@@ -257,7 +257,7 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
                           **WEATHER).T
     tropo_delay = delay - enu_delay
     expected_tropo_delay = expected_delay - expected_enu_delay
-    assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=5 * u.ps)
+    assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=0.4 * u.ps)
 
 
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
