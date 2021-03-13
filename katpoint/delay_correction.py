@@ -64,9 +64,10 @@ class DelayCorrection:
         Dict mapping antenna name to corresponding delay model
     inputs : list of str, length *2A*
         List of correlator input labels corresponding to output of :meth:`delays`
-    locations : :class:`~astropy.coordinates.EarthLocation`, shape (A + 1,)
-        Combined locations of *A* antennas and reference antenna (in that order),
-        used to vectorise pointing calculations
+    ant_locations : :class:`~astropy.coordinates.EarthLocation`, shape (A,)
+        Locations of *A* antennas, in the same order as `inputs`
+    ref_location : :class:`~astropy.coordinates.EarthLocation`
+        Location of reference antenna
 
     Raises
     ------
@@ -134,12 +135,23 @@ class DelayCorrection:
         self.extra_correction = 1.01 * self.max_delay \
             if extra_correction is None else extra_correction
         self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
-        self.locations = np.stack([Antenna(ref_ant, delay_model=dm).location
-                                   for dm in ant_models.values()] + [ref_ant.location])
+        self._locations = np.stack([Antenna(ref_ant, delay_model=dm).location
+                                    for dm in ant_models.values()] + [ref_ant.location])
 
     @property
     def tropospheric_model(self):
+        """Unique identifier of tropospheric model, or 'None' for no correction."""
         return self._tropospheric_delay.model_id if self._tropospheric_delay else 'None'
+
+    @property
+    def ant_locations(self):
+        """Locations of *A* antennas, in the same order as `inputs`."""
+        return self._locations[:-1]
+
+    @property
+    def ref_location(self):
+        """Location of reference antenna."""
+        return self._locations[-1]
 
     @property
     @u.quantity_input
@@ -207,9 +219,9 @@ class DelayCorrection:
         # Manually broadcast both time and location to shape (A + 1, prod(T))
         # XXX Astropy 4.2 has proper broadcasting support (at least for obstime)
         time = time.ravel()
-        time_idx, location_idx = np.meshgrid(range(len(time)), range(len(self.locations)))
+        time_idx, location_idx = np.meshgrid(range(len(time)), range(len(self._locations)))
         time = time.take(time_idx)
-        locations = self.locations.take(location_idx)
+        locations = self._locations.take(location_idx)
         # Obtain (az, el) pointings per location and timestamp => shape (A + 1, prod(T))
         if not offset:
             azel = target.azel(time, locations)

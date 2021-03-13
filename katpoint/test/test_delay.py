@@ -79,10 +79,10 @@ class TestDelayCorrection:
         """Test construction of DelayCorrection object."""
         descr = self.delays.description
         assert self.delays.inputs == ['A2h', 'A2v', 'A3h', 'A3v']
-        assert self.delays.locations.shape == (3,), "Locations property has wrong size"
-        assert self.delays.locations[0] == self.ant2.location, "Wrong location for first antenna"
-        assert self.delays.locations[1] == self.ant3.location, "Wrong location for second antenna"
-        assert self.delays.locations[2] == self.ant1.location, "Wrong reference location"
+        assert self.delays.ant_locations.shape == (2,), "Ant_locations property has wrong size"
+        assert self.delays.ant_locations[0] == self.ant2.location, "Wrong location for first antenna"
+        assert self.delays.ant_locations[1] == self.ant3.location, "Wrong location for second antenna"
+        assert self.delays.ref_location == self.ant1.location, "Wrong reference location"
         delays2 = katpoint.DelayCorrection(descr)
         delays_dict = json.loads(descr)
         delays2_dict = json.loads(delays2.description)
@@ -90,7 +90,7 @@ class TestDelayCorrection:
         with pytest.raises(ValueError):
             katpoint.DelayCorrection('')
         delays3 = katpoint.DelayCorrection([], self.ant1)
-        assert delays3.locations.shape == (1,), "Locations property has wrong size"
+        assert delays3.ant_locations.shape == (0,), "Ant_locations property has wrong size"
         d = delays3.delays(self.target1, self.ts + np.arange(3))
         assert d.shape == (0, 3), "Delay correction with no antennas should fail gracefully"
         # Check construction with different antenna reference positions
@@ -204,7 +204,7 @@ WEATHER = dict(temperature=20 * u.deg_C, pressure=1000 * u.mbar, relative_humidi
 def test_tropospheric_delay():
     model = dict(ant_models=ANT_MODELS, **DELAY_MODEL)
     dc = katpoint.DelayCorrection(json.dumps(model))
-    tropospheric_delay = katpoint.refraction.TroposphericDelay(dc.locations[-1])
+    tropospheric_delay = katpoint.refraction.TroposphericDelay(dc.ref_location)
     elevation = 15 * u.deg
     target = katpoint.construct_azel_target(0, elevation.to_value(u.rad))
     ts = katpoint.Timestamp(1605646800.0).time
@@ -231,7 +231,7 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
     model_enu['tropospheric_model'] = 'None'
     dc = katpoint.DelayCorrection(json.dumps(model_enu))
     enu_delay = dc.delays(TARGET, times)[::2]
-    expected_enu_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1]).T
+    expected_enu_delay = calc(dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location).T
     abs_diff = np.abs(enu_delay - expected_enu_delay)
     np.testing.assert_array_equal(abs_diff, np.clip(abs_diff, min_enu_diff, max_enu_diff))
 
@@ -242,7 +242,7 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
     # Vector of axis offsets per antenna
     niao = np.array([dm['NIAO'] for dm in dc.ant_models.values()]) * u.m
     delay = dc.delays(TARGET, times)[::2]
-    expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time, dc.locations[-1],
+    expected_delay = calc(dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location,
                           axis_offset=niao).T
     niao_delay = delay - enu_delay
     expected_niao_delay = expected_delay - expected_enu_delay
@@ -253,8 +253,8 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
     model_tropo['tropospheric_model'] = DELAY_MODEL['tropospheric_model']
     dc = katpoint.DelayCorrection(json.dumps(model_tropo))
     delay = dc.delays(TARGET, times, **WEATHER)[::2]
-    expected_delay = calc(dc.locations[:-1], TARGET.body.coord, times.time,
-                          dc.locations[-1], **WEATHER).T
+    expected_delay = calc(dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location,
+                          **WEATHER).T
     tropo_delay = delay - enu_delay
     expected_tropo_delay = expected_delay - expected_enu_delay
     assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=5 * u.ps)
