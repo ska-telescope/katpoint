@@ -216,14 +216,20 @@ def test_tropospheric_delay():
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize(
     # Check minimum error with min_diff for now, to detect improvements to delay model
-    "times,ant_models,min_enu_diff,max_enu_diff",
+    "times,ant_models,min_enu_diff,max_enu_diff,tropo_atol",
     [
         (1605680300.0 + np.linspace(0, 50000, 6),  # minimum elevation is 15 degrees
-         {'m063': '-3419.5845 -1840.48 16.3825 0 0 1'}, 14 * u.ps, 16 * u.ps),
-        (1571219913.0 + np.arange(0, 54000, 6000), ANT_MODELS, 12 * u.ps, 16 * u.ps),
+         {'m063': '-3419.5 -1840.4 16.3 0 0 1'}, 14 * u.ps, 16 * u.ps, 0.4 * u.ps),
+        # Check tropospheric delays at 5 degrees elevation. The main difference is the
+        # TroposphericDelay location which is m063 for Calc and refant for katpoint.
+        (1605668400.0, {'m063': '-3419.5 -1840.4 16.3'}, 14 * u.ps, 16 * u.ps, 5 * u.ps),
+        # Let the two antennas be the same, and the tropospheric results are much closer
+        (1605668400.0, {'ref': ''}, 0 * u.ps, 1e-8 * u.ps, 0.4 * u.ps),
+        (1571219913.0 + np.arange(0, 54000, 6000),
+         ANT_MODELS, 12 * u.ps, 16 * u.ps, 0.4 * u.ps),
     ]
 )
-def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
+def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff, tropo_atol):
     times = katpoint.Timestamp(times)
     # Check the basic geometric contribution of ENU baselines, without NIAO or troposphere
     model_enu = dict(ant_models={k: ' '.join(v.split()[:3]) for k, v in ant_models.items()},
@@ -257,7 +263,7 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff):
                           **WEATHER).T
     tropo_delay = delay - enu_delay
     expected_tropo_delay = expected_delay - expected_enu_delay
-    assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=0.4 * u.ps)
+    assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=tropo_atol)
 
 
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
