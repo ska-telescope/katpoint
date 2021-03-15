@@ -33,6 +33,9 @@ from .timestamp import Timestamp
 from .refraction import TroposphericDelay
 
 
+NO_TEMPERATURE = -300 * u.deg_C  # used as default parameter, akin to None
+
+
 class DelayCorrection:
     """Calculate delay corrections for a set of correlator inputs / antennas.
 
@@ -189,7 +192,8 @@ class DelayCorrection:
         pressure : :class:`~astropy.units.Quantity`, optional
             Total barometric pressure at surface, broadcastable to shape (A, prod(T))
         temperature : :class:`~astropy.units.Quantity`, optional
-            Ambient air temperature at surface, broadcastable to shape (A, prod(T))
+            Ambient air temperature at surface, broadcastable to shape (A, prod(T)).
+            If the relative humidity is positive, the temperature has to be set.
         relative_humidity : :class:`~astropy.units.Quantity` or array-like, optional
             Relative humidity at surface, as a fraction in range [0, 1],
             broadcastable to shape (A, prod(T))
@@ -197,7 +201,7 @@ class DelayCorrection:
 
     @u.quantity_input(equivalencies=u.temperature())
     def delays(self, target, timestamp, offset=None,
-               pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = 0 * u.deg_C,
+               pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = NO_TEMPERATURE,
                relative_humidity: u.dimensionless_unscaled = 0) -> u.s:
         """Calculate delays for all timestamps and inputs for a given target.
 
@@ -212,6 +216,11 @@ class DelayCorrection:
         delays : :class:`~astropy.units.Quantity`, shape (2 * A,) + T
             Delays for *2A* correlator inputs and timestamps with shape T, with
             ordering on the first axis matching the labels in :attr:`inputs`
+
+        Raises
+        ------
+        ValueError
+            If the relative humidity is positive but temperature is unspecified
         """
         # Ensure a single consistent timestamp in the case of "now"
         time = Timestamp(timestamp).time
@@ -252,6 +261,9 @@ class DelayCorrection:
         ant_delays = enu_offset @ -target_dir
         ant_delays -= niao * np.cos(elevations)
         if self._tropospheric_delay:
+            if temperature == NO_TEMPERATURE and relative_humidity > 0:
+                raise ValueError(f'The relative humidity is set to {relative_humidity} '
+                                 'but the temperature has not been specified')
             ant_delays += self._tropospheric_delay(pressure, temperature, relative_humidity,
                                                    elevations, time[:-1])
         # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
@@ -262,7 +274,7 @@ class DelayCorrection:
 
     @u.quantity_input(equivalencies=u.temperature())
     def corrections(self, target, timestamp=None, offset=None,
-                    pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = 0 * u.deg_C,
+                    pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = NO_TEMPERATURE,
                     relative_humidity: u.dimensionless_unscaled = 0):
         """Delay and phase corrections for a given target and timestamp(s).
 
@@ -289,6 +301,11 @@ class DelayCorrection:
             Fringe rate correction per correlator input name and timestamp. The
             quantity shape is like T, except the first dimension is 1 smaller.
             The quantity will be an empty array if there are fewer than 2 times.
+
+        Raises
+        ------
+        ValueError
+            If the relative humidity is positive but temperature is unspecified
         """
         time = Timestamp(timestamp).time
         T = time.shape

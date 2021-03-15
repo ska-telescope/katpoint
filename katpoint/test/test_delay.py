@@ -211,6 +211,13 @@ def test_tropospheric_delay():
     expected_delay = tropospheric_delay(elevation=elevation, timestamp=ts, **WEATHER)
     delay = dc.delays(target, ts, **WEATHER) - dc.delays(target, ts)
     assert np.allclose(delay, expected_delay, rtol=0, atol=1e-8 * u.ps)
+    # The combination of positive relative humidity and unspecified temperature is an error
+    no_temperature = WEATHER.copy()
+    del no_temperature['temperature']
+    with pytest.raises(ValueError):
+        dc.delays(target, ts, **no_temperature)
+    with pytest.raises(ValueError):
+        dc.corrections(target, ts, **no_temperature)
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
