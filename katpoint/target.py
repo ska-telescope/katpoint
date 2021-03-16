@@ -131,29 +131,8 @@ class Target:
         self.flux_freq_MHz = flux_freq_MHz
 
     def __str__(self):
-        """Verbose human-friendly string representation of target object."""
-        descr = str(self.name)
-        if self.aliases:
-            descr += ' (%s)' % (', '.join(self.aliases),)
-        descr += ', tags=%s' % (' '.join(self.tags),)
-        if 'radec' in self.tags:
-            descr += ', %s %s' % (self.body.coord.ra.to_string(unit=u.hour),
-                                  self.body.coord.dec.to_string(unit=u.deg))
-        if self.body_type == 'azel':
-            descr += ', %s %s' % (self.body.coord.az.to_string(unit=u.deg),
-                                  self.body.coord.alt.to_string(unit=u.deg))
-        if self.body_type == 'gal':
-            gal = self.body.coord.galactic
-            descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
-        if self.flux_model is None:
-            descr += ', no flux info'
-        else:
-            descr += ', flux defined for %g - %g MHz' % (self.flux_model.min_freq_MHz, self.flux_model.max_freq_MHz)
-            if self.flux_freq_MHz is not None:
-                flux = self.flux_model.flux_density(self.flux_freq_MHz)
-                if not np.isnan(flux):
-                    descr += ', flux=%.1f Jy @ %g MHz' % (flux, self.flux_freq_MHz)
-        return descr
+        """Complete string representation of target object, sufficient to reconstruct it."""
+        return self.description
 
     def __repr__(self):
         """Short human-friendly string representation of target object."""
@@ -179,10 +158,6 @@ class Target:
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
         return hash(self.description)
-
-    def format_katcp(self):
-        """String representation if object is passed as parameter to KATCP command."""
-        return self.description
 
     @property
     def body_type(self):
