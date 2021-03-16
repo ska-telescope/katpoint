@@ -43,6 +43,60 @@ def test_angle_from_hours(angle, angle_hour):
     assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
 
 
+@pytest.mark.parametrize(
+    "angle, kwargs, angle_string",
+    [
+        # Basic zero stripping like %g
+        ('10:20:30.4d', dict(), '10:20:30.4d'),
+        ('10:20:30.00d', dict(), '10:20:30d'),
+        ('10:20:30.4000d', dict(), '10:20:30.4d'),
+        # Hour angle checks
+        ('10:20:30.4h', dict(), '10:20:30.4h'),
+        ('10d', dict(unit=u.hour, pad=True), '00:40:00h'),
+        # Precision checks
+        ('10:20:30.12d', dict(precision=4), '10:20:30.12d'),
+        ('10:20:30.123487d', dict(precision=4), '10:20:30.1235d'),
+        (10.123487 * u.deg, dict(decimal=True, precision=4), '10.1235d'),
+        # Maximum precision
+        (10.1234567890123 * u.deg, dict(), '10:07:24.44444044d'),
+        (10.1234567890123 * u.deg, dict(decimal=True), '10.123456789012d'),
+        (10.12345678901234 * u.hour, dict(), '10:07:24.444440444h'),
+        (10.12345678901234 * u.hour, dict(decimal=True), '10.1234567890123h'),
+        # Multidimensional example
+        ([['10d', '20d']], dict(decimal=True), [['10d', '20d']]),
+        # Convert unit and tolerate non-standard separator if decimal
+        (np.pi * u.rad, dict(unit=u.deg, sep='dms', decimal=True), '180d'),
+    ]
+)
+def test_angle_to_string(angle, kwargs, angle_string):
+    np.testing.assert_array_equal(katpoint.conversion.angle_to_string(Angle(angle), **kwargs),
+                                  angle_string)
+
+
+@pytest.mark.parametrize("angle, kwargs",
+                         [('10:20:30.4d', dict(unit=u.rad)),
+                          ('10rad', dict()), ('10d', dict(sep='dms'))])
+def test_angle_to_string_errors(angle, kwargs):
+    with pytest.raises(ValueError):
+        katpoint.conversion.angle_to_string(Angle(angle), **kwargs)
+
+
+@pytest.mark.parametrize("kwargs", [dict(), dict(decimal=True), dict(unit=u.hour),
+                                    dict(unit=u.hour, decimal=True)])
+def test_angle_to_string_round_trip(kwargs):
+    rs = np.random.RandomState(46)
+    angle1 = Angle(360 * rs.rand(1000) * u.deg)
+    string1 = katpoint.conversion.angle_to_string(angle1, **kwargs)
+    angle2 = katpoint.conversion.to_angle(string1)
+    # The smallest angle we care about is a micron held at a distance of the Earth's diameter
+    smallest_arc = (1 * u.micrometer) / (2 * 6370 * u.km)
+    atol = smallest_arc.to(u.rad, equivalencies=u.dimensionless_angles())
+    assert np.allclose(angle2, angle1, rtol=0, atol=atol)
+    string2 = katpoint.conversion.angle_to_string(angle2, **kwargs)
+    # The strings round-trip exactly, which is good because most Angles start life as strings
+    np.testing.assert_array_equal(string2, string1)
+
+
 @pytest.fixture
 def random_geoid():
     N = 1000

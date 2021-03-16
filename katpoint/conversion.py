@@ -64,10 +64,61 @@ def to_angle(s, sexagesimal_unit=u.deg):
             return Angle(s, unit=u.rad)
 
 
-def strip_zeros(numerical_str):
+def strip_zeros(str_or_array_of_str):
     """Remove trailing zeros and unnecessary decimal points from numerical strings."""
-    return numerical_str.rstrip('0').rstrip('.')
+    s = np.char.rstrip(str_or_array_of_str, '0')
+    s = np.char.rstrip(s, '.')
+    return s if s.ndim else s.item()
 
+
+def angle_to_string(angle, **kwargs):
+    """Convert an Angle to string(s) while maintaining precision and compatibility.
+
+    This serialises angles to strings with high precision (1 micron @ 13000 km)
+    while maintaining some compatibility with older katpoint angle strings.
+    The main difference is that the numerical representation (sexagesimal or
+    decimal) has a suffix indicating the unit ('d' for degree or 'h' for hour).
+    This allows Astropy Angles to be constructed directly from it without the
+    need for :func:`to_angle`. Extra keyword arguments are passed on to
+    :meth:`~astropy.coordinates.Angle.to_string` to control the appearance of
+    the string to some extent.
+
+    Parameters
+    ----------
+    angle : :class:`~astropy.coordinates.Angle`
+        An `Angle` object (may be multidimensional)
+    kwargs : dict, optional
+        Extra keyword arguments for :meth:`~astropy.coordinates.Angle.to_string`
+
+    Returns
+    -------
+    s : str or array of str
+        String(s) representing `angle`
+
+    Raises
+    ------
+    ValueError
+        If angle / kwargs unit is not supported, or separator is not ':'
+    """
+    unit = kwargs.setdefault('unit', angle.unit)
+    if unit not in (u.deg, u.hour, u.hourangle):
+        raise ValueError(f'The angle unit should be degree, hour or hourangle, not {unit}')
+    sep = kwargs.setdefault('sep', ':')
+    decimal = kwargs.get('decimal', False)
+    if not decimal and sep != ':':
+        raise ValueError(f"The sexagesimal separator should be ':', not '{sep}'")
+    precision = kwargs.get('precision')
+    if precision is None:
+        # Sufficient precision to discern 1 micron at 13000 km
+        precision = 12 if decimal else 8
+        # Hour angle needs a bit more precision
+        if unit is not u.deg:
+            precision += 1
+        kwargs['precision'] = precision
+    number = strip_zeros(angle.to_string(**kwargs))
+    suffix = 'd' if unit is u.deg else 'h'
+    s = np.char.add(number, suffix)
+    return s if s.ndim else s.item()
 
 # --------------------------------------------------------------------------------------------------
 # --- Geodetic coordinate transformations
