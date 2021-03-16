@@ -25,7 +25,7 @@ import numpy as np
 from astropy import units
 
 from .model import Parameter, Model
-from .conversion import to_angle
+from .conversion import to_angle, angle_to_string
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +54,12 @@ class PointingModel(Model):
 
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
-        def angle_to_string(a):
-            return to_angle(a).to_string(sep=':', unit=units.deg) if a != 0 else '0'
+        def pm_angle_to_string(a):
+            return angle_to_string(to_angle(a), unit=units.deg) if a != 0 else '0'
 
         def angle_param(name, doc):
             """Create angle-valued parameter."""
-            return Parameter(name, 'deg', doc, from_str=to_angle, to_str=angle_to_string)
+            return Parameter(name, 'deg', doc, from_str=to_angle, to_str=pm_angle_to_string)
 
         def scale_param(name, doc):
             """Create scale-valued parameter."""

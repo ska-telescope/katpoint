@@ -26,7 +26,7 @@ from astropy.time import Time
 from .timestamp import Timestamp, delta_seconds
 from .antenna import Antenna
 from .flux import FluxDensityModel
-from .conversion import to_angle, azel_to_enu
+from .conversion import to_angle, angle_to_string, azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from .body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
 
@@ -200,8 +200,8 @@ class Target:
             # Check if it's an unnamed target with a default name
             if names.startswith('Az:'):
                 fields = [tags]
-            fields += [self.body.coord.az.to_string(unit=u.deg),
-                       self.body.coord.alt.to_string(unit=u.deg)]
+            fields += [angle_to_string(self.body.coord.az, unit=u.deg),
+                       angle_to_string(self.body.coord.alt, unit=u.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -209,8 +209,8 @@ class Target:
             # Check if it's an unnamed target with a default name
             if names.startswith('Ra:'):
                 fields = [tags]
-            fields += [self.body.coord.ra.to_string(unit=u.hour),
-                       self.body.coord.dec.to_string(unit=u.deg)]
+            fields += [angle_to_string(self.body.coord.ra, unit=u.hour),
+                       angle_to_string(self.body.coord.dec, unit=u.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -219,7 +219,8 @@ class Target:
             if names.startswith('Galactic l:'):
                 fields = [tags]
             gal = self.body.coord.galactic
-            fields += ['%.4f' % (gal.l.deg,), '%.4f' % (gal.b.deg,)]
+            fields += [angle_to_string(gal.l, unit=u.deg, decimal=True),
+                       angle_to_string(gal.b, unit=u.deg, decimal=True)]
             if fluxinfo:
                 fields += [fluxinfo]
 
@@ -947,7 +948,8 @@ def construct_target_params(description):
         ra = to_angle(fields[2], sexagesimal_unit=u.hour)
         dec = to_angle(fields[3])
         if not preferred_name:
-            preferred_name = "Ra: %s Dec: %s" % (ra, dec)
+            preferred_name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
+                                                 angle_to_string(dec, unit=u.deg)[:-1])
         # Extract epoch info from tags
         if ('B1900' in tags) or ('b1900' in tags):
             frame = FK4(equinox=Time(1900.0, format='byear'))
@@ -961,11 +963,12 @@ def construct_target_params(description):
         if len(fields) < 4:
             raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
                              % description)
-        l, b = float(fields[2]), float(fields[3])
+        l, b = to_angle(fields[2]), to_angle(fields[3])
         if not preferred_name:
-            preferred_name = "Galactic l: %.4f b: %.4f" % (l, b)
-        body = FixedBody(preferred_name, SkyCoord(l=Angle(l, unit=u.deg),
-                                                  b=Angle(b, unit=u.deg), frame=Galactic))
+            preferred_name = "Galactic l: %s b: %s" % (
+                angle_to_string(l, unit=u.deg, decimal=True)[:-1],
+                angle_to_string(b, unit=u.deg, decimal=True)[:-1])
+        body = FixedBody(preferred_name, SkyCoord(l=l, b=b, frame=Galactic))
 
     elif body_type == 'tle':
         if len(fields) < 4:
@@ -1078,6 +1081,7 @@ def construct_radec_target(ra, dec):
     """
     ra = to_angle(ra, sexagesimal_unit=u.hour)
     dec = to_angle(dec)
-    name = "Ra: %s Dec: %s" % (ra, dec)
+    name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
+                               angle_to_string(dec, unit=u.deg)[:-1])
     body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
     return Target(body, 'radec')

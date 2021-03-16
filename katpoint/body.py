@@ -28,7 +28,7 @@ from sgp4.api import Satrec, WGS72
 from sgp4.model import Satrec as SatrecPython
 from sgp4.exporter import export_tle
 
-from .conversion import to_angle
+from .conversion import to_angle, angle_to_string
 
 
 class Body:
@@ -391,8 +391,8 @@ class StationaryBody(Body):
     def __init__(self, az, el, name=None):
         self.coord = AltAz(az=to_angle(az), alt=to_angle(el))
         if not name:
-            name = "Az: {} El: {}".format(self.coord.az.to_string(sep=':', unit=u.deg),
-                                          self.coord.alt.to_string(sep=':', unit=u.deg))
+            name = "Az: {} El: {}".format(angle_to_string(self.coord.az, unit=u.deg)[:-1],
+                                          angle_to_string(self.coord.alt, unit=u.deg)[:-1])
         super().__init__(name)
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):

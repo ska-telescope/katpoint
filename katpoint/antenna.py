@@ -28,7 +28,8 @@ import astropy.units as u
 from astropy.coordinates import EarthLocation
 
 from .timestamp import Timestamp
-from .conversion import to_angle, strip_zeros, enu_to_ecef, lla_to_ecef, ecef_to_enu
+from .conversion import (to_angle, strip_zeros, angle_to_string,
+                         enu_to_ecef, lla_to_ecef, ecef_to_enu)
 from .pointing import PointingModel
 from .delay_model import DelayModel
 
@@ -212,9 +213,7 @@ class Antenna:
         fields = [self.name]
         # Store `EarthLocation` as WGS84 coordinates
         lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
-        # Strip off redundant zeros from coordinate strings (similar to {:.8g})
-        fields += [strip_zeros(lat.to_string(sep=':', unit=u.deg, precision=8))]
-        fields += [strip_zeros(lon.to_string(sep=':', unit=u.deg, precision=8))]
+        fields += [angle_to_string(lat), angle_to_string(lon)]  # these are already in degrees
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
         fields += [strip_zeros('{:.6f}'.format(height.to_value(u.m)))]
