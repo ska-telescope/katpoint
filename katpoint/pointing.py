@@ -25,7 +25,7 @@ import numpy as np
 from astropy import units
 
 from .model import Parameter, Model
-from .body import to_angle
+from .conversion import to_angle
 
 logger = logging.getLogger(__name__)
 

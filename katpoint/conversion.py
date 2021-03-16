@@ -17,6 +17,57 @@
 """Coordinate conversions not found in PyEphem."""
 
 import numpy as np
+import astropy.units as u
+from astropy.coordinates import Angle
+
+# --------------------------------------------------------------------------------------------------
+# --- Angle conversion utilities
+# --------------------------------------------------------------------------------------------------
+
+
+def to_angle(s, sexagesimal_unit=u.deg):
+    """Construct an `Angle` with default units.
+
+    This creates an :class:`~astropy.coordinates.Angle` with the following
+    default units:
+
+      - A number is in radians.
+      - A decimal string ('123.4') is in degrees.
+      - A sexagesimal string ('12:34:56.7') or tuple has `sexagesimal_unit`.
+
+    In addition, bytes are decoded to ASCII strings to normalize user inputs.
+
+    Parameters
+    ----------
+    s : :class:`~astropy.coordinates.Angle` or equivalent
+        Anything accepted by `Angle` and also unitless strings, numbers, tuples
+    sexagesimal_unit : :class:`~astropy.units.UnitBase` or str, optional
+        The unit applied to sexagesimal strings and tuples
+
+    Returns
+    -------
+    angle : :class:`~astropy.coordinates.Angle`
+        Astropy `Angle`
+    """
+    try:
+        return Angle(s)
+    except u.UnitsError:
+        # Deal with user input
+        if isinstance(s, bytes):
+            s = s.decode(encoding='ascii')
+        # We now have a number, string or tuple without a unit
+        if isinstance(s, str) and ':' in s or isinstance(s, tuple):
+            return Angle(s, unit=sexagesimal_unit)
+        if isinstance(s, str):
+            return Angle(s, unit=u.deg)
+        else:
+            return Angle(s, unit=u.rad)
+
+
+def strip_zeros(numerical_str):
+    """Remove trailing zeros and unnecessary decimal points from numerical strings."""
+    return numerical_str.rstrip('0').rstrip('.')
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Geodetic coordinate transformations

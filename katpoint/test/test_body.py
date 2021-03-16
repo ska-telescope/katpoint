@@ -28,8 +28,8 @@ import astropy.units as u
 from astropy.time import Time
 from astropy import __version__ as astropy_version
 from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Angle
-from katpoint.body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
-                           StationaryBody, to_angle)
+
+from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody
 from katpoint.test.helper import check_separation
 
 try:
@@ -38,23 +38,6 @@ except ImportError:
     HAS_SKYFIELD = False
 else:
     HAS_SKYFIELD = True
-
-
-@pytest.mark.parametrize("angle, angle_deg", [('10:00:00', 10), ('10:45:00', 10.75), ('10.0', 10),
-                                              ((10 * u.deg).to_value(u.rad), pytest.approx(10)),
-                                              ('10d00m00s', 10), ((10, 0, 0), 10),
-                                              ('10h00m00s', pytest.approx(150))])
-def test_angle_from_degrees(angle, angle_deg):
-    assert to_angle(angle, sexagesimal_unit=u.deg).deg == angle_deg
-
-
-@pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10), ('10:45:00', 10.75),
-                                               ('150.0', pytest.approx(10)),
-                                               ((150 * u.deg).to_value(u.rad), pytest.approx(10)),
-                                               ('10h00m00s', 10), ((10, 0, 0), 10),
-                                               ('10d00m00s', pytest.approx(10 / 15))])
-def test_angle_from_hours(angle, angle_hour):
-    assert to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
 
 
 def _get_fixed_body(ra_str, dec_str, distance=None):

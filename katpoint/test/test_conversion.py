@@ -26,6 +26,23 @@ import katpoint
 from .helper import assert_angles_almost_equal
 
 
+@pytest.mark.parametrize("angle, angle_deg", [('10:00:00', 10), ('10:45:00', 10.75), ('10.0', 10),
+                                              ((10 * u.deg).to_value(u.rad), pytest.approx(10)),
+                                              ('10d00m00s', 10), ((10, 0, 0), 10),
+                                              ('10h00m00s', pytest.approx(150))])
+def test_angle_from_degrees(angle, angle_deg):
+    assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg == angle_deg
+
+
+@pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10), ('10:45:00', 10.75),
+                                               ('150.0', pytest.approx(10)),
+                                               ((150 * u.deg).to_value(u.rad), pytest.approx(10)),
+                                               ('10h00m00s', 10), ((10, 0, 0), 10),
+                                               ('10d00m00s', pytest.approx(10 / 15))])
+def test_angle_from_hours(angle, angle_hour):
+    assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
+
+
 @pytest.fixture
 def random_geoid():
     N = 1000
