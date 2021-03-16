@@ -16,6 +16,8 @@
 
 """Target object used for pointing and flux density calculation."""
 
+import warnings
+
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
@@ -215,6 +217,48 @@ class Target:
             fields += [edb_string]
 
         return ', '.join(fields)
+
+    @classmethod
+    def from_azel(cls, az, el):
+        """Create unnamed stationary target (*azel* body type).
+
+        Parameters
+        ----------
+        az, el : :class:`~astropy.coordinates.Angle` or equivalent, string or float
+        Azimuth and elevation, as anything accepted by `Angle`, in 'D:M:S' or
+        decimal degree string format, or as a float in radians
+
+        Returns
+        -------
+        target : :class:`Target`
+            Constructed target object
+        """
+        return cls(StationaryBody(az, el), 'azel')
+
+    @classmethod
+    def from_radec(cls, ra, dec):
+        """Create unnamed fixed target (*radec* body type, ICRS frame).
+
+        Parameters
+        ----------
+        ra : :class:`~astropy.coordinates.Angle` or equivalent, string or float
+            Right ascension, as anything accepted by `Angle`, in 'H:M:S' or
+            decimal degree string format, or as a float in radians
+        dec : :class:`~astropy.coordinates.Angle` or equivalent, string or float
+            Declination, as anything accepted by `Angle`, in 'D:M:S' or decimal
+            degree string format, or as a float in radians
+
+        Returns
+        -------
+        target : :class:`Target`
+            Constructed target object
+        """
+        ra = to_angle(ra, sexagesimal_unit=u.hour)
+        dec = to_angle(dec)
+        name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
+                                   angle_to_string(dec, unit=u.deg)[:-1])
+        body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
+        return cls(body, 'radec')
 
     def add_tags(self, tags):
         """Add tags to target object.
@@ -568,7 +612,7 @@ class Target:
         else:
             radec = self.radec(time, location)
         offset_sign = -1 if radec.dec > 0 else 1
-        offset = construct_radec_target(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
+        offset = Target.from_radec(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
@@ -1004,59 +1048,16 @@ def construct_target_params(description):
 
     return body, tags, aliases, flux_model
 
-# --------------------------------------------------------------------------------------------------
-# --- FUNCTION :  construct_azel_target
-# --------------------------------------------------------------------------------------------------
-
 
 def construct_azel_target(az, el):
-    """Convenience function to create unnamed stationary target (*azel* body type).
-
-    The input parameters will also accept :class:`ephem.Angle` objects, as these
-    are floats in radians internally.
-
-    Parameters
-    ----------
-    az : string or float
-        Azimuth, either in 'D:M:S' string format, or as a float in radians
-    el : string or float
-        Elevation, either in 'D:M:S' string format, or as a float in radians
-
-    Returns
-    -------
-    target : :class:`Target` object
-        Constructed target object
-    """
-    return Target(StationaryBody(az, el), 'azel')
-
-# --------------------------------------------------------------------------------------------------
-# --- FUNCTION :  construct_radec_target
-# --------------------------------------------------------------------------------------------------
+    """Create unnamed stationary target (*azel* body type) **DEPRECATED**."""
+    warnings.warn('This function is deprecated and will be removed - '
+                  'use Target.from_azel(az, el) instead', FutureWarning)
+    return Target.from_azel(az, el)
 
 
 def construct_radec_target(ra, dec):
-    """Convenience function to create unnamed fixed target (*radec* body type).
-
-    The input parameters will also accept :class:`ephem.Angle` objects, as these
-    are floats in radians internally. The epoch is assumed to be J2000.
-
-    Parameters
-    ----------
-    ra : string or float
-        Right ascension, either in 'H:M:S' or decimal degree string format, or
-        as a float in radians
-    dec : string or float
-        Declination, either in 'D:M:S' or decimal degree string format, or as
-        a float in radians
-
-    Returns
-    -------
-    target : :class:`Target` object
-        Constructed target object
-    """
-    ra = to_angle(ra, sexagesimal_unit=u.hour)
-    dec = to_angle(dec)
-    name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
-                               angle_to_string(dec, unit=u.deg)[:-1])
-    body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
-    return Target(body, 'radec')
+    """Create unnamed fixed target (*radec* body type) **DEPRECATED**."""
+    warnings.warn('This function is deprecated and will be removed - '
+                  'use Target.from_radec(ra, dec) instead', FutureWarning)
+    return Target.from_radec(ra, dec)

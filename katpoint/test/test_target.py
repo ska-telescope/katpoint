@@ -50,16 +50,22 @@ class TestTargetConstruction:
     def test_construct_target(self):
         """Test construction of targets from strings and vice versa."""
         azel1 = katpoint.Target(self.azel_target)
-        azel2 = katpoint.construct_azel_target('10:00:00.0', '-10:00:00.0')
+        azel2 = katpoint.Target.from_azel('10:00:00.0', '-10:00:00.0')
         assert azel1 == azel2, 'Special azel constructor failed'
+        with pytest.warns(FutureWarning):
+            azel2_deprecated = katpoint.construct_azel_target('10:00:00.0', '-10:00:00.0')
+        assert azel1 == azel2_deprecated, 'Deprecated azel constructor failed'
         radec1 = katpoint.Target(self.radec_target)
-        radec2 = katpoint.construct_radec_target('20.0', '-20.0')
+        radec2 = katpoint.Target.from_radec('20.0', '-20.0')
         assert radec1 == radec2, 'Special radec constructor (decimal) failed'
+        with pytest.warns(FutureWarning):
+            radec2_deprecated = katpoint.construct_radec_target('20.0', '-20.0')
+        assert radec1 == radec2_deprecated, 'Deprecated radec constructor failed'
         radec3 = katpoint.Target(self.radec_target_rahours)
-        radec4 = katpoint.construct_radec_target('20:00:00.0', '-20:00:00.0')
+        radec4 = katpoint.Target.from_radec('20:00:00.0', '-20:00:00.0')
         assert radec3 == radec4, 'Special radec constructor (sexagesimal) failed'
-        radec5 = katpoint.construct_radec_target('20:00:00.0', '-00:30:00.0')
-        radec6 = katpoint.construct_radec_target('300.0', '-0.5')
+        radec5 = katpoint.Target.from_radec('20:00:00.0', '-00:30:00.0')
+        radec6 = katpoint.Target.from_radec('300.0', '-0.5')
         assert radec5 == radec6, 'Special radec constructor (decimal <-> sexagesimal) failed'
         # Check that description string updates when object is updated
         t1 = katpoint.Target('piet, azel, 20, 30')
@@ -210,7 +216,7 @@ def test_coord_methods_without_antenna(description, methods, raises, error):
             getattr(target, method)()
 
 
-TARGET = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
+TARGET = katpoint.Target.from_azel('45:00:00.0', '75:00:00.0')
 ANT1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
 ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
 TS = katpoint.Timestamp('2013-08-14 09:25')
@@ -309,7 +315,7 @@ def test_uvw():
 def test_uvw_timestamp_array_azel():
     """Test uvw calculation on a timestamp array when the target is an azel target."""
     azel = DELAY_TARGET.azel(DELAY_TS[0], ANT1)
-    target = katpoint.construct_azel_target(azel.az, azel.alt)
+    target = katpoint.Target.from_azel(azel.az, azel.alt)
     u, v, w = target.uvw(ANT2, DELAY_TS, ANT1)
     np.testing.assert_array_almost_equal([u[0], v[0], w[0]], UVW[0], decimal=8)
     np.testing.assert_array_almost_equal(w, [UVW[0][2]] * len(DELAY_TS), decimal=8)
@@ -333,8 +339,8 @@ def test_uvw_hemispheres():
     The implementation behaves differently depending on the sign of
     declination. This test is to catch sign flip errors.
     """
-    target1 = katpoint.construct_radec_target(0.0, -1e-9)
-    target2 = katpoint.construct_radec_target(0.0, +1e-9)
+    target1 = katpoint.Target.from_radec(0.0, -1e-9)
+    target2 = katpoint.Target.from_radec(0.0, +1e-9)
     u1, v1, w1 = target1.uvw(ANT2, TS, ANT1)
     u2, v2, w2 = target2.uvw(ANT2, TS, ANT1)
     np.testing.assert_almost_equal(u1, u2, decimal=3)
@@ -345,8 +351,8 @@ def test_uvw_hemispheres():
 def test_lmn():
     """Test lmn calculation."""
     # For angles less than pi/2, it matches SIN projection
-    pointing = katpoint.construct_radec_target('11:00:00.0', '-75:00:00.0')
-    target = katpoint.construct_radec_target('16:00:00.0', '-65:00:00.0')
+    pointing = katpoint.Target.from_radec('11:00:00.0', '-75:00:00.0')
+    target = katpoint.Target.from_radec('16:00:00.0', '-65:00:00.0')
     radec = target.radec(timestamp=TS, antenna=ANT1)
     l, m, n = pointing.lmn(radec.ra.rad, radec.dec.rad)
     expected_l, expected_m = pointing.sphere_to_plane(
@@ -366,13 +372,12 @@ def test_separation():
     """Test separation calculation."""
     sun = katpoint.Target('Sun, special')
     azel_sun = sun.azel(TS, ANT1)
-    azel = katpoint.construct_azel_target(azel_sun.az, azel_sun.alt)
+    azel = katpoint.Target.from_azel(azel_sun.az, azel_sun.alt)
     sep = sun.separation(azel, TS, ANT1)
     np.testing.assert_almost_equal(sep.rad, 0.0)
     sep = azel.separation(sun, TS, ANT1)
     np.testing.assert_almost_equal(sep.rad, 0.0)
-    azel2 = katpoint.construct_azel_target(azel_sun.az,
-                                           azel_sun.alt + Angle(0.01, unit=u.rad))
+    azel2 = katpoint.Target.from_azel(azel_sun.az, azel_sun.alt + Angle(0.01, unit=u.rad))
     sep = azel.separation(azel2, TS, ANT1)
     np.testing.assert_almost_equal(sep.rad, 0.01, decimal=12)
     # Check that different default antennas are handled correctly

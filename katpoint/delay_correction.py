@@ -28,7 +28,7 @@ from astropy.coordinates import Angle
 from .delay_model import DelayModel
 from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
-from .target import construct_radec_target
+from .target import Target
 from .timestamp import Timestamp
 from .refraction import TroposphericDelay
 
@@ -243,7 +243,7 @@ class DelayCorrection:
                 # XXX This target is vectorised (contrary to popular belief) by having an
                 # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
                 # It is probably better to support this explicitly somehow.
-                offset_target = construct_radec_target(ra, dec)
+                offset_target = Target.from_radec(ra, dec)
                 azel = offset_target.azel(time, locations)
                 az = azel.az.rad
                 el = azel.alt.rad

@@ -39,7 +39,7 @@ def to_angle(s, sexagesimal_unit=u.deg):
 
     Parameters
     ----------
-    s : :class:`~astropy.coordinates.Angle` or equivalent
+    s : :class:`~astropy.coordinates.Angle` or equivalent, string, float, tuple
         Anything accepted by `Angle` and also unitless strings, numbers, tuples
     sexagesimal_unit : :class:`~astropy.units.UnitBase` or str, optional
         The unit applied to sexagesimal strings and tuples
