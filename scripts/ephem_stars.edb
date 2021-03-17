@@ -1,36 +1,4 @@
-################################################################################
-# Copyright (c) 2009-2020, National Research Foundation (SARAO)
-#
-# Licensed under the BSD 3-Clause License (the "License"); you may not use
-# this file except in compliance with the License. You may obtain a copy
-# of the License at
-#
-#   https://opensource.org/licenses/BSD-3-Clause
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-################################################################################
-
-"""A Catalog of 115 Bright Stars
-
-The function star() will create and return a Body object representing
-the star whose name you provide.
-
->>> star('Aldebaran')
-
-Data is adapted from the version of the Hipparcos star catalog at:
-ftp://adc.gsfc.nasa.gov/pub/adc/archives/catalogs/1/1239/hip_main.dat.gz
-Of the thousand brighest Hipparcos stars, those with proper names
-registered at http://simbad.u-strasbg.fr/simbad/ were chosen.
-"""
-
-from katpoint.body import Body
-
-
-db = """
+# A Catalog of 115 Bright Stars (source: ephem/stars.py in PyEphem 3.7.7.1)
 Sirrah,f|S|B9,0:08:23.2|135.68,29:05:27|-162.95,2.07,2000,0
 Caph,f|S|F2,0:09:10.1|523.39,59:09:01|-180.42,2.28,2000,0
 Algenib,f|S|B2,0:13:14.2|4.7,15:11:01|-8.24,2.83,2000,0
@@ -146,10 +114,3 @@ Rigil Kentaurus,f|S|G2,14 39 36.4958|-3678.19,-60 50 02.310|481.84,-0.01,2000,0
 Sabik,f|S|A2,17 10 22.6624|41.16,-15 43 30.531|97.65,2.43,2000,0
 Suhail,f|S|K4,09 07 59.7771|-23.21,-43 25 57.447|14.28,2.23,2000,0
 Zubenelgenubi,f|S|A3,14 50 52.7773|-105.69,-16 02 29.798|-69.00,2.75,2000,0
-"""
-
-STARS = {}
-for _line in db.strip().split('\n'):
-    _body = Body.from_edb(_line.strip())
-    STARS[_body.name] = _body
-del _line, _body
