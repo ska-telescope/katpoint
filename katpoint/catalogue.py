@@ -17,6 +17,7 @@
 """Target catalogue."""
 
 import logging
+import warnings
 from collections import defaultdict
 
 import numpy as np
@@ -25,7 +26,6 @@ from astropy.time import Time
 
 from .target import Target
 from .timestamp import Timestamp
-from .stars import STARS
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +82,6 @@ class Catalogue:
 
         cat = katpoint.Catalogue(add_specials=True)
 
-    Another built-in set of targets is the small star catalogue included with
-    PyEphem. These *star* targets are added as follows::
-
-        cat = katpoint.Catalogue(add_stars=True)
-
     Additional targets may be loaded during initialisation of the catalogue by
     providing a list of :class:`Target` objects (or a single object by itself),
     as in the following example::
@@ -128,7 +123,7 @@ class Catalogue:
     The only functionality that :meth:`Catalogue.add` lacks is the ability to
     add all *special* and *star* targets in one go. They may still be added
     individually, although this is less convenient (and the reason for the
-    existence of ``add_specials`` and ``add_stars`` in the :class:`Catalogue`
+    existence of ``add_specials`` in the :class:`Catalogue`
     initialiser in the first place).
 
     Some target types are typically found in files with standard formats.
@@ -280,7 +275,7 @@ class Catalogue:
         True if *special* bodies specified in :data:`specials` (and 'Zenith')
         should be added
     add_stars:  bool, optional
-        True if *star* bodies from PyEphem star catalogue should be added
+        Always False (stars have no special support anymore) **DEPRECATED**
     antenna : :class:`Antenna` object, optional
         Default antenna to use for position calculations for all targets
     flux_freq_MHz : float, optional
@@ -297,7 +292,7 @@ class Catalogue:
     catalogue was assembled, which seems the most natural.
     """
 
-    def __init__(self, targets=None, tags=None, add_specials=False, add_stars=False,
+    def __init__(self, targets=None, tags=None, add_specials=False, add_stars=None,
                  antenna=None, flux_freq_MHz=None):
         self.lookup = defaultdict(list)
         self.targets = []
@@ -306,8 +301,12 @@ class Catalogue:
         if add_specials:
             self.add(['%s, special' % (name,) for name in specials], tags)
             self.add('Zenith, azel, 0, 90', tags)
-        if add_stars:
-            self.add(['%s, star' % (name,) for name in sorted(STARS)], tags)
+        if add_stars is True:
+            raise ValueError('The add_stars parameter is not supported anymore - '
+                             'please add the stars manually (see scripts/ephem_stars.edb)')
+        if add_stars is False:
+            warnings.warn('The add_stars parameter is now permanently False and will be removed',
+                          FutureWarning)
         if targets is None:
             targets = []
         self.add(targets, tags)

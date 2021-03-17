@@ -21,6 +21,13 @@ from numpy.testing import assert_allclose
 
 import katpoint
 
+TARGETS = [
+    'xephem radec, Acamar~f|S|A4~02 58 15.7156|-53.53~-40 18 17.046|25.71~2.88~2000~0',
+    'xephem radec, Alpheratz~f|S|B9~00 08 23.1680|135.68~+29 05 26.981|-162.95~2.07~2000~0',
+    'xephem radec, Fomalhaut~f|S|A3~22:57:38.8|329.22~-29:37:19|-164.22~1.17~2000~0',
+    'xephem radec, Miaplacidus~f|S|A2~09 13 12.2408|-157.66~-69 43 02.901|108.91~1.67~2000~0',
+    'xephem radec, Polaris~f|S|F7~2:31:47.1|44.22~89:15:51|-11.74~1.97~2000~0',
+]
 
 FLUX_TARGET = katpoint.Target('flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)')
 ANTENNA = katpoint.Antenna('XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0')
@@ -29,7 +36,7 @@ TIMESTAMP = '2009/06/14 12:34:56'
 
 def test_catalogue_basic():
     """Basic catalogue tests."""
-    cat = katpoint.Catalogue(add_specials=True)
+    cat = katpoint.Catalogue(TARGETS, add_specials=True)
     repr(cat)
     str(cat)
     cat.add('# Comments will be ignored')
@@ -78,14 +85,14 @@ def test_catalogue_same_name():
 
 def test_construct_catalogue(caplog):
     """Test construction of catalogues."""
-    cat = katpoint.Catalogue(add_specials=True, add_stars=True, antenna=ANTENNA)
+    cat = katpoint.Catalogue(TARGETS, add_specials=True, antenna=ANTENNA)
     num_targets_original = len(cat)
-    assert num_targets_original == len(katpoint.specials) + 1 + len(katpoint.stars.STARS)
+    assert num_targets_original == len(katpoint.specials) + 1 + len(TARGETS)
     # Add target already in catalogue - no action
     cat.add(katpoint.Target('Sun, special'))
     num_targets = len(cat)
     assert num_targets == num_targets_original, 'Number of targets incorrect'
-    cat2 = katpoint.Catalogue(add_specials=True, add_stars=True)
+    cat2 = katpoint.Catalogue(TARGETS, add_specials=True)
     cat2.add(katpoint.Target('Sun, special'))
     assert cat == cat2, 'Catalogues not equal'
     try:
@@ -146,7 +153,7 @@ def test_skip_empty():
 
 def test_filter_catalogue():
     """Test filtering of catalogues."""
-    cat = katpoint.Catalogue(add_specials=True, add_stars=True)
+    cat = katpoint.Catalogue(TARGETS, add_specials=True)
     cat = cat.filter(tags=['special', '~radec'])
     assert len(cat.targets) == len(katpoint.specials), 'Number of targets incorrect'
     cat.add(FLUX_TARGET)
@@ -168,8 +175,8 @@ def test_filter_catalogue():
 
 def test_sort_catalogue():
     """Test sorting of catalogues."""
-    cat = katpoint.Catalogue(add_specials=True, add_stars=True)
-    assert len(cat.targets) == len(katpoint.specials) + 1 + len(katpoint.stars.STARS)
+    cat = katpoint.Catalogue(TARGETS, add_specials=True)
+    assert len(cat.targets) == len(katpoint.specials) + 1 + len(TARGETS)
     cat1 = cat.sort(key='name')
     assert cat1 == cat, 'Catalogue equality failed'
     assert cat1.targets[0].name == 'Acamar', 'Sorting on name failed'
@@ -193,7 +200,7 @@ def test_visibility_list():
     """Test output of visibility list."""
     antenna2 = katpoint.Antenna('XDM2, -25:53:23.05075, 27:41:03.36453, '
                                 '1406.1086, 15.0, 100.0 0.0 0.0')
-    cat = katpoint.Catalogue(add_specials=True, add_stars=True)
+    cat = katpoint.Catalogue(TARGETS, add_specials=True)
     cat.add(FLUX_TARGET)
     cat.remove('Zenith')
     cat.visibility_list(timestamp=TIMESTAMP, antenna=ANTENNA,

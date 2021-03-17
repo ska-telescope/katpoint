@@ -30,7 +30,6 @@ from .conversion import azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from .body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
                    StationaryBody, NullBody, to_angle)
-from .stars import STARS
 
 
 class NonAsciiError(ValueError):
@@ -58,7 +57,7 @@ class Target:
     the list may be empty. The <tags> field contains a space-separated list of
     descriptive tags for the target. The first tag is mandatory and indicates
     the body type of the target, which should be one of (*azel*, *radec*, *gal*,
-    *tle*, *special*, *star*, *xephem*). The longidutinal and latitudinal fields
+    *tle*, *special*, *xephem*). The longidutinal and latitudinal fields
     are only relevant to *azel* and *radec* targets, in which case they contain
     the relevant coordinates.
 
@@ -70,12 +69,11 @@ class Target:
 
         name1 | *name 2, radec cal, 12:34:56.7, -04:34:34.2, (1000.0 2000.0 1.0)
 
-    For *special* and *star* body types, only the target name is required. The
+    For the *special* body type, only the target name is required. The
     *special* body name is assumed to be a PyEphem class name, and is typically
     one of the major solar system objects. Alternatively, it could be "Nothing",
     which indicates a dummy target with no position (useful as a placeholder but
-    not much else). The *star* name is looked up in the PyEphem star database,
-    which contains a modest list of bright stars.
+    not much else).
 
     For *tle* bodies, the final field in the description string should contain
     the three lines of the TLE. If the name list is empty, the target name is
@@ -914,7 +912,7 @@ def construct_target_params(description):
         raise ValueError("Target description '%s' must have at least two fields" % description)
     # Check if first name starts with body type tag, while the next field does not
     # This indicates a missing names field -> add an empty name list in front
-    body_types = ['azel', 'radec', 'gal', 'tle', 'special', 'star', 'xephem']
+    body_types = ['azel', 'radec', 'gal', 'tle', 'special', 'xephem']
     if np.any([fields[0].startswith(s) for s in body_types]) and \
        not np.any([fields[1].startswith(s) for s in body_types]):
         fields = [''] + fields
@@ -991,14 +989,6 @@ def construct_target_params(description):
         except ValueError as err:
             raise ValueError("Target description '%s' contains unknown *special* body '%s'"
                              % (description, preferred_name)) from err
-
-    elif body_type == 'star':
-        star_name = ' '.join([w.capitalize() for w in preferred_name.split()])
-        try:
-            body = STARS[star_name]
-        except KeyError:
-            raise ValueError(f"Target description '{description}' "
-                             f"contains unknown *star* '{star_name}'") from None
 
     elif body_type == 'xephem':
         edb_string = fields[-1].replace('~', ',')
