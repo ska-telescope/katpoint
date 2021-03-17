@@ -35,8 +35,8 @@ TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
               '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282')
 
 
-def test_construct_target():
-    """Test construction of targets from strings and vice versa."""
+def test_construct_target_from_azel_radec():
+    """Test construction of targets from (az, el) and (ra, dec) vs strings."""
     azel1 = katpoint.Target('azel, 10.0, -10.0')
     azel2 = katpoint.Target.from_azel('10:00:00.0', '-10:00:00.0')
     assert azel1 == azel2, 'Special azel constructor failed'
@@ -55,20 +55,6 @@ def test_construct_target():
     radec5 = katpoint.Target.from_radec('20:00:00.0', '-00:30:00.0')
     radec6 = katpoint.Target.from_radec('300.0', '-0.5')
     assert radec5 == radec6, 'Special radec constructor (decimal <-> sexagesimal) failed'
-    # Check that description string updates when object is updated
-    t1 = katpoint.Target('piet, azel, 20, 30')
-    t2 = katpoint.Target('piet | bollie, azel, 20, 30')
-    assert t1 != t2, 'Targets should not be equal'
-    t1.aliases += ['bollie']
-    assert t1.description == t2.description, 'Target description string not updated'
-    assert t1 == t2.description, 'Equality with description string failed'
-    assert t1 == t2, 'Equality with target failed'
-    assert t1 == katpoint.Target(t2), 'Construction with target object failed'
-    assert t1 == pickle.loads(pickle.dumps(t1)), 'Pickling failed'
-    try:
-        assert hash(t1) == hash(t2), 'Target hashes not equal'
-    except TypeError:
-        pytest.fail('Target object not hashable')
 
 
 def test_constructed_coords():
@@ -93,6 +79,24 @@ def test_constructed_coords():
     calc_lb = lb.galactic()
     assert calc_lb.l.deg == 30.0
     assert calc_lb.b.deg == -30.0
+
+
+def test_compare_update_target():
+    """Test various ways to compare and update targets."""
+    # Check that description string updates when object is updated
+    t1 = katpoint.Target('piet, azel, 20, 30')
+    t2 = katpoint.Target('piet | bollie, azel, 20, 30')
+    assert t1 != t2, 'Targets should not be equal'
+    t1.aliases += ['bollie']
+    assert t1.description == t2.description, 'Target description string not updated'
+    assert t1 == t2.description, 'Equality with description string failed'
+    assert t1 == t2, 'Equality with target failed'
+    assert t1 == katpoint.Target(t2), 'Construction with target object failed'
+    assert t1 == pickle.loads(pickle.dumps(t1)), 'Pickling failed'
+    try:
+        assert hash(t1) == hash(t2), 'Target hashes not equal'
+    except TypeError:
+        pytest.fail('Target object not hashable')
 
 
 def test_add_tags():
