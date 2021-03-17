@@ -35,84 +35,73 @@ TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
               '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282')
 
 
-class TestTargetConstruction:
+def test_construct_target():
     """Test construction of targets from strings and vice versa."""
+    azel1 = katpoint.Target('azel, 10.0, -10.0')
+    azel2 = katpoint.Target.from_azel('10:00:00.0', '-10:00:00.0')
+    assert azel1 == azel2, 'Special azel constructor failed'
+    with pytest.warns(FutureWarning):
+        azel2_deprecated = katpoint.construct_azel_target('10:00:00.0', '-10:00:00.0')
+    assert azel1 == azel2_deprecated, 'Deprecated azel constructor failed'
+    radec1 = katpoint.Target('radec, 20.0, -20.0')
+    radec2 = katpoint.Target.from_radec('20.0', '-20.0')
+    assert radec1 == radec2, 'Special radec constructor (decimal) failed'
+    with pytest.warns(FutureWarning):
+        radec2_deprecated = katpoint.construct_radec_target('20.0', '-20.0')
+    assert radec1 == radec2_deprecated, 'Deprecated radec constructor failed'
+    radec3 = katpoint.Target('radec, 20:00:00, -20:00:00')
+    radec4 = katpoint.Target.from_radec('20:00:00.0', '-20:00:00.0')
+    assert radec3 == radec4, 'Special radec constructor (sexagesimal) failed'
+    radec5 = katpoint.Target.from_radec('20:00:00.0', '-00:30:00.0')
+    radec6 = katpoint.Target.from_radec('300.0', '-0.5')
+    assert radec5 == radec6, 'Special radec constructor (decimal <-> sexagesimal) failed'
+    # Check that description string updates when object is updated
+    t1 = katpoint.Target('piet, azel, 20, 30')
+    t2 = katpoint.Target('piet | bollie, azel, 20, 30')
+    assert t1 != t2, 'Targets should not be equal'
+    t1.aliases += ['bollie']
+    assert t1.description == t2.description, 'Target description string not updated'
+    assert t1 == t2.description, 'Equality with description string failed'
+    assert t1 == t2, 'Equality with target failed'
+    assert t1 == katpoint.Target(t2), 'Construction with target object failed'
+    assert t1 == pickle.loads(pickle.dumps(t1)), 'Pickling failed'
+    try:
+        assert hash(t1) == hash(t2), 'Target hashes not equal'
+    except TypeError:
+        pytest.fail('Target object not hashable')
 
-    def setup(self):
-        self.azel_target = 'azel, 10.0, -10.0'
-        # A floating-point RA is in degrees
-        self.radec_target = 'radec, 20.0, -20.0'
-        # A sexagesimal RA string is in hours
-        self.radec_target_rahours = 'radec, 20:00:00, -20:00:00'
-        self.gal_target = 'gal, 30.0, -30.0'
-        self.tag_target = 'azel J2000 GPS, 40.0, -30.0'
 
-    def test_construct_target(self):
-        """Test construction of targets from strings and vice versa."""
-        azel1 = katpoint.Target(self.azel_target)
-        azel2 = katpoint.Target.from_azel('10:00:00.0', '-10:00:00.0')
-        assert azel1 == azel2, 'Special azel constructor failed'
-        with pytest.warns(FutureWarning):
-            azel2_deprecated = katpoint.construct_azel_target('10:00:00.0', '-10:00:00.0')
-        assert azel1 == azel2_deprecated, 'Deprecated azel constructor failed'
-        radec1 = katpoint.Target(self.radec_target)
-        radec2 = katpoint.Target.from_radec('20.0', '-20.0')
-        assert radec1 == radec2, 'Special radec constructor (decimal) failed'
-        with pytest.warns(FutureWarning):
-            radec2_deprecated = katpoint.construct_radec_target('20.0', '-20.0')
-        assert radec1 == radec2_deprecated, 'Deprecated radec constructor failed'
-        radec3 = katpoint.Target(self.radec_target_rahours)
-        radec4 = katpoint.Target.from_radec('20:00:00.0', '-20:00:00.0')
-        assert radec3 == radec4, 'Special radec constructor (sexagesimal) failed'
-        radec5 = katpoint.Target.from_radec('20:00:00.0', '-00:30:00.0')
-        radec6 = katpoint.Target.from_radec('300.0', '-0.5')
-        assert radec5 == radec6, 'Special radec constructor (decimal <-> sexagesimal) failed'
-        # Check that description string updates when object is updated
-        t1 = katpoint.Target('piet, azel, 20, 30')
-        t2 = katpoint.Target('piet | bollie, azel, 20, 30')
-        assert t1 != t2, 'Targets should not be equal'
-        t1.aliases += ['bollie']
-        assert t1.description == t2.description, 'Target description string not updated'
-        assert t1 == t2.description, 'Equality with description string failed'
-        assert t1 == t2, 'Equality with target failed'
-        assert t1 == katpoint.Target(t2), 'Construction with target object failed'
-        assert t1 == pickle.loads(pickle.dumps(t1)), 'Pickling failed'
-        try:
-            assert hash(t1) == hash(t2), 'Target hashes not equal'
-        except TypeError:
-            pytest.fail('Target object not hashable')
+def test_constructed_coords():
+    """Test whether calculated coordinates match those with which it is constructed."""
+    # azel
+    azel = katpoint.Target('azel, 10.0, -10.0')
+    calc_azel = azel.azel()
+    assert calc_azel.az.deg == 10.0
+    assert calc_azel.alt.deg == -10.0
+    # radec (degrees)
+    radec = katpoint.Target('radec, 20.0, -20.0')
+    calc_radec = radec.radec()
+    assert calc_radec.ra.deg == 20.0
+    assert calc_radec.dec.deg == -20.0
+    # radec (hours)
+    radec_rahours = katpoint.Target('radec, 20:00:00, -20:00:00')
+    calc_radec_rahours = radec_rahours.radec()
+    assert calc_radec_rahours.ra.hms == (20, 0, 0)
+    assert calc_radec_rahours.dec.deg == -20.0
+    # gal
+    lb = katpoint.Target('gal, 30.0, -30.0')
+    calc_lb = lb.galactic()
+    assert calc_lb.l.deg == 30.0
+    assert calc_lb.b.deg == -30.0
 
-    def test_constructed_coords(self):
-        """Test whether calculated coordinates match those with which it is constructed."""
-        # azel
-        azel = katpoint.Target(self.azel_target)
-        calc_azel = azel.azel()
-        assert calc_azel.az.deg == 10.0
-        assert calc_azel.alt.deg == -10.0
-        # radec (degrees)
-        radec = katpoint.Target(self.radec_target)
-        calc_radec = radec.radec()
-        assert calc_radec.ra.deg == 20.0
-        assert calc_radec.dec.deg == -20.0
-        # radec (hours)
-        radec_rahours = katpoint.Target(self.radec_target_rahours)
-        calc_radec_rahours = radec_rahours.radec()
-        assert calc_radec_rahours.ra.hms == (20, 0, 0)
-        assert calc_radec_rahours.dec.deg == -20.0
-        # gal
-        lb = katpoint.Target(self.gal_target)
-        calc_lb = lb.galactic()
-        assert calc_lb.l.deg == 30.0
-        assert calc_lb.b.deg == -30.0
 
-    def test_add_tags(self):
-        """Test adding tags."""
-        tag_target = katpoint.Target(self.tag_target)
-        tag_target.add_tags(None)
-        tag_target.add_tags('pulsar')
-        tag_target.add_tags(['SNR', 'GPS'])
-        assert tag_target.tags == ['azel', 'J2000', 'GPS', 'pulsar', 'SNR'], (
-            'Added tags not correct')
+def test_add_tags():
+    """Test adding tags."""
+    tag_target = katpoint.Target('azel J2000 GPS, 40.0, -30.0')
+    tag_target.add_tags(None)
+    tag_target.add_tags('pulsar')
+    tag_target.add_tags(['SNR', 'GPS'])
+    assert tag_target.tags == ['azel', 'J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
 
 
 @pytest.mark.parametrize(
