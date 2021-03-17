@@ -27,7 +27,7 @@ import pytest
 import astropy.units as u
 from astropy.time import Time
 from astropy import __version__ as astropy_version
-from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Angle
+from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Angle, Galactic
 
 from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody
 from katpoint.test.helper import check_separation
@@ -113,6 +113,21 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
         tol = 0.05 * u.mas
     check_separation(altaz2, az_str, el_str, tol)
 
+
+def test_fixed():
+    body = _get_fixed_body('10:10:40.123', '40:20:50.567')
+    assert body.tag == 'radec'
+    assert body.coord.ra == Angle('10:10:40.123h')
+    assert body.coord.dec == Angle('40:20:50.567d')
+    body_gal = FixedBody('name', Galactic(l='-10d', b='20d'))
+    assert body_gal.tag == 'gal'
+
+
+def test_solar_system():
+    body = SolarSystemBody('Venus')
+    assert body.tag == 'special'
+
+
 @pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
 def test_earth_satellite_vs_skyfield():
     ts = load.timescale()
@@ -145,6 +160,7 @@ def _check_edb_E(sat, epoch_iso, inc, raan, e, ap, M, n, decay, drag):
 
 def test_earth_satellite():
     body = EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2)
+    assert body.tag == 'tle'
     assert body.to_tle() == (TLE_LINE1, TLE_LINE2)
     # Check that the EarthSatelliteBody object has the expected attribute values
     _check_edb_E(body.satellite, epoch_iso='2019-09-23 07:45:35.842',
@@ -159,8 +175,14 @@ def test_earth_satellite():
     assert body.to_edb() == xephem
     # Check some round-tripping
     body2 = Body.from_edb(xephem)
+    assert body2.tag == 'xephem tle'
     assert isinstance(body2, EarthSatelliteBody)
     assert body2.to_edb() == xephem
+
+
+def test_stationary():
+    body = StationaryBody('20d', '30d')
+    assert body.tag == 'azel'
 
 
 def test_star():
@@ -168,5 +190,6 @@ def test_star():
     e = Body.from_edb(record)
     assert isinstance(e, FixedBody)
     assert e.name == 'Sadr'
+    assert e.tag == 'xephem radec'
     assert e.coord.ra.to_string(sep=':', unit='hour') == '20:22:13.7'
     assert e.coord.dec.to_string(sep=':', unit='deg') == '40:15:24'

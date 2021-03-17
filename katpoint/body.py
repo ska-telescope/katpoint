@@ -21,7 +21,7 @@ import re
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS,
+from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS, Galactic,
                                  solar_system_ephemeris, get_body, UnitSphericalRepresentation,
                                  CartesianDifferential, CartesianRepresentation)
 from sgp4.api import Satrec, WGS72
@@ -47,10 +47,13 @@ class Body:
     ----------
     name : str
         The name of the body
+    tag : str
+        Type of body, as a string tag
     """
 
-    def __init__(self, name):
+    def __init__(self, name, tag):
         self.name = name
+        self.tag = tag
 
     @staticmethod
     def _check_location(frame):
@@ -135,10 +138,14 @@ class FixedBody(Body):
     coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
             :class:`~astropy.coordinates.SkyCoord`
         The coordinates of the body
+    tag : str, optional
+        Type of body, as a string tag
     """
 
-    def __init__(self, name, coord):
-        super().__init__(name)
+    def __init__(self, name, coord, tag=None):
+        if tag is None:
+            tag = 'gal' if coord.is_equivalent_frame(Galactic()) else 'radec'
+        super().__init__(name, tag)
         self.coord = coord
 
     @classmethod
@@ -149,7 +156,8 @@ class FixedBody(Body):
         # Discard proper motion for now (the part after the |)
         ra = fields[2].split('|')[0]
         dec = fields[3].split('|')[0]
-        return cls(name, SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)))
+        return cls(name, SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)),
+                   tag='xephem radec')
 
     def to_edb(self):
         """Create an XEphem database (EDB) entry for fixed body ("f").
@@ -191,7 +199,7 @@ class SolarSystemBody(Body):
         if name.lower() not in solar_system_ephemeris.bodies:  # noqa: E1135
             raise ValueError("Unknown Solar System body '{}' - should be one of {}"
                              .format(name.lower(), solar_system_ephemeris.bodies))
-        super().__init__(name)
+        super().__init__(name, 'special')
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body for given time and location and transform to `frame`."""
@@ -249,10 +257,12 @@ class EarthSatelliteBody(Body):
     orbit_number : int, optional
         Number of revolutions / orbits the satellite has completed at given epoch
         (only for backwards compatibility with EDB format, ignore otherwise)
+    tag : str, optional
+        Type of body, as a string tag
     """
 
-    def __init__(self, name, satellite, orbit_number=0):
-        super().__init__(name)
+    def __init__(self, name, satellite, orbit_number=0, tag='tle'):
+        super().__init__(name, tag)
         self.satellite = satellite
         # XXX We store this because C++ sgp4init doesn't take revnum and Satrec object is read-only
         # This needs to go into the XEphem EDB string, which is still the de facto description
@@ -311,7 +321,7 @@ class EarthSatelliteBody(Body):
             (mean_motion * u.cycle / u.day).to_value(u.rad / u.minute),  # no_kozai
             (ra_asc_node * u.deg).to_value(u.rad),                       # nodeo
         )
-        return cls(name, sat, int(orbit_number))
+        return cls(name, sat, int(orbit_number), tag='xephem tle')
 
     def to_edb(self):
         """Create an XEphem database (EDB) entry for Earth satellite ("E").
@@ -393,7 +403,7 @@ class StationaryBody(Body):
         if not name:
             name = "Az: {} El: {}".format(angle_to_string(self.coord.az, unit=u.deg)[:-1],
                                           angle_to_string(self.coord.alt, unit=u.deg)[:-1])
-        super().__init__(name)
+        super().__init__(name, 'azel')
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Transform (az, el) at given location and time to requested `frame`."""
@@ -422,4 +432,4 @@ class NullBody(FixedBody):
     """
 
     def __init__(self):
-        super().__init__('Nothing', ICRS(np.nan * u.rad, np.nan * u.rad))
+        super().__init__('Nothing', ICRS(np.nan * u.rad, np.nan * u.rad), 'special')

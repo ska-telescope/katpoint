@@ -44,14 +44,15 @@ def test_construct_target():
     # Construct Target from description string
     assert katpoint.Target(t0.description) == t0
     # Construct Target from Body
-    assert katpoint.Target(t0.body, t0.tags, t0.aliases, t0.flux_model) == t0
+    assert katpoint.Target(t0.body, t0.user_tags, t0.aliases, t0.flux_model) == t0
     # Override some parameters
     a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0, 1 2 3, 1 2 3, 1.14')
-    t0b = katpoint.Target(t0.description, tags='radec no_collab', aliases=['Fee', 'Fie', 'Foe'],
+    t0b = katpoint.Target(t0.description, user_tags='no_collab', aliases=['Fee', 'Fie', 'Foe'],
                           antenna=a0, flux_freq_MHz=1284.)
     assert t0b.body.coord == t0.body.coord
     assert t0b.name == t0.name
     assert t0b.tags == ['radec', 'no_collab']
+    assert t0b.user_tags == ['no_collab']
     assert t0b.aliases == ['Fee', 'Fie', 'Foe']
     assert t0b.flux_model == t0.flux_model
     assert t0b.antenna == a0
@@ -146,6 +147,7 @@ def test_add_tags():
     tag_target.add_tags('pulsar')
     tag_target.add_tags(['SNR', 'GPS'])
     assert tag_target.tags == ['azel', 'J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
+    assert tag_target.user_tags == ['J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
 
 
 @pytest.mark.parametrize(
@@ -170,6 +172,11 @@ def test_add_tags():
         'xephem radec, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
         'Acamar | Theta Eridani, xephem, HIC 13847~f|S|A4~2:58:16.03~-40:18:17.1~2.906~2000~0',
         'Kakkab, xephem, H71860 | S225128~f|S|B1~14:41:55.768~-47:23:17.51~2.304~2000~0',
+        ('xephem tle GEO, INTELSAT NEW DAWN~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016'
+         '~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0'),
+        ('INTELSAT NEW DAWN, tle GEO, '
+         '1 37392U 11016A   16198.82966206  .00000153  00000-0  00000-0 0  9996,'
+         '2 37392   0.0544 244.0062 0000897 182.4502 200.0764  1.00273159 16973'),
     ]
 )
 def test_construct_valid_target(description):

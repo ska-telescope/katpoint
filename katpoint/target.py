@@ -119,9 +119,9 @@ class Target:
         If description string has the wrong format
     """
 
-    def __init__(self, target, tags=_DEFAULT, aliases=_DEFAULT, flux_model=_DEFAULT,
+    def __init__(self, target, user_tags=_DEFAULT, aliases=_DEFAULT, flux_model=_DEFAULT,
                  antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
-        default = SimpleNamespace(tags=[], aliases=[], flux_model=None,
+        default = SimpleNamespace(user_tags=[], aliases=[], flux_model=None,
                                   antenna=None, flux_freq_MHz=None)
         if isinstance(target, str):
             # Create a temporary Target object to serve up default parameters instead
@@ -132,9 +132,9 @@ class Target:
 
         self.body = target
         self.name = target.name
-        self.tags = []
-        tags = default.tags if tags is _DEFAULT else tags
-        self.add_tags(tags)
+        self.user_tags = []
+        user_tags = default.user_tags if user_tags is _DEFAULT else user_tags
+        self.add_tags(user_tags)
         self.aliases = default.aliases if aliases is _DEFAULT else aliases
         self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
         self.antenna = default.antenna if antenna is _DEFAULT else antenna
@@ -168,6 +168,11 @@ class Target:
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
         return hash(self.description)
+
+    @property
+    def tags(self):
+        """Descriptive tags associated with target, starting with its body type."""
+        return self.body.tag.split() + self.user_tags
 
     @property
     def body_type(self):
@@ -442,7 +447,7 @@ class Target:
         for tag_str in tags:
             for tag in tag_str.split():
                 if tag not in self.tags:
-                    self.tags.append(tag)
+                    self.user_tags.append(tag)
         return self
 
     def _astropy_funnel(self, timestamp, antenna):
