@@ -119,7 +119,8 @@ class Target:
             body = body.description
         # If the first parameter is a description string, extract the relevant target parameters from it
         if isinstance(body, str):
-            body, tags, aliases, flux_model = construct_target_params(body)
+            target = Target.from_description(body)
+            body, tags, aliases, flux_model = target.body, target.tags, target.aliases, target.flux_model
         self.body = body
         self.name = self.body.name
         self.tags = []
@@ -217,6 +218,154 @@ class Target:
             fields += [edb_string]
 
         return ', '.join(fields)
+
+    @classmethod
+    def from_description(cls, description):
+        """Construct Target object from description string.
+
+        For more information on the description string format, see the help string
+        for :class:`Target`.
+
+        Parameters
+        ----------
+        description : string
+            String containing target name(s), tags, location and flux model
+
+        Returns
+        -------
+        target : :class:`Target`
+            Constructed target object
+
+        Raises
+        ------
+        ValueError
+            If *description* has the wrong format
+        """
+        try:
+            description.encode('ascii')
+        except UnicodeError:
+            raise NonAsciiError("Target description %r contains non-ASCII characters" % description)
+        fields = [s.strip() for s in description.split(',')]
+        if len(fields) < 2:
+            raise ValueError("Target description '%s' must have at least two fields" % description)
+        # Check if first name starts with body type tag, while the next field does not
+        # This indicates a missing names field -> add an empty name list in front
+        body_types = ['azel', 'radec', 'gal', 'tle', 'special', 'xephem']
+        if np.any([fields[0].startswith(s) for s in body_types]) and \
+           not np.any([fields[1].startswith(s) for s in body_types]):
+            fields = [''] + fields
+        # Extract preferred name from name list (starred or first entry), and make the rest aliases
+        names = [s.strip() for s in fields[0].split('|')]
+        if len(names) == 0:
+            preferred_name, aliases = '', []
+        else:
+            try:
+                ind = [name.startswith('*') for name in names].index(True)
+                preferred_name, aliases = names[ind][1:], names[:ind] + names[ind + 1:]
+            except ValueError:
+                preferred_name, aliases = names[0], names[1:]
+        tags = [s.strip() for s in fields[1].split(' ')]
+        if len(tags) == 0:
+            raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
+        body_type = tags[0].lower()
+        # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
+        while len(fields[-1]) == 0:
+            fields.pop()
+
+        # Create appropriate PyEphem body based on body type
+        if body_type == 'azel':
+            if len(fields) < 4:
+                raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
+                                 % description)
+            body = StationaryBody(fields[2], fields[3], preferred_name)
+
+        elif body_type == 'radec':
+            if len(fields) < 4:
+                raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
+                                 % description)
+            ra = to_angle(fields[2], sexagesimal_unit=u.hour)
+            dec = to_angle(fields[3])
+            if not preferred_name:
+                preferred_name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
+                                                     angle_to_string(dec, unit=u.deg)[:-1])
+            # Extract epoch info from tags
+            if ('B1900' in tags) or ('b1900' in tags):
+                frame = FK4(equinox=Time(1900.0, format='byear'))
+            elif ('B1950' in tags) or ('b1950' in tags):
+                frame = FK4(equinox=Time(1950.0, format='byear'))
+            else:
+                frame = ICRS
+            body = FixedBody(preferred_name, SkyCoord(ra=ra, dec=dec, frame=frame))
+
+        elif body_type == 'gal':
+            if len(fields) < 4:
+                raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
+                                 % description)
+            l, b = to_angle(fields[2]), to_angle(fields[3])
+            if not preferred_name:
+                preferred_name = "Galactic l: %s b: %s" % (
+                    angle_to_string(l, unit=u.deg, decimal=True)[:-1],
+                    angle_to_string(b, unit=u.deg, decimal=True)[:-1])
+            body = FixedBody(preferred_name, SkyCoord(l=l, b=b, frame=Galactic))
+
+        elif body_type == 'tle':
+            if len(fields) < 4:
+                raise ValueError(f"Target description '{description}' contains *tle* body "
+                                 "without the expected two comma-separated lines")
+            if not preferred_name:
+                preferred_name = 'Unnamed Satellite'
+            try:
+                body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
+            except ValueError as err:
+                raise ValueError(f"Target description '{description}' "
+                                 f"contains malformed *tle* body: {err}") from err
+
+        elif body_type == 'special':
+            try:
+                if preferred_name.capitalize() != 'Nothing':
+                    body = SolarSystemBody(preferred_name)
+                else:
+                    body = NullBody()
+            except ValueError as err:
+                raise ValueError("Target description '%s' contains unknown *special* body '%s'"
+                                 % (description, preferred_name)) from err
+
+        elif body_type == 'xephem':
+            edb_string = fields[-1].replace('~', ',')
+            edb_name_field = edb_string.partition(',')[0]
+            edb_names = [name.strip() for name in edb_name_field.split('|')]
+            if preferred_name:
+                edb_string = edb_string.replace(edb_name_field, preferred_name)
+            else:
+                preferred_name = edb_names[0]
+            if preferred_name != edb_names[0]:
+                aliases.append(edb_names[0])
+            for extra_name in edb_names[1:]:
+                if not (extra_name in aliases) and not (extra_name == preferred_name):
+                    aliases.append(extra_name)
+            try:
+                body = Body.from_edb(edb_string)
+            except ValueError as err:
+                raise ValueError(f"Target description '{description}' "
+                                 f"contains malformed *xephem* body: {err}") from err
+            # Add xephem body type as an extra tag, right after the main 'xephem' tag
+            edb_type = edb_string[edb_string.find(',') + 1]
+            if edb_type == 'f':
+                tags.insert(1, 'radec')
+            elif edb_type in ['e', 'h', 'p']:
+                tags.insert(1, 'solarsys')
+            elif edb_type == 'E':
+                tags.insert(1, 'tle')
+            elif edb_type == 'P':
+                tags.insert(1, 'special')
+
+        else:
+            raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
+
+        # Extract flux model if it is available
+        flux_model = FluxDensityModel(fields[4]) if (len(fields) > 4) and (len(fields[4].strip(' ()')) > 0) else None
+
+        return cls(body, tags, aliases, flux_model)
 
     @classmethod
     def from_azel(cls, az, el):
@@ -889,164 +1038,6 @@ class Target:
             # The target (az, el) coordinates will serve as reference point on the sphere
             ref_azel = self.azel(timestamp, antenna)
             return plane_to_sphere[projection_type](ref_azel.az.rad, ref_azel.alt.rad, x, y)
-
-# --------------------------------------------------------------------------------------------------
-# --- FUNCTION :  construct_target_params
-# --------------------------------------------------------------------------------------------------
-
-
-def construct_target_params(description):
-    """Construct parameters of Target object from description string.
-
-    For more information on the description string format, see the help string
-    for :class:`Target`.
-
-    Parameters
-    ----------
-    description : string
-        String containing target name(s), tags, location and flux model
-
-    Returns
-    -------
-    body : :class:`ephem.Body` object
-        PyEphem Body object that will be used for position calculations
-    tags : list of strings
-        Descriptive tags associated with target, starting with its body type
-    aliases : list of strings
-        Alternate names of target
-    flux_model : :class:`FluxDensity` object
-        Object encapsulating spectral flux density model
-
-    Raises
-    ------
-    ValueError
-        If *description* has the wrong format
-    """
-    try:
-        description.encode('ascii')
-    except UnicodeError:
-        raise NonAsciiError("Target description %r contains non-ASCII characters" % description)
-    fields = [s.strip() for s in description.split(',')]
-    if len(fields) < 2:
-        raise ValueError("Target description '%s' must have at least two fields" % description)
-    # Check if first name starts with body type tag, while the next field does not
-    # This indicates a missing names field -> add an empty name list in front
-    body_types = ['azel', 'radec', 'gal', 'tle', 'special', 'xephem']
-    if np.any([fields[0].startswith(s) for s in body_types]) and \
-       not np.any([fields[1].startswith(s) for s in body_types]):
-        fields = [''] + fields
-    # Extract preferred name from name list (starred or first entry), and make the rest aliases
-    names = [s.strip() for s in fields[0].split('|')]
-    if len(names) == 0:
-        preferred_name, aliases = '', []
-    else:
-        try:
-            ind = [name.startswith('*') for name in names].index(True)
-            preferred_name, aliases = names[ind][1:], names[:ind] + names[ind + 1:]
-        except ValueError:
-            preferred_name, aliases = names[0], names[1:]
-    tags = [s.strip() for s in fields[1].split(' ')]
-    if len(tags) == 0:
-        raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
-    body_type = tags[0].lower()
-    # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
-    while len(fields[-1]) == 0:
-        fields.pop()
-
-    # Create appropriate PyEphem body based on body type
-    if body_type == 'azel':
-        if len(fields) < 4:
-            raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
-                             % description)
-        body = StationaryBody(fields[2], fields[3], preferred_name)
-
-    elif body_type == 'radec':
-        if len(fields) < 4:
-            raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
-                             % description)
-        ra = to_angle(fields[2], sexagesimal_unit=u.hour)
-        dec = to_angle(fields[3])
-        if not preferred_name:
-            preferred_name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
-                                                 angle_to_string(dec, unit=u.deg)[:-1])
-        # Extract epoch info from tags
-        if ('B1900' in tags) or ('b1900' in tags):
-            frame = FK4(equinox=Time(1900.0, format='byear'))
-        elif ('B1950' in tags) or ('b1950' in tags):
-            frame = FK4(equinox=Time(1950.0, format='byear'))
-        else:
-            frame = ICRS
-        body = FixedBody(preferred_name, SkyCoord(ra=ra, dec=dec, frame=frame))
-
-    elif body_type == 'gal':
-        if len(fields) < 4:
-            raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
-                             % description)
-        l, b = to_angle(fields[2]), to_angle(fields[3])
-        if not preferred_name:
-            preferred_name = "Galactic l: %s b: %s" % (
-                angle_to_string(l, unit=u.deg, decimal=True)[:-1],
-                angle_to_string(b, unit=u.deg, decimal=True)[:-1])
-        body = FixedBody(preferred_name, SkyCoord(l=l, b=b, frame=Galactic))
-
-    elif body_type == 'tle':
-        if len(fields) < 4:
-            raise ValueError(f"Target description '{description}' contains *tle* body "
-                             "without the expected two comma-separated lines")
-        if not preferred_name:
-            preferred_name = 'Unnamed Satellite'
-        try:
-            body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
-        except ValueError as err:
-            raise ValueError(f"Target description '{description}' "
-                             f"contains malformed *tle* body: {err}") from err
-
-    elif body_type == 'special':
-        try:
-            if preferred_name.capitalize() != 'Nothing':
-                body = SolarSystemBody(preferred_name)
-            else:
-                body = NullBody()
-        except ValueError as err:
-            raise ValueError("Target description '%s' contains unknown *special* body '%s'"
-                             % (description, preferred_name)) from err
-
-    elif body_type == 'xephem':
-        edb_string = fields[-1].replace('~', ',')
-        edb_name_field = edb_string.partition(',')[0]
-        edb_names = [name.strip() for name in edb_name_field.split('|')]
-        if preferred_name:
-            edb_string = edb_string.replace(edb_name_field, preferred_name)
-        else:
-            preferred_name = edb_names[0]
-        if preferred_name != edb_names[0]:
-            aliases.append(edb_names[0])
-        for extra_name in edb_names[1:]:
-            if not (extra_name in aliases) and not (extra_name == preferred_name):
-                aliases.append(extra_name)
-        try:
-            body = Body.from_edb(edb_string)
-        except ValueError as err:
-            raise ValueError(f"Target description '{description}' "
-                             f"contains malformed *xephem* body: {err}") from err
-        # Add xephem body type as an extra tag, right after the main 'xephem' tag
-        edb_type = edb_string[edb_string.find(',') + 1]
-        if edb_type == 'f':
-            tags.insert(1, 'radec')
-        elif edb_type in ['e', 'h', 'p']:
-            tags.insert(1, 'solarsys')
-        elif edb_type == 'E':
-            tags.insert(1, 'tle')
-        elif edb_type == 'P':
-            tags.insert(1, 'special')
-
-    else:
-        raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
-
-    # Extract flux model if it is available
-    flux_model = FluxDensityModel(fields[4]) if (len(fields) > 4) and (len(fields[4].strip(' ()')) > 0) else None
-
-    return body, tags, aliases, flux_model
 
 
 def construct_azel_target(az, el):
