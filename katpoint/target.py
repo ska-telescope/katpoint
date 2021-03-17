@@ -17,6 +17,7 @@
 """Target object used for pointing and flux density calculation."""
 
 import warnings
+from types import SimpleNamespace
 
 import numpy as np
 import astropy.units as u
@@ -31,6 +32,10 @@ from .flux import FluxDensityModel
 from .conversion import to_angle, angle_to_string, azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
 from .body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
+
+
+# Singleton that identifies default target parameters
+_DEFAULT = object()
 
 
 class NonAsciiError(ValueError):
@@ -114,24 +119,26 @@ class Target:
         If description string has the wrong format
     """
 
-    def __init__(self, body, tags=None, aliases=None, flux_model=None, antenna=None, flux_freq_MHz=None):
-        if isinstance(body, Target):
-            body = body.description
-        # If the first parameter is a description string, extract the relevant target parameters from it
-        if isinstance(body, str):
-            target = Target.from_description(body)
-            body, tags, aliases, flux_model = target.body, target.tags, target.aliases, target.flux_model
-        self.body = body
-        self.name = self.body.name
+    def __init__(self, target, tags=_DEFAULT, aliases=_DEFAULT, flux_model=_DEFAULT,
+                 antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
+        default = SimpleNamespace(tags=[], aliases=[], flux_model=None,
+                                  antenna=None, flux_freq_MHz=None)
+        if isinstance(target, str):
+            # Create a temporary Target object to serve up default parameters instead
+            target = Target.from_description(target)
+        if isinstance(target, Target):
+            default = target
+            target = default.body
+
+        self.body = target
+        self.name = target.name
         self.tags = []
+        tags = default.tags if tags is _DEFAULT else tags
         self.add_tags(tags)
-        if aliases is None:
-            self.aliases = []
-        else:
-            self.aliases = aliases
-        self.flux_model = flux_model
-        self.antenna = antenna
-        self.flux_freq_MHz = flux_freq_MHz
+        self.aliases = default.aliases if aliases is _DEFAULT else aliases
+        self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
+        self.antenna = default.antenna if antenna is _DEFAULT else antenna
+        self.flux_freq_MHz = default.flux_freq_MHz if flux_freq_MHz is _DEFAULT else flux_freq_MHz
 
     def __str__(self):
         """Complete string representation of target object, sufficient to reconstruct it."""

@@ -35,6 +35,46 @@ TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
               '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282')
 
 
+def test_construct_target():
+    """Test various ways to construct targets, also with parameters that are overridden."""
+    t0 = katpoint.Target('J1939-6342 | PKS 1934-63, radec bfcal, '
+                         '19:39:25.0, -63:42:45.6, (408.0 8640.0 -30.76 26.49 -7.098 0.6053)')
+    # Construct Target from Target
+    assert katpoint.Target(t0) == t0
+    # Construct Target from description string
+    assert katpoint.Target(t0.description) == t0
+    # Construct Target from Body
+    assert katpoint.Target(t0.body, t0.tags, t0.aliases, t0.flux_model) == t0
+    # Override some parameters
+    a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0, 1 2 3, 1 2 3, 1.14')
+    t0b = katpoint.Target(t0.description, tags='radec no_collab', aliases=['Fee', 'Fie', 'Foe'],
+                          antenna=a0, flux_freq_MHz=1284.)
+    assert t0b.body.coord == t0.body.coord
+    assert t0b.name == t0.name
+    assert t0b.tags == ['radec', 'no_collab']
+    assert t0b.aliases == ['Fee', 'Fie', 'Foe']
+    assert t0b.flux_model == t0.flux_model
+    assert t0b.antenna == a0
+    assert t0b.flux_freq_MHz == 1284.
+    # Check that we can also replace non-default parameters with defaults
+    t0c = katpoint.Target(t0, flux_model=None, antenna=None, flux_freq_MHz=None)
+    assert t0c.body.coord == t0.body.coord
+    assert t0c.name == t0.name
+    assert t0c.tags == t0.tags
+    assert t0c.aliases == t0.aliases
+    assert not t0c.flux_model
+    assert not t0c.antenna
+    assert t0c.flux_freq_MHz is None
+    # Check that construction from Target is nearly exact (within 10 nanoarcsec)
+    t1 = katpoint.Target.from_radec(np.e * u.deg, np.pi * u.deg)
+    t2 = katpoint.Target(t1)
+    check_separation(t2.body.coord, np.e * u.deg, np.pi * u.deg, tol=10e-9 * u.arcsec)
+    assert t1.name == t2.name
+    assert t1.tags == t2.tags
+    assert t1.aliases == t2.aliases
+    assert t1.flux_model == t2.flux_model
+
+
 def test_construct_target_from_azel_radec():
     """Test construction of targets from (az, el) and (ra, dec) vs strings."""
     azel1 = katpoint.Target('azel, 10.0, -10.0')
