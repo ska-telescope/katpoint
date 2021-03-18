@@ -92,7 +92,7 @@ class Catalogue:
     are then constructed before being added, as in::
 
         cat1 = katpoint.Catalogue('Takreem, azel, 20, 30')
-        cat2 = katpoint.Catalogue(['Ganymede, special', 'Takreem, azel, 20, 30'])
+        cat2 = katpoint.Catalogue(['Venus, special', 'Takreem, azel, 20, 30'])
 
     Taking this one step further, the list may be replaced by any iterable
     object that returns strings. A very useful example of such an object is the
@@ -100,14 +100,14 @@ class Catalogue:
     If the catalogue file contains one target description string per line
     (with comments and blank lines allowed too), it may be loaded as::
 
-        cat = katpoint.Catalogue(file('catalogue.csv'))
+        cat = katpoint.Catalogue(open('catalogue.csv'))
 
     Once a catalogue is initialised, more targets may be added to it. The
     :meth:`Catalogue.add` method is the most direct way. It accepts a single
     target object, a list of target objects, a single string, a list of strings
     or a string iterable. This is illustrated below::
 
-        t1 = katpoint.Target('Ganymede, special')
+        t1 = katpoint.Target('Venus, special')
         t2 = katpoint.Target('Takreem, azel, 20, 30')
         cat = katpoint.Catalogue()
         cat.add(t1)
@@ -124,8 +124,8 @@ class Catalogue:
     Two special methods simplify the loading of targets from these files::
 
         cat = katpoint.Catalogue()
-        cat.add_tle(file('gps-ops.txt'))
-        cat.add_edb(file('hipparcos.edb'))
+        cat.add_tle(open('gps-ops.txt'))
+        cat.add_edb(open('hipparcos.edb'))
 
     Whenever targets are added to the catalogue, a tag or list of tags may be
     specified. The tags can also be given as a single string of
@@ -169,9 +169,9 @@ class Catalogue:
       supplied to the catalogue during initialisation. This is stored in each
       target in the catalogue. An example is::
 
-        cat = katpoint.Catalogue(file('source_list.csv'))
+        cat = katpoint.Catalogue(open('source_list.csv'))
         cat1 = cat.filter(flux_limit_Jy=[1, 100], flux_freq_MHz=1500)
-        cat = katpoint.Catalogue(file('source_list.csv'), flux_freq_MHz=1500)
+        cat = katpoint.Catalogue(open('source_list.csv'), flux_freq_MHz=1500)
         cat1 = cat.filter(flux_limit_Jy=1)
 
     - *Azimuth filter*. Returns all targets with an azimuth angle in the given
@@ -234,7 +234,7 @@ class Catalogue:
       subset of targets that satisfy the criteria. All criteria are evaluated at
       the same time instant. A typical use-case is::
 
-        cat = katpoint.Catalogue(file('source_list.csv'))
+        cat = katpoint.Catalogue(open('source_list.csv'))
         strong_sources = cat.filter(flux_limit_Jy=10.0, flux_freq_MHz=1500)
 
     - An iterator filter, implemented by the :meth:`Catalogue.iterfilter`
@@ -246,7 +246,7 @@ class Catalogue:
       to cycle through a list of targets over an extended period of time (as
       during observation). The iterator filter is typically used in a for-loop::
 
-        cat = katpoint.Catalogue(file('source_list.csv'))
+        cat = katpoint.Catalogue(open('source_list.csv'))
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
         for t in cat.iterfilter(el_limit_deg=10, antenna=ant):
             # < observe target t >
@@ -418,7 +418,7 @@ class Catalogue:
 
         >>> from katpoint import Catalogue
         >>> cat = Catalogue()
-        >>> cat.add(file('source_list.csv'), tags='cal')
+        >>> cat.add(open('source_list.csv'), tags='cal')
         >>> cat.add('Sun, special')
         >>> cat2 = Catalogue()
         >>> cat2.add(cat.targets)
@@ -474,7 +474,7 @@ class Catalogue:
 
         >>> from katpoint import Catalogue
         >>> cat = Catalogue()
-        >>> cat.add_tle(file('gps-ops.txt'), tags='gps')
+        >>> cat.add_tle(open('gps-ops.txt'), tags='gps')
         >>> lines = ['ISS DEB [TOOL BAG]\n',
                      '1 33442U 98067BL  09195.86837279  .00241454  37518-4  34022-3 0  3424\n',
                      '2 33442  51.6315 144.2681 0003376 120.1747 240.0135 16.05240536 37575\n']
@@ -545,7 +545,7 @@ class Catalogue:
 
         >>> from katpoint import Catalogue
         >>> cat = Catalogue()
-        >>> cat.add_edb(file('hipparcos.edb'), tags='star')
+        >>> cat.add_edb(open('hipparcos.edb'), tags='star')
         >>> lines = ['HYP71683,f|S|G2,14:39:35.88 ,-60:50:7.4 ,-0.010,2000,\n',
                      'HYP113368,f|S|A3,22:57:39.055,-29:37:20.10,1.166,2000,\n']
         >>> cat2.add_edb(lines)
