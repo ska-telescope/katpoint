@@ -67,7 +67,8 @@ class Catalogue:
       further simplifies finding a target in the catalogue. The most recently
       added target with the specified name is returned. An example is::
 
-        cat = katpoint.Catalogue(add_specials=True)
+        targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
+        cat = katpoint.Catalogue(targets)
         t = cat['Sun']
 
     Construction
@@ -77,16 +78,11 @@ class Catalogue:
 
         cat = katpoint.Catalogue()
 
-    which produces an empty catalogue. The standard *special* targets, which
-    are the Sun, Moon, planets and Zenith, can be added as follows::
+    which produces an empty catalogue. Additional targets may be loaded during
+    initialisation of the catalogue by providing a list of :class:`Target`
+    objects (or a single object by itself), as in the following example::
 
-        cat = katpoint.Catalogue(add_specials=True)
-
-    Additional targets may be loaded during initialisation of the catalogue by
-    providing a list of :class:`Target` objects (or a single object by itself),
-    as in the following example::
-
-        t1 = katpoint.Target('Ganymede, special')
+        t1 = katpoint.Target('Venus, special')
         t2 = katpoint.Target('Takreem, azel, 20, 30')
         cat1 = katpoint.Catalogue(t1)
         cat2 = katpoint.Catalogue([t1, t2])
@@ -116,15 +112,9 @@ class Catalogue:
         cat = katpoint.Catalogue()
         cat.add(t1)
         cat.add([t1, t2])
-        cat.add('Ganymede, special')
-        cat.add(['Ganymede, special', 'Takreem, azel, 20, 30'])
-        cat.add(file('catalogue.csv'))
-
-    The only functionality that :meth:`Catalogue.add` lacks is the ability to
-    add all *special* and *star* targets in one go. They may still be added
-    individually, although this is less convenient (and the reason for the
-    existence of ``add_specials`` in the :class:`Catalogue`
-    initialiser in the first place).
+        cat.add('Venus, special')
+        cat.add(['Venus, special', 'Takreem, azel, 20, 30'])
+        cat.add(open('catalogue.csv'))
 
     Some target types are typically found in files with standard formats.
     Notably, *tle* targets are found in TLE files with three lines per target,
@@ -144,16 +134,17 @@ class Catalogue:
     groups of related targets in the catalogue, as shown below::
 
         cat = katpoint.Catalogue(tags='default')
-        cat.add_tle(file('gps-ops.txt'), tags='gps satellite')
-        cat.add_tle(file('glo-ops.txt'), tags=['glonass', 'satellite'])
-        cat.add(file('source_list.csv'), tags='calibrator')
-        cat.add_edb(file('hipparcos.edb'), tags='star')
+        cat.add_tle(open('gps-ops.txt'), tags='gps satellite')
+        cat.add_tle(open('glo-ops.txt'), tags=['glonass', 'satellite'])
+        cat.add(open('source_list.csv'), tags='calibrator')
+        cat.add_edb(open('hipparcos.edb'), tags='star')
 
     Finally, targets may be removed from the catalogue. The most recently added
     target with the specified name is removed from the targets list as well as
     the lookup dict. The target may be removed via any of its names::
 
-        cat = katpoint.Catalogue(add_specials=True)
+        targets = ['Sol | Sun, special', 'Moon, special', 'Jupiter, special']
+        cat = katpoint.Catalogue(targets)
         cat.remove('Sun')
 
     Filtering and sorting
@@ -195,7 +186,8 @@ class Catalogue:
       stored in each target. An example is::
 
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
-        cat = katpoint.Catalogue(add_specials=True)
+        targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
+        cat = katpoint.Catalogue(targets)
         cat1 = cat.filter(az_limit_deg=[0, 90], timestamp='2009-10-10', antenna=ant)
         cat = katpoint.Catalogue(antenna=ant)
         cat1 = cat.filter(az_limit_deg=[90, 0])
@@ -206,7 +198,8 @@ class Catalogue:
       is required (or defaults will be used). An example is::
 
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
-        cat = katpoint.Catalogue(add_specials=True)
+        targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
+        cat = katpoint.Catalogue(targets)
         cat1 = cat.filter(el_limit_deg=[10, 30], timestamp='2009-10-10', antenna=ant)
         cat = katpoint.Catalogue(antenna=ant)
         cat1 = cat.filter(el_limit_deg=10)
@@ -220,8 +213,9 @@ class Catalogue:
       required (or defaults will be used). An example is::
 
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
-        cat = katpoint.Catalogue(add_specials=True)
-        cat.add_tle(file('geo.txt'))
+        targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
+        cat = katpoint.Catalogue(targets)
+        cat.add_tle(open('geo.txt'))
         sun = cat['Sun']
         afristar = cat['AFRISTAR']
         cat1 = cat.filter(dist_limit_deg=5, proximity_targets=[sun, afristar],
@@ -272,8 +266,7 @@ class Catalogue:
         Tag or list of tags to add to *targets* (strings will be split on
         whitespace)
     add_specials: bool, optional
-        True if *special* bodies specified in :data:`specials` (and 'Zenith')
-        should be added
+        Always False (add special bodies yourself) **DEPRECATED**
     add_stars:  bool, optional
         Always False (stars have no special support anymore) **DEPRECATED**
     antenna : :class:`Antenna` object, optional
@@ -292,21 +285,21 @@ class Catalogue:
     catalogue was assembled, which seems the most natural.
     """
 
-    def __init__(self, targets=None, tags=None, add_specials=False, add_stars=None,
+    def __init__(self, targets=None, tags=None, add_specials=None, add_stars=None,
                  antenna=None, flux_freq_MHz=None):
         self.lookup = defaultdict(list)
         self.targets = []
         self._antenna = antenna
         self._flux_freq_MHz = flux_freq_MHz
-        if add_specials:
-            self.add(['%s, special' % (name,) for name in specials], tags)
-            self.add('Zenith, azel, 0, 90', tags)
+        if add_specials is True:
+            raise ValueError('The add_specials parameter is not supported anymore - '
+                             'please add the targets manually')
         if add_stars is True:
             raise ValueError('The add_stars parameter is not supported anymore - '
                              'please add the stars manually (see scripts/ephem_stars.edb)')
-        if add_stars is False:
-            warnings.warn('The add_stars parameter is now permanently False and will be removed',
-                          FutureWarning)
+        if add_specials is False or add_stars is False:
+            warnings.warn('The add_specials and add_stars parameters are now '
+                          'permanently False and will be removed', FutureWarning)
         if targets is None:
             targets = []
         self.add(targets, tags)
@@ -835,7 +828,7 @@ class Catalogue:
         return Catalogue([target for target in
                           self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg, el_limit_deg,
                                           dist_limit_deg, proximity_targets, timestamp, antenna)],
-                         add_specials=False, antenna=self.antenna, flux_freq_MHz=self.flux_freq_MHz)
+                         antenna=self.antenna, flux_freq_MHz=self.flux_freq_MHz)
 
     def sort(self, key='name', ascending=True, flux_freq_MHz=None, timestamp=None, antenna=None):
         """Sort targets in catalogue.
