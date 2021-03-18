@@ -360,16 +360,6 @@ class Target:
             except ValueError as err:
                 raise ValueError(f"Target description '{description}' "
                                  f"contains malformed *xephem* body: {err}") from err
-            # Add xephem body type as an extra tag, right after the main 'xephem' tag
-            edb_type = edb_string[edb_string.find(',') + 1]
-            if edb_type == 'f':
-                tags.insert(1, 'radec')
-            elif edb_type in ['e', 'h', 'p']:
-                tags.insert(1, 'solarsys')
-            elif edb_type == 'E':
-                tags.insert(1, 'tle')
-            elif edb_type == 'P':
-                tags.insert(1, 'special')
 
         else:
             raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
