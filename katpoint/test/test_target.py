@@ -288,7 +288,7 @@ def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=(
                                          'gal, 30, -30', 'Sun, special', TLE_TARGET])
 def test_array_valued_methods(description):
     """Test array-valued methods, comparing output against corresponding scalar versions."""
-    offsets = np.array([[[0, 1, 2, 3], [4, 5, 6, 7]]])
+    offsets = np.array([[[0, 1], [4, 5]]])
     times = (katpoint.Timestamp('2020-07-30 14:02:00') + offsets).time
     assert times.shape == offsets.shape
     target = katpoint.Target(description)
