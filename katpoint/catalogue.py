@@ -291,15 +291,20 @@ class Catalogue:
         self.targets = []
         self._antenna = antenna
         self._flux_freq_MHz = flux_freq_MHz
-        if add_specials is True:
-            raise ValueError('The add_specials parameter is not supported anymore - '
-                             'please add the targets manually')
-        if add_stars is True:
-            raise ValueError('The add_stars parameter is not supported anymore - '
-                             'please add the stars manually (see scripts/ephem_stars.edb)')
-        if add_specials is False or add_stars is False:
-            warnings.warn('The add_specials and add_stars parameters are now '
-                          'permanently False and will be removed', FutureWarning)
+        if add_specials is not None:
+            if add_specials:
+                raise ValueError('The add_specials parameter is not supported anymore - '
+                                 'please add the targets manually')
+            else:
+                warnings.warn('The add_specials parameter is now permanently False '
+                              'and will be removed', FutureWarning)
+        if add_stars is not None:
+            if add_stars:
+                raise ValueError('The add_stars parameter is not supported anymore - '
+                                 'please add the stars manually (see scripts/ephem_stars.edb)')
+            else:
+                warnings.warn('The add_specials parameter is now permanently False '
+                              'and will be removed', FutureWarning)
         if targets is None:
             targets = []
         self.add(targets, tags)

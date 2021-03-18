@@ -21,6 +21,7 @@ from numpy.testing import assert_allclose
 
 import katpoint
 
+
 TARGETS = [
     'xephem radec, Acamar~f|S|A4~02 58 15.7156|-53.53~-40 18 17.046|25.71~2.88~2000~0',
     'xephem radec, Alpheratz~f|S|B9~00 08 23.1680|135.68~+29 05 26.981|-162.95~2.07~2000~0',
