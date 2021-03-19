@@ -119,8 +119,8 @@ class Target:
         If description string has the wrong format
     """
 
-    def __init__(self, target, user_tags=_DEFAULT, aliases=_DEFAULT, flux_model=_DEFAULT,
-                 antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
+    def __init__(self, target, name=_DEFAULT, user_tags=_DEFAULT, aliases=_DEFAULT,
+                 flux_model=_DEFAULT, antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
         default = SimpleNamespace(user_tags=[], aliases=[], flux_model=None,
                                   antenna=None, flux_freq_MHz=None)
         if isinstance(target, str):
@@ -131,7 +131,7 @@ class Target:
             target = default.body
 
         self.body = target
-        self.name = target.name
+        self.name = target.name if name is _DEFAULT or not name else name
         self.user_tags = []
         user_tags = default.user_tags if user_tags is _DEFAULT else user_tags
         self.add_tags(user_tags)
@@ -297,9 +297,6 @@ class Target:
                                  % description)
             ra = to_angle(fields[2], sexagesimal_unit=u.hour)
             dec = to_angle(fields[3])
-            if not preferred_name:
-                preferred_name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
-                                                     angle_to_string(dec, unit=u.deg)[:-1])
             # Extract epoch info from tags
             if ('B1900' in tags) or ('b1900' in tags):
                 frame = FK4(equinox=Time(1900.0, format='byear'))
@@ -307,18 +304,14 @@ class Target:
                 frame = FK4(equinox=Time(1950.0, format='byear'))
             else:
                 frame = ICRS
-            body = FixedBody(preferred_name, SkyCoord(ra=ra, dec=dec, frame=frame))
+            body = FixedBody(SkyCoord(ra=ra, dec=dec, frame=frame), preferred_name)
 
         elif body_type == 'gal':
             if len(fields) < 4:
                 raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
                                  % description)
-            l, b = to_angle(fields[2]), to_angle(fields[3])
-            if not preferred_name:
-                preferred_name = "Galactic l: %s b: %s" % (
-                    angle_to_string(l, unit=u.deg, decimal=True)[:-1],
-                    angle_to_string(b, unit=u.deg, decimal=True)[:-1])
-            body = FixedBody(preferred_name, SkyCoord(l=l, b=b, frame=Galactic))
+            body = FixedBody(SkyCoord(l=to_angle(fields[2]),
+                                      b=to_angle(fields[3]), frame=Galactic), preferred_name)
 
         elif body_type == 'tle':
             if len(fields) < 4:
@@ -367,7 +360,7 @@ class Target:
         # Extract flux model if it is available
         flux_model = FluxDensityModel(fields[4]) if (len(fields) > 4) and (len(fields[4].strip(' ()')) > 0) else None
 
-        return cls(body, tags, aliases, flux_model)
+        return cls(body, preferred_name, tags, aliases, flux_model)
 
     @classmethod
     def from_azel(cls, az, el):
@@ -384,7 +377,7 @@ class Target:
         target : :class:`Target`
             Constructed target object
         """
-        return cls(StationaryBody(az, el), 'azel')
+        return cls(StationaryBody(az, el))
 
     @classmethod
     def from_radec(cls, ra, dec):
@@ -406,10 +399,7 @@ class Target:
         """
         ra = to_angle(ra, sexagesimal_unit=u.hour)
         dec = to_angle(dec)
-        name = "Ra: %s Dec: %s" % (angle_to_string(ra, unit=u.hour)[:-1],
-                                   angle_to_string(dec, unit=u.deg)[:-1])
-        body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
-        return cls(body, 'radec')
+        return cls(FixedBody(SkyCoord(ra=ra, dec=dec, frame=ICRS)))
 
     def add_tags(self, tags):
         """Add tags to target object.

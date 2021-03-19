@@ -41,8 +41,9 @@ else:
 
 
 def _get_fixed_body(ra_str, dec_str, distance=None):
-    return FixedBody('name', SkyCoord(ra=Angle(ra_str, unit=u.hour),
-                                      dec=Angle(dec_str, unit=u.deg), distance=distance))
+    ra = Angle(ra_str, unit=u.hour)
+    dec = Angle(dec_str, unit=u.deg)
+    return FixedBody(SkyCoord(ra=ra, dec=dec, distance=distance))
 
 
 TLE_NAME = 'GPS BIIA-21 (PRN 09)'
@@ -119,7 +120,7 @@ def test_fixed():
     assert body.tag == 'radec'
     assert body.coord.ra == Angle('10:10:40.123h')
     assert body.coord.dec == Angle('40:20:50.567d')
-    body_gal = FixedBody('name', Galactic(l='-10d', b='20d'))
+    body_gal = FixedBody(Galactic(l='-10d', b='20d'))
     assert body_gal.tag == 'gal'
 
 

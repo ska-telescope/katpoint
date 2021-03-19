@@ -44,13 +44,13 @@ def test_construct_target():
     # Construct Target from description string
     assert katpoint.Target(t0.description) == t0
     # Construct Target from Body
-    assert katpoint.Target(t0.body, t0.user_tags, t0.aliases, t0.flux_model) == t0
+    assert katpoint.Target(t0.body, t0.name, t0.user_tags, t0.aliases, t0.flux_model) == t0
     # Override some parameters
     a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0, 1 2 3, 1 2 3, 1.14')
-    t0b = katpoint.Target(t0.description, user_tags='no_collab', aliases=['Fee', 'Fie', 'Foe'],
-                          antenna=a0, flux_freq_MHz=1284.)
+    t0b = katpoint.Target(t0.description, name='Marie', user_tags='no_collab',
+                          aliases=['Fee', 'Fie', 'Foe'], antenna=a0, flux_freq_MHz=1284.)
     assert t0b.body.coord == t0.body.coord
-    assert t0b.name == t0.name
+    assert t0b.name == 'Marie'
     assert t0b.tags == ['radec', 'no_collab']
     assert t0b.user_tags == ['no_collab']
     assert t0b.aliases == ['Fee', 'Fie', 'Foe']
@@ -58,9 +58,9 @@ def test_construct_target():
     assert t0b.antenna == a0
     assert t0b.flux_freq_MHz == 1284.
     # Check that we can also replace non-default parameters with defaults
-    t0c = katpoint.Target(t0, flux_model=None, antenna=None, flux_freq_MHz=None)
+    t0c = katpoint.Target(t0, name='', flux_model=None, antenna=None, flux_freq_MHz=None)
     assert t0c.body.coord == t0.body.coord
-    assert t0c.name == t0.name
+    assert t0c.name == t0.name  # It isn't currently possible to have an empty Target name
     assert t0c.tags == t0.tags
     assert t0c.aliases == t0.aliases
     assert not t0c.flux_model
@@ -74,6 +74,8 @@ def test_construct_target():
     assert t1.tags == t2.tags
     assert t1.aliases == t2.aliases
     assert t1.flux_model == t2.flux_model
+    # Construct from Body only
+    assert katpoint.Target(t1.body) == t1
 
 
 def test_construct_target_from_azel_radec():

@@ -46,7 +46,7 @@ class Body:
     Parameters
     ----------
     name : str
-        The name of the body
+        The name of the body (possibly inferred from coordinates)
     tag : str
         Type of body, as a string tag
     """
@@ -133,18 +133,27 @@ class FixedBody(Body):
 
     Parameters
     ----------
-    name : str
-        The name of the celestial body
     coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
             :class:`~astropy.coordinates.SkyCoord`
         The coordinates of the body
+    name : str, optional
+        The name of the celestial body, or a default name based on coordinates
     tag : str, optional
         Type of body, as a string tag
     """
 
-    def __init__(self, name, coord, tag=None):
+    def __init__(self, coord, name=None, tag=None):
         if tag is None:
             tag = 'gal' if coord.is_equivalent_frame(Galactic()) else 'radec'
+        if not name:
+            if tag == 'gal':
+                l = angle_to_string(coord.l, unit=u.deg, decimal=True)[:-1]
+                b = angle_to_string(coord.b, unit=u.deg, decimal=True)[:-1]
+                name = f'Galactic l: {l} b: {b}'
+            else:
+                ra = angle_to_string(coord.ra, unit=u.hour)[:-1]
+                dec = angle_to_string(coord.dec, unit=u.deg)[:-1]
+                name = f'Ra: {ra} Dec: {dec}'
         super().__init__(name, tag)
         self.coord = coord
 
@@ -156,8 +165,8 @@ class FixedBody(Body):
         # Discard proper motion for now (the part after the |)
         ra = fields[2].split('|')[0]
         dec = fields[3].split('|')[0]
-        return cls(name, SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)),
-                   tag='xephem radec')
+        return cls(SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)),
+                   name, tag='xephem radec')
 
     def to_edb(self):
         """Create an XEphem database (EDB) entry for fixed body ("f").
@@ -401,8 +410,9 @@ class StationaryBody(Body):
     def __init__(self, az, el, name=None):
         self.coord = AltAz(az=to_angle(az), alt=to_angle(el))
         if not name:
-            name = "Az: {} El: {}".format(angle_to_string(self.coord.az, unit=u.deg)[:-1],
-                                          angle_to_string(self.coord.alt, unit=u.deg)[:-1])
+            az = angle_to_string(self.coord.az, unit=u.deg)[:-1]
+            el = angle_to_string(self.coord.alt, unit=u.deg)[:-1]
+            name = f'Az: {az} El: {el}'
         super().__init__(name, 'azel')
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
@@ -432,4 +442,4 @@ class NullBody(FixedBody):
     """
 
     def __init__(self):
-        super().__init__('Nothing', ICRS(np.nan * u.rad, np.nan * u.rad), 'special')
+        super().__init__(ICRS(np.nan * u.rad, np.nan * u.rad), 'Nothing', 'special')
