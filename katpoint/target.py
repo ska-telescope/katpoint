@@ -48,7 +48,8 @@ class Target:
     descriptive tags and a flux density model. For convenience, a default
     antenna and flux frequency can be set, to simplify the calling of
     pointing and flux density methods. These are not stored as part of the
-    target object, however.
+    target object, however. It is also possible to construct a Target directly
+    from an :class:`~astropy.coordinates.SkyCoord` (the future Body?).
 
     The object can be constructed from its constituent components or from a
     description string. The description string contains up to five
@@ -108,8 +109,8 @@ class Target:
 
     Parameters
     ----------
-    target : :class:`Body`, str or :class:`Target`
-        A Body, a full description string or existing Target object.
+    target : :class:`Body`, :class:`~astropy.coordinates.SkyCoord`, str or :class:`Target`
+        A Body, a SkyCoord, a full description string or existing Target object.
         The parameters in the description string or existing Target can still
         be overridden by providing additional parameters after `target`.
     name : str, optional
@@ -138,6 +139,8 @@ class Target:
         if isinstance(target, str):
             # Create a temporary Target object to serve up default parameters instead
             target = Target.from_description(target)
+        elif isinstance(target, SkyCoord):
+            target = FixedBody(target)
         if isinstance(target, Target):
             default = target
             target = default.body

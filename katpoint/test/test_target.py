@@ -74,8 +74,9 @@ def test_construct_target():
     assert t1.tags == t2.tags
     assert t1.aliases == t2.aliases
     assert t1.flux_model == t2.flux_model
-    # Construct from Body only
+    # Construct from Body and SkyCoord only
     assert katpoint.Target(t1.body) == t1
+    assert katpoint.Target(t1.body.coord) == t1
 
 
 def test_construct_target_from_azel_radec():
