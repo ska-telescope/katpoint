@@ -75,8 +75,7 @@ f.close()
 
 # Test the catalogue
 ant = katpoint.Antenna('KAT7, -30:43:16.71, 21:24:35.86, 1055, 12.0')
-cat = katpoint.Catalogue(open('bae_optical_pointing_sources.csv'),
-                         add_specials=False, antenna=ant)
+cat = katpoint.Catalogue(open('bae_optical_pointing_sources.csv'), antenna=ant)
 timestamp = katpoint.Timestamp()
 ra, dec = np.array([t.radec(timestamp) for t in cat]).transpose()
 constellation = [t.aliases[0].partition(' ')[2][:3] if t.aliases else 'SOL' for t in cat]
