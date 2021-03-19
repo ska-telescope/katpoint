@@ -21,10 +21,9 @@ from types import SimpleNamespace
 
 import numpy as np
 import astropy.units as u
-import astropy.constants as const
-from astropy.coordinates import SkyCoord, Angle
-from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS
 from astropy.time import Time
+import astropy.constants as const
+from astropy.coordinates import SkyCoord, Angle, ICRS, Galactic, FK4, AltAz, CIRS
 
 from .timestamp import Timestamp, delta_seconds
 from .antenna import Antenna
@@ -45,27 +44,45 @@ class NonAsciiError(ValueError):
 class Target:
     """A target which can be pointed at by an antenna.
 
-    This is a wrapper around a PyEphem :class:`ephem.Body` that adds flux
-    density, alternate names and descriptive tags. For convenience, a default
-    antenna and flux frequency can be set, to simplify the calling of pointing
-    and flux density methods. These are not stored as part of the target object,
-    however.
+    This is a wrapper around a :class:`Body` that adds alternate names,
+    descriptive tags and a flux density model. For convenience, a default
+    antenna and flux frequency can be set, to simplify the calling of
+    pointing and flux density methods. These are not stored as part of the
+    target object, however.
 
     The object can be constructed from its constituent components or from a
     description string. The description string contains up to five
     comma-separated fields, with the format::
 
-        <name list>, <tags>, <longitudinal>, <latitudinal>, <flux model>
+        [<name list>,] <tags>, [<location 1>, [<location 2>, [<flux model>]]]
 
     The <name list> contains a pipe-separated list of alternate names for the
     target, with the preferred name either indicated by a prepended asterisk or
-    assumed to be the first name in the list. The names may contain spaces, and
-    the list may be empty. The <tags> field contains a space-separated list of
-    descriptive tags for the target. The first tag is mandatory and indicates
-    the body type of the target, which should be one of (*azel*, *radec*, *gal*,
-    *tle*, *special*, *xephem*). The longidutinal and latitudinal fields
-    are only relevant to *azel* and *radec* targets, in which case they contain
-    the relevant coordinates.
+    assumed to be the first name in the list. The names may contain spaces.
+    The list may also be empty, or the entire field may be missing, to indicate
+    an unnamed target. In this case a name will be inferred from the body.
+
+    The <tags> field contains a space-separated list of descriptive tags for
+    the target. The first tag is mandatory and indicates the body type of the
+    target, which should be one of (*azel*, *radec*, *gal*, *special*, *tle*,
+    *xephem*).
+
+    For *azel*, *radec* and *gal* targets, the two location fields contain the
+    relevant longitude and latitude coordinates, respectively.
+
+    The *special* body type has no location fields. The *special* target name
+    is typically one of the major solar system objects supported by Astropy's
+    ephemeris routines. Alternatively, it could be "Nothing", which indicates a
+    dummy target with no position (useful as a placeholder but not much else).
+
+    For *tle* bodies, the two location fields contain the two lines of the
+    element set. If the name list is empty, the target name is derived from the
+    TLE instead.
+
+    The *xephem* body contains a string in XEphem EDB database format as the
+    first location field, with commas replaced by tildes. If the name list is
+    empty, the target name is taken from the XEphem string instead. Only fixed
+    and Earth satellite objects are supported.
 
     The <flux model> is a space-separated list of numbers used to represent the
     flux density of the target. The first two numbers specify the frequency
@@ -75,18 +92,15 @@ class Target:
 
         name1 | *name 2, radec cal, 12:34:56.7, -04:34:34.2, (1000.0 2000.0 1.0)
 
-    For the *special* body type, only the target name is required. The
-    *special* body name is assumed to be a PyEphem class name, and is typically
-    one of the major solar system objects. Alternatively, it could be "Nothing",
-    which indicates a dummy target with no position (useful as a placeholder but
-    not much else).
+    In summary, description strings take the following forms based on body type::
 
-    For *tle* bodies, the final field in the description string should contain
-    the three lines of the TLE. If the name list is empty, the target name is
-    taken from the TLE instead. The *xephem* body contains a string in XEphem
-    EDB database format as the final field, with commas replaced by tildes. If
-    the name list is empty, the target name is taken from the XEphem string
-    instead.
+        [<name list>,] azel [<user tags>], <az>, <el> [, <flux model>]
+        [<name list>,] radec [<user tags>], <ra>, <dec> [, <flux model>]
+        [<name list>,] gal [<user tags>], <l>, <b> [, <flux model>]
+        <name list>, special [<user tags>]
+        [<name list>,] tle [<user tags>], <TLE line 1>, <TLE line 2> [, <flux model>]
+        [<name list>,] xephem radec [<user tags>], <EDB string (type 'f')>
+        [<name list>,] xephem tle [<user tags>], <EDB string (type 'E')>
 
     When specifying a description string, the rest of the target parameters are
     ignored, except for the default antenna and flux frequency (which do not
@@ -94,24 +108,22 @@ class Target:
 
     Parameters
     ----------
-    body : :class:`ephem.Body` object or :class:`Target` object or string
-        Pre-constructed PyEphem Body object to embed in target object, or
-        existing target object or description string
-    tags : list of strings, or whitespace-delimited string, optional
-        Descriptive tags associated with target, starting with its body type
-    aliases : list of strings, optional
+    target : :class:`Body`, str or :class:`Target`
+        A Body, a full description string or existing Target object.
+        The parameters in the description string or existing Target can still
+        be overridden by providing additional parameters after `target`.
+    name : str, optional
+        Preferred name of target, overriding default body name if not empty
+    user_tags : list of str, or whitespace-delimited str, optional
+        Descriptive tags associated with target (not including body type)
+    aliases : list of str, optional
         Alternate names of target
-    flux_model : :class:`FluxDensity` object, optional
+    flux_model : :class:`FluxDensity`, optional
         Object encapsulating spectral flux density model
     antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
         Default antenna / location to use for position calculations
     flux_freq_MHz : float, optional
         Default frequency at which to evaluate flux density, in MHz
-
-    Arguments
-    ---------
-    name : string
-        Name of target
 
     Raises
     ------
@@ -240,7 +252,7 @@ class Target:
 
         Parameters
         ----------
-        description : string
+        description : str
             String containing target name(s), tags, location and flux model
 
         Returns
@@ -262,7 +274,7 @@ class Target:
             raise ValueError("Target description '%s' must have at least two fields" % description)
         # Check if first name starts with body type tag, while the next field does not
         # This indicates a missing names field -> add an empty name list in front
-        body_types = ['azel', 'radec', 'gal', 'tle', 'special', 'xephem']
+        body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
         if np.any([fields[0].startswith(s) for s in body_types]) and \
            not np.any([fields[1].startswith(s) for s in body_types]):
             fields = [''] + fields
@@ -410,12 +422,12 @@ class Target:
 
         Parameters
         ----------
-        tags : string, list of strings, or None
+        tags : str, list of str, or None
             Tag or list of tags to add (strings will be split on whitespace)
 
         Returns
         -------
-        target : :class:`Target` object
+        target : :class:`Target`
             Updated target object
         """
         if tags is None:
@@ -925,7 +937,7 @@ class Target:
 
         Parameters
         ----------
-        other_target : :class:`Target` object
+        other_target : :class:`Target`
             The other target
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s) when separation is measured (defaults to now)
