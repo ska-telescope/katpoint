@@ -296,7 +296,10 @@ class EarthSatelliteBody(Body):
         line1 = line1.strip()
         line2 = line2.strip()
         # Use the Python Satrec to validate the TLE first, since the C++ one has no error checking
-        SatrecPython.twoline2rv(line1, line2)
+        satrec = SatrecPython.twoline2rv(line1, line2)
+        # This is also useful for figuring out a default name...
+        if not name:
+            name = f'NORAD {satrec.satnum}'
         return cls(name, Satrec.twoline2rv(line1, line2))
 
     def to_tle(self):

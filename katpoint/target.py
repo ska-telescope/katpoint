@@ -317,8 +317,6 @@ class Target:
             if len(fields) < 4:
                 raise ValueError(f"Target description '{description}' contains *tle* body "
                                  "without the expected two comma-separated lines")
-            if not preferred_name:
-                preferred_name = 'Unnamed Satellite'
             try:
                 body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
             except ValueError as err:
