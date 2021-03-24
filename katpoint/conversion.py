@@ -58,7 +58,7 @@ def to_angle(s, sexagesimal_unit=u.deg):
         # We now have a number, string or tuple without a unit
         if isinstance(s, str) and ':' in s or isinstance(s, tuple):
             return Angle(s, unit=sexagesimal_unit)
-        if isinstance(s, str):
+        elif isinstance(s, str):
             return Angle(s, unit=u.deg)
         else:
             return Angle(s, unit=u.rad)
@@ -112,11 +112,11 @@ def angle_to_string(angle, **kwargs):
         # Sufficient precision to discern 1 micron at 13000 km
         precision = 12 if decimal else 8
         # Hour angle needs a bit more precision
-        if unit is not u.deg:
+        if unit != u.deg:
             precision += 1
         kwargs['precision'] = precision
     number = strip_zeros(angle.to_string(**kwargs))
-    suffix = 'd' if unit is u.deg else 'h'
+    suffix = 'd' if unit == u.deg else 'h'
     s = np.char.add(number, suffix)
     return s if s.ndim else s.item()
 
