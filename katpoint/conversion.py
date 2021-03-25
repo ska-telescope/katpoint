@@ -52,15 +52,16 @@ def to_angle(s, sexagesimal_unit=u.deg):
     try:
         return Angle(s)
     except u.UnitsError:
-        # Deal with user input
+        # Bytes is a sequence of ints that will inadvertently end up as radians, so crash instead
         if isinstance(s, bytes):
-            s = s.decode(encoding='ascii')
+            raise TypeError(f'Raw bytes {s} not supported: first decode to string (or add unit)')
         # We now have a number, string or tuple without a unit
         if isinstance(s, str) and ':' in s or isinstance(s, tuple):
             return Angle(s, unit=sexagesimal_unit)
         elif isinstance(s, str):
             return Angle(s, unit=u.deg)
         else:
+            # XXX Maybe deprecate this in future and only deal with strings here
             return Angle(s, unit=u.rad)
 
 

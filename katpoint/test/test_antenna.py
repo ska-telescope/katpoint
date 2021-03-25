@@ -194,4 +194,4 @@ def test_location_round_trip(location):
     xyz = location.itrs.cartesian
     descr = katpoint.Antenna(location).description
     xyz2 = katpoint.Antenna(descr).location.itrs.cartesian
-    assert (xyz2 - xyz).norm() < 1 * u.micrometer
+    assert (xyz2 - xyz).norm() < 1 * u.micron

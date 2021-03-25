@@ -63,13 +63,13 @@ def test_construct_target():
     assert t0c.name == t0.name  # It isn't currently possible to have an empty Target name
     assert t0c.tags == t0.tags
     assert t0c.aliases == t0.aliases
-    assert not t0c.flux_model
-    assert not t0c.antenna
+    assert t0c.flux_model is None
+    assert t0c.antenna is None
     assert t0c.flux_freq_MHz is None
     # Check that construction from Target is nearly exact (within 10 nanoarcsec)
     t1 = katpoint.Target.from_radec(np.e * u.deg, np.pi * u.deg)
     t2 = katpoint.Target(t1)
-    check_separation(t2.body.coord, np.e * u.deg, np.pi * u.deg, tol=10e-9 * u.arcsec)
+    check_separation(t2.body.coord, np.e * u.deg, np.pi * u.deg, tol=10 * u.narcsec)
     assert t1.name == t2.name
     assert t1.tags == t2.tags
     assert t1.aliases == t2.aliases

@@ -47,9 +47,8 @@ class Target:
     This is a wrapper around a :class:`Body` that adds alternate names,
     descriptive tags and a flux density model. For convenience, a default
     antenna and flux frequency can be set, to simplify the calling of
-    pointing and flux density methods. These are not stored as part of the
-    target object, however. It is also possible to construct a Target directly
-    from an :class:`~astropy.coordinates.SkyCoord` (the future Body?).
+    pointing and flux density methods. It is also possible to construct a
+    Target directly from an :class:`~astropy.coordinates.SkyCoord`.
 
     The object can be constructed from its constituent components or from a
     description string. The description string contains up to five
@@ -93,6 +92,8 @@ class Target:
 
         name1 | *name 2, radec cal, 12:34:56.7, -04:34:34.2, (1000.0 2000.0 1.0)
 
+    The default antenna and flux frequency are not stored in the description string.
+
     In summary, description strings take the following forms based on body type::
 
         [<name list>,] azel [<user tags>], <az>, <el> [, <flux model>]
@@ -102,10 +103,6 @@ class Target:
         [<name list>,] tle [<user tags>], <TLE line 1>, <TLE line 2> [, <flux model>]
         [<name list>,] xephem radec [<user tags>], <EDB string (type 'f')>
         [<name list>,] xephem tle [<user tags>], <EDB string (type 'E')>
-
-    When specifying a description string, the rest of the target parameters are
-    ignored, except for the default antenna and flux frequency (which do not
-    form part of the description string).
 
     Parameters
     ----------
@@ -299,7 +296,7 @@ class Target:
         while len(fields[-1]) == 0:
             fields.pop()
 
-        # Create appropriate PyEphem body based on body type
+        # Create appropriate Body based on body type
         if body_type == 'azel':
             if len(fields) < 4:
                 raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"

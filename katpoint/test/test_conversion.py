@@ -19,6 +19,7 @@
 import pytest
 import numpy as np
 import astropy.units as u
+import astropy.constants as const
 from astropy.coordinates import Angle
 
 import katpoint
@@ -26,21 +27,37 @@ import katpoint
 from .helper import assert_angles_almost_equal
 
 
-@pytest.mark.parametrize("angle, angle_deg", [('10:00:00', 10), ('10:45:00', 10.75), ('10.0', 10),
+@pytest.mark.parametrize("angle, angle_deg", [('10:00:00', 10),
+                                              ('10:45:00', 10.75),
+                                              ('10.0', 10),
                                               ((10 * u.deg).to_value(u.rad), pytest.approx(10)),
-                                              ('10d00m00s', 10), ((10, 0, 0), 10),
+                                              ('10d00m00s', 10),
+                                              ((10, 0, 0), 10),
                                               ('10h00m00s', pytest.approx(150))])
 def test_angle_from_degrees(angle, angle_deg):
     assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg == angle_deg
 
 
-@pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10), ('10:45:00', 10.75),
+@pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10),
+                                               ('10:45:00', 10.75),
                                                ('150.0', pytest.approx(10)),
                                                ((150 * u.deg).to_value(u.rad), pytest.approx(10)),
-                                               ('10h00m00s', 10), ((10, 0, 0), 10),
+                                               ('10h00m00s', 10),
+                                               ((10, 0, 0), 10),
                                                ('10d00m00s', pytest.approx(10 / 15))])
 def test_angle_from_hours(angle, angle_hour):
     assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
+
+
+def test_bytes_to_angle():
+    # Raw bytes are not supported
+    with pytest.raises(TypeError):
+        katpoint.conversion.to_angle(b'1.2')
+    # You probably meant this:
+    assert katpoint.conversion.to_angle(b'1.2'.decode()) == 1.2 * u.deg
+    # But some strange folks might intend this instead:
+    np.testing.assert_array_equal(katpoint.conversion.to_angle(Angle(b'1.2', unit=u.deg)),
+                                  np.array([49, 46, 50]) * u.deg)
 
 
 @pytest.mark.parametrize(
@@ -73,15 +90,17 @@ def test_angle_to_string(angle, kwargs, angle_string):
                                   angle_string)
 
 
-@pytest.mark.parametrize("angle, kwargs",
-                         [('10:20:30.4d', dict(unit=u.rad)),
-                          ('10rad', dict()), ('10d', dict(sep='dms'))])
+@pytest.mark.parametrize("angle, kwargs", [('10:20:30.4d', dict(unit=u.rad)),
+                                           ('10rad', dict()),
+                                           ('10d', dict(sep='dms'))])
 def test_angle_to_string_errors(angle, kwargs):
     with pytest.raises(ValueError):
         katpoint.conversion.angle_to_string(Angle(angle), **kwargs)
 
 
-@pytest.mark.parametrize("kwargs", [dict(), dict(decimal=True), dict(unit=u.hour),
+@pytest.mark.parametrize("kwargs", [dict(),
+                                    dict(decimal=True),
+                                    dict(unit=u.hour),
                                     dict(unit=u.hour, decimal=True)])
 def test_angle_to_string_round_trip(kwargs):
     rs = np.random.RandomState(46)
@@ -89,8 +108,7 @@ def test_angle_to_string_round_trip(kwargs):
     string1 = katpoint.conversion.angle_to_string(angle1, **kwargs)
     angle2 = katpoint.conversion.to_angle(string1)
     # The smallest angle we care about is a micron held at a distance of the Earth's diameter
-    smallest_arc = (1 * u.micrometer) / (2 * 6370 * u.km)
-    atol = smallest_arc.to(u.rad, equivalencies=u.dimensionless_angles())
+    atol = (1 * u.micron) / (2 * const.R_earth) * u.rad
     assert np.allclose(angle2, angle1, rtol=0, atol=atol)
     string2 = katpoint.conversion.angle_to_string(angle2, **kwargs)
     # The strings round-trip exactly, which is good because most Angles start life as strings
