@@ -141,13 +141,17 @@ class Target:
         if isinstance(target, Target):
             default = target
             target = default.body
+        if not isinstance(target, Body):
+            raise TypeError('Expected a Body, Target, SkyCoord or str input to Target, '
+                            f'not {target.__class__.__name__}')
 
         self.body = target
         self.name = target.name if name is _DEFAULT or not name else name
         self.user_tags = []
         user_tags = default.user_tags if user_tags is _DEFAULT else user_tags
         self.add_tags(user_tags)
-        self.aliases = default.aliases if aliases is _DEFAULT else aliases
+        # Copy aliases to avoid a shallow copy entangled with another Target
+        self.aliases = default.aliases[:] if aliases is _DEFAULT else aliases[:]
         self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
         self.antenna = default.antenna if antenna is _DEFAULT else antenna
         self.flux_freq_MHz = default.flux_freq_MHz if flux_freq_MHz is _DEFAULT else flux_freq_MHz

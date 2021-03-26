@@ -48,7 +48,14 @@ def test_construct_valid_antenna(description):
         'Antenna description differs from original string')
 
 
-@pytest.mark.parametrize("description", ['XDM, -25:53:23.05075, 27:41:03.0', '', '\U0001F602'])
+@pytest.mark.parametrize(
+    "description",
+    [
+        '',
+        'XDM, -25:53:23.05075, 27:41:03.0',
+        'The dreaded em dash, \N{em dash}25:53:23.0, 27:41:03.0, 1406.1086, 15.0',
+    ]
+)
 def test_construct_invalid_antenna(description):
     """Test construction of invalid antennas from strings."""
     with pytest.raises(ValueError):

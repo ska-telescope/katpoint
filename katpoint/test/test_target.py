@@ -77,16 +77,23 @@ def test_construct_target():
     # Construct from Body and SkyCoord only
     assert katpoint.Target(t1.body) == t1
     assert katpoint.Target(t1.body.coord) == t1
+    # Bytes are right out
+    with pytest.raises(TypeError):
+        katpoint.Target(b'azel, -30.0, 90.0')
 
 
-def test_construct_target_from_azel_radec():
-    """Test construction of targets from (az, el) and (ra, dec) vs strings."""
+def test_construct_target_from_azel():
+    """Test construction of targets from (az, el) vs strings."""
     azel1 = katpoint.Target('azel, 10.0, -10.0')
     azel2 = katpoint.Target.from_azel('10:00:00.0', '-10:00:00.0')
     assert azel1 == azel2, 'Special azel constructor failed'
     with pytest.warns(FutureWarning):
         azel2_deprecated = katpoint.construct_azel_target('10:00:00.0', '-10:00:00.0')
     assert azel1 == azel2_deprecated, 'Deprecated azel constructor failed'
+
+
+def test_construct_target_from_radec():
+    """Test construction of targets from (ra, dec) vs strings."""
     radec1 = katpoint.Target('radec, 20.0, -20.0')
     radec2 = katpoint.Target.from_radec('20.0', '-20.0')
     assert radec1 == radec2, 'Special radec constructor (decimal) failed'
@@ -197,6 +204,7 @@ def test_construct_valid_target(description):
 @pytest.mark.parametrize(
     "description",
     [
+        '',
         'Sun',
         'Sun, ',
         '-30.0, 90.0',
@@ -220,6 +228,7 @@ def test_construct_valid_target(description):
         'Slinky, star',
         'xephem star, Sadr~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
         'hotbody, 34.0, 45.0',
+        'The dreaded em dash, radec, 12:34:56h, \N{em dash}60:43:21d',
     ]
 )
 def test_construct_invalid_target(description):
