@@ -112,9 +112,9 @@ class Target:
         be overridden by providing additional parameters after `target`.
     name : str, optional
         Preferred name of target, overriding default body name if not empty
-    user_tags : list of str, or whitespace-delimited str, optional
+    user_tags : sequence of str, or whitespace-delimited str, optional
         Descriptive tags associated with target (not including body type)
-    aliases : list of str, optional
+    aliases : sequence of str, optional
         Alternate names of target
     flux_model : :class:`FluxDensity`, optional
         Object encapsulating spectral flux density model
@@ -131,7 +131,7 @@ class Target:
 
     def __init__(self, target, name=_DEFAULT, user_tags=_DEFAULT, aliases=_DEFAULT,
                  flux_model=_DEFAULT, antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
-        default = SimpleNamespace(user_tags=[], aliases=[], flux_model=None,
+        default = SimpleNamespace(name='', user_tags=[], aliases=[], flux_model=None,
                                   antenna=None, flux_freq_MHz=None)
         if isinstance(target, str):
             # Create a temporary Target object to serve up default parameters instead
@@ -146,12 +146,11 @@ class Target:
                             f'not {target.__class__.__name__}')
 
         self.body = target
-        self.name = target.name if name is _DEFAULT or not name else name
+        self._name = default.name if name is _DEFAULT else name
         self.user_tags = []
         user_tags = default.user_tags if user_tags is _DEFAULT else user_tags
         self.add_tags(user_tags)
-        # Copy aliases to avoid a shallow copy entangled with another Target
-        self.aliases = default.aliases[:] if aliases is _DEFAULT else aliases[:]
+        self._aliases = default.aliases if aliases is _DEFAULT else aliases
         self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
         self.antenna = default.antenna if antenna is _DEFAULT else antenna
         self.flux_freq_MHz = default.flux_freq_MHz if flux_freq_MHz is _DEFAULT else flux_freq_MHz
@@ -187,7 +186,7 @@ class Target:
 
     @property
     def tags(self):
-        """Descriptive tags associated with target, starting with its body type."""
+        """List of descriptive tags associated with target, starting with its body type."""
         return self.body.tag.split() + self.user_tags
 
     @property
@@ -196,34 +195,37 @@ class Target:
         return self.tags[0].lower()
 
     @property
+    def name(self):
+        """Preferred name of target."""
+        return self._name if self._name else self.body.default_name
+
+    @property
+    def aliases(self):
+        """List of alternate names of the target, as a copy."""
+        return list(self._aliases)
+
+    @property
     def description(self):
         """Complete string representation of target object, sufficient to reconstruct it."""
         names = ' | '.join([self.name] + self.aliases)
         tags = ' '.join(self.tags)
         fluxinfo = self.flux_model.description if self.flux_model is not None else None
-        fields = [names, tags]
+        no_name = self.body_type != 'special' and names == self.body.default_name
+        fields = [tags] if no_name else [names, tags]
+
         if self.body_type == 'azel':
-            # Check if it's an unnamed target with a default name
-            if names.startswith('Az:'):
-                fields = [tags]
             fields += [angle_to_string(self.body.coord.az, unit=u.deg),
                        angle_to_string(self.body.coord.alt, unit=u.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
         elif self.body_type == 'radec':
-            # Check if it's an unnamed target with a default name
-            if names.startswith('Ra:'):
-                fields = [tags]
             fields += [angle_to_string(self.body.coord.ra, unit=u.hour),
                        angle_to_string(self.body.coord.dec, unit=u.deg)]
             if fluxinfo:
                 fields += [fluxinfo]
 
         elif self.body_type == 'gal':
-            # Check if it's an unnamed target with a default name
-            if names.startswith('Galactic l:'):
-                fields = [tags]
             gal = self.body.coord.galactic
             fields += [angle_to_string(gal.l, unit=u.deg, decimal=True),
                        angle_to_string(gal.b, unit=u.deg, decimal=True)]
@@ -305,7 +307,7 @@ class Target:
             if len(fields) < 4:
                 raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
                                  % description)
-            body = StationaryBody(fields[2], fields[3], preferred_name)
+            body = StationaryBody(fields[2], fields[3])
 
         elif body_type == 'radec':
             if len(fields) < 4:
@@ -320,21 +322,21 @@ class Target:
                 frame = FK4(equinox=Time(1950.0, format='byear'))
             else:
                 frame = ICRS
-            body = FixedBody(SkyCoord(ra=ra, dec=dec, frame=frame), preferred_name)
+            body = FixedBody(SkyCoord(ra=ra, dec=dec, frame=frame))
 
         elif body_type == 'gal':
             if len(fields) < 4:
                 raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
                                  % description)
             body = FixedBody(SkyCoord(l=to_angle(fields[2]),
-                                      b=to_angle(fields[3]), frame=Galactic), preferred_name)
+                                      b=to_angle(fields[3]), frame=Galactic))
 
         elif body_type == 'tle':
             if len(fields) < 4:
                 raise ValueError(f"Target description '{description}' contains *tle* body "
                                  "without the expected two comma-separated lines")
             try:
-                body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
+                body = EarthSatelliteBody.from_tle(fields[2], fields[3])
             except ValueError as err:
                 raise ValueError(f"Target description '{description}' "
                                  f"contains malformed *tle* body: {err}") from err
@@ -350,20 +352,16 @@ class Target:
                                  % (description, preferred_name)) from err
 
         elif body_type == 'xephem':
-            edb_string = fields[-1].replace('~', ',')
-            edb_name_field = edb_string.partition(',')[0]
+            edb_string = fields[2].replace('~', ',')
+            edb_name_field, comma, edb_coord_fields = edb_string.partition(',')
             edb_names = [name.strip() for name in edb_name_field.split('|')]
-            if preferred_name:
-                edb_string = edb_string.replace(edb_name_field, preferred_name)
-            else:
+            if not preferred_name:
                 preferred_name = edb_names[0]
-            if preferred_name != edb_names[0]:
-                aliases.append(edb_names[0])
-            for extra_name in edb_names[1:]:
-                if not (extra_name in aliases) and not (extra_name == preferred_name):
-                    aliases.append(extra_name)
+            for edb_name in edb_names:
+                if edb_name and edb_name != preferred_name and edb_name not in aliases:
+                    aliases.append(edb_name)
             try:
-                body = Body.from_edb(edb_string)
+                body = Body.from_edb(comma + edb_coord_fields)
             except ValueError as err:
                 raise ValueError(f"Target description '{description}' "
                                  f"contains malformed *xephem* body: {err}") from err

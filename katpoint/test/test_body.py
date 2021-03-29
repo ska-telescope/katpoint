@@ -88,7 +88,7 @@ LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
          '18:44:13.362h', '-23:02:54.8156d', '234:53:19.4761d', '31:38:11.4251d', 160 * u.mas),
         # 18:44:13.84       -23:02:51.2        234:53:20.8d       31:38:09.4d  (PyEphem)
-        (EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2), TLE_TS,
+        (EarthSatelliteBody.from_tle(TLE_LINE1, TLE_LINE2), TLE_TS,
          '3:32:58.1741h', '-2:04:30.0658d', TLE_AZ, TLE_EL, 4200 * u.mas),
         # 3:33:00.26       -2:04:32.2  (PyEphem)
         (StationaryBody('127:15:17.1418', '60:05:10.5475'), '2020-01-01 10:00:00.000',
@@ -118,15 +118,18 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
 def test_fixed():
     body = _get_fixed_body('10:10:40.123', '40:20:50.567')
     assert body.tag == 'radec'
+    assert body.default_name
     assert body.coord.ra == Angle('10:10:40.123h')
     assert body.coord.dec == Angle('40:20:50.567d')
     body_gal = FixedBody(Galactic(l='-10d', b='20d'))
     assert body_gal.tag == 'gal'
+    assert body.default_name
 
 
 def test_solar_system():
     body = SolarSystemBody('Venus')
     assert body.tag == 'special'
+    assert body.default_name
 
 
 @pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
@@ -160,23 +163,24 @@ def _check_edb_E(sat, epoch_iso, inc, raan, e, ap, M, n, decay, drag):
 
 
 def test_earth_satellite():
-    body = EarthSatelliteBody.from_tle(TLE_NAME, TLE_LINE1, TLE_LINE2)
+    body = EarthSatelliteBody.from_tle(TLE_LINE1, TLE_LINE2)
     assert body.tag == 'tle'
+    assert body.default_name
     assert body.to_tle() == (TLE_LINE1, TLE_LINE2)
     # Check that the EarthSatelliteBody object has the expected attribute values
     _check_edb_E(body.satellite, epoch_iso='2019-09-23 07:45:35.842',
                  inc=55.4408, raan=61.3790, e=0.0191986, ap=78.1802, M=283.9935,
                  n=2.0056172, decay=1.2e-07, drag=1.e-04)
     assert body.satellite.revnum == 10428
-    # This is the XEphem database record that PyEphem generates
-    xephem = ('GPS BIIA-21 (PRN 09),E,'
-              '9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,'
+    # This is the XEphem database record that PyEphem generates (without name)
+    xephem = (',E,9/23.32333151/2019| 6/15.3242/2019| 1/1.32422/2020,'
               '55.4408,61.379002,0.0191986,78.180199,283.9935,'
               '2.0056172,1.2e-07,10428,9.9999997e-05')
     assert body.to_edb() == xephem
     # Check some round-tripping
     body2 = Body.from_edb(xephem)
     assert body2.tag == 'xephem tle'
+    assert body2.default_name
     assert isinstance(body2, EarthSatelliteBody)
     assert body2.to_edb() == xephem
 
@@ -184,13 +188,15 @@ def test_earth_satellite():
 def test_stationary():
     body = StationaryBody('20d', '30d')
     assert body.tag == 'azel'
+    assert body.default_name
 
 
 def test_star():
     record = 'Sadr,f|S|F8,20:22:13.7|2.43,40:15:24|-0.93,2.23,2000,0'
-    e = Body.from_edb(record)
-    assert isinstance(e, FixedBody)
-    assert e.name == 'Sadr'
-    assert e.tag == 'xephem radec'
-    assert e.coord.ra.to_string(sep=':', unit='hour') == '20:22:13.7'
-    assert e.coord.dec.to_string(sep=':', unit='deg') == '40:15:24'
+    body = Body.from_edb(record)
+    assert isinstance(body, FixedBody)
+    assert body.tag == 'radec'
+    assert body.default_name
+    assert body.coord.ra.to_string(sep=':', unit='hour') == '20:22:13.7'
+    assert body.coord.dec.to_string(sep=':', unit='deg') == '40:15:24'
+    assert body.to_edb() == ',f,20:22:13.7,40:15:24'  # no name or proper motion

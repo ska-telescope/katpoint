@@ -60,7 +60,7 @@ def test_construct_target():
     # Check that we can also replace non-default parameters with defaults
     t0c = katpoint.Target(t0, name='', flux_model=None, antenna=None, flux_freq_MHz=None)
     assert t0c.body.coord == t0.body.coord
-    assert t0c.name == t0.name  # It isn't currently possible to have an empty Target name
+    assert t0c.name == t0.body.default_name  # Target name cannot be empty - use default
     assert t0c.tags == t0.tags
     assert t0c.aliases == t0.aliases
     assert t0c.flux_model is None
@@ -138,7 +138,7 @@ def test_compare_update_target():
     t1 = katpoint.Target('piet, azel, 20, 30')
     t2 = katpoint.Target('piet | bollie, azel, 20, 30')
     assert t1 != t2, 'Targets should not be equal'
-    t1.aliases += ['bollie']
+    t1 = katpoint.Target(t1, aliases=['bollie'])
     assert t1.description == t2.description, 'Target description string not updated'
     assert t1 == t2.description, 'Equality with description string failed'
     assert t1 == t2, 'Equality with target failed'
@@ -148,6 +148,33 @@ def test_compare_update_target():
         assert hash(t1) == hash(t2), 'Target hashes not equal'
     except TypeError:
         pytest.fail('Target object not hashable')
+    t2.add_tags('different')
+    assert t1 != t2, 'Targets should not be equal'
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        'Venus | Flytrap | De Milo, azel, 10, 20',
+        'Venus | Flytrap | De Milo, radec, 10, 20',
+        'Venus | Flytrap | De Milo, gal, 10, 20',
+        'Venus | Flytrap | De Milo, special',
+        'Venus | Flytrap | De Milo' + TLE_TARGET[TLE_TARGET.find(','):],
+        'xephem radec, Venus|Flytrap|De Milo~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
+        'Venus, xephem radec, Flytrap|De Milo~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0',
+        ('xephem tle, Venus|Flytrap|De Milo~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016'
+         '~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0'),
+    ]
+)
+def test_names(description):
+    target = katpoint.Target(description)
+    assert target.name == 'Venus'
+    assert target.aliases == ['Flytrap', 'De Milo']
+    # Names are read-only
+    with pytest.raises(AttributeError):
+        target.name = 'bollie'
+    with pytest.raises(AttributeError):
+        target.aliases += ['bollie']
 
 
 def test_add_tags():
@@ -155,7 +182,7 @@ def test_add_tags():
     tag_target = katpoint.Target('azel J2000 GPS, 40.0, -30.0')
     tag_target.add_tags(None)
     tag_target.add_tags('pulsar')
-    tag_target.add_tags(['SNR', 'GPS'])
+    tag_target.add_tags(['SNR', 'GPS SNR'])
     assert tag_target.tags == ['azel', 'J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
     assert tag_target.user_tags == ['J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
 
