@@ -187,6 +187,25 @@ def test_add_tags():
     assert tag_target.user_tags == ['J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
 
 
+FLUX_MODEL = katpoint.FluxDensityModel('(1000.0 2000.0 1.0 10.0)')
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        f'azel, 20, 30, {FLUX_MODEL.description}',
+        f'radec, -10, 20, {FLUX_MODEL.description}',
+        f'gal, 10, 20, {FLUX_MODEL.description}',
+        f'Sun, special, {FLUX_MODEL.description}',
+        f'{TLE_TARGET}, {FLUX_MODEL.description}',
+        f'xephem, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0, {FLUX_MODEL.description}',
+    ]
+)
+def test_flux_model_on_all_targets(description):
+    target = katpoint.Target(description)
+    assert target.flux_model == FLUX_MODEL
+
+
 @pytest.mark.parametrize(
     "description",
     [

@@ -100,10 +100,10 @@ class Target:
         [<name list>,] azel [<user tags>], <az>, <el> [, <flux model>]
         [<name list>,] radec [<user tags>], <ra>, <dec> [, <flux model>]
         [<name list>,] gal [<user tags>], <l>, <b> [, <flux model>]
-        <name list>, special [<user tags>]
+        <name list>, special [<user tags>] [, <flux model>]
         [<name list>,] tle [<user tags>], <TLE line 1>, <TLE line 2> [, <flux model>]
-        [<name list>,] xephem radec [<user tags>], <EDB string (type 'f')>
-        [<name list>,] xephem tle [<user tags>], <EDB string (type 'E')>
+        [<name list>,] xephem radec [<user tags>], <EDB string (type 'f')> [, <flux model>]
+        [<name list>,] xephem tle [<user tags>], <EDB string (type 'E')> [, <flux model>]
 
     Parameters
     ----------
@@ -217,27 +217,15 @@ class Target:
         if self.body_type == 'azel':
             fields += [angle_to_string(self.body.coord.az, unit=u.deg),
                        angle_to_string(self.body.coord.alt, unit=u.deg)]
-            if fluxinfo:
-                fields += [fluxinfo]
-
         elif self.body_type == 'radec':
             fields += [angle_to_string(self.body.coord.ra, unit=u.hour),
                        angle_to_string(self.body.coord.dec, unit=u.deg)]
-            if fluxinfo:
-                fields += [fluxinfo]
-
         elif self.body_type == 'gal':
             gal = self.body.coord.galactic
             fields += [angle_to_string(gal.l, unit=u.deg, decimal=True),
                        angle_to_string(gal.b, unit=u.deg, decimal=True)]
-            if fluxinfo:
-                fields += [fluxinfo]
-
         elif self.body_type == 'tle':
             fields += self.body.to_tle()
-            if fluxinfo:
-                fields += [fluxinfo]
-
         elif self.body_type == 'xephem':
             # Replace commas in xephem string with tildes, to avoid clashing with main string structure
             # Also remove extra spaces added into string by to_edb
@@ -248,6 +236,8 @@ class Target:
                 fields = [tags]
             fields += [edb_string]
 
+        if fluxinfo:
+            fields += [fluxinfo]
         return ', '.join(fields)
 
     @classmethod
@@ -282,11 +272,12 @@ class Target:
         # Check if first name starts with body type tag, while the next field does not
         # This indicates a missing names field -> add an empty name list in front
         body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
-        if np.any([fields[0].startswith(s) for s in body_types]) and \
-           not np.any([fields[1].startswith(s) for s in body_types]):
-            fields = [''] + fields
+        def tags_in(field): return any([field.startswith(s) for s in body_types])
+        if tags_in(fields[0]) and not tags_in(fields[1]):
+            fields.insert(0, '')
         # Extract preferred name from name list (starred or first entry), and make the rest aliases
-        names = [s.strip() for s in fields[0].split('|')]
+        name_field = fields.pop(0)
+        names = [s.strip() for s in name_field.split('|')]
         if len(names) == 0:
             preferred_name, aliases = '', []
         else:
@@ -295,27 +286,30 @@ class Target:
                 preferred_name, aliases = names[ind][1:], names[:ind] + names[ind + 1:]
             except ValueError:
                 preferred_name, aliases = names[0], names[1:]
-        tags = [s.strip() for s in fields[1].split(' ')]
+        tag_field = fields.pop(0)
+        tags = [s.strip() for s in tag_field.split(' ')]
         if len(tags) == 0:
             raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
         body_type = tags[0].lower()
         # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
-        while len(fields[-1]) == 0:
+        while fields and not fields[-1]:
             fields.pop()
 
         # Create appropriate Body based on body type
         if body_type == 'azel':
-            if len(fields) < 4:
+            if len(fields) < 2:
                 raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
                                  % description)
-            body = StationaryBody(fields[2], fields[3])
+            az = fields.pop(0)
+            el = fields.pop(0)
+            body = StationaryBody(az, el)
 
         elif body_type == 'radec':
-            if len(fields) < 4:
+            if len(fields) < 2:
                 raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
                                  % description)
-            ra = to_angle(fields[2], sexagesimal_unit=u.hour)
-            dec = to_angle(fields[3])
+            ra = to_angle(fields.pop(0), sexagesimal_unit=u.hour)
+            dec = to_angle(fields.pop(0))
             # Extract epoch info from tags
             if ('B1900' in tags) or ('b1900' in tags):
                 frame = FK4(equinox=Time(1900.0, format='byear'))
@@ -326,18 +320,21 @@ class Target:
             body = FixedBody(SkyCoord(ra=ra, dec=dec, frame=frame))
 
         elif body_type == 'gal':
-            if len(fields) < 4:
+            if len(fields) < 2:
                 raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
                                  % description)
-            body = GalacticBody(SkyCoord(l=to_angle(fields[2]),
-                                         b=to_angle(fields[3]), frame=Galactic))
+            l = to_angle(fields.pop(0))
+            b = to_angle(fields.pop(0))
+            body = GalacticBody(SkyCoord(l=l, b=b, frame=Galactic))
 
         elif body_type == 'tle':
-            if len(fields) < 4:
+            if len(fields) < 2:
                 raise ValueError(f"Target description '{description}' contains *tle* body "
                                  "without the expected two comma-separated lines")
+            line1 = fields.pop(0)
+            line2 = fields.pop(0)
             try:
-                body = EarthSatelliteBody.from_tle(fields[2], fields[3])
+                body = EarthSatelliteBody.from_tle(line1, line2)
             except ValueError as err:
                 raise ValueError(f"Target description '{description}' "
                                  f"contains malformed *tle* body: {err}") from err
@@ -353,7 +350,7 @@ class Target:
                                  % (description, preferred_name)) from err
 
         elif body_type == 'xephem':
-            edb_string = fields[2].replace('~', ',')
+            edb_string = fields.pop(0).replace('~', ',')
             edb_name_field, comma, edb_coord_fields = edb_string.partition(',')
             edb_names = [name.strip() for name in edb_name_field.split('|')]
             if not preferred_name:
@@ -371,8 +368,10 @@ class Target:
             raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
 
         # Extract flux model if it is available
-        flux_model = FluxDensityModel(fields[4]) if (len(fields) > 4) and (len(fields[4].strip(' ()')) > 0) else None
-
+        if fields and fields[0].strip(' ()'):
+            flux_model = FluxDensityModel(fields[0])
+        else:
+            flux_model = None
         return cls(body, preferred_name, tags, aliases, flux_model)
 
     @classmethod
