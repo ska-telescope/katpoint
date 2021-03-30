@@ -238,7 +238,7 @@ class Model:
         file-like : object
             File-like object with readline() method representing config file
         """
-        defaults = dict((p.name, p._to_str(p.default_value)) for p in self)
+        defaults = {p.name: p._to_str(p.default_value) for p in self}
         cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(';', '#'))
         try:
             cfg.read_file(file_like)

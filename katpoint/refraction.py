@@ -139,7 +139,7 @@ class RefractionCorrection:
 
     def __repr__(self):
         """Short human-friendly string representation of refraction correction object."""
-        return "<katpoint.RefractionCorrection model='%s' at 0x%x>" % (self.model, id(self))
+        return "<katpoint.RefractionCorrection model='{}' at 0x{:x}>".format(self.model, id(self))
 
     def __eq__(self, other):
         """Equality comparison operator."""

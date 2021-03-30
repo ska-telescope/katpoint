@@ -63,7 +63,7 @@ class PointingModel(Model):
 
         def scale_param(name, doc):
             """Create scale-valued parameter."""
-            return Parameter(name, '', doc, to_str=lambda s: ('%.9g' % (s,)) if s else '0')
+            return Parameter(name, '', doc, to_str=lambda s: (f'{s:.9g}') if s else '0')
 
         # Instantiate the relevant model parameters and register with base class
         params = []

@@ -95,22 +95,22 @@ src_strings = []
 for src in table:
     # Select sources based on various criteria
     if src['S6cm'] < flux_limit:
-        print('%s skipped: flux @ 6cm: %.2f < %.2f' % (src['Name'], src['S6cm'], flux_limit))
+        print('{} skipped: flux @ 6cm: {:.2f} < {:.2f}'.format(src['Name'], src['S6cm'], flux_limit))
         continue
     if src['_DEJ2000'] > dec_limit:
-        print('%s skipped: dec %.2f > %.2f' % (src['Name'], src['_DEJ2000'], dec_limit))
+        print('{} skipped: dec {:.2f} > {:.2f}'.format(src['Name'], src['_DEJ2000'], dec_limit))
         continue
     if np.abs(src['RM']) > rm_limit:
-        print('%s skipped: RM abs(%.2f) > %.2f' % (src['Name'], src['RM'], rm_limit))
+        print('{} skipped: RM abs({:.2f}) > {:.2f}'.format(src['Name'], src['RM'], rm_limit))
         continue
     if src['DEP'] > 0 and src['DEP'] < dep_limit:
-        print('%s skipped: DEP %.2f < %.2f' % (src['Name'], src['DEP'], dep_limit))
+        print('{} skipped: DEP {:.2f} < {:.2f}'.format(src['Name'], src['DEP'], dep_limit))
         continue
     if src['Type'] not in accepted_types:
-        print("%s skipped: type '%s' not in %s" % (src['Name'], src['Type'], accepted_types))
+        print("{} skipped: type '{}' not in {}".format(src['Name'], src['Type'], accepted_types))
         continue
     if use_atca and src['Name'] not in atca_cat:
-        print("%s skipped: not an ATCA calibrator" % (src['Name'],))
+        print("{} skipped: not an ATCA calibrator".format(src['Name']))
         continue
     names = '[TI80] ' + src['Name']
     if len(src['_3C']) > 0:

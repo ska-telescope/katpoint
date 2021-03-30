@@ -38,7 +38,7 @@ def test_construct_save_load():
     m = katpoint.Model(params())
     m.header['date'] = '2014-01-15'
     # Exercise all string representations for coverage purposes
-    print('%r %s %r' % (m, m, m.params['POS_E']))
+    print('{!r} {} {!r}'.format(m, m, m.params['POS_E']))
     # An empty file should lead to a BadModelFile exception
     cfg_file = StringIO()
     with pytest.raises(katpoint.BadModelFile):

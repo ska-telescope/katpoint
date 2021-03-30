@@ -334,7 +334,7 @@ class Catalogue:
 
     def __str__(self):
         """Verbose human-friendly string representation of catalogue object."""
-        return '\n'.join(['%s' % (target,) for target in self.targets])
+        return '\n'.join([f'{target}' for target in self.targets])
 
     def __repr__(self):
         """Short human-friendly string representation of catalogue object."""
@@ -700,8 +700,8 @@ class Catalogue:
         if tag_filter:
             if isinstance(tags, str):
                 tags = tags.split()
-            desired_tags = set([tag for tag in tags if tag[0] != '~'])
-            undesired_tags = set([tag[1:] for tag in tags if tag[0] == '~'])
+            desired_tags = {tag for tag in tags if tag[0] != '~'}
+            undesired_tags = {tag[1:] for tag in tags if tag[0] == '~'}
             if desired_tags:
                 targets = [target for target in targets if set(target.tags) & desired_tags]
             if undesired_tags:
@@ -919,11 +919,11 @@ class Catalogue:
             antenna = self.antenna
         if antenna is None:
             raise ValueError('Antenna object needed to calculate target position')
-        title = "Targets visible from antenna '%s' at %s" % (antenna.name, timestamp.local())
+        title = f"Targets visible from antenna '{antenna.name}' at {timestamp.local()}"
         if flux_freq_MHz is None:
             flux_freq_MHz = self.flux_freq_MHz
         if flux_freq_MHz is not None:
-            title += ', with flux density (Jy) evaluated at %g MHz' % (flux_freq_MHz,)
+            title += f', with flux density (Jy) evaluated at {flux_freq_MHz:g} MHz'
         if antenna2 is not None:
             title += " and fringe period (s) toward antenna '%s' at same frequency" % (antenna2.name)
         print(title)
@@ -951,7 +951,7 @@ class Catalogue:
             az = azel.az.wrap_at('180deg').to_string(sep=':', precision=1)
             el = azel.alt.to_string(sep=':', precision=1)
             line = '%-24s %12s %12s %c' % (target.name, az, el, el_code)
-            line = line + ' %7.1f' % (flux,) if not np.isnan(flux) else line + '        '
+            line = line + f' {flux:7.1f}' if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
-                line += '    %10.2f' % (fringe_period,)
+                line += f'    {fringe_period:10.2f}'
             print(line)

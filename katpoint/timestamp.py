@@ -97,7 +97,7 @@ class Timestamp:
         elif isinstance(timestamp, Timestamp):
             self.time = timestamp.time.replicate()
         elif isinstance(timestamp, TimeDelta):
-            raise ValueError('Cannot construct Timestamp from TimeDelta {}'.format(timestamp))
+            raise ValueError(f'Cannot construct Timestamp from TimeDelta {timestamp}')
         elif isinstance(timestamp, Time):
             self.time = timestamp.replicate()
         else:
@@ -127,9 +127,9 @@ class Timestamp:
         """Short machine-friendly string representation of timestamp object."""
         # We need a custom formatter because suppress=True only works on values < 1e8
         # and today's Unix timestamps are bigger than that
-        formatter = '{{:.{:d}f}}'.format(self.time.precision).format
+        formatter = f'{{:.{self.time.precision:d}f}}'.format
         with np.printoptions(threshold=2, edgeitems=1, formatter={'float': formatter}):
-            return 'Timestamp({})'.format(self.secs)
+            return f'Timestamp({self.secs})'
 
     def __str__(self):
         """Verbose human-friendly string representation of timestamp object."""

@@ -15,7 +15,6 @@
 # limitations under the License.
 ################################################################################
 
-from __future__ import print_function
 
 import argparse
 import os
@@ -73,7 +72,7 @@ def show_separators(body, separator, exception):
     exception : string
         Exception error.
     """
-    print('\nPotential invalid separator - {}!'.format(exception))
+    print(f'\nPotential invalid separator - {exception}!')
     print(body)
     print_markers(find_markers(body, separator))
 
@@ -114,7 +113,7 @@ def validate_target(target_file):
         Target validation status.
     """
     target_validation_pass = True
-    with open(target_file, 'r') as csv_file:
+    with open(target_file) as csv_file:
         for line in csv_file:
             if not line.strip().startswith('#') and (len(line.strip()) != 0):
                 try:
@@ -127,9 +126,9 @@ def validate_target(target_file):
                     target_validation_pass = False
                 except ValueError as exception:
                     if line.strip() in str(exception):
-                        print("\nParsing Error!\n{}".format(exception))
+                        print(f"\nParsing Error!\n{exception}")
                     else:
-                        print("\nParsing Error!\n{}\n{}".format(line, exception))
+                        print(f"\nParsing Error!\n{line}\n{exception}")
                     target_validation_pass = False
 
     return target_validation_pass
@@ -163,7 +162,7 @@ def parse_cmd_line():
 def main():
     config = parse_cmd_line()
     if validate_target(config.filename):
-        print("No errors found in {}".format(config.filename))
+        print(f"No errors found in {config.filename}")
     else:
         sys.exit(1)
 

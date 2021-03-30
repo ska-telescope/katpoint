@@ -252,7 +252,7 @@ def test_construct_valid_target(description):
         "Target description ('{}') differs from reference ('{}')"
         .format(test_target.description, reference_description))
     # Exercise repr() and str()
-    print('{!r} {}'.format(test_target, test_target))
+    print(f'{test_target!r} {test_target}')
 
 
 @pytest.mark.parametrize(

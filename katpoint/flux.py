@@ -106,7 +106,7 @@ class FluxDensityModel:
             except ValueError:
                 raise FluxError("Floating point number '%s' is invalid" % (min_freq_MHz))
             if len(flux_info) < 2:
-                raise FluxError("Flux density description string '%s' is invalid" % (min_freq_MHz,))
+                raise FluxError(f"Flux density description string '{min_freq_MHz}' is invalid")
             min_freq_MHz, max_freq_MHz, coefs = flux_info[0], flux_info[1], tuple(flux_info[2:])
         self.min_freq_MHz = min_freq_MHz
         self.max_freq_MHz = max_freq_MHz
@@ -120,12 +120,12 @@ class FluxDensityModel:
         nondefault_coefs = np.nonzero(self.coefs != self._DEFAULT_COEFS)[0]
         last_nondefault_coef = nondefault_coefs[-1] if len(nondefault_coefs) > 0 else 0
         pruned_coefs = self.coefs[:last_nondefault_coef + 1]
-        self.description = '(%s %s %s)' % (min_freq_MHz, max_freq_MHz, ' '.join(['%r' % (c,) for c in pruned_coefs]))
+        self.description = '({} {} {})'.format(min_freq_MHz, max_freq_MHz, ' '.join([f'{c!r}' for c in pruned_coefs]))
 
     def __str__(self):
         """Verbose human-friendly string representation."""
         return "Flux density defined for %d-%d MHz, coefs=(%s)" % \
-               (self.min_freq_MHz, self.max_freq_MHz, ', '.join(['%r' % (c,) for c in self.coefs]))
+               (self.min_freq_MHz, self.max_freq_MHz, ', '.join([f'{c!r}' for c in self.coefs]))
 
     def __repr__(self):
         """Short human-friendly string representation."""

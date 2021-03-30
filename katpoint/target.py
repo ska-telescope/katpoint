@@ -163,7 +163,7 @@ class Target:
     def __repr__(self):
         """Short human-friendly string representation of target object."""
         sub_type = (' (%s)' % self.tags[1]) if (self.body_type == 'xephem') and (len(self.tags) > 1) else ''
-        return "<katpoint.Target '%s' body=%s at 0x%x>" % (self.name, self.body_type + sub_type, id(self))
+        return "<katpoint.Target '{}' body={} at 0x{:x}>".format(self.name, self.body_type + sub_type, id(self))
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -370,7 +370,7 @@ class Target:
                                  f"contains malformed *xephem* body: {err}") from err
 
         else:
-            raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
+            raise ValueError(f"Target description '{description}' contains unknown body type '{body_type}'")
 
         # Extract flux model if it is available
         if fields and fields[0].strip(' ()'):

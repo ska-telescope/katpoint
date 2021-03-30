@@ -17,7 +17,6 @@
 # 31 October 2014
 #
 
-from __future__ import print_function
 
 import argparse
 import re
@@ -88,7 +87,7 @@ for psr in pulsars:
         freq_range = [1000., 2000.]
         flux_model = katpoint.FluxDensityModel(freq_range[0], freq_range[1],
                                                flux_poly[::-1])
-    description = '%s, radec psr, %s, %s' % (names, ra, dec)
+    description = f'{names}, radec psr, {ra}, {dec}'
     if flux_model:
         description += ', ' + flux_model.description
     print(description)

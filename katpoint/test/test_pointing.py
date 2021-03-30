@@ -48,7 +48,7 @@ def params():
 def test_pointing_model_load_save(params):
     """Test construction / load / save of pointing model."""
     pm = katpoint.PointingModel(params)
-    print('%r %s' % (pm, pm))
+    print(f'{pm!r} {pm}')
     pm2 = katpoint.PointingModel(params[:-1])
     assert pm2.values()[-1] == 0.0, 'Unspecified pointing model params not zeroed'
     pm3 = katpoint.PointingModel(np.r_[params, 1.0])
@@ -79,9 +79,9 @@ def test_pointing_closure(params, pointing_grid):
     pointed_az, pointed_el = pm.apply(grid_az, grid_el)
     az, el = pm.reverse(pointed_az, pointed_el)
     assert_angles_almost_equal(az, grid_az, decimal=6,
-                               err_msg='Azimuth closure error for params=%s' % (params,))
+                               err_msg=f'Azimuth closure error for params={params}')
     assert_angles_almost_equal(el, grid_el, decimal=7,
-                               err_msg='Elevation closure error for params=%s' % (params,))
+                               err_msg=f'Elevation closure error for params={params}')
 
 
 def test_pointing_fit(params, pointing_grid):

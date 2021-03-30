@@ -77,7 +77,7 @@ def test_construct_antenna():
     with pytest.raises(ValueError):
         katpoint.Antenna(location, name + ', oops', *fields[4:])
     # Exercise repr() and str()
-    print('{!r} {}'.format(a0, a0))
+    print(f'{a0!r} {a0}')
     # Override some parameters
     a0b = katpoint.Antenna(a0.description, name='bloop', beamwidth=np.pi)
     assert a0b.location == a0.location

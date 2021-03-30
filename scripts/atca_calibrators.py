@@ -39,5 +39,5 @@ descriptions = [('%(name)s, radec atca_cal, %(ra)s, %(dec)s\n' % cal).encode('ut
                 if cal['name'] not in ('uranus', 'jupiter')]
 # Save catalogue to CSV file
 with open('atca_calibrators.csv', 'w') as f:
-    f.write('# ATCA calibrator list retrieved on %s\n' % (time.strftime('%Y-%m-%d', time.localtime()),))
+    f.write('# ATCA calibrator list retrieved on {}\n'.format(time.strftime('%Y-%m-%d', time.localtime())))
     f.writelines(descriptions)
