@@ -30,7 +30,8 @@ from .antenna import Antenna
 from .flux import FluxDensityModel
 from .conversion import to_angle, angle_to_string, azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody, NullBody
+from .body import (Body, FixedBody, GalacticBody, SolarSystemBody,
+                   EarthSatelliteBody, StationaryBody, NullBody)
 
 
 # Singleton that identifies default target parameters
@@ -328,8 +329,8 @@ class Target:
             if len(fields) < 4:
                 raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
                                  % description)
-            body = FixedBody(SkyCoord(l=to_angle(fields[2]),
-                                      b=to_angle(fields[3]), frame=Galactic))
+            body = GalacticBody(SkyCoord(l=to_angle(fields[2]),
+                                         b=to_angle(fields[3]), frame=Galactic))
 
         elif body_type == 'tle':
             if len(fields) < 4:

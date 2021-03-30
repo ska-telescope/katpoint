@@ -143,19 +143,14 @@ class FixedBody(Body):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        if self.tag == 'gal':
-            l = angle_to_string(self.coord.l, unit=u.deg, decimal=True)[:-1]
-            b = angle_to_string(self.coord.b, unit=u.deg, decimal=True)[:-1]
-            return f'Galactic l: {l} b: {b}'
-        else:
-            ra = angle_to_string(self.coord.ra, unit=u.hour)[:-1]
-            dec = angle_to_string(self.coord.dec, unit=u.deg)[:-1]
-            return f'Ra: {ra} Dec: {dec}'
+        ra = angle_to_string(self.coord.ra, unit=u.hour)[:-1]
+        dec = angle_to_string(self.coord.dec, unit=u.deg)[:-1]
+        return f'Ra: {ra} Dec: {dec}'
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        return 'gal' if self.coord.is_equivalent_frame(Galactic()) else 'radec'
+        return 'radec'
 
     @classmethod
     def from_edb(cls, line):
@@ -192,6 +187,22 @@ class FixedBody(Body):
         if to_celestial_sphere and not is_unitspherical:
             coord = _to_celestial_sphere(coord, obstime, location)
         return coord.transform_to(frame)
+
+
+class GalacticBody(FixedBody):
+    """A body with a fixed Galactic position."""
+
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        l = angle_to_string(self.coord.l, unit=u.deg, decimal=True)[:-1]
+        b = angle_to_string(self.coord.b, unit=u.deg, decimal=True)[:-1]
+        return f'Galactic l: {l} b: {b}'
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        return 'gal'
 
 
 class SolarSystemBody(Body):

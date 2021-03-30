@@ -27,9 +27,11 @@ import pytest
 import astropy.units as u
 from astropy.time import Time
 from astropy import __version__ as astropy_version
-from astropy.coordinates import SkyCoord, ICRS, AltAz, EarthLocation, Angle, Galactic
+from astropy.coordinates import (SkyCoord, ICRS, AltAz, EarthLocation, Angle,
+                                 Galactic, Longitude, Latitude)
 
-from katpoint.body import Body, FixedBody, SolarSystemBody, EarthSatelliteBody, StationaryBody
+from katpoint.body import (Body, FixedBody, GalacticBody, SolarSystemBody,
+                           EarthSatelliteBody, StationaryBody)
 from katpoint.test.helper import check_separation
 
 try:
@@ -119,11 +121,16 @@ def test_fixed():
     body = _get_fixed_body('10:10:40.123', '40:20:50.567')
     assert body.tag == 'radec'
     assert body.default_name
-    assert body.coord.ra == Angle('10:10:40.123h')
-    assert body.coord.dec == Angle('40:20:50.567d')
-    body_gal = FixedBody(Galactic(l='-10d', b='20d'))
-    assert body_gal.tag == 'gal'
+    assert body.coord.ra == Longitude('10:10:40.123h')
+    assert body.coord.dec == Latitude('40:20:50.567d')
+
+
+def test_galactic():
+    body = GalacticBody(Galactic(l='-10d', b='20d'))
+    assert body.tag == 'gal'
     assert body.default_name
+    assert body.coord.l == Longitude('-10d')
+    assert body.coord.b == Latitude('20d')
 
 
 def test_solar_system():
@@ -189,14 +196,16 @@ def test_stationary():
     body = StationaryBody('20d', '30d')
     assert body.tag == 'azel'
     assert body.default_name
+    assert body.coord.az == Longitude('20d')
+    assert body.coord.alt == Latitude('30d')
 
 
-def test_star():
+def test_fixed_edb():
     record = 'Sadr,f|S|F8,20:22:13.7|2.43,40:15:24|-0.93,2.23,2000,0'
     body = Body.from_edb(record)
     assert isinstance(body, FixedBody)
     assert body.tag == 'radec'
     assert body.default_name
-    assert body.coord.ra.to_string(sep=':', unit='hour') == '20:22:13.7'
-    assert body.coord.dec.to_string(sep=':', unit='deg') == '40:15:24'
+    assert body.coord.ra == Longitude('20:22:13.7h')
+    assert body.coord.dec == Latitude('40:15:24d')
     assert body.to_edb() == ',f,20:22:13.7,40:15:24'  # no name or proper motion
