@@ -98,13 +98,12 @@ class FluxDensityModel:
         if isinstance(min_freq_MHz, str):
             # Cannot have other parameters if description string is given - this is a safety check
             if not (max_freq_MHz is None and coefs is None):
-                raise ValueError("First parameter '%s' is description string - cannot have other parameters" %
-                                 (min_freq_MHz,))
+                raise ValueError(f"First parameter '{min_freq_MHz}' is description string - cannot have other parameters")
             # Split description string on spaces and turn into numbers (discarding any parentheses)
             try:
                 flux_info = [float(num) for num in min_freq_MHz.strip(' ()').split()]
             except ValueError:
-                raise FluxError("Floating point number '%s' is invalid" % (min_freq_MHz))
+                raise FluxError(f"Floating point number '{min_freq_MHz}' is invalid")
             if len(flux_info) < 2:
                 raise FluxError(f"Flux density description string '{min_freq_MHz}' is invalid")
             min_freq_MHz, max_freq_MHz, coefs = flux_info[0], flux_info[1], tuple(flux_info[2:])
@@ -113,25 +112,26 @@ class FluxDensityModel:
         self.coefs = self._DEFAULT_COEFS.copy()
         # Extract up to the maximum number of coefficients from given sequence
         if len(coefs) > len(self.coefs):
-            warnings.warn('Received %d coefficients but only expected %d - ignoring the rest'
-                          % (len(coefs), len(self.coefs)), FutureWarning)
+            warnings.warn(f'Received {len(coefs)} coefficients but only expected {len(self.coefs)} - ignoring the rest', FutureWarning)
         self.coefs[:min(len(self.coefs), len(coefs))] = coefs[:min(len(self.coefs), len(coefs))]
         # Prune defaults at the end of coefficient list for the description string
         nondefault_coefs = np.nonzero(self.coefs != self._DEFAULT_COEFS)[0]
         last_nondefault_coef = nondefault_coefs[-1] if len(nondefault_coefs) > 0 else 0
         pruned_coefs = self.coefs[:last_nondefault_coef + 1]
-        self.description = '({} {} {})'.format(min_freq_MHz, max_freq_MHz, ' '.join([f'{c!r}' for c in pruned_coefs]))
+        coefs_str = ' '.join([repr(c) for c in pruned_coefs])
+        self.description = f'({min_freq_MHz} {max_freq_MHz} {coefs_str})'
 
     def __str__(self):
         """Verbose human-friendly string representation."""
-        return "Flux density defined for %d-%d MHz, coefs=(%s)" % \
-               (self.min_freq_MHz, self.max_freq_MHz, ', '.join([f'{c!r}' for c in self.coefs]))
+        freq_range = f'{self.min_freq_MHz:.0f}-{self.max_freq_MHz:.0f} MHz'
+        coefs_str = ', '.join([repr(c) for c in self.coefs])
+        return f"Flux density defined for {freq_range}, coefs=({coefs_str})"
 
     def __repr__(self):
         """Short human-friendly string representation."""
-        param_str = ','.join(np.array('a,b,c,d,e,f,I,Q,U,V'.split(','))[self.coefs != self._DEFAULT_COEFS])
-        return "<katpoint.FluxDensityModel %d-%d MHz params=%s at 0x%x>" % \
-               (self.min_freq_MHz, self.max_freq_MHz, param_str, id(self))
+        freq_range = f'{self.min_freq_MHz:.0f}-{self.max_freq_MHz:.0f} MHz'
+        param_str = ','.join(np.array(list('abcdefIQUV'))[self.coefs != self._DEFAULT_COEFS])
+        return f"<katpoint.FluxDensityModel {freq_range} params={param_str} at {id(self):#x}>"
 
     def __eq__(self, other):
         """Equality comparison operator (based on description string)."""

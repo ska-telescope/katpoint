@@ -54,7 +54,9 @@ outlines = ['Jupiter, special\n', 'Mars, special\n', 'Moon, special\n']
 for line in inlines:
     line = '~'.join([edb_field.strip() for edb_field in line.split(',')])
     try:
-        outlines.append('{}, xephem, {}\n'.format(lookup[line.partition('~')[0]], line.replace('HYP', 'HIC ')))
+        name = lookup[line.partition('~')[0]]
+        edb = line.replace('HYP', 'HIC ')
+        outlines.append(f'{name}, xephem, {edb}\n')
     except KeyError:
         continue
 

@@ -133,13 +133,13 @@ class RefractionCorrection:
         try:
             self.offset = self.models[model]
         except KeyError:
-            raise ValueError("Unknown refraction correction model '%s' - should be one of %s" %
-                             (model, self.models.keys()))
+            raise ValueError(f"Unknown refraction correction model '{model}' - "
+                             f"should be one of {self.models.keys()}")
         self.model = model
 
     def __repr__(self):
         """Short human-friendly string representation of refraction correction object."""
-        return "<katpoint.RefractionCorrection model='{}' at 0x{:x}>".format(self.model, id(self))
+        return f"<katpoint.RefractionCorrection model='{self.model}' at {id(self):#x}>"
 
     def __eq__(self, other):
         """Equality comparison operator."""

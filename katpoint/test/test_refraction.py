@@ -70,9 +70,9 @@ def test_refraction_closure():
     # Test closure on el grid
     refracted_el = rc.apply(el, temp, pressure, humidity)
     reversed_el = rc.reverse(refracted_el, temp, pressure, humidity)
-    assert_angles_almost_equal(reversed_el, el, decimal=7,
-                               err_msg='Elevation closure error for temp=%s, pressure=%s, humidity=%s' %
-                                       (temp, pressure, humidity))
+    assert_angles_almost_equal(
+        reversed_el, el, decimal=7,
+        err_msg=f'Elevation closure error for temp={temp}, pressure={pressure}, humidity={humidity}')
 
 
 _locations_and_times = [

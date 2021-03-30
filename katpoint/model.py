@@ -83,8 +83,7 @@ class Parameter:
 
     def __repr__(self):
         """Short human-friendly string representation of parameter object."""
-        return "<katpoint.Parameter %s = %s %s at 0x%x>" % \
-               (self.name, self.value_str, self.units, id(self))
+        return f"<katpoint.Parameter {self.name} = {self.value_str} {self.units} at {id(self):#x}>"
 
 
 class BadModelFile(Exception):
@@ -140,19 +139,19 @@ class Model:
 
     def __repr__(self):
         """Short human-friendly string representation of model object."""
+        class_name = self.__class__.__name__
         num_active = len([p for p in self if p])
-        return "<katpoint.%s active_params=%d/%d at 0x%x>" % \
-               (self.__class__.__name__, num_active, len(self), id(self))
+        return f"<katpoint.{class_name} active_params={num_active}/{len(self)} at {id(self):#x}>"
 
     def __str__(self):
         """Verbose human-friendly string representation of model object."""
+        class_name = self.__class__.__name__
         num_active = len([p for p in self if p])
-        summary = "%s has %d parameters with %d active (non-default)" % \
-                  (self.__class__.__name__, len(self), num_active)
+        summary = f"{class_name} has {len(self)} parameters with {num_active} active (non-default)"
         if num_active == 0:
             return summary
-        return summary + ':\n' + '\n'.join(('%s = %s %s (%s)' % ps)
-                                           for ps in self.param_strs())
+        param_strs = '\n'.join('{} = {} {} ({})'.format(*ps) for ps in self.param_strs())
+        return f'{summary}:\n{param_strs}'
 
     def __eq__(self, other):
         """Equality comparison operator (parameter values only)."""
@@ -227,7 +226,7 @@ class Model:
             cfg.set('header', key, str(val))
         cfg.add_section('params')
         for param_str in self.param_strs():
-            cfg.set('params', param_str[0], '%s ; %s (%s)' % param_str[1:])
+            cfg.set('params', param_str[0], '{} ; {} ({})'.format(*param_str[1:]))
         cfg.write(file_like)
 
     def fromfile(self, file_like):

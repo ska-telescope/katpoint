@@ -57,7 +57,7 @@ class Body:
     def __repr__(self):
         """Short human-friendly string representation of target object."""
         class_name = 'katpoint.body.' + self.__class__.__name__
-        return f'<{class_name} {self.default_name!r} at 0x{id(self):x}>'
+        return f'<{class_name} {self.default_name!r} at {id(self):#x}>'
 
     @staticmethod
     def _check_location(frame):

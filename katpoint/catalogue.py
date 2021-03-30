@@ -338,8 +338,9 @@ class Catalogue:
 
     def __repr__(self):
         """Short human-friendly string representation of catalogue object."""
-        return "<katpoint.Catalogue targets=%d names=%d at 0x%x>" % \
-               (len(self.targets), len(self.lookup.keys()), id(self))
+        targets = len(self.targets)
+        names = len(self.lookup.keys())
+        return f"<katpoint.Catalogue targets={targets} names={names} at {id(self):#x}>"
 
     def __len__(self):
         """Number of targets in catalogue."""
@@ -925,7 +926,7 @@ class Catalogue:
         if flux_freq_MHz is not None:
             title += f', with flux density (Jy) evaluated at {flux_freq_MHz:g} MHz'
         if antenna2 is not None:
-            title += " and fringe period (s) toward antenna '%s' at same frequency" % (antenna2.name)
+            title += f" and fringe period (s) toward antenna '{antenna2.name}' at same frequency"
         print(title)
         print()
         print('Target                        Azimuth    Elevation <    Flux Fringe period')

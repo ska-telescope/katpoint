@@ -162,8 +162,8 @@ class Target:
 
     def __repr__(self):
         """Short human-friendly string representation of target object."""
-        sub_type = (' (%s)' % self.tags[1]) if (self.body_type == 'xephem') and (len(self.tags) > 1) else ''
-        return "<katpoint.Target '{}' body={} at 0x{:x}>".format(self.name, self.body_type + sub_type, id(self))
+        sub_type = f' ({self.tags[1]})' if self.body_type == 'xephem' and len(self.tags) > 1 else ''
+        return f"<katpoint.Target '{self.name}' body={self.body_type + sub_type} at {id(self):#x}>"
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -264,13 +264,14 @@ class Target:
         ValueError
             If *description* has the wrong format
         """
+        prefix = f"Target description '{description}'"
         try:
             description.encode('ascii')
         except UnicodeError:
-            raise NonAsciiError("Target description %r contains non-ASCII characters" % description)
+            raise NonAsciiError(f"{prefix} contains non-ASCII characters")
         fields = [s.strip() for s in description.split(',')]
         if len(fields) < 2:
-            raise ValueError("Target description '%s' must have at least two fields" % description)
+            raise ValueError(f"{prefix} must have at least two fields")
         # Check if first name starts with body type tag, while the next field does not
         # This indicates a missing names field -> add an empty name list in front
         body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
@@ -291,7 +292,7 @@ class Target:
         tag_field = fields.pop(0)
         tags = [s.strip() for s in tag_field.split(' ')]
         if not tags:
-            raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
+            raise ValueError(f"{prefix} needs at least one tag (body type)")
         body_type = tags.pop(0).lower()
         # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
         while fields and not fields[-1]:
@@ -300,16 +301,14 @@ class Target:
         # Create appropriate Body based on body type
         if body_type == 'azel':
             if len(fields) < 2:
-                raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
-                                 % description)
+                raise ValueError(f"{prefix} contains *azel* body with no (az, el) coordinates")
             az = fields.pop(0)
             el = fields.pop(0)
             body = StationaryBody(az, el)
 
         elif body_type == 'radec':
             if len(fields) < 2:
-                raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
-                                 % description)
+                raise ValueError(f"{prefix} contains *radec* body with no (ra, dec) coordinates")
             ra = to_angle(fields.pop(0), sexagesimal_unit=u.hour)
             dec = to_angle(fields.pop(0))
             # Extract epoch info from tags
@@ -323,23 +322,21 @@ class Target:
 
         elif body_type == 'gal':
             if len(fields) < 2:
-                raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
-                                 % description)
+                raise ValueError(f"{prefix} contains *gal* body with no (l, b) coordinates")
             l = to_angle(fields.pop(0))
             b = to_angle(fields.pop(0))
             body = GalacticBody(SkyCoord(l=l, b=b, frame=Galactic))
 
         elif body_type == 'tle':
             if len(fields) < 2:
-                raise ValueError(f"Target description '{description}' contains *tle* body "
-                                 "without the expected two comma-separated lines")
+                raise ValueError(f"{prefix} contains *tle* body without "
+                                 "the expected two comma-separated lines")
             line1 = fields.pop(0)
             line2 = fields.pop(0)
             try:
                 body = EarthSatelliteBody.from_tle(line1, line2)
             except ValueError as err:
-                raise ValueError(f"Target description '{description}' "
-                                 f"contains malformed *tle* body: {err}") from err
+                raise ValueError(f"{prefix} contains malformed *tle* body: {err}") from err
 
         elif body_type == 'special':
             try:
@@ -348,8 +345,8 @@ class Target:
                 else:
                     body = NullBody()
             except ValueError as err:
-                raise ValueError("Target description '%s' contains unknown *special* body '%s'"
-                                 % (description, preferred_name)) from err
+                raise ValueError(f"{prefix} contains unknown "
+                                 f"*special* body '{preferred_name}'") from err
 
         elif body_type == 'xephem':
             if len(fields) < 1:
@@ -366,11 +363,10 @@ class Target:
             try:
                 body = Body.from_edb(comma + edb_coord_fields)
             except ValueError as err:
-                raise ValueError(f"Target description '{description}' "
-                                 f"contains malformed *xephem* body: {err}") from err
+                raise ValueError(f"{prefix} contains malformed *xephem* body: {err}") from err
 
         else:
-            raise ValueError(f"Target description '{description}' contains unknown body type '{body_type}'")
+            raise ValueError(f"{prefix} contains unknown body type '{body_type}'")
 
         # Extract flux model if it is available
         if fields and fields[0].strip(' ()'):
