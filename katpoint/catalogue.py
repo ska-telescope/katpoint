@@ -333,8 +333,8 @@ class Catalogue:
             target.flux_freq_MHz = freq
 
     def __str__(self):
-        """Verbose human-friendly string representation of catalogue object."""
-        return '\n'.join([f'{target}' for target in self.targets])
+        """List of target description strings making up the catalogue."""
+        return '\n'.join([str(target) for target in self.targets]) + '\n'
 
     def __repr__(self):
         """Short human-friendly string representation of catalogue object."""
