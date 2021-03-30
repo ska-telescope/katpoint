@@ -47,12 +47,17 @@ class Body:
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        raise NotImplementedError
+        return 'Unknown'
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        raise NotImplementedError
+        return 'unknown'
+
+    def __repr__(self):
+        """Short human-friendly string representation of target object."""
+        class_name = 'katpoint.body.' + self.__class__.__name__
+        return f'<{class_name} {self.default_name!r} at 0x{id(self):x}>'
 
     @staticmethod
     def _check_location(frame):
