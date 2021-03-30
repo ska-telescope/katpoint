@@ -227,14 +227,8 @@ class Target:
         elif self.body_type == 'tle':
             fields += self.body.to_tle()
         elif self.body_type == 'xephem':
-            # Replace commas in xephem string with tildes, to avoid clashing with main string structure
-            # Also remove extra spaces added into string by to_edb
-            edb_string = '~'.join([edb_field.strip() for edb_field in self.body.to_edb().split(',')])
-            # Suppress name if it's the same as in the xephem db string
-            edb_name = edb_string[:edb_string.index('~')]
-            if edb_name == names:
-                fields = [tags]
-            fields += [edb_string]
+            # Replace commas in xephem string with tildes to avoid clashes with main structure
+            fields += [self.body.to_edb().replace(',', '~')]
 
         if fluxinfo:
             fields += [fluxinfo]
@@ -350,6 +344,9 @@ class Target:
                                  % (description, preferred_name)) from err
 
         elif body_type == 'xephem':
+            if len(fields) < 1:
+                raise ValueError(f"Target description '{description}' contains *xephem* body "
+                                 "without EDB string")
             edb_string = fields.pop(0).replace('~', ',')
             edb_name_field, comma, edb_coord_fields = edb_string.partition(',')
             edb_names = [name.strip() for name in edb_name_field.split('|')]
