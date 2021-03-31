@@ -282,8 +282,8 @@ def plane_to_sphere_original_ssn(target_az, target_el, ll, mm):
     """Mattieu's original version of SSN projection."""
     scan_az = target_az - np.arcsin(np.clip(ll / np.cos(target_el), -1.0, 1.0))
     scan_el = np.arcsin(np.clip(
-        (np.sqrt(1.0 - ll**2 - mm**2) * np.sin(target_el) +
-         np.sqrt(np.cos(target_el)**2 - ll**2) * mm) / (1.0 - ll**2), -1.0, 1.0))
+        (np.sqrt(1.0 - ll**2 - mm**2) * np.sin(target_el)
+         + np.sqrt(np.cos(target_el)**2 - ll**2) * mm) / (1.0 - ll**2), -1.0, 1.0))
     return scan_az, scan_el
 
 

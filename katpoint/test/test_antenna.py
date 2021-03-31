@@ -188,7 +188,7 @@ def test_description_round_trip(description):
     "location",
     [
         # The canonical MeerKAT array centre in ITRS to nearest millimetre
-        EarthLocation.from_geocentric(5109360.133,  2006852.586, -3238948.127, unit=u.m),
+        EarthLocation.from_geocentric(5109360.133, 2006852.586, -3238948.127, unit=u.m),
         # The canonical MeerKAT array centre in WGS84
         EarthLocation.from_geodetic('-30:42:39.8', '21:26:38.0', '1086.6'),
         # The WGS84 array centre in XYZ format (0.5 mm difference...)

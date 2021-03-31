@@ -119,8 +119,8 @@ def test_angle_to_string_round_trip(kwargs):
     np.testing.assert_array_equal(string2, string1)
 
 
-@pytest.fixture
-def random_geoid():
+@pytest.fixture(name='random_geoid')
+def fixture_random_geoid():
     N = 1000
     lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
     lon = 2.0 * np.pi * np.random.rand(N)
@@ -151,15 +151,15 @@ def test_ecef_to_enu(random_geoid):
     """Closure tests for ECEF to ENU conversion and vice versa."""
     lat, lon, alt = random_geoid
     x, y, z = katpoint.lla_to_ecef(lat, lon, alt)
-    e, n, u = katpoint.ecef_to_enu(lat[0], lon[0], alt[0], x, y, z)
-    new_x, new_y, new_z = katpoint.enu_to_ecef(lat[0], lon[0], alt[0], e, n, u)
+    east, north, up = katpoint.ecef_to_enu(lat[0], lon[0], alt[0], x, y, z)
+    new_x, new_y, new_z = katpoint.enu_to_ecef(lat[0], lon[0], alt[0], east, north, up)
     np.testing.assert_almost_equal(new_x, x, decimal=8)
     np.testing.assert_almost_equal(new_y, y, decimal=8)
     np.testing.assert_almost_equal(new_z, z, decimal=8)
 
 
-@pytest.fixture
-def random_sphere():
+@pytest.fixture(name='random_sphere')
+def fixture_random_sphere():
     N = 1000
     az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
     el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)
@@ -169,7 +169,7 @@ def random_sphere():
 def test_azel_to_enu(random_sphere):
     """Closure tests for (az, el) to ENU conversion and vice versa."""
     az, el = random_sphere
-    e, n, u = katpoint.azel_to_enu(az.rad, el.rad)
-    new_az, new_el = katpoint.enu_to_azel(e, n, u)
+    east, north, up = katpoint.azel_to_enu(az.rad, el.rad)
+    new_az, new_el = katpoint.enu_to_azel(east, north, up)
     assert_angles_almost_equal(new_az, az.rad, decimal=15)
     assert_angles_almost_equal(new_el, el.rad, decimal=15)

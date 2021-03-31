@@ -275,7 +275,7 @@ class Target:
         # Check if first name starts with body type tag, while the next field does not
         # This indicates a missing names field -> add an empty name list in front
         body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
-        def tags_in(field): return any([field.startswith(s) for s in body_types])
+        def tags_in(field): return any([field.startswith(s) for s in body_types])  # noqa: E704
         if tags_in(fields[0]) and not tags_in(fields[1]):
             fields.insert(0, '')
         # Extract preferred name from name list (starred or first entry), and make the rest aliases

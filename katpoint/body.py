@@ -187,8 +187,8 @@ class FixedBody(Body):
         else:
             coord = self.coord
         # If coordinate is dimensionless, it is already on the celestial sphere
-        is_unitspherical = (isinstance(coord.data, UnitSphericalRepresentation) or
-                            coord.cartesian.x.unit == u.one)
+        is_unitspherical = (isinstance(coord.data, UnitSphericalRepresentation)
+                            or coord.cartesian.x.unit == u.one)
         if to_celestial_sphere and not is_unitspherical:
             coord = _to_celestial_sphere(coord, obstime, location)
         return coord.transform_to(frame)

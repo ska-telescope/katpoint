@@ -204,8 +204,8 @@ def test_sort_catalogue():
     cat6 = cat.sort(key='flux', ascending=False, flux_freq_MHz=1.5)
     assert 'flux' in (cat6.targets[0].name, cat6.targets[-1].name), (
         'Flux target should be at start or end of catalogue after sorting')
-    assert ((cat6.targets[0].flux_density(1.5) == 100.0) or
-            (cat6.targets[-1].flux_density(1.5) == 100.0)), 'Sorting on flux failed'
+    assert (cat6.targets[0].flux_density(1.5) == 100.0
+            or cat6.targets[-1].flux_density(1.5) == 100.0), 'Sorting on flux failed'
 
 
 def test_visibility_list():

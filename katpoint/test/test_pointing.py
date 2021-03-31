@@ -24,8 +24,8 @@ import katpoint
 from .helper import assert_angles_almost_equal
 
 
-@pytest.fixture
-def pointing_grid():
+@pytest.fixture(name='pointing_grid')
+def fixture_pointing_grid():
     """Generate a grid of (az, el) values in natural antenna coordinates."""
     az_range = np.radians(np.arange(-185.0, 275.0, 5.0))
     el_range = np.radians(np.arange(0.0, 86.0, 1.0))
@@ -35,8 +35,8 @@ def pointing_grid():
     return az, el
 
 
-@pytest.fixture
-def params():
+@pytest.fixture(name='params')
+def fixture_params():
     """Generate random parameters for a pointing model."""
     # Generate random parameter values with this spread
     param_stdev = np.radians(20. / 60.)

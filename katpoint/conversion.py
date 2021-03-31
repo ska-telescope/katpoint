@@ -328,9 +328,9 @@ def enu_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m, e_m, n_m, u_m):
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
     sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
-    x_m = ref_x_m - sin_lon*e_m - sin_lat*cos_lon*n_m + cos_lat*cos_lon*u_m
-    y_m = ref_y_m + cos_lon*e_m - sin_lat*sin_lon*n_m + cos_lat*sin_lon*u_m
-    z_m = ref_z_m + cos_lat*n_m + sin_lat*u_m
+    x_m = ref_x_m - sin_lon*e_m - sin_lat*cos_lon*n_m + cos_lat*cos_lon*u_m  # noqa: E226
+    y_m = ref_y_m + cos_lon*e_m - sin_lat*sin_lon*n_m + cos_lat*sin_lon*u_m  # noqa: E226
+    z_m = ref_z_m + cos_lat*n_m + sin_lat*u_m  # noqa: E226
 
     return x_m, y_m, z_m
 
@@ -363,9 +363,9 @@ def ecef_to_enu(ref_lat_rad, ref_lon_rad, ref_alt_m, x_m, y_m, z_m):
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
     sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
-    e_m = -sin_lon*delta_x_m + cos_lon*delta_y_m
-    n_m = -sin_lat*cos_lon*delta_x_m - sin_lat*sin_lon*delta_y_m + cos_lat*delta_z_m
-    u_m = cos_lat*cos_lon*delta_x_m + cos_lat*sin_lon*delta_y_m + sin_lat*delta_z_m
+    e_m = -sin_lon*delta_x_m + cos_lon*delta_y_m  # noqa: E226
+    n_m = -sin_lat*cos_lon*delta_x_m - sin_lat*sin_lon*delta_y_m + cos_lat*delta_z_m  # noqa: E226
+    u_m = cos_lat*cos_lon*delta_x_m + cos_lat*sin_lon*delta_y_m + sin_lat*delta_z_m  # noqa: E226
 
     return e_m, n_m, u_m
 
