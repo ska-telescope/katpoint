@@ -21,7 +21,7 @@ import re
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS, Galactic,
+from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS,
                                  solar_system_ephemeris, get_body, UnitSphericalRepresentation,
                                  CartesianDifferential, CartesianRepresentation)
 from sgp4.api import Satrec, WGS72
@@ -76,7 +76,7 @@ class Body:
         try:
             edb_type = line.split(',')[1][0]
         except (AttributeError, IndexError):
-            raise ValueError(f'Failed parsing XEphem EDB line: {line}')
+            raise ValueError(f'Failed parsing XEphem EDB line: {line}')  # noqa: W0707
         if edb_type == 'f':
             return FixedBody.from_edb(line)
         elif edb_type == 'E':
@@ -200,9 +200,9 @@ class GalacticBody(FixedBody):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
-        b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
-        return f'Galactic l: {l} b: {b}'
+        gal_l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
+        gal_b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
+        return f'Galactic l: {gal_l} b: {gal_b}'
 
     @property
     def tag(self):

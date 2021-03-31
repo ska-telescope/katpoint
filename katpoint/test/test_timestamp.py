@@ -165,9 +165,9 @@ def test_operators():
     assert approx_equal(TimeDelta(1.0, format='sec', scale='tai') + t, t0 + 1)
     # Timestamp + Timestamp
     with pytest.raises(ValueError):
-        t + t
+        print(t + t)
     with pytest.raises(ValueError):
-        t + t.time
+        print(t + t.time)
     # Timestamp - interval
     assert approx_equal(t - 1, t0 - 1)
     assert approx_equal(t - 1 * u.second, t0 - 1)

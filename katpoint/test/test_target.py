@@ -315,7 +315,7 @@ NON_AZEL = 'astrometric_radec apparent_radec galactic'
 
 
 @contextmanager
-def does_not_raise(error):
+def does_not_raise(error):  # noqa: W0613
     yield
 
 

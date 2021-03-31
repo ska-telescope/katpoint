@@ -95,7 +95,7 @@ def test_pointing_fit(params, pointing_grid):
     # Comment out these removes, thereby testing more code paths in PointingModel
     # enabled_params.remove(2)
     # enabled_params.remove(10)
-    fitted_params, sigma_params = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=[])
+    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=[])
     np.testing.assert_equal(fitted_params, np.zeros(len(pm)))
-    fitted_params, sigma_params = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=enabled_params)
+    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=enabled_params)
     np.testing.assert_almost_equal(fitted_params, params, decimal=9)

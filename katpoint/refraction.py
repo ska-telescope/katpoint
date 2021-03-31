@@ -133,7 +133,7 @@ class RefractionCorrection:
         try:
             self.offset = self.models[model]
         except KeyError:
-            raise ValueError(f"Unknown refraction correction model '{model}' - "
+            raise ValueError(f"Unknown refraction correction model '{model}' - "  # noqa: W0707
                              f"should be one of {self.models.keys()}")
         self.model = model
 

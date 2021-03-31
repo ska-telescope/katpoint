@@ -98,12 +98,13 @@ class FluxDensityModel:
         if isinstance(min_freq_MHz, str):
             # Cannot have other parameters if description string is given - this is a safety check
             if not (max_freq_MHz is None and coefs is None):
-                raise ValueError(f"First parameter '{min_freq_MHz}' is description string - cannot have other parameters")
+                raise ValueError(f"First parameter '{min_freq_MHz}' is description string - "
+                                 "cannot have other parameters")
             # Split description string on spaces and turn into numbers (discarding any parentheses)
             try:
                 flux_info = [float(num) for num in min_freq_MHz.strip(' ()').split()]
-            except ValueError:
-                raise FluxError(f"Floating point number '{min_freq_MHz}' is invalid")
+            except ValueError as err:
+                raise FluxError(f"Floating point number '{min_freq_MHz}' is invalid") from err
             if len(flux_info) < 2:
                 raise FluxError(f"Flux density description string '{min_freq_MHz}' is invalid")
             min_freq_MHz, max_freq_MHz, coefs = flux_info[0], flux_info[1], tuple(flux_info[2:])
@@ -112,7 +113,8 @@ class FluxDensityModel:
         self.coefs = self._DEFAULT_COEFS.copy()
         # Extract up to the maximum number of coefficients from given sequence
         if len(coefs) > len(self.coefs):
-            warnings.warn(f'Received {len(coefs)} coefficients but only expected {len(self.coefs)} - ignoring the rest', FutureWarning)
+            warnings.warn(f'Received {len(coefs)} coefficients but only expected {len(self.coefs)} - '
+                          'ignoring the rest', FutureWarning)
         self.coefs[:min(len(self.coefs), len(coefs))] = coefs[:min(len(self.coefs), len(coefs))]
         # Prune defaults at the end of coefficient list for the description string
         nondefault_coefs = np.nonzero(self.coefs != self._DEFAULT_COEFS)[0]

@@ -54,7 +54,8 @@ def to_angle(s, sexagesimal_unit=u.deg):
     except u.UnitsError:
         # Bytes is a sequence of ints that will inadvertently end up as radians, so crash instead
         if isinstance(s, bytes):
-            raise TypeError(f'Raw bytes {s} not supported: first decode to string (or add unit)')
+            raise TypeError(f'Raw bytes {s} not supported: '  # noqa: W0707
+                            'first decode to string (or add unit)')
         # We now have a number, string or tuple without a unit
         if isinstance(s, str) and ':' in s or isinstance(s, tuple):
             return Angle(s, unit=sexagesimal_unit)
@@ -395,7 +396,7 @@ def azel_to_enu(az_rad, el_rad):
     return sin_az * cos_el, cos_az * cos_el, sin_el
 
 
-def enu_to_azel(e, n, u):
+def enu_to_azel(east, north, up):
     """Convert vector in ENU coordinates to (az, el) spherical coordinates.
 
     This converts a vector in the local east-north-up (ENU) coordinate system to
@@ -405,7 +406,7 @@ def enu_to_azel(e, n, u):
 
     Parameters
     ----------
-    e, n, u : float or array
+    east, north, up : float or array
         East, North, Up coordinates (any unit)
 
     Returns
@@ -413,7 +414,7 @@ def enu_to_azel(e, n, u):
     az_rad, el_rad : float or array
         Azimuth and elevation angle, in radians
     """
-    return np.arctan2(e, n), np.arctan2(u, np.sqrt(e * e + n * n))
+    return np.arctan2(east, north), np.arctan2(up, np.hypot(east, north))
 
 
 def hadec_to_enu(ha_rad, dec_rad, lat_rad):
@@ -441,7 +442,7 @@ def hadec_to_enu(ha_rad, dec_rad, lat_rad):
             sin_lat * sin_dec + cos_lat * cos_dec * cos_ha)
 
 
-def enu_to_xyz(e, n, u, lat_rad):
+def enu_to_xyz(east, north, up, lat_rad):
     """Convert ENU to XYZ coordinates.
 
     This converts a vector in the local east-north-up (ENU) coordinate system to
@@ -455,7 +456,7 @@ def enu_to_xyz(e, n, u, lat_rad):
 
     Parameters
     ----------
-    e, n, u : float or array
+    east, north, up : float or array
         East, North, Up coordinates of input vector
     lat_rad : float or array
         Geodetic latitude of ENU / XYZ reference point, in radians
@@ -471,4 +472,6 @@ def enu_to_xyz(e, n, u, lat_rad):
        Astronomy," 2nd ed., Wiley-VCH, 2004, pp. 86-89.
     """
     sin_lat, cos_lat = np.sin(lat_rad), np.cos(lat_rad)
-    return -sin_lat * n + cos_lat * u, e, cos_lat * n + sin_lat * u
+    return (-sin_lat * north + cos_lat * up,
+            east,
+            cos_lat * north + sin_lat * up)

@@ -231,8 +231,8 @@ class Antenna:
             raise ValueError(errmsg_prefix + 'is empty')
         try:
             description.encode('ascii')
-        except UnicodeError:
-            raise ValueError(errmsg_prefix + 'contains non-ASCII characters')
+        except UnicodeError as err:
+            raise ValueError(errmsg_prefix + 'contains non-ASCII characters') from err
         # Split description string on commas
         fields = [s.strip() for s in description.split(',')]
         # Extract required fields

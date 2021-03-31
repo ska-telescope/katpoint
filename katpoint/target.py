@@ -267,8 +267,8 @@ class Target:
         prefix = f"Target description '{description}'"
         try:
             description.encode('ascii')
-        except UnicodeError:
-            raise NonAsciiError(f"{prefix} contains non-ASCII characters")
+        except UnicodeError as err:
+            raise NonAsciiError(f"{prefix} contains non-ASCII characters") from err
         fields = [s.strip() for s in description.split(',')]
         if len(fields) < 2:
             raise ValueError(f"{prefix} must have at least two fields")
@@ -323,9 +323,9 @@ class Target:
         elif body_type == 'gal':
             if len(fields) < 2:
                 raise ValueError(f"{prefix} contains *gal* body with no (l, b) coordinates")
-            l = to_angle(fields.pop(0))
-            b = to_angle(fields.pop(0))
-            body = GalacticBody(SkyCoord(l=l, b=b, frame=Galactic))
+            gal_l = to_angle(fields.pop(0))
+            gal_b = to_angle(fields.pop(0))
+            body = GalacticBody(SkyCoord(l=gal_l, b=gal_b, frame=Galactic))
 
         elif body_type == 'tle':
             if len(fields) < 2:
@@ -770,17 +770,17 @@ class Target:
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
-        z = np.array(azel_to_enu(offset_azel.az.rad, offset_azel.alt.rad))
+        towards_pole = np.array(azel_to_enu(offset_azel.az.rad, offset_azel.alt.rad))
         # Obtain direction vector(s) from reference antenna to target
         azel = self.azel(time, location)
         # w axis points toward target
-        w = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
+        w_basis = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # u axis is orthogonal to z and w
-        u = np.cross(z, w, axis=0) * offset_sign
-        u /= np.linalg.norm(u, axis=0)
+        u_basis = np.cross(towards_pole, w_basis, axis=0) * offset_sign
+        u_basis /= np.linalg.norm(u_basis, axis=0)
         # v axis completes the orthonormal basis
-        v = np.cross(w, u, axis=0)
-        return np.array([u, v, w])
+        v_basis = np.cross(w_basis, u_basis, axis=0)
+        return np.array([u_basis, v_basis, w_basis])
 
     def uvw(self, antenna2, timestamp=None, antenna=None):
         """Calculate (u,v,w) coordinates of baseline while pointing at target.
