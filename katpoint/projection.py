@@ -677,7 +677,7 @@ def sphere_to_plane_ssn(az0, el0, az, el):
     This projection was originally introduced by Mattieu de Villiers for use
     in holography experiments.
     """
-    return sphere_to_plane_sin(az, el, az0, el0)  # noqa: W1114
+    return sphere_to_plane_sin(az, el, az0, el0)  # pylint: disable=arguments-out-of-order
 
 
 def plane_to_sphere_ssn(az0, el0, x, y):

@@ -175,7 +175,7 @@ class Target:
 
     def __ne__(self, other):
         """Inequality comparison operator."""
-        return not (self == other)
+        return not self == other
 
     def __lt__(self, other):
         """Less-than comparison operator (needed for sorting and np.unique)."""

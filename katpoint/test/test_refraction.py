@@ -86,7 +86,7 @@ _locations_and_times = [
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize("latitude,longitude,height,timestamp", _locations_and_times)
-def test_zenith_delay(latitude, longitude, height, timestamp):  # noqa: W0613
+def test_zenith_delay(latitude, longitude, height, timestamp):  # pylint: disable=unused-argument
     """Test hydrostatic and wet zenith delays against AlmaCalc."""
     location = EarthLocation.from_geodetic(longitude, latitude, height)
     zd = SaastamoinenZenithDelay(location)

@@ -32,6 +32,7 @@ except ImportError:
 
 
 def random_sphere(N, include_poles=False):
+    """Generate `N` random points on a 3D sphere in (longitude, latitude) form."""
     az = PI * (2.0 * np.random.rand(N) - 1.0)
     el = PI * (np.random.rand(N) - 0.5)
     if not include_poles:
@@ -41,6 +42,7 @@ def random_sphere(N, include_poles=False):
 
 
 def random_disk(N, radius_warp, max_theta):
+    """Generate `N` random points on a 2D circular disk in (x, y) form."""
     theta = max_theta * np.random.rand(N)
     phi = 2 * PI * np.random.rand(N)
     r = radius_warp(theta)
@@ -150,7 +152,7 @@ def test_aips_compatibility(projection, aips_code, decimal, N=100):
     xx, yy = sphere_to_plane(az0, el0, az, el)
     az_aips, el_aips = np.zeros_like(az), np.zeros_like(el)
     x_aips, y_aips = np.zeros_like(xx), np.zeros_like(yy)
-    for n in range(len(az)):
+    for n, _ in enumerate(az):
         az_aips[n], el_aips[n], ierr = newpos(aips_code, az0[n], el0[n], x[n], y[n])
         assert ierr == 0
         x_aips[n], y_aips[n], ierr = dircos(aips_code, az0[n], el0[n], az[n], el[n])

@@ -80,7 +80,7 @@ def test_construct_save_load():
     assert m == m7, 'Construction from model object failed'
 
     class OtherModel(katpoint.Model):
-        pass
+        """A different Model type used to check that one type cannot construct another."""
     m8 = OtherModel(params())
     with pytest.raises(katpoint.BadModelFile):
         m8.set(m)

@@ -133,8 +133,9 @@ class RefractionCorrection:
         try:
             self.offset = self.models[model]
         except KeyError:
-            raise ValueError(f"Unknown refraction correction model '{model}' - "  # noqa: W0707
-                             f"should be one of {self.models.keys()}")
+            raise ValueError(  # pylint: disable=raise-missing-from
+                f"Unknown refraction correction model '{model}' - "
+                f"should be one of {self.models.keys()}")
         self.model = model
 
     def __repr__(self):
@@ -147,7 +148,7 @@ class RefractionCorrection:
 
     def __ne__(self, other):
         """Inequality comparison operator."""
-        return not (self == other)
+        return not self == other
 
     def __hash__(self):
         """Base hash on underlying model name, just like equality operator."""
@@ -642,10 +643,10 @@ class TroposphericDelay:
         zenith_delay = get(_ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
         mapping_function = get(_MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
 
-        def hydrostatic(p, t, h, el, ts):  # noqa: W0613
+        def hydrostatic(p, t, h, el, ts):  # pylint: disable=unused-argument
             return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(el, ts)
 
-        def wet(p, t, h, el, ts):  # noqa: W0613
+        def wet(p, t, h, el, ts):  # pylint: disable=unused-argument
             return zenith_delay.wet(t, h) * mapping_function.wet(el, ts)
 
         def total(p, t, h, el, ts):
@@ -682,5 +683,5 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
-        return self._delay(pressure, temperature, relative_humidity,  # noqa: E1101
+        return self._delay(pressure, temperature, relative_humidity,  # pylint: disable=no-member
                            elevation, timestamp)

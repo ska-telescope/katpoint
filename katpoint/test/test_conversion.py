@@ -16,6 +16,8 @@
 
 """Tests for the conversion module."""
 
+# pylint: disable=missing-function-docstring
+
 import pytest
 import numpy as np
 import astropy.units as u
@@ -107,7 +109,7 @@ def test_angle_to_string_errors(angle, kwargs):
                                     dict(unit=u.hour),
                                     dict(unit=u.hour, decimal=True)])
 def test_angle_to_string_round_trip(kwargs):
-    rs = np.random.RandomState(46)  # noqa: E1101 (flake8 cannot figure out import)
+    rs = np.random.RandomState(46)  # pylint: disable=no-member
     angle1 = Angle(360 * rs.rand(1000) * u.deg)
     string1 = katpoint.conversion.angle_to_string(angle1, **kwargs)
     angle2 = katpoint.conversion.to_angle(string1)

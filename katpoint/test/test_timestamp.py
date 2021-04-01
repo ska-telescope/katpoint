@@ -16,6 +16,8 @@
 
 """Tests for the timestamp module."""
 
+# pylint: disable=missing-function-docstring
+
 import warnings
 from unittest.mock import patch
 

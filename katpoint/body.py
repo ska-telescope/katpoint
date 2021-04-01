@@ -76,7 +76,7 @@ class Body:
         try:
             edb_type = line.split(',')[1][0]
         except (AttributeError, IndexError):
-            raise ValueError(f'Failed parsing XEphem EDB line: {line}')  # noqa: W0707
+            raise ValueError(f'Failed parsing XEphem EDB line: {line}')  # pylint: disable=raise-missing-from
         if edb_type == 'f':
             return FixedBody.from_edb(line)
         elif edb_type == 'E':
@@ -220,7 +220,7 @@ class SolarSystemBody(Body):
     """
 
     def __init__(self, name):
-        if name.lower() not in solar_system_ephemeris.bodies:  # noqa: E1135
+        if name.lower() not in solar_system_ephemeris.bodies:  # pylint: disable=unsupported-membership-test
             raise ValueError("Unknown Solar System body '{}' - should be one of {}"
                              .format(name.lower(), solar_system_ephemeris.bodies))
         self._name = name

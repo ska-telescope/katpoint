@@ -16,6 +16,8 @@
 
 """Tests for the target module."""
 
+# pylint: disable=missing-function-docstring
+
 import pickle
 from contextlib import contextmanager
 from distutils.version import LooseVersion
@@ -315,7 +317,7 @@ NON_AZEL = 'astrometric_radec apparent_radec galactic'
 
 
 @contextmanager
-def does_not_raise(error):  # noqa: W0613
+def does_not_raise(error):  # pylint: disable=unused-argument
     yield
 
 

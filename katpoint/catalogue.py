@@ -295,16 +295,14 @@ class Catalogue:
             if add_specials:
                 raise ValueError('The add_specials parameter is not supported anymore - '
                                  'please add the targets manually')
-            else:
-                warnings.warn('The add_specials parameter is now permanently False '
-                              'and will be removed', FutureWarning)
+            warnings.warn('The add_specials parameter is now permanently False '
+                          'and will be removed', FutureWarning)
         if add_stars is not None:
             if add_stars:
                 raise ValueError('The add_stars parameter is not supported anymore - '
                                  'please add the stars manually (see scripts/ephem_stars.edb)')
-            else:
-                warnings.warn('The add_specials parameter is now permanently False '
-                              'and will be removed', FutureWarning)
+            warnings.warn('The add_specials parameter is now permanently False '
+                          'and will be removed', FutureWarning)
         if targets is None:
             targets = []
         self.add(targets, tags)
@@ -385,7 +383,7 @@ class Catalogue:
 
     def __ne__(self, other):
         """Inequality comparison operator."""
-        return not (self == other)
+        return not self == other
 
     def __hash__(self):
         """Hash value is independent of order of targets in catalogue."""
@@ -429,7 +427,7 @@ class Catalogue:
         >>> cat2 = Catalogue()
         >>> cat2.add(cat.targets)
         """
-        if isinstance(targets, str) or isinstance(targets, Target):
+        if isinstance(targets, (Target, str)):
             targets = [targets]
         for target in targets:
             if isinstance(target, str):
@@ -575,11 +573,11 @@ class Catalogue:
         """
         target = self[name]
         if target is not None:
-            for name in target.names:
-                targets_with_name = self.lookup[_normalised(name)]
+            for name_to_scrap in target.names:
+                targets_with_name = self.lookup[_normalised(name_to_scrap)]
                 targets_with_name.remove(target)
                 if not targets_with_name:
-                    del self.lookup[_normalised(name)]
+                    del self.lookup[_normalised(name_to_scrap)]
             self.targets.remove(target)
 
     def save(self, filename):
@@ -706,7 +704,7 @@ class Catalogue:
             if desired_tags:
                 targets = [target for target in targets if set(target.tags) & desired_tags]
             if undesired_tags:
-                targets = [target for target in targets if not (set(target.tags) & undesired_tags)]
+                targets = [target for target in targets if not set(target.tags) & undesired_tags]
 
         if flux_filter:
             if np.isscalar(flux_limit_Jy):
@@ -830,9 +828,9 @@ class Catalogue:
         >>> cat4 = cat.filter(tags='special ~radec')
         >>> cat5 = cat.filter(dist_limit_deg=5, proximity_targets=cat['Sun'])
         """
-        return Catalogue([target for target in
-                          self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg, el_limit_deg,
-                                          dist_limit_deg, proximity_targets, timestamp, antenna)],
+        return Catalogue(list(self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg,
+                                              el_limit_deg, dist_limit_deg, proximity_targets,
+                                              timestamp, antenna)),
                          antenna=self.antenna, flux_freq_MHz=self.flux_freq_MHz)
 
     def sort(self, key='name', ascending=True, flux_freq_MHz=None, timestamp=None, antenna=None):

@@ -16,6 +16,8 @@
 
 """Tests for the delay modules."""
 
+# pylint: disable=missing-function-docstring
+
 import json
 from io import StringIO
 from distutils.version import LooseVersion

@@ -121,6 +121,7 @@ class Timestamp:
 
     @property
     def secs(self):
+        """Timestamp as UTC seconds since Unix epoch."""
         return self.time.utc.unix
 
     def __repr__(self):

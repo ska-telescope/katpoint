@@ -61,7 +61,7 @@ def test_pointing_model_load_save(params):
     assert pm2 != pm, 'Pointing models should be inequal'
     # np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
     for (v4, v) in zip(pm4.values(), pm.values()):
-        if type(v4) == float:
+        if isinstance(v4, float):
             np.testing.assert_almost_equal(v4, v, decimal=6)
         else:
             np.testing.assert_almost_equal(v4.rad, v, decimal=6)

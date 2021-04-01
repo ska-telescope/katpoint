@@ -16,6 +16,8 @@
 
 """Tests for the catalogue module."""
 
+# pylint: disable=missing-function-docstring
+
 import pytest
 from numpy.testing import assert_allclose
 
@@ -57,7 +59,8 @@ def test_catalogue_tab_completion():
     cat.add('Earth | Terra Incognita, azel, 0, 0')
     cat.add('Earth | Sky, azel, 0, 90')
     # Check that it returns a sorted list
-    assert cat._ipython_key_completions_() == ['Earth', 'Nothing', 'Sky', 'Terra Incognita']  # noqa: W0212
+    assert cat._ipython_key_completions_() == [  # pylint: disable=protected-access
+        'Earth', 'Nothing', 'Sky', 'Terra Incognita']
 
 
 def test_catalogue_same_name():

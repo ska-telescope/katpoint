@@ -21,6 +21,8 @@ pyephem package.
 
 """
 
+# pylint: disable=missing-function-docstring
+
 from distutils.version import LooseVersion
 
 import pytest

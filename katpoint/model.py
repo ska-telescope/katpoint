@@ -160,7 +160,7 @@ class Model:
 
     def __ne__(self, other):
         """Inequality comparison operator (parameter values only)."""
-        return not (self == other)
+        return not self == other
 
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
@@ -185,7 +185,7 @@ class Model:
     def fromlist(self, floats):
         """Load model from sequence of floats."""
         self.header = {}
-        params = [p for p in self]
+        params = list(self)
         min_len = min(len(params), len(floats))
         for param, value in zip(params[:min_len], floats[:min_len]):
             param.value = value
@@ -196,7 +196,7 @@ class Model:
     def description(self):
         """Compact but complete string representation ('tostring')."""
         active = np.nonzero([bool(p) for p in self])[0]
-        last_active = active[-1] if len(active) else -1
+        last_active = active[-1] if len(active) > 0 else -1
         return ' '.join([p.value_str for p in self][:last_active + 1])
 
     def fromstring(self, description):
@@ -205,7 +205,7 @@ class Model:
         # Split string either on commas or whitespace, for good measure
         param_vals = [p.strip() for p in description.split(',')] \
             if ',' in description else description.split()
-        params = [p for p in self]
+        params = list(self)
         min_len = min(len(params), len(param_vals))
         for param, param_val in zip(params[:min_len], param_vals[:min_len]):
             param.value_str = param_val

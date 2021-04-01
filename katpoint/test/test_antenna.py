@@ -16,6 +16,8 @@
 
 """Tests for the antenna module."""
 
+# pylint: disable=missing-function-docstring
+
 import time
 import pickle
 

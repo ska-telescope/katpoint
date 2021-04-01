@@ -142,7 +142,7 @@ class FluxDensityModel:
 
     def __ne__(self, other):
         """Inequality comparison operator (based on description string)."""
-        return not (self == other)
+        return not self == other
 
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
@@ -150,6 +150,7 @@ class FluxDensityModel:
 
     @property
     def iquv_scale(self):
+        """Fractional Stokes parameters which scale the flux density."""
         return self.coefs[6:10]
 
     def _flux_density_raw(self, freq_MHz):
