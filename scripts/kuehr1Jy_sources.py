@@ -50,6 +50,7 @@
 #
 
 import numpy as np
+import astropy.units as u
 import matplotlib.pyplot as plt
 import katpoint
 
@@ -69,20 +70,21 @@ for src in table:
     names = '1Jy ' + src['_1Jy']
     if len(src['_3C']) > 0:
         names += ' | *' + src['_3C']
-    ra, dec = np.radians(src['_RAJ2000']), np.radians(src['_DEJ2000'])
-    tags_ra_dec = katpoint.Target.from_radec(ra, dec).add_tags('J2000').description
+    radec_target = katpoint.Target.from_radec(src['_RAJ2000'] * u.deg,
+                                              src['_DEJ2000'] * u.deg)
+    tags_ra_dec = radec_target.add_tags('J2000').description
     # Extract flux data for the current source from flux table
     flux = flux_table[flux_table['_1Jy'] == src['_1Jy']]
     # Determine widest possible frequency range where flux is defined (ignore internal gaps in this range)
     # For better or worse, extend range to at least KAT7 frequency band (also handles empty frequency lists)
-    flux_freqs = flux['Freq'].tolist() + [800.0, 2400.0]
+    flux_freqs = flux['Freq'].tolist() + [800, 2400]
     min_freq, max_freq = min(flux_freqs), max(flux_freqs)
     log_freq, log_flux = np.log10(flux['Freq']), np.log10(flux['S'])
     if src['Fct'] == 'LIN':
-        flux_str = katpoint.FluxDensityModel(min_freq, max_freq, [src['A'], src['B']]).description
+        # Coefficients A and B are float32 with precision=2 -> convert to float64 without fluff
+        coefs = [float(repr(src['A'])), float(repr(src['B']))]
     elif src['Fct'] == 'EXP':
-        flux_str = katpoint.FluxDensityModel(min_freq, max_freq, [src['A'], src['B'],
-                                                                  0.0, 0.0, src['C'], src['D']]).description
+        coefs = [float(repr(src['A'])), float(repr(src['B'])), 0.0, 0.0, src['C'], src['D']]
     else:
         # No flux data found for source - skip it (only two sources, 1334-127 and 2342+82, are discarded)
         if len(flux) == 0:
@@ -90,12 +92,14 @@ for src in table:
         # Fit straight-line flux model log10(S) = a + b*log10(v) to frequencies close to KAT7 band
         mid_freqs = (flux['Freq'] > 400) & (flux['Freq'] < 12000)
         flux_poly = np.polyfit(log_freq[mid_freqs], log_flux[mid_freqs], 1)
-        flux_str = katpoint.FluxDensityModel(min_freq, max_freq, flux_poly[::-1]).description
-    src_strings.append(', '.join((names, tags_ra_dec, flux_str)) + '\n')
+        # Round to 4 significant digits
+        coefs = [float(f'{c:.4g}') for c in flux_poly[::-1]]
+    flux_model = katpoint.FluxDensityModel(min_freq * u.MHz, max_freq * u.MHz, coefs)
+    src_strings.append(', '.join((names, tags_ra_dec, flux_model.description)) + '\n')
     print(src_strings[-1].strip())
 
     # Display flux model fit
-    test_log_flux = np.log10(katpoint.FluxDensityModel(flux_str).flux_density(10 ** test_log_freq))
+    test_log_flux = np.log10(flux_model.flux_density(10 ** test_log_freq * u.MHz).to_value(u.Jy))
     plot_ind = len(src_strings) - 1
     plt.figure((plot_ind // plots_per_fig) + 1)
     if plot_ind % plots_per_fig == 0:

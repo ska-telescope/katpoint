@@ -51,7 +51,6 @@
 #
 
 import numpy as np
-from scikits.fitting import PiecewisePolynomial1DFit
 import katpoint
 
 import astropy.units as u
@@ -71,7 +70,7 @@ atca_cat = katpoint.Catalogue(open('atca_calibrators.csv'))
 #
 # Select sources with > 1 Jy flux at 6cm (hopefully matching the 1Jy catalogue)
 # This also includes flux = nan, which indicates unknown flux density for source
-flux_limit = 1.0
+flux_limit = 1.0 * u.Jy
 # Select sources south of +5 degrees declination
 dec_limit = 5.0
 # Select sources with absolute rotation measure less than 30 rad/m^2
@@ -87,14 +86,14 @@ accepted_types = ('QSO', 'GAL', '')
 use_atca = True
 # Select sources with > 0.2 Jy linearly polarised flux at 1822 MHz
 # This also includes polflux = nan, which indicates unknown flux density for source (e.g. not in 1Jy catalogue)
-freq_MHz = 1822
-polflux_limit = 0.2
+frequency = 1822 * u.MHz
+polflux_limit = 0.2 * u.Jy
 
 # Iterate through sources
 src_strings = []
 for src in table:
     # Select sources based on various criteria
-    if src['S6cm'] < flux_limit:
+    if src['S6cm'] * u.Jy < flux_limit:
         print(f"{src['Name']} skipped: flux @ 6cm: {src['S6cm']:.2f} < {flux_limit:.2f}")
         continue
     if src['_DEJ2000'] > dec_limit:
@@ -121,20 +120,23 @@ for src in table:
         names += ' | PKS ' + src['PKS']
     if len(src['OName']) > 0:
         names += ' | ' + src['OName']
-    ra, dec = atca_cat[src['Name']].radec() if use_atca else \
-        (np.radians(src['_RAJ2000']), np.radians(src['_DEJ2000']))
-    tags_ra_dec = katpoint.Target.from_radec(ra, dec).add_tags('J2000 ' + src['Type']).description
+    if use_atca:
+        radec_target = katpoint.Target(atca_cat[src['Name']].radec())
+    else:
+        radec_target = katpoint.Target.from_radec(src['_RAJ2000'] * u.deg,
+                                                  src['_DEJ2000'] * u.deg)
+    tags_ra_dec = radec_target.add_tags('J2000 ' + src['Type']).description
     # Extract polarisation data for the current source from pol table
     pol_data = pol_table[pol_table['Name'] == src['Name']]
-    pol_freqs_MHz = const.c.to_value(u.m / u.s) / (0.01 * pol_data['lambda']) / 1e6
+    pol_freqs = const.c / pol_data['lambda']
     pol_percent = pol_data['Pol']
     # Remove duplicate frequencies and fit linear interpolator to data as function of frequency
     pol_freq, pol_perc = [], []
-    for freq in np.unique(pol_freqs_MHz):
-        freqfind = (pol_freqs_MHz == freq)
-        pol_freq.append(freq)
+    for freq in np.unique(pol_freqs):
+        freqfind = (pol_freqs == freq)
+        pol_freq.append(freq.to_value(u.MHz))
         pol_perc.append(pol_percent[freqfind].mean())
-    pol_interp = PiecewisePolynomial1DFit(max_degree=1).fit(pol_freq, pol_perc)
+    pol_interp = np.interp(frequency.to_value(u.MHz), pol_freq, pol_perc)
     # Look up source name in 1Jy catalogue and extract its flux density model
     flux_target = flux_cat['1Jy ' + src['Name']]
     if flux_target is None:
@@ -143,15 +145,15 @@ for src in table:
     target_description = ', '.join((names, tags_ra_dec, flux_str))
     target = katpoint.Target(target_description)
     # Evaluate polarised flux at expected centre frequency and filter on that
-    pol_flux = target.flux_density(freq_MHz) * pol_interp(freq_MHz) / 100.
+    pol_flux = target.flux_density(frequency) * pol_interp / 100.
     if pol_flux < polflux_limit:
-        print(f"{src['Name']} skipped: polarised flux @ {freq_MHz:.0f} MHz: {pol_flux:.2f} < {polflux_limit:.2f}")
+        print(f"{src['Name']} skipped: polarised flux @ {frequency:.0f}: {pol_flux:.2f} < {polflux_limit:.2f}")
         continue
     src_strings.append(target_description + '\n')
-    print(f"{src['Name']} cat flux @ 6cm: {src['S6cm']:.2f}, "
-          f"model flux @ 6cm: {target.flux_density(4996.54):.2f}, "
-          f"@ {freq_MHz:.0f} MHz: {target.flux_density(freq_MHz):.2f}, "
-          f"%pol: {pol_interp(freq_MHz):.2f} polflux: {pol_flux:.3f}")
+    print(f"{src['Name']} cat flux @ 6cm: {src['S6cm'] * u.Jy:.2f}, "
+          f"model flux @ 6cm: {target.flux_density(4996.54 * u.MHz):.2f}, "
+          f"@ {frequency:.0f}: {target.flux_density(frequency):.2f}, "
+          f"%pol: {pol_interp:.2f} polflux: {pol_flux:.3f}")
 
 with open('tabara_source_list.csv', 'w') as f:
     f.writelines(src_strings)
