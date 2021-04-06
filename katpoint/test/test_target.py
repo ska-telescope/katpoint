@@ -50,7 +50,7 @@ def test_construct_target():
     # Override some parameters
     a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0, 1 2 3, 1 2 3, 1.14')
     t0b = katpoint.Target(t0.description, name='Marie', user_tags='no_collab',
-                          aliases=['Fee', 'Fie', 'Foe'], antenna=a0, flux_freq_MHz=1284.)
+                          aliases=['Fee', 'Fie', 'Foe'], antenna=a0, flux_frequency=1284. * u.MHz)
     assert t0b.body.coord == t0.body.coord
     assert t0b.name == 'Marie'
     assert t0b.tags == ['radec', 'no_collab']
@@ -58,16 +58,16 @@ def test_construct_target():
     assert t0b.aliases == ('Fee', 'Fie', 'Foe')
     assert t0b.flux_model == t0.flux_model
     assert t0b.antenna == a0
-    assert t0b.flux_freq_MHz == 1284.
+    assert t0b.flux_frequency == 1.284 * u.GHz
     # Check that we can also replace non-default parameters with defaults
-    t0c = katpoint.Target(t0, name='', flux_model=None, antenna=None, flux_freq_MHz=None)
+    t0c = katpoint.Target(t0, name='', flux_model=None, antenna=None, flux_frequency=None)
     assert t0c.body.coord == t0.body.coord
     assert t0c.name == t0.body.default_name  # Target name cannot be empty - use default
     assert t0c.tags == t0.tags
     assert t0c.aliases == t0.aliases
     assert t0c.flux_model is None
     assert t0c.antenna is None
-    assert t0c.flux_freq_MHz is None
+    assert t0c.flux_frequency is None
     # Check that construction from Target is nearly exact (within 10 nanoarcsec)
     t1 = katpoint.Target.from_radec(np.e * u.deg, np.pi * u.deg)
     t2 = katpoint.Target(t1)
@@ -82,6 +82,8 @@ def test_construct_target():
     # Bytes are right out
     with pytest.raises(TypeError):
         katpoint.Target(b'azel, -30.0, 90.0')
+    with pytest.raises(TypeError):
+        katpoint.Target(t0, flux_frequency=1284.)
 
 
 def test_construct_target_from_azel():

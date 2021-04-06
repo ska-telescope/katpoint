@@ -19,6 +19,7 @@
 import warnings
 
 import numpy as np
+import astropy.units as u
 
 
 class FluxError(ValueError):
@@ -155,42 +156,45 @@ class FluxDensityModel:
         log10_S = a + b * log10_v + c * log10_v ** 2 + d * log10_v ** 3 + e * np.exp(f * log10_v)
         return 10 ** log10_S
 
-    def flux_density(self, freq_MHz):
+    @u.quantity_input
+    def flux_density(self, frequency: u.Hz) -> u.Jy:
         """Calculate Stokes I flux density for given observation frequency.
 
         Parameters
         ----------
-        freq_MHz : float, or sequence of floats
-            Frequency at which to evaluate flux density, in MHz
+        frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate flux density
 
         Returns
         -------
-        flux_density : float, or array of floats of same shape as *freq_MHz*
-            Flux density in Jy, or np.nan if the frequency is out of range
+        flux_density : :class:`~astropy.units.Quantity`
+            Flux density in Jy, or np.nan if frequency is out of range.
+            The shape matches the input.
         """
-        freq_MHz = np.asarray(freq_MHz)
+        freq_MHz = frequency.to_value(u.MHz)
         flux = np.asarray(self._flux_density_raw(freq_MHz) * self.iquv_scale[0])
         flux[freq_MHz < self.min_freq_MHz] = np.nan
         flux[freq_MHz > self.max_freq_MHz] = np.nan
-        return flux if flux.ndim else flux.item()
+        return flux * u.Jy
 
-    def flux_density_stokes(self, freq_MHz):
+    @u.quantity_input
+    def flux_density_stokes(self, frequency: u.Hz) -> u.Jy:
         """Calculate full-Stokes flux density for given observation frequency.
 
         Parameters
         ----------
-        freq_MHz : float, or sequence of floats
-            Frequency at which to evaluate flux density, in MHz
+        frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate flux density
 
         Returns
         -------
-        flux_density : array of floats
-            Flux density in Jy, or np.nan if the frequency is out of range. The
-            array has an extra final axis of length 4, corresponding to the I, Q, U, V
-            components.
+        flux_density : :class:`~astropy.units.Quantity`
+            Flux density in Jy, or np.nan if frequency is out of range.
+            The shape matches the input with an extra trailing dimension
+            of size 4 containing Stokes I, Q, U, V.
         """
-        freq_MHz = np.asarray(freq_MHz)
+        freq_MHz = frequency.to_value(u.MHz)
         flux = np.asarray(self._flux_density_raw(freq_MHz))
         flux[freq_MHz < self.min_freq_MHz] = np.nan
         flux[freq_MHz > self.max_freq_MHz] = np.nan
-        return np.multiply.outer(flux, self.iquv_scale)
+        return np.multiply.outer(flux, self.iquv_scale) * u.Jy

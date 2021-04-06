@@ -20,6 +20,7 @@
 
 import pytest
 from numpy.testing import assert_allclose
+import astropy.units as u
 
 import katpoint
 
@@ -172,7 +173,7 @@ def test_filter_catalogue():
     num_special = len([t for t in TARGETS if 'special' in t])
     assert len(cat.targets) == num_special, 'Number of targets incorrect'
     cat.add(FLUX_TARGET)
-    cat2 = cat.filter(flux_limit_Jy=50.0, flux_freq_MHz=1.5)
+    cat2 = cat.filter(flux_limit=50 * u.Jy, flux_frequency=1.5 * u.MHz)
     assert len(cat2.targets) == 1, 'Number of targets with sufficient flux should be 1'
     assert cat != cat2, 'Catalogues should be inequal'
     cat3 = cat.filter(az_limit_deg=[0, 180], timestamp=TIMESTAMP, antenna=ANTENNA)
@@ -204,11 +205,11 @@ def test_sort_catalogue():
     cat5 = cat.sort(key='el', timestamp=TIMESTAMP, antenna=ANTENNA)
     assert cat5.targets[-1].name == 'Zenith', 'Sorting on el failed'  # el: 90:00:00.0
     cat.add(FLUX_TARGET)
-    cat6 = cat.sort(key='flux', ascending=False, flux_freq_MHz=1.5)
+    cat6 = cat.sort(key='flux', ascending=False, flux_frequency=1.5 * u.MHz)
     assert 'flux' in (cat6.targets[0].name, cat6.targets[-1].name), (
         'Flux target should be at start or end of catalogue after sorting')
-    assert (cat6.targets[0].flux_density(1.5) == 100.0
-            or cat6.targets[-1].flux_density(1.5) == 100.0), 'Sorting on flux failed'
+    assert (cat6.targets[0].flux_density(1.5 * u.MHz) == 100.0 * u.Jy
+            or cat6.targets[-1].flux_density(1.5 * u.MHz) == 100.0 * u.Jy), 'Sorting on flux failed'
 
 
 def test_visibility_list():
@@ -219,7 +220,9 @@ def test_visibility_list():
     cat.add(FLUX_TARGET)
     cat.remove('Zenith')
     cat.visibility_list(timestamp=TIMESTAMP, antenna=ANTENNA,
-                        flux_freq_MHz=1.5, antenna2=antenna2)
+                        flux_frequency=1.5 * u.MHz, antenna2=antenna2)
     cat.antenna = ANTENNA
-    cat.flux_freq_MHz = 1.5
+    cat.flux_frequency = 1.5 * u.MHz
     cat.visibility_list(timestamp=TIMESTAMP)
+    with pytest.raises(TypeError):
+        cat.flux_frequency = 1.5

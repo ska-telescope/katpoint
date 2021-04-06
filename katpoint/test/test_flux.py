@@ -16,8 +16,9 @@
 
 """Tests for the flux module."""
 
-import numpy as np
 import pytest
+import numpy as np
+import astropy.units as u
 
 import katpoint
 
@@ -40,7 +41,7 @@ def test_unit_model():
     """Test unit flux model, as well as comparisons and hashes."""
     unit_model = katpoint.FluxDensityModel(100., 200., [0.])
     unit_model2 = katpoint.FluxDensityModel(100., 200., [0.])
-    assert unit_model.flux_density(110.) == 1.0, 'Flux calculation wrong'
+    assert unit_model.flux_density(110 * u.MHz) == 1.0 * u.Jy, 'Flux calculation wrong'
     # At least one coefficient is always shown
     assert unit_model.description == '(100.0 200.0 0.0)'
     assert unit_model == unit_model2, 'Flux models not equal'
@@ -57,49 +58,56 @@ def test_too_many_params():
             '(1.0 2.0 2.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0)')
     # Must truncate default coefficients, including I=1
     assert too_many_params.description == '(1.0 2.0 2.0)'
-    assert too_many_params.flux_density(1.5) == 100.0, 'Flux calculation for too many params wrong'
+    assert too_many_params.flux_density(1.5 * u.MHz) == 100.0 * u.Jy, (
+        'Flux calculation for too many params wrong')
 
 
 def test_too_few_params():
     """Test flux model with too few parameters."""
     too_few_params = katpoint.FluxDensityModel('(1.0 2.0 2.0)')
-    assert too_few_params.flux_density(1.5) == 100.0, 'Flux calculation for too few params wrong'
+    assert too_few_params.flux_density(1.5 * u.MHz) == 100.0 * u.Jy, (
+        'Flux calculation for too few params wrong')
 
 
 def test_flux_density():
     """Test flux density calculation."""
-    assert FLUX_MODEL.flux_density(1.5) == 200.0, 'Flux calculation wrong'
-    np.testing.assert_equal(FLUX_MODEL.flux_density([1.5, 1.5]), np.array([200.0, 200.0]),
+    assert FLUX_MODEL.flux_density(1.5 * u.MHz) == 200.0 * u.Jy, 'Flux calculation wrong'
+    np.testing.assert_equal(FLUX_MODEL.flux_density([1.5, 1.5] * u.MHz),
+                            np.array([200.0, 200.0]) * u.Jy,
                             'Flux calculation for multiple frequencies wrong')
-    np.testing.assert_equal(FLUX_MODEL.flux_density([0.5, 2.5]), np.array([np.nan, np.nan]),
+    np.testing.assert_equal(FLUX_MODEL.flux_density([0.5, 2.5] * u.MHz),
+                            np.array([np.nan, np.nan]) * u.Jy,
                             'Flux calculation for out-of-range frequencies wrong')
     with pytest.raises(ValueError):
         NO_FLUX_TARGET.flux_density()
-    np.testing.assert_equal(NO_FLUX_TARGET.flux_density([1.5, 1.5]), np.array([np.nan, np.nan]),
+    np.testing.assert_equal(NO_FLUX_TARGET.flux_density([1.5, 1.5] * u.MHz),
+                            np.array([np.nan, np.nan]) * u.Jy,
                             'Empty flux model leads to wrong empty flux shape')
-    FLUX_TARGET.flux_freq_MHz = 1.5
-    assert FLUX_TARGET.flux_density() == 200.0, 'Flux calculation for default freq wrong'
+    FLUX_TARGET.flux_frequency = 1.5 * u.MHz
+    assert FLUX_TARGET.flux_density() == 200.0 * u.Jy, 'Flux calculation for default freq wrong'
+    with pytest.raises(TypeError):
+        FLUX_TARGET.flux_frequency = 1.5
     print(FLUX_TARGET)
 
 
 def test_flux_density_stokes():
     """Test flux density calculation for Stokes parameters"""
-    np.testing.assert_array_equal(FLUX_MODEL.flux_density_stokes(1.5),
-                                  np.array([200.0, 50.0, 25.0, -75.0]))
-    np.testing.assert_array_equal(FLUX_MODEL.flux_density_stokes([1.0, 1.5, 3.0]),
+    np.testing.assert_array_equal(FLUX_MODEL.flux_density_stokes(1.5 * u.MHz),
+                                  np.array([200.0, 50.0, 25.0, -75.0]) * u.Jy)
+    np.testing.assert_array_equal(FLUX_MODEL.flux_density_stokes([1.0, 1.5, 3.0] * u.MHz),
                                   np.array([[200.0, 50.0, 25.0, -75.0],
                                             [200.0, 50.0, 25.0, -75.0],
-                                            [np.nan, np.nan, np.nan, np.nan]]))
+                                            [np.nan, np.nan, np.nan, np.nan]]) * u.Jy)
     with pytest.raises(ValueError):
         NO_FLUX_TARGET.flux_density_stokes()
-    np.testing.assert_array_equal(NO_FLUX_TARGET.flux_density_stokes(1.5),
-                                  np.array([np.nan, np.nan, np.nan, np.nan]),
+    np.testing.assert_array_equal(NO_FLUX_TARGET.flux_density_stokes(1.5 * u.MHz),
+                                  np.array([np.nan, np.nan, np.nan, np.nan]) * u.Jy,
                                   'Empty flux model leads to wrong empty flux shape')
-    np.testing.assert_array_equal(NO_FLUX_TARGET.flux_density_stokes([1.5, 1.5]),
+    np.testing.assert_array_equal(NO_FLUX_TARGET.flux_density_stokes([1.5, 1.5] * u.MHz),
                                   np.array([[np.nan, np.nan, np.nan, np.nan],
-                                            [np.nan, np.nan, np.nan, np.nan]]),
+                                            [np.nan, np.nan, np.nan, np.nan]]) * u.Jy,
                                   'Empty flux model leads to wrong empty flux shape')
-    FLUX_TARGET.flux_freq_MHz = 1.5
+    FLUX_TARGET.flux_frequency = 1.5 * u.MHz
     np.testing.assert_array_equal(FLUX_TARGET.flux_density_stokes(),
-                                  np.array([200.0, 50.0, 25.0, -75.0]),
+                                  np.array([200.0, 50.0, 25.0, -75.0]) * u.Jy,
                                   'Flux calculation for default freq wrong')
