@@ -378,7 +378,7 @@ class Target:
 
         # Extract flux model if it is available
         if fields and fields[0].strip(' ()'):
-            flux_model = FluxDensityModel(fields[0])
+            flux_model = FluxDensityModel.from_description(fields[0])
         else:
             flux_model = None
         return cls(body, preferred_name, tags, aliases, flux_model)

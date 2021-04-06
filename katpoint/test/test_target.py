@@ -198,7 +198,7 @@ def test_add_tags():
     assert tag_target.user_tags == ['J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
 
 
-FLUX_MODEL = katpoint.FluxDensityModel('(1000.0 2000.0 1.0 10.0)')
+FLUX_MODEL = katpoint.FluxDensityModel.from_description('(1000.0 2000.0 1.0 10.0)')
 
 
 @pytest.mark.parametrize(

@@ -23,24 +23,25 @@ import astropy.units as u
 import katpoint
 
 
-FLUX_MODEL = katpoint.FluxDensityModel('(1.0 2.0 2.0 0.0 0.0 0.0 0.0 0.0 2.0 0.5 0.25 -0.75)')
+DESCRIPTION = '(1.0 2.0 2.0 0.0 0.0 0.0 0.0 0.0 2.0 0.5 0.25 -0.75)'
+FLUX_MODEL = katpoint.FluxDensityModel.from_description(DESCRIPTION)
 FLUX_TARGET = katpoint.Target('radec, 0.0, 0.0, ' + FLUX_MODEL.description)
 NO_FLUX_TARGET = katpoint.Target('radec, 0.0, 0.0')
 
 
 def test_construct():
     """Test valid and invalid flux model constructions."""
-    assert FLUX_MODEL.description == '(1.0 2.0 2.0 0.0 0.0 0.0 0.0 0.0 2.0 0.5 0.25 -0.75)'
-    with pytest.raises(ValueError):
-        katpoint.FluxDensityModel('1.0 2.0 2.0', 2.0, [2.0])
-    with pytest.raises(ValueError):
-        katpoint.FluxDensityModel('1.0')
+    assert FLUX_MODEL.description == DESCRIPTION
+    with pytest.raises(TypeError):
+        katpoint.FluxDensityModel(1.0, 2.0, [2.0])
+    with pytest.raises(katpoint.FluxError):
+        katpoint.FluxDensityModel.from_description('a b c')
 
 
 def test_unit_model():
     """Test unit flux model, as well as comparisons and hashes."""
-    unit_model = katpoint.FluxDensityModel(100., 200., [0.])
-    unit_model2 = katpoint.FluxDensityModel(100., 200., [0.])
+    unit_model = katpoint.FluxDensityModel(100 * u.MHz, 200 * u.MHz, [0.])
+    unit_model2 = katpoint.FluxDensityModel(100 * u.MHz, 200 * u.MHz, [])
     assert unit_model.flux_density(110 * u.MHz) == 1.0 * u.Jy, 'Flux calculation wrong'
     # At least one coefficient is always shown
     assert unit_model.description == '(100.0 200.0 0.0)'
@@ -54,7 +55,7 @@ def test_unit_model():
 def test_too_many_params():
     """Test flux model with too many parameters."""
     with pytest.warns(FutureWarning):
-        too_many_params = katpoint.FluxDensityModel(
+        too_many_params = katpoint.FluxDensityModel.from_description(
             '(1.0 2.0 2.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0)')
     # Must truncate default coefficients, including I=1
     assert too_many_params.description == '(1.0 2.0 2.0)'
@@ -64,7 +65,9 @@ def test_too_many_params():
 
 def test_too_few_params():
     """Test flux model with too few parameters."""
-    too_few_params = katpoint.FluxDensityModel('(1.0 2.0 2.0)')
+    with pytest.raises(katpoint.FluxError):
+        katpoint.FluxDensityModel.from_description('(1.0)')
+    too_few_params = katpoint.FluxDensityModel.from_description('(1.0 2.0 2.0)')
     assert too_few_params.flux_density(1.5 * u.MHz) == 100.0 * u.Jy, (
         'Flux calculation for too few params wrong')
 
