@@ -140,7 +140,7 @@ def test_construct_catalogue(caplog):
     assert len(cat.targets) == num_targets + 2, 'Number of targets incorrect'
     closest_target, dist = cat.closest_to(test_target)
     assert closest_target.description == test_target.description, 'Closest target incorrect'
-    assert_allclose(dist, 0.0, rtol=0.0, atol=0.5e-5,
+    assert_allclose(dist, 0.0, rtol=0.0, atol=0.5e-5 * u.deg,
                     err_msg='Target should be on top of itself')
 
 
@@ -162,8 +162,9 @@ def test_skip_empty():
     assert len(cat) == 0
 
 
-def test_filter_catalogue():
-    """Test filtering of catalogues."""
+def test_filter_catalogue_static():
+    """Test filtering of catalogues (static parameters)."""
+    # Tag filter
     cat = katpoint.Catalogue(TARGETS)
     cat = cat.filter(tags=['~radec'])
     num_not_radec = len([t for t in TARGETS if 'radec' not in t])
@@ -172,21 +173,42 @@ def test_filter_catalogue():
     cat = cat.filter(tags=['special'])
     num_special = len([t for t in TARGETS if 'special' in t])
     assert len(cat.targets) == num_special, 'Number of targets incorrect'
+    # Flux filter
     cat.add(FLUX_TARGET)
     cat2 = cat.filter(flux_limit=50 * u.Jy, flux_frequency=1.5 * u.MHz)
     assert len(cat2.targets) == 1, 'Number of targets with sufficient flux should be 1'
     assert cat != cat2, 'Catalogues should be inequal'
-    cat3 = cat.filter(az_limit_deg=[0, 180], timestamp=TIMESTAMP, antenna=ANTENNA)
+    with pytest.raises(ValueError):
+        cat.filter(flux_limit=[0, 50, 100] * u.Jy)  # too many limits
+    with pytest.raises(ValueError):
+        cat.filter(flux_limit=[0, 50] * u.Jy)  # no flux frequency
+
+
+def test_filter_catalogue_dynamic():
+    """Test filtering of catalogues (dynamic parameters)."""
+    cat = katpoint.Catalogue(TARGETS).filter(tags='special')
+    cat.add(FLUX_TARGET)
+    cat3 = cat.filter(az_limit=[0, 180] * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat3.targets) == 1, 'Number of targets rising should be 1'
-    cat4 = cat.filter(az_limit_deg=[180, 0], timestamp=TIMESTAMP, antenna=ANTENNA)
+    cat4 = cat.filter(az_limit=[180, 0] * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat4.targets) == 5, 'Number of targets setting should be 5'
+    with pytest.raises(ValueError):
+        cat.filter(az_limit=0 * u.deg)  # too few limits
+    with pytest.raises(ValueError):
+        cat.filter(az_limit=[0, 90, 180] * u.deg)  # too many limits
     cat.add(katpoint.Target('Zenith, azel, 0, 90'))
-    cat5 = cat.filter(el_limit_deg=85, timestamp=TIMESTAMP, antenna=ANTENNA)
+    cat5 = cat.filter(el_limit=85 * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat5.targets) == 1, 'Number of targets close to zenith should be 1'
+    with pytest.raises(ValueError):
+        cat.filter(el_limit=[0, 20, 40] * u.deg)  # too many limits
     sun = katpoint.Target('Sun, special')
-    cat6 = cat.filter(dist_limit_deg=[0.0, 1.0], proximity_targets=sun,
+    cat6 = cat.filter(dist_limit=[0.0, 1.0] * u.deg, proximity_targets=sun,
                       timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat6.targets) == 1, 'Number of targets close to Sun should be 1'
+    with pytest.raises(ValueError):
+        cat.filter(dist_limit=[0.0, 1.0, 2.0] * u.deg)  # too many limits
+    with pytest.raises(ValueError):
+        cat.filter(dist_limit=[0.0, 1.0] * u.deg)  # no proximity targets
 
 
 def test_sort_catalogue():
