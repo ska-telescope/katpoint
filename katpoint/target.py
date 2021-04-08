@@ -193,7 +193,7 @@ class Target:
     @property
     def body_type(self):
         """Type of target body, as a string tag."""
-        return self.tags[0].lower()
+        return self.tags[0]
 
     @property
     def name(self):
@@ -285,9 +285,9 @@ class Target:
                 preferred_name, aliases = names[0], names[1:]
         tag_field = fields.pop(0)
         tags = [s.strip() for s in tag_field.split(' ')]
-        if len(tags) == 0:
+        if not tags:
             raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
-        body_type = tags[0].lower()
+        body_type = tags.pop(0).lower()
         # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
         while fields and not fields[-1]:
             fields.pop()
