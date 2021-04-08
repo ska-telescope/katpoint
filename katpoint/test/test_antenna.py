@@ -145,11 +145,10 @@ def test_coordinates():
     assert ant0.position_wgs84 == (ref_location.lat.to_value(u.rad),
                                    ref_location.lon.to_value(u.rad),
                                    ref_location.height.to_value(u.m))
-    assert ant0.baseline_toward(ant) == enu
+    assert np.array_equal(ant0.baseline_toward(ant).xyz, enu * u.m)
     reverse_bl = ant.baseline_toward(ant0)
-    assert reverse_bl[0] == pytest.approx(-enu[0], abs=5e-4)
-    assert reverse_bl[1] == pytest.approx(-enu[1], abs=5e-4)
-    assert reverse_bl[2] == pytest.approx(-enu[2], abs=1e-2)
+    assert np.allclose(reverse_bl.xyz[:2], -(enu * u.m)[:2], rtol=0, atol=0.5 * u.mm)
+    assert np.allclose(reverse_bl.xyz[2], -(enu * u.m)[2], rtol=0, atol=1 * u.cm)
 
 
 def test_local_sidereal_time():

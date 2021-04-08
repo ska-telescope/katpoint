@@ -955,7 +955,10 @@ class Catalogue:
                 flux = target.flux_density(flux_frequency).to_value(u.Jy)
             if antenna2 is not None and flux_frequency is not None:
                 _, delay_rate = target.geometric_delay(antenna2, timestamp, antenna)
-                fringe_period = 1. / (delay_rate * flux_frequency.to_value(u.Hz)) if delay_rate else np.inf
+                if delay_rate != 0:
+                    fringe_period = 1. / (delay_rate * flux_frequency.to_value(u.Hz))
+                else:
+                    fringe_period = np.inf
             else:
                 fringe_period = None
             if above_horizon and azel.alt < 0.0:

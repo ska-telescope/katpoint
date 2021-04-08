@@ -387,7 +387,8 @@ def test_array_valued_methods(description):
     _array_vs_scalar(lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.galactic(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.parallactic_angle(t, ANT1), times)
-    _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1), times, pre_shape=(2,))
+    _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[0], times)
+    _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[1], times)
     _array_vs_scalar(lambda t: target.uvw_basis(t, ANT1), times, pre_shape=(3, 3))
     _array_vs_scalar(lambda t: target.uvw([ANT1, ANT2], t, ANT1),
                      times, pre_shape=(3,), post_shape=(2,))
@@ -418,28 +419,28 @@ def test_coords():
 
 DELAY_TARGET = katpoint.Target('radec, 20.0, -20.0')
 DELAY_TS = [TS, TS + 1.0]
-DELAY = [1.75538294e-08, 1.75522002e-08]
-DELAY_RATE = [-1.62915174e-12, -1.62929689e-12]
+DELAY = [1.75538294e-08, 1.75522002e-08] * u.s
+DELAY_RATE = [-1.62915174e-12, -1.62929689e-12] * (u.s / u.s)
 UVW = ([-7.118580813334029, -11.028682662045913, -5.262505671628351],
-       [-7.119215642091996, -11.028505936045280, -5.262017242465739])
+       [-7.119215642091996, -11.028505936045280, -5.262017242465739]) * u.m
 
 
 def test_delay():
     """Test geometric delay."""
     delay, delay_rate = DELAY_TARGET.geometric_delay(ANT2, DELAY_TS[0], ANT1)
-    np.testing.assert_allclose(delay, DELAY[0])
-    np.testing.assert_allclose(delay_rate, DELAY_RATE[0])
+    assert np.allclose(delay, DELAY[0], rtol=0, atol=0.001 * u.ps)
+    assert np.allclose(delay_rate, DELAY_RATE[0], rtol=1e-10, atol=1e-20)
     delay, delay_rate = DELAY_TARGET.geometric_delay(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_allclose(delay, DELAY)
-    np.testing.assert_allclose(delay_rate, DELAY_RATE)
+    assert np.allclose(delay, DELAY, rtol=0, atol=0.001 * u.ps)
+    assert np.allclose(delay_rate, DELAY_RATE, rtol=1e-10, atol=1e-20)
 
 
 def test_uvw():
     """Test uvw calculation."""
     uvw = DELAY_TARGET.uvw(ANT2, DELAY_TS[0], ANT1)
-    np.testing.assert_almost_equal(uvw, UVW[0], decimal=8)
+    assert np.allclose(uvw, UVW[0], rtol=0, atol=10 * u.nm)
     uvw = DELAY_TARGET.uvw(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_array_almost_equal(uvw, np.c_[UVW], decimal=8)
+    assert np.allclose(uvw, UVW.T, rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_timestamp_array_azel():
@@ -447,20 +448,20 @@ def test_uvw_timestamp_array_azel():
     azel = DELAY_TARGET.azel(DELAY_TS[0], ANT1)
     target = katpoint.Target.from_azel(azel.az, azel.alt)
     uvw = target.uvw(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_array_almost_equal(uvw[:, 0], UVW[0], decimal=8)
-    np.testing.assert_array_almost_equal(uvw[2], [UVW[0][2]] * len(DELAY_TS), decimal=8)
+    assert np.allclose(uvw[:, 0], UVW[0], rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw[2], [UVW[0, 2]] * len(DELAY_TS), rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_antenna_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
-    np.testing.assert_array_almost_equal(uvw, np.c_[np.zeros(3), UVW[0]], decimal=8)
+    assert np.allclose(uvw, np.c_[np.zeros(3), UVW[0]], rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_both_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
     # UVW array has shape (3, n_times, n_bls) - stack times along dim 1 and ants along dim 2
-    desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), np.c_[UVW]])
-    np.testing.assert_array_almost_equal(uvw, desired_uvw, decimal=8)
+    desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), UVW.T])
+    assert np.allclose(uvw, desired_uvw, rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_hemispheres():
@@ -469,13 +470,11 @@ def test_uvw_hemispheres():
     The implementation behaves differently depending on the sign of
     declination. This test is to catch sign flip errors.
     """
-    target1 = katpoint.Target.from_radec(0.0, -1e-9)
-    target2 = katpoint.Target.from_radec(0.0, +1e-9)
-    u1, v1, w1 = target1.uvw(ANT2, TS, ANT1)
-    u2, v2, w2 = target2.uvw(ANT2, TS, ANT1)
-    np.testing.assert_almost_equal(u1, u2, decimal=3)
-    np.testing.assert_almost_equal(v1, v2, decimal=3)
-    np.testing.assert_almost_equal(w1, w2, decimal=3)
+    target1 = katpoint.Target.from_radec(0 * u.deg, -0.2 * u.mas)
+    target2 = katpoint.Target.from_radec(0 * u.deg, +0.2 * u.mas)
+    uvw1 = target1.uvw(ANT2, TS, ANT1)
+    uvw2 = target2.uvw(ANT2, TS, ANT1)
+    assert np.allclose(uvw1, uvw2, rtol=0, atol=25 * u.micron)
 
 
 def test_lmn():

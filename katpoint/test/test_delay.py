@@ -146,8 +146,8 @@ def test_correction():
     delay0, _, _, _ = DELAYS.corrections(TARGET2, TS)
     _, _, drate1, _ = DELAYS.corrections(TARGET2, (TS - 0.5, TS + 0.5))
     tgt_delay, tgt_delay_rate = TARGET2.geometric_delay(ANT2, TS, ANT1)
-    assert np.allclose(delay0['A2h'], extra_correction - tgt_delay * u.s, atol=0, rtol=1e-15)
-    assert np.allclose(drate1['A2h'][0], -tgt_delay_rate * u.s / u.s, atol=0, rtol=1e-11)
+    assert np.allclose(delay0['A2h'], extra_correction - tgt_delay, atol=0, rtol=1e-15)
+    assert np.allclose(drate1['A2h'][0], -tgt_delay_rate, atol=0, rtol=1e-11)
 
 
 def test_offset():

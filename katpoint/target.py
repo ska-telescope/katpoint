@@ -690,9 +690,9 @@ class Target:
 
         Returns
         -------
-        delay : float, or array of same shape as *timestamp*
+        delay : :class:`~astropy.units.Quantity` of same shape as *timestamp*
             Geometric delay, in seconds
-        delay_rate : float, or array of same shape as *timestamp*
+        delay_rate : :class:`~astropy.units.Quantity` of same shape as *timestamp*
             Rate of change of geometric delay, in seconds per second
 
         Raises
@@ -710,16 +710,18 @@ class Target:
         time, location = self._astropy_funnel(timestamp, antenna)
         antenna = self._valid_antenna(antenna)
         # Obtain baseline vector from reference antenna to second antenna
-        baseline_m = antenna.baseline_toward(antenna2)
+        baseline = antenna.baseline_toward(antenna2)
         # Obtain direction vector(s) from reference antenna to target, and numerically
         # estimate delay rate from difference across 1-second interval spanning timestamp(s)
-        times = time[..., np.newaxis] + delta_seconds([-0.5, 0.0, 0.5])
+        offset = delta_seconds([-0.5, 0.0, 0.5])
+        times = time[..., np.newaxis] + offset
         azel = self.azel(times, location)
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)
-        return delays[..., 1], delays[..., 2] - delays[..., 0]
+        delays = -np.einsum('j,j...', baseline.xyz, targetdirs) / const.c
+        delay_rate = (delays[..., 2] - delays[..., 0]) / (offset[2] - offset[0]).to(u.s)
+        return delays[..., 1], delay_rate
 
     def uvw_basis(self, timestamp=None, antenna=None):
         """Calculate the coordinate transformation from local ENU coordinates
@@ -740,7 +742,7 @@ class Target:
 
         Returns
         -------
-        uvw : 2D or 3D array
+        uvw_basis : 2D or 3D array
             Orthogonal basis vectors for the transformation. If `timestamp` is
             scalar, the return value is a matrix to multiply by ENU column
             vectors to produce UVW vectors. If `timestamp` is a vector,
@@ -774,7 +776,7 @@ class Target:
         else:
             radec = self.radec(time, location)
         offset_sign = -1 if radec.dec > 0 else 1
-        offset = Target.from_radec(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
+        offset = Target.from_radec(radec.ra, radec.dec + offset_sign * 0.03 * u.rad)
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
@@ -812,7 +814,7 @@ class Target:
 
         Returns
         -------
-        uvw : array
+        uvw : :class:`~astropy.units.Quantity`
             (u, v, w) coordinates of baseline, in metres. The axes are:
 
             - u/v/w
@@ -829,15 +831,15 @@ class Target:
         # Obtain basis vectors
         basis = self.uvw_basis(timestamp, antenna)
         antenna = self._valid_antenna(antenna)
-        # Obtain baseline vector from reference antenna to second antenna
+        # Obtain baseline vector from reference antenna to second antenna(s)
         try:
-            baseline_m = np.stack([antenna.baseline_toward(a2) for a2 in antenna2])
+            baseline = np.stack([antenna.baseline_toward(a2).xyz for a2 in antenna2])
         except TypeError:
-            baseline_m = antenna.baseline_toward(antenna2)
+            baseline = antenna.baseline_toward(antenna2).xyz
         # Apply linear coordinate transformation. A single call np.dot won't
         # work for both the scalar and array case, so we explicitly specify the
         # axes to sum over.
-        return np.tensordot(basis, baseline_m, ([1], [-1]))
+        return np.tensordot(basis, baseline, ([1], [-1]))
 
     def lmn(self, ra, dec, timestamp=None, antenna=None):
         """Calculate (l, m, n) coordinates for another target, while pointing at
