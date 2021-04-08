@@ -285,6 +285,25 @@ def test_construct_invalid_target(description):
         katpoint.Target(description)
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        # Basic no-name coordinates
+        'azel, 20:00:00d, 30:00:00d',
+        'radec, 12:00:00h, 24:00:00d',
+        'gal, 300d, 0d',
+        # The name lives in the EDB string instead
+        ('xephem tle, INTELSAT NEW DAWN | FUNKY~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016'
+         '~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0'),
+        # No-name TLE
+        ('xephem tle, ~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016'
+         '~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0'),
+    ]
+)
+def test_no_name_targets(description):
+    assert katpoint.Target(description).description == description
+
+
 NON_AZEL = 'astrometric_radec apparent_radec galactic'
 
 

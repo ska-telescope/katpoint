@@ -211,7 +211,8 @@ class Target:
         names = ' | '.join([self.name] + self.aliases)
         tags = ' '.join(self.tags)
         fluxinfo = self.flux_model.description if self.flux_model is not None else None
-        no_name = self.body_type != 'special' and names == self.body.default_name
+        no_name = (self.body_type != 'special' and names == self.body.default_name
+                   or self.body_type == 'xephem')
         fields = [tags] if no_name else [names, tags]
 
         if self.body_type == 'azel':
@@ -227,8 +228,10 @@ class Target:
         elif self.body_type == 'tle':
             fields += self.body.to_tle()
         elif self.body_type == 'xephem':
+            # Push the names back into EDB string (or remove them entirely if the Body default)
+            edb_names = '' if names == self.body.default_name else names
             # Replace commas in xephem string with tildes to avoid clashes with main structure
-            fields += [self.body.to_edb().replace(',', '~')]
+            fields += [self.body.to_edb(edb_names).replace(',', '~')]
 
         if fluxinfo:
             fields += [fluxinfo]

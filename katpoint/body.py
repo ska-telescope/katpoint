@@ -166,7 +166,7 @@ class FixedBody(Body):
         dec = fields[3].split('|')[0]
         return cls(SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)))
 
-    def to_edb(self):
+    def to_edb(self, name=''):
         """Create an XEphem database (EDB) entry for fixed body ("f").
 
         See http://www.clearskyinstitute.com/xephem/xephem.html
@@ -174,7 +174,7 @@ class FixedBody(Body):
         icrs = self.coord.transform_to(ICRS())
         ra = angle_to_string(icrs.ra, unit=u.hour)[:-1]
         dec = angle_to_string(icrs.dec, unit=u.deg)[:-1]
-        return f',f,{ra},{dec}'
+        return f'{name},f,{ra},{dec}'
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Compute the coordinates of the fixed body in the requested frame."""
@@ -368,7 +368,7 @@ class EarthSatelliteBody(Body):
         )
         return cls(sat, int(orbit_number))
 
-    def to_edb(self):
+    def to_edb(self, name=''):
         """Create an XEphem database (EDB) entry for Earth satellite ("E").
 
         See http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501.
@@ -403,7 +403,7 @@ class EarthSatelliteBody(Body):
             valid_range = f'|{epoch_start}|{epoch_end}'
         else:
             valid_range = ''
-        return (f',E,{epoch_str}{valid_range},{inclination:.8g},'
+        return (f'{name},E,{epoch_str}{valid_range},{inclination:.8g},'
                 f'{ra_asc_node:.8g},{eccentricity:.8g},{arg_perigee:.8g},'
                 f'{mean_anomaly:.8g},{mean_motion:.12g},{orbit_decay:.8g},'
                 f'{orbit_number:d},{drag_coef:.8g}')
