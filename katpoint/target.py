@@ -112,10 +112,10 @@ class Target:
         The parameters in the description string or existing Target can still
         be overridden by providing additional parameters after `target`.
     name : str, optional
-        Preferred name of target, overriding default body name if not empty
+        Preferred name of target (use the default Body name if empty)
     user_tags : sequence of str, or whitespace-delimited str, optional
         Descriptive tags associated with target (not including body type)
-    aliases : sequence of str, optional
+    aliases : iterable of str, optional
         Alternate names of target
     flux_model : :class:`FluxDensity`, optional
         Object encapsulating spectral flux density model
@@ -132,7 +132,7 @@ class Target:
 
     def __init__(self, target, name=_DEFAULT, user_tags=_DEFAULT, aliases=_DEFAULT,
                  flux_model=_DEFAULT, antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
-        default = SimpleNamespace(name='', user_tags=[], aliases=[], flux_model=None,
+        default = SimpleNamespace(name='', user_tags=[], aliases=(), flux_model=None,
                                   antenna=None, flux_freq_MHz=None)
         if isinstance(target, str):
             # Create a temporary Target object to serve up default parameters instead
@@ -151,7 +151,7 @@ class Target:
         self.user_tags = []
         user_tags = default.user_tags if user_tags is _DEFAULT else user_tags
         self.add_tags(user_tags)
-        self._aliases = default.aliases if aliases is _DEFAULT else aliases
+        self._aliases = default.aliases if aliases is _DEFAULT else tuple(aliases)
         self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
         self.antenna = default.antenna if antenna is _DEFAULT else antenna
         self.flux_freq_MHz = default.flux_freq_MHz if flux_freq_MHz is _DEFAULT else flux_freq_MHz
@@ -197,18 +197,23 @@ class Target:
 
     @property
     def name(self):
-        """Preferred name of target."""
+        """Preferred name of the target."""
         return self._name if self._name else self.body.default_name
 
     @property
     def aliases(self):
-        """List of alternate names of the target, as a copy."""
-        return list(self._aliases)
+        """Tuple of alternate names of the target."""
+        return self._aliases
+
+    @property
+    def names(self):
+        """Tuple of all names (both preferred and alternate) of the target."""
+        return (self.name,) + self._aliases
 
     @property
     def description(self):
         """Complete string representation of target object, sufficient to reconstruct it."""
-        names = ' | '.join([self.name] + self.aliases)
+        names = ' | '.join(self.names)
         tags = ' '.join(self.tags)
         fluxinfo = self.flux_model.description if self.flux_model is not None else None
         no_name = (self.body_type != 'special' and names == self.body.default_name

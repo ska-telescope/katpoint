@@ -53,7 +53,7 @@ def test_construct_target():
     assert t0b.name == 'Marie'
     assert t0b.tags == ['radec', 'no_collab']
     assert t0b.user_tags == ['no_collab']
-    assert t0b.aliases == ['Fee', 'Fie', 'Foe']
+    assert t0b.aliases == ('Fee', 'Fie', 'Foe')
     assert t0b.flux_model == t0.flux_model
     assert t0b.antenna == a0
     assert t0b.flux_freq_MHz == 1284.
@@ -169,12 +169,19 @@ def test_compare_update_target():
 def test_names(description):
     target = katpoint.Target(description)
     assert target.name == 'Venus'
-    assert target.aliases == ['Flytrap', 'De Milo']
+    assert target.aliases == ('Flytrap', 'De Milo')
     # Names are read-only
     with pytest.raises(AttributeError):
         target.name = 'bollie'
     with pytest.raises(AttributeError):
-        target.aliases += ['bollie']
+        target.aliases = ('bollie',)
+    with pytest.raises(AttributeError):
+        target.aliases += ('bollie',)
+    new_aliases = ['Aphrodite']
+    override_target = katpoint.Target(description, aliases=new_aliases)
+    # Check that we can't mutate the aliases after creating the Target
+    new_aliases.append('Mighty')
+    assert override_target.aliases == ('Aphrodite',)
 
 
 def test_add_tags():

@@ -446,15 +446,14 @@ class Catalogue:
                 logger.warning("Skipped '%s' [%s] (already in catalogue)",
                                target.name, target.tags[0])
                 continue
-            target_names = [target.name] + target.aliases
-            existing_names = [name for name in target_names if name in self]
+            existing_names = [name for name in target.names if name in self]
             if existing_names:
                 logger.warning("Found different targets with same name(s) "
                                "'%s' in catalogue", ', '.join(existing_names))
             target.antenna = self.antenna
             target.flux_freq_MHz = self.flux_freq_MHz
             self.targets.append(target)
-            for name in target_names:
+            for name in target.names:
                 self.lookup[_normalised(name)].append(target)
             logger.debug("Added '%s' [%s] (and %d aliases)",
                          target.name, target.tags[0], len(target.aliases))
@@ -575,7 +574,7 @@ class Catalogue:
         """
         target = self[name]
         if target is not None:
-            for name in [target.name] + target.aliases:
+            for name in target.names:
                 targets_with_name = self.lookup[_normalised(name)]
                 targets_with_name.remove(target)
                 if not targets_with_name:
