@@ -72,7 +72,7 @@ def strip_zeros(str_or_array_of_str):
     return s if s.ndim else s.item()
 
 
-def angle_to_string(angle, **kwargs):
+def angle_to_string(angle, show_unit=True, **kwargs):
     """Convert an Angle to string(s) while maintaining precision and compatibility.
 
     This serialises angles to strings with high precision (1 micron @ 13000 km)
@@ -80,7 +80,8 @@ def angle_to_string(angle, **kwargs):
     The main difference is that the numerical representation (sexagesimal or
     decimal) has a suffix indicating the unit ('d' for degree or 'h' for hour).
     This allows Astropy Angles to be constructed directly from it without the
-    need for :func:`to_angle`. Extra keyword arguments are passed on to
+    need for :func:`to_angle`. This suffix can be suppressed when generating
+    strings for display purposes. Extra keyword arguments are passed on to
     :meth:`~astropy.coordinates.Angle.to_string` to control the appearance of
     the string to some extent.
 
@@ -88,6 +89,8 @@ def angle_to_string(angle, **kwargs):
     ----------
     angle : :class:`~astropy.coordinates.Angle`
         An `Angle` object (may be multidimensional)
+    show_unit : bool, optional
+        True if the unit of the angle ('h' or 'd') is appended to the string
     kwargs : dict, optional
         Extra keyword arguments for :meth:`~astropy.coordinates.Angle.to_string`
 
@@ -117,6 +120,8 @@ def angle_to_string(angle, **kwargs):
             precision += 1
         kwargs['precision'] = precision
     number = strip_zeros(angle.to_string(**kwargs))
+    if not show_unit:
+        return number
     suffix = 'd' if unit == u.deg else 'h'
     s = np.char.add(number, suffix)
     return s if s.ndim else s.item()

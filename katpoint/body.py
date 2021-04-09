@@ -148,8 +148,8 @@ class FixedBody(Body):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        ra = angle_to_string(self.coord.ra, unit=u.hour)[:-1]
-        dec = angle_to_string(self.coord.dec, unit=u.deg)[:-1]
+        ra = angle_to_string(self.coord.ra, unit=u.hour, show_unit=False)
+        dec = angle_to_string(self.coord.dec, unit=u.deg, show_unit=False)
         return f'Ra: {ra} Dec: {dec}'
 
     @property
@@ -172,8 +172,8 @@ class FixedBody(Body):
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
         icrs = self.coord.transform_to(ICRS())
-        ra = angle_to_string(icrs.ra, unit=u.hour)[:-1]
-        dec = angle_to_string(icrs.dec, unit=u.deg)[:-1]
+        ra = angle_to_string(icrs.ra, unit=u.hour, show_unit=False)
+        dec = angle_to_string(icrs.dec, unit=u.deg, show_unit=False)
         return f'{name},f,{ra},{dec}'
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
@@ -200,8 +200,8 @@ class GalacticBody(FixedBody):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        l = angle_to_string(self.coord.l, unit=u.deg, decimal=True)[:-1]
-        b = angle_to_string(self.coord.b, unit=u.deg, decimal=True)[:-1]
+        l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
+        b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
         return f'Galactic l: {l} b: {b}'
 
     @property
@@ -447,8 +447,8 @@ class StationaryBody(Body):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        az = angle_to_string(self.coord.az, unit=u.deg)[:-1]
-        el = angle_to_string(self.coord.alt, unit=u.deg)[:-1]
+        az = angle_to_string(self.coord.az, unit=u.deg, show_unit=False)
+        el = angle_to_string(self.coord.alt, unit=u.deg, show_unit=False)
         return f'Az: {az} El: {el}'
 
     @property

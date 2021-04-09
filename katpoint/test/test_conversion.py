@@ -83,6 +83,10 @@ def test_bytes_to_angle():
         ([['10d', '20d']], dict(decimal=True), [['10d', '20d']]),
         # Convert unit and tolerate non-standard separator if decimal
         (np.pi * u.rad, dict(unit=u.deg, sep='dms', decimal=True), '180d'),
+        # Don't display unit
+        ('12d34m56s', dict(show_unit=False), '12:34:56'),
+        (10.123 * u.deg, dict(decimal=True, show_unit=False), '10.123'),
+        (10.123 * u.hour, dict(decimal=True, show_unit=False), '10.123'),
     ]
 )
 def test_angle_to_string(angle, kwargs, angle_string):
