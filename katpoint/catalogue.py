@@ -331,7 +331,7 @@ class Catalogue:
             target.flux_freq_MHz = freq
 
     def __str__(self):
-        """List of target description strings making up the catalogue."""
+        """Target description strings making up the catalogue, joined by newlines."""
         return '\n'.join([str(target) for target in self.targets]) + '\n'
 
     def __repr__(self):
