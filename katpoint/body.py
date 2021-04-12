@@ -21,51 +21,14 @@ import re
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS,
+from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS, Galactic,
                                  solar_system_ephemeris, get_body, UnitSphericalRepresentation,
                                  CartesianDifferential, CartesianRepresentation)
 from sgp4.api import Satrec, WGS72
 from sgp4.model import Satrec as SatrecPython
 from sgp4.exporter import export_tle
 
-
-def to_angle(s, sexagesimal_unit=u.deg):
-    """Construct an `Angle` with default units.
-
-    This creates an :class:`~astropy.coordinates.Angle` with the following
-    default units:
-
-      - A number is in radians.
-      - A decimal string ('123.4') is in degrees.
-      - A sexagesimal string ('12:34:56.7') or tuple has `sexagesimal_unit`.
-
-    In addition, bytes are decoded to ASCII strings to normalize user inputs.
-
-    Parameters
-    ----------
-    s : :class:`~astropy.coordinates.Angle` or equivalent
-        Anything accepted by `Angle` and also unitless strings, numbers, tuples
-    sexagesimal_unit : :class:`~astropy.units.UnitBase` or str, optional
-        The unit applied to sexagesimal strings and tuples
-
-    Returns
-    -------
-    angle : :class:`~astropy.coordinates.Angle`
-        Astropy `Angle`
-    """
-    try:
-        return Angle(s)
-    except u.UnitsError:
-        # Deal with user input
-        if isinstance(s, bytes):
-            s = s.decode(encoding='ascii')
-        # We now have a number, string or tuple without a unit
-        if isinstance(s, str) and ':' in s or isinstance(s, tuple):
-            return Angle(s, unit=sexagesimal_unit)
-        if isinstance(s, str):
-            return Angle(s, unit=u.deg)
-        else:
-            return Angle(s, unit=u.rad)
+from .conversion import to_angle, angle_to_string
 
 
 class Body:
@@ -79,15 +42,22 @@ class Body:
     A Body represents a single celestial object with a scalar set of
     coordinates at a given time instant, although the :meth:`compute` method
     may return coordinates for multiple observation times.
-
-    Parameters
-    ----------
-    name : str
-        The name of the body
     """
 
-    def __init__(self, name):
-        self.name = name
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        return 'Unknown'
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        return 'unknown'
+
+    def __repr__(self):
+        """Short human-friendly string representation of target object."""
+        class_name = 'katpoint.body.' + self.__class__.__name__
+        return f'<{class_name} {self.default_name!r} at 0x{id(self):x}>'
 
     @staticmethod
     def _check_location(frame):
@@ -167,35 +137,44 @@ class FixedBody(Body):
 
     Parameters
     ----------
-    name : str
-        The name of the celestial body
     coord : :class:`~astropy.coordinates.BaseCoordinateFrame` or
             :class:`~astropy.coordinates.SkyCoord`
         The coordinates of the body
     """
 
-    def __init__(self, name, coord):
-        super().__init__(name)
+    def __init__(self, coord):
         self.coord = coord
+
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        ra = angle_to_string(self.coord.ra, unit=u.hour, show_unit=False)
+        dec = angle_to_string(self.coord.dec, unit=u.deg, show_unit=False)
+        return f'Ra: {ra} Dec: {dec}'
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        return 'radec'
 
     @classmethod
     def from_edb(cls, line):
         """Construct a `FixedBody` from an XEphem database (EDB) entry."""
         fields = line.split(',')
-        name = fields[0]
         # Discard proper motion for now (the part after the |)
         ra = fields[2].split('|')[0]
         dec = fields[3].split('|')[0]
-        return cls(name, SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)))
+        return cls(SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)))
 
-    def to_edb(self):
+    def to_edb(self, name=''):
         """Create an XEphem database (EDB) entry for fixed body ("f").
 
         See http://www.clearskyinstitute.com/xephem/xephem.html
         """
-        icrs = self.coord.transform_to(ICRS)
-        return '{},f,{},{}'.format(self.name, icrs.ra.to_string(sep=':', unit=u.hour),
-                                   icrs.dec.to_string(sep=':', unit=u.deg))
+        icrs = self.coord.transform_to(ICRS())
+        ra = angle_to_string(icrs.ra, unit=u.hour, show_unit=False)
+        dec = angle_to_string(icrs.dec, unit=u.deg, show_unit=False)
+        return f'{name},f,{ra},{dec}'
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Compute the coordinates of the fixed body in the requested frame."""
@@ -215,6 +194,22 @@ class FixedBody(Body):
         return coord.transform_to(frame)
 
 
+class GalacticBody(FixedBody):
+    """A body with a fixed Galactic position."""
+
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
+        b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
+        return f'Galactic l: {l} b: {b}'
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        return 'gal'
+
+
 class SolarSystemBody(Body):
     """A major Solar System body identified by name.
 
@@ -228,12 +223,22 @@ class SolarSystemBody(Body):
         if name.lower() not in solar_system_ephemeris.bodies:  # noqa: E1135
             raise ValueError("Unknown Solar System body '{}' - should be one of {}"
                              .format(name.lower(), solar_system_ephemeris.bodies))
-        super().__init__(name)
+        self._name = name
+
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        return self._name
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        return 'special'
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body for given time and location and transform to `frame`."""
         Body._check_location(frame)
-        gcrs = get_body(self.name, obstime, location)
+        gcrs = get_body(self._name, obstime, location)
         if to_celestial_sphere:
             # Discard distance from observer
             gcrs = gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation))
@@ -279,8 +284,6 @@ class EarthSatelliteBody(Body):
 
     Parameters
     ----------
-    name : str
-        The name of the satellite
     satellite : :class:`sgp4.api.Satrec`
         Underlying SGP4 object doing the work with access to satellite parameters
     orbit_number : int, optional
@@ -288,12 +291,30 @@ class EarthSatelliteBody(Body):
         (only for backwards compatibility with EDB format, ignore otherwise)
     """
 
-    def __init__(self, name, satellite, orbit_number=0):
-        super().__init__(name)
+    def __init__(self, satellite, orbit_number=0):
         self.satellite = satellite
         # XXX We store this because C++ sgp4init doesn't take revnum and Satrec object is read-only
         # This needs to go into the XEphem EDB string, which is still the de facto description
         self.orbit_number = orbit_number
+
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        # Identify the satellite with its orbit. The orbit can be approximated by 3 numbers
+        # if it is nearly circular (2 orientation angles and 1 size). We don't care about
+        # the epoch or anomaly which describe the current location along the orbit.
+        # The TLE already contains these numbers as strings in convenient units. :-)
+        _, line2 = self.to_tle()
+        inclination = line2[8:16].strip()
+        ra_asc_node = line2[17:25].strip()
+        mean_motion = line2[52:63].strip()
+        return f'Inc: {inclination} Raan: {ra_asc_node} Rev/day: {mean_motion}'
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        # The EDB format only stores essential elements so no NORAD SATCAT ID -> detect it that way
+        return 'tle' if self.satellite.satnum else 'xephem tle'
 
     @property
     def epoch(self):
@@ -301,13 +322,11 @@ class EarthSatelliteBody(Body):
         return Time(self.satellite.jdsatepoch, self.satellite.jdsatepochF, scale='utc', format='jd')
 
     @classmethod
-    def from_tle(cls, name, line1, line2):
+    def from_tle(cls, line1, line2):
         """Build an `EarthSatelliteBody` from a two-line element set (TLE).
 
         Parameters
         ----------
-        name : str
-            The name of the satellite
         line1, line2 : str
             The two lines of the TLE
         """
@@ -315,7 +334,7 @@ class EarthSatelliteBody(Body):
         line2 = line2.strip()
         # Use the Python Satrec to validate the TLE first, since the C++ one has no error checking
         SatrecPython.twoline2rv(line1, line2)
-        return cls(name, Satrec.twoline2rv(line1, line2))
+        return cls(Satrec.twoline2rv(line1, line2))
 
     def to_tle(self):
         """Export satellite parameters as a TLE in the form `(line1, line2)`."""
@@ -325,7 +344,6 @@ class EarthSatelliteBody(Body):
     def from_edb(cls, line):
         """Build an `EarthSatelliteBody` from an XEphem database (EDB) entry."""
         fields = line.split(',')
-        name = fields[0]
         edb_epoch = _edb_to_time(fields[2].split('|')[0])
         # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
         # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
@@ -348,9 +366,9 @@ class EarthSatelliteBody(Body):
             (mean_motion * u.cycle / u.day).to_value(u.rad / u.minute),  # no_kozai
             (ra_asc_node * u.deg).to_value(u.rad),                       # nodeo
         )
-        return cls(name, sat, int(orbit_number))
+        return cls(sat, int(orbit_number))
 
-    def to_edb(self):
+    def to_edb(self, name=''):
         """Create an XEphem database (EDB) entry for Earth satellite ("E").
 
         See http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501.
@@ -385,7 +403,7 @@ class EarthSatelliteBody(Body):
             valid_range = f'|{epoch_start}|{epoch_end}'
         else:
             valid_range = ''
-        return (f'{self.name},E,{epoch_str}{valid_range},{inclination:.8g},'
+        return (f'{name},E,{epoch_str}{valid_range},{inclination:.8g},'
                 f'{ra_asc_node:.8g},{eccentricity:.8g},{arg_perigee:.8g},'
                 f'{mean_anomaly:.8g},{mean_motion:.12g},{orbit_decay:.8g},'
                 f'{orbit_number:d},{drag_coef:.8g}')
@@ -421,16 +439,22 @@ class StationaryBody(Body):
     ----------
     az, el : string or float
         Azimuth and elevation, either in 'D:M:S' string format, or float in rads
-    name : string, optional
-        The name of the stationary body
     """
 
-    def __init__(self, az, el, name=None):
+    def __init__(self, az, el):
         self.coord = AltAz(az=to_angle(az), alt=to_angle(el))
-        if not name:
-            name = "Az: {} El: {}".format(self.coord.az.to_string(sep=':', unit=u.deg),
-                                          self.coord.alt.to_string(sep=':', unit=u.deg))
-        super().__init__(name)
+
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        az = angle_to_string(self.coord.az, unit=u.deg, show_unit=False)
+        el = angle_to_string(self.coord.alt, unit=u.deg, show_unit=False)
+        return f'Az: {az} El: {el}'
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        return 'azel'
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Transform (az, el) at given location and time to requested `frame`."""
@@ -459,4 +483,14 @@ class NullBody(FixedBody):
     """
 
     def __init__(self):
-        super().__init__('Nothing', ICRS(np.nan * u.rad, np.nan * u.rad))
+        super().__init__(ICRS(np.nan * u.rad, np.nan * u.rad))
+
+    @property
+    def default_name(self):
+        """A default name for the body derived from its coordinates or properties."""
+        return 'Nothing'
+
+    @property
+    def tag(self):
+        """The type of body, as a string tag."""
+        return 'special'

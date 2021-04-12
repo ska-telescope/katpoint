@@ -34,8 +34,7 @@ plt.figure(1)
 plt.clf()
 
 for n, src in enumerate(old):
-    names = [src.name] + src.aliases
-    print('OLD: %s %s' % (names, ('%.1f Jy' % (src.flux_density(freq),))
+    print('OLD: %s %s' % (src.names, ('%.1f Jy' % (src.flux_density(freq),))
                           if not np.isnan(src.flux_density(freq)) else ''))
     print(src.description)
     plt.subplot(5, 6, n + 1)
@@ -43,7 +42,7 @@ for n, src in enumerate(old):
     jy1_src, dist_deg = jy1.closest_to(src)
     if dist_deg < 3 / 60.:
         print(' --> 1JY: %s %s' %
-              ([jy1_src.name] + jy1_src.aliases,
+              (jy1_src.names,
                ('%.1f Jy' % (jy1_src.flux_density(freq),)) if not np.isnan(jy1_src.flux_density(freq)) else ''))
         print('     %s' % jy1_src.description)
         plt.plot(np.log10(freq_range), np.log10(jy1_src.flux_density(freq_range)), 'r')
@@ -51,7 +50,7 @@ for n, src in enumerate(old):
     pks_src, dist_deg = pks.closest_to(src)
     if dist_deg < 3 / 60.:
         print(' --> PKS: %s %s' %
-              ([pks_src.name] + pks_src.aliases,
+              (pks_src.names,
                ('%.1f Jy' % (pks_src.flux_density(freq),)) if not np.isnan(pks_src.flux_density(freq)) else ''))
 
         print('     %s' % (pks_src.description))

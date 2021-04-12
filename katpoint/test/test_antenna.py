@@ -48,7 +48,14 @@ def test_construct_valid_antenna(description):
         'Antenna description differs from original string')
 
 
-@pytest.mark.parametrize("description", ['XDM, -25:53:23.05075, 27:41:03.0', '', '\U0001F602'])
+@pytest.mark.parametrize(
+    "description",
+    [
+        '',
+        'XDM, -25:53:23.05075, 27:41:03.0',
+        'The dreaded em dash, \N{em dash}25:53:23.0, 27:41:03.0, 1406.1086, 15.0',
+    ]
+)
 def test_construct_invalid_antenna(description):
     """Test construction of invalid antennas from strings."""
     with pytest.raises(ValueError):
@@ -161,16 +168,16 @@ def test_array_reference_antenna():
     ant = katpoint.Antenna('FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, '
                            '-0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16')
     ref_ant = ant.array_reference_antenna()
-    assert ref_ant.description == 'array, -30:43:17.3, 21:24:38.5, 1038, 0, , , 1.22'
+    assert ref_ant.description == 'array, -30:43:17.3d, 21:24:38.5d, 1038, 0, , , 1.22'
 
 
 @pytest.mark.parametrize(
     "description",
     [
-        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12, 86.2 25.5, , 1.22',
-        'FF2, -30:43:17.34567, 21:24:38.56723, 1038.1086, 12, 86.2 25.5, , 1.22',
-        'FF2, -30:43:17.12345678, 21:24:38.12345678, 1038.123456, 12, 86.2 25.5, , 1.22',
-        'FF2, -30:43:17.3, 21:24:38.5, 1038, 12, 86.123456 25.123456, , 1.22',
+        'FF2, -30:43:17.3d, 21:24:38.5d, 1038, 12, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.34567d, 21:24:38.56723d, 1038.1086, 12, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.12345678d, 21:24:38.12345678d, 1038.123456, 12, 86.2 25.5, , 1.22',
+        'FF2, -30:43:17.3d, 21:24:38.5d, 1038, 12, 86.123456 25.123456, , 1.22',
     ]
 )
 def test_description_round_trip(description):
@@ -194,4 +201,4 @@ def test_location_round_trip(location):
     xyz = location.itrs.cartesian
     descr = katpoint.Antenna(location).description
     xyz2 = katpoint.Antenna(descr).location.itrs.cartesian
-    assert (xyz2 - xyz).norm() < 1 * u.micrometer
+    assert (xyz2 - xyz).norm() < 1 * u.micron

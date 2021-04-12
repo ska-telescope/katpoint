@@ -16,20 +16,26 @@
 
 """Target object used for pointing and flux density calculation."""
 
+import warnings
+from types import SimpleNamespace
+
 import numpy as np
 import astropy.units as u
-import astropy.constants as const
-from astropy.coordinates import SkyCoord, Angle
-from astropy.coordinates import ICRS, Galactic, FK4, AltAz, CIRS
 from astropy.time import Time
+import astropy.constants as const
+from astropy.coordinates import SkyCoord, Angle, ICRS, Galactic, FK4, AltAz, CIRS
 
 from .timestamp import Timestamp, delta_seconds
 from .antenna import Antenna
 from .flux import FluxDensityModel
-from .conversion import azel_to_enu
+from .conversion import to_angle, angle_to_string, azel_to_enu
 from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .body import (Body, FixedBody, SolarSystemBody, EarthSatelliteBody,
-                   StationaryBody, NullBody, to_angle)
+from .body import (Body, FixedBody, GalacticBody, SolarSystemBody,
+                   EarthSatelliteBody, StationaryBody, NullBody)
+
+
+# Singleton that identifies default target parameters
+_DEFAULT = object()
 
 
 class NonAsciiError(ValueError):
@@ -39,27 +45,45 @@ class NonAsciiError(ValueError):
 class Target:
     """A target which can be pointed at by an antenna.
 
-    This is a wrapper around a PyEphem :class:`ephem.Body` that adds flux
-    density, alternate names and descriptive tags. For convenience, a default
-    antenna and flux frequency can be set, to simplify the calling of pointing
-    and flux density methods. These are not stored as part of the target object,
-    however.
+    This is a wrapper around a :class:`Body` that adds alternate names,
+    descriptive tags and a flux density model. For convenience, a default
+    antenna and flux frequency can be set, to simplify the calling of
+    pointing and flux density methods. It is also possible to construct a
+    Target directly from an :class:`~astropy.coordinates.SkyCoord`.
 
     The object can be constructed from its constituent components or from a
     description string. The description string contains up to five
     comma-separated fields, with the format::
 
-        <name list>, <tags>, <longitudinal>, <latitudinal>, <flux model>
+        [<name list>,] <tags>, [<location 1>, [<location 2>, [<flux model>]]]
 
     The <name list> contains a pipe-separated list of alternate names for the
     target, with the preferred name either indicated by a prepended asterisk or
-    assumed to be the first name in the list. The names may contain spaces, and
-    the list may be empty. The <tags> field contains a space-separated list of
-    descriptive tags for the target. The first tag is mandatory and indicates
-    the body type of the target, which should be one of (*azel*, *radec*, *gal*,
-    *tle*, *special*, *xephem*). The longidutinal and latitudinal fields
-    are only relevant to *azel* and *radec* targets, in which case they contain
-    the relevant coordinates.
+    assumed to be the first name in the list. The names may contain spaces.
+    The list may also be empty, or the entire field may be missing, to indicate
+    an unnamed target. In this case a name will be inferred from the body.
+
+    The <tags> field contains a space-separated list of descriptive tags for
+    the target. The first tag is mandatory and indicates the body type of the
+    target, which should be one of (*azel*, *radec*, *gal*, *special*, *tle*,
+    *xephem*).
+
+    For *azel*, *radec* and *gal* targets, the two location fields contain the
+    relevant longitude and latitude coordinates, respectively.
+
+    The *special* body type has no location fields. The *special* target name
+    is typically one of the major solar system objects supported by Astropy's
+    ephemeris routines. Alternatively, it could be "Nothing", which indicates a
+    dummy target with no position (useful as a placeholder but not much else).
+
+    For *tle* bodies, the two location fields contain the two lines of the
+    element set. If the name list is empty, the target name is derived from the
+    TLE instead.
+
+    The *xephem* body contains a string in XEphem EDB database format as the
+    first location field, with commas replaced by tildes. If the name list is
+    empty, the target name is taken from the XEphem string instead. Only fixed
+    and Earth satellite objects are supported.
 
     The <flux model> is a space-separated list of numbers used to represent the
     flux density of the target. The first two numbers specify the frequency
@@ -69,43 +93,36 @@ class Target:
 
         name1 | *name 2, radec cal, 12:34:56.7, -04:34:34.2, (1000.0 2000.0 1.0)
 
-    For the *special* body type, only the target name is required. The
-    *special* body name is assumed to be a PyEphem class name, and is typically
-    one of the major solar system objects. Alternatively, it could be "Nothing",
-    which indicates a dummy target with no position (useful as a placeholder but
-    not much else).
+    The default antenna and flux frequency are not stored in the description string.
 
-    For *tle* bodies, the final field in the description string should contain
-    the three lines of the TLE. If the name list is empty, the target name is
-    taken from the TLE instead. The *xephem* body contains a string in XEphem
-    EDB database format as the final field, with commas replaced by tildes. If
-    the name list is empty, the target name is taken from the XEphem string
-    instead.
+    In summary, description strings take the following forms based on body type::
 
-    When specifying a description string, the rest of the target parameters are
-    ignored, except for the default antenna and flux frequency (which do not
-    form part of the description string).
+        [<name list>,] azel [<user tags>], <az>, <el> [, <flux model>]
+        [<name list>,] radec [<user tags>], <ra>, <dec> [, <flux model>]
+        [<name list>,] gal [<user tags>], <l>, <b> [, <flux model>]
+        <name list>, special [<user tags>] [, <flux model>]
+        [<name list>,] tle [<user tags>], <TLE line 1>, <TLE line 2> [, <flux model>]
+        [<name list>,] xephem radec [<user tags>], <EDB string (type 'f')> [, <flux model>]
+        [<name list>,] xephem tle [<user tags>], <EDB string (type 'E')> [, <flux model>]
 
     Parameters
     ----------
-    body : :class:`ephem.Body` object or :class:`Target` object or string
-        Pre-constructed PyEphem Body object to embed in target object, or
-        existing target object or description string
-    tags : list of strings, or whitespace-delimited string, optional
-        Descriptive tags associated with target, starting with its body type
-    aliases : list of strings, optional
+    target : :class:`Body`, :class:`~astropy.coordinates.SkyCoord`, str or :class:`Target`
+        A Body, a SkyCoord, a full description string or existing Target object.
+        The parameters in the description string or existing Target can still
+        be overridden by providing additional parameters after `target`.
+    name : str, optional
+        Preferred name of target (use the default Body name if empty)
+    user_tags : sequence of str, or whitespace-delimited str, optional
+        Descriptive tags associated with target (not including body type)
+    aliases : iterable of str, optional
         Alternate names of target
-    flux_model : :class:`FluxDensity` object, optional
+    flux_model : :class:`FluxDensity`, optional
         Object encapsulating spectral flux density model
     antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
         Default antenna / location to use for position calculations
     flux_freq_MHz : float, optional
         Default frequency at which to evaluate flux density, in MHz
-
-    Arguments
-    ---------
-    name : string
-        Name of target
 
     Raises
     ------
@@ -113,48 +130,35 @@ class Target:
         If description string has the wrong format
     """
 
-    def __init__(self, body, tags=None, aliases=None, flux_model=None, antenna=None, flux_freq_MHz=None):
-        if isinstance(body, Target):
-            body = body.description
-        # If the first parameter is a description string, extract the relevant target parameters from it
-        if isinstance(body, str):
-            body, tags, aliases, flux_model = construct_target_params(body)
-        self.body = body
-        self.name = self.body.name
-        self.tags = []
-        self.add_tags(tags)
-        if aliases is None:
-            self.aliases = []
-        else:
-            self.aliases = aliases
-        self.flux_model = flux_model
-        self.antenna = antenna
-        self.flux_freq_MHz = flux_freq_MHz
+    def __init__(self, target, name=_DEFAULT, user_tags=_DEFAULT, aliases=_DEFAULT,
+                 flux_model=_DEFAULT, antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
+        default = SimpleNamespace(name='', user_tags=[], aliases=(), flux_model=None,
+                                  antenna=None, flux_freq_MHz=None)
+        if isinstance(target, str):
+            # Create a temporary Target object to serve up default parameters instead
+            target = Target.from_description(target)
+        elif isinstance(target, SkyCoord):
+            target = FixedBody(target)
+        if isinstance(target, Target):
+            default = target
+            target = default.body
+        if not isinstance(target, Body):
+            raise TypeError('Expected a Body, Target, SkyCoord or str input to Target, '
+                            f'not {target.__class__.__name__}')
+
+        self.body = target
+        self._name = default.name if name is _DEFAULT else name
+        self.user_tags = []
+        user_tags = default.user_tags if user_tags is _DEFAULT else user_tags
+        self.add_tags(user_tags)
+        self._aliases = default.aliases if aliases is _DEFAULT else tuple(aliases)
+        self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
+        self.antenna = default.antenna if antenna is _DEFAULT else antenna
+        self.flux_freq_MHz = default.flux_freq_MHz if flux_freq_MHz is _DEFAULT else flux_freq_MHz
 
     def __str__(self):
-        """Verbose human-friendly string representation of target object."""
-        descr = str(self.name)
-        if self.aliases:
-            descr += ' (%s)' % (', '.join(self.aliases),)
-        descr += ', tags=%s' % (' '.join(self.tags),)
-        if 'radec' in self.tags:
-            descr += ', %s %s' % (self.body.coord.ra.to_string(unit=u.hour),
-                                  self.body.coord.dec.to_string(unit=u.deg))
-        if self.body_type == 'azel':
-            descr += ', %s %s' % (self.body.coord.az.to_string(unit=u.deg),
-                                  self.body.coord.alt.to_string(unit=u.deg))
-        if self.body_type == 'gal':
-            gal = self.body.coord.galactic
-            descr += ', %.4f %.4f' % (gal.l.deg, gal.b.deg)
-        if self.flux_model is None:
-            descr += ', no flux info'
-        else:
-            descr += ', flux defined for %g - %g MHz' % (self.flux_model.min_freq_MHz, self.flux_model.max_freq_MHz)
-            if self.flux_freq_MHz is not None:
-                flux = self.flux_model.flux_density(self.flux_freq_MHz)
-                if not np.isnan(flux):
-                    descr += ', flux=%.1f Jy @ %g MHz' % (flux, self.flux_freq_MHz)
-        return descr
+        """Complete string representation of target object, sufficient to reconstruct it."""
+        return self.description
 
     def __repr__(self):
         """Short human-friendly string representation of target object."""
@@ -181,65 +185,238 @@ class Target:
         """Base hash on description string, just like equality operator."""
         return hash(self.description)
 
-    def format_katcp(self):
-        """String representation if object is passed as parameter to KATCP command."""
-        return self.description
+    @property
+    def tags(self):
+        """List of descriptive tags associated with target, starting with its body type."""
+        return self.body.tag.split() + self.user_tags
 
     @property
     def body_type(self):
         """Type of target body, as a string tag."""
-        return self.tags[0].lower()
+        return self.tags[0]
+
+    @property
+    def name(self):
+        """Preferred name of the target."""
+        return self._name if self._name else self.body.default_name
+
+    @property
+    def aliases(self):
+        """Tuple of alternate names of the target."""
+        return self._aliases
+
+    @property
+    def names(self):
+        """Tuple of all names (both preferred and alternate) of the target."""
+        return (self.name,) + self._aliases
 
     @property
     def description(self):
         """Complete string representation of target object, sufficient to reconstruct it."""
-        names = ' | '.join([self.name] + self.aliases)
+        names = ' | '.join(self.names)
         tags = ' '.join(self.tags)
         fluxinfo = self.flux_model.description if self.flux_model is not None else None
-        fields = [names, tags]
+        no_name = (self.body_type != 'special' and names == self.body.default_name
+                   or self.body_type == 'xephem')
+        fields = [tags] if no_name else [names, tags]
+
         if self.body_type == 'azel':
-            # Check if it's an unnamed target with a default name
-            if names.startswith('Az:'):
-                fields = [tags]
-            fields += [self.body.coord.az.to_string(unit=u.deg),
-                       self.body.coord.alt.to_string(unit=u.deg)]
-            if fluxinfo:
-                fields += [fluxinfo]
-
+            fields += [angle_to_string(self.body.coord.az, unit=u.deg),
+                       angle_to_string(self.body.coord.alt, unit=u.deg)]
         elif self.body_type == 'radec':
-            # Check if it's an unnamed target with a default name
-            if names.startswith('Ra:'):
-                fields = [tags]
-            fields += [self.body.coord.ra.to_string(unit=u.hour),
-                       self.body.coord.dec.to_string(unit=u.deg)]
-            if fluxinfo:
-                fields += [fluxinfo]
-
+            fields += [angle_to_string(self.body.coord.ra, unit=u.hour),
+                       angle_to_string(self.body.coord.dec, unit=u.deg)]
         elif self.body_type == 'gal':
-            # Check if it's an unnamed target with a default name
-            if names.startswith('Galactic l:'):
-                fields = [tags]
             gal = self.body.coord.galactic
-            fields += ['%.4f' % (gal.l.deg,), '%.4f' % (gal.b.deg,)]
-            if fluxinfo:
-                fields += [fluxinfo]
-
+            fields += [angle_to_string(gal.l, unit=u.deg, decimal=True),
+                       angle_to_string(gal.b, unit=u.deg, decimal=True)]
         elif self.body_type == 'tle':
             fields += self.body.to_tle()
-            if fluxinfo:
-                fields += [fluxinfo]
-
         elif self.body_type == 'xephem':
-            # Replace commas in xephem string with tildes, to avoid clashing with main string structure
-            # Also remove extra spaces added into string by to_edb
-            edb_string = '~'.join([edb_field.strip() for edb_field in self.body.to_edb().split(',')])
-            # Suppress name if it's the same as in the xephem db string
-            edb_name = edb_string[:edb_string.index('~')]
-            if edb_name == names:
-                fields = [tags]
-            fields += [edb_string]
+            # Push the names back into EDB string (or remove them entirely if the Body default)
+            edb_names = '' if names == self.body.default_name else names
+            # Replace commas in xephem string with tildes to avoid clashes with main structure
+            fields += [self.body.to_edb(edb_names).replace(',', '~')]
 
+        if fluxinfo:
+            fields += [fluxinfo]
         return ', '.join(fields)
+
+    @classmethod
+    def from_description(cls, description):
+        """Construct Target object from description string.
+
+        For more information on the description string format, see the help string
+        for :class:`Target`.
+
+        Parameters
+        ----------
+        description : str
+            String containing target name(s), tags, location and flux model
+
+        Returns
+        -------
+        target : :class:`Target`
+            Constructed target object
+
+        Raises
+        ------
+        ValueError
+            If *description* has the wrong format
+        """
+        try:
+            description.encode('ascii')
+        except UnicodeError:
+            raise NonAsciiError("Target description %r contains non-ASCII characters" % description)
+        fields = [s.strip() for s in description.split(',')]
+        if len(fields) < 2:
+            raise ValueError("Target description '%s' must have at least two fields" % description)
+        # Check if first name starts with body type tag, while the next field does not
+        # This indicates a missing names field -> add an empty name list in front
+        body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
+        def tags_in(field): return any([field.startswith(s) for s in body_types])
+        if tags_in(fields[0]) and not tags_in(fields[1]):
+            fields.insert(0, '')
+        # Extract preferred name from name list (starred or first entry), and make the rest aliases
+        name_field = fields.pop(0)
+        names = [s.strip() for s in name_field.split('|')]
+        if len(names) == 0:
+            preferred_name, aliases = '', []
+        else:
+            try:
+                ind = [name.startswith('*') for name in names].index(True)
+                preferred_name, aliases = names[ind][1:], names[:ind] + names[ind + 1:]
+            except ValueError:
+                preferred_name, aliases = names[0], names[1:]
+        tag_field = fields.pop(0)
+        tags = [s.strip() for s in tag_field.split(' ')]
+        if not tags:
+            raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
+        body_type = tags.pop(0).lower()
+        # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
+        while fields and not fields[-1]:
+            fields.pop()
+
+        # Create appropriate Body based on body type
+        if body_type == 'azel':
+            if len(fields) < 2:
+                raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
+                                 % description)
+            az = fields.pop(0)
+            el = fields.pop(0)
+            body = StationaryBody(az, el)
+
+        elif body_type == 'radec':
+            if len(fields) < 2:
+                raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
+                                 % description)
+            ra = to_angle(fields.pop(0), sexagesimal_unit=u.hour)
+            dec = to_angle(fields.pop(0))
+            # Extract epoch info from tags
+            if ('B1900' in tags) or ('b1900' in tags):
+                frame = FK4(equinox=Time(1900.0, format='byear'))
+            elif ('B1950' in tags) or ('b1950' in tags):
+                frame = FK4(equinox=Time(1950.0, format='byear'))
+            else:
+                frame = ICRS
+            body = FixedBody(SkyCoord(ra=ra, dec=dec, frame=frame))
+
+        elif body_type == 'gal':
+            if len(fields) < 2:
+                raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
+                                 % description)
+            l = to_angle(fields.pop(0))
+            b = to_angle(fields.pop(0))
+            body = GalacticBody(SkyCoord(l=l, b=b, frame=Galactic))
+
+        elif body_type == 'tle':
+            if len(fields) < 2:
+                raise ValueError(f"Target description '{description}' contains *tle* body "
+                                 "without the expected two comma-separated lines")
+            line1 = fields.pop(0)
+            line2 = fields.pop(0)
+            try:
+                body = EarthSatelliteBody.from_tle(line1, line2)
+            except ValueError as err:
+                raise ValueError(f"Target description '{description}' "
+                                 f"contains malformed *tle* body: {err}") from err
+
+        elif body_type == 'special':
+            try:
+                if preferred_name.capitalize() != 'Nothing':
+                    body = SolarSystemBody(preferred_name)
+                else:
+                    body = NullBody()
+            except ValueError as err:
+                raise ValueError("Target description '%s' contains unknown *special* body '%s'"
+                                 % (description, preferred_name)) from err
+
+        elif body_type == 'xephem':
+            if len(fields) < 1:
+                raise ValueError(f"Target description '{description}' contains *xephem* body "
+                                 "without EDB string")
+            edb_string = fields.pop(0).replace('~', ',')
+            edb_name_field, comma, edb_coord_fields = edb_string.partition(',')
+            edb_names = [name.strip() for name in edb_name_field.split('|')]
+            if not preferred_name:
+                preferred_name = edb_names[0]
+            for edb_name in edb_names:
+                if edb_name and edb_name != preferred_name and edb_name not in aliases:
+                    aliases.append(edb_name)
+            try:
+                body = Body.from_edb(comma + edb_coord_fields)
+            except ValueError as err:
+                raise ValueError(f"Target description '{description}' "
+                                 f"contains malformed *xephem* body: {err}") from err
+
+        else:
+            raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
+
+        # Extract flux model if it is available
+        if fields and fields[0].strip(' ()'):
+            flux_model = FluxDensityModel(fields[0])
+        else:
+            flux_model = None
+        return cls(body, preferred_name, tags, aliases, flux_model)
+
+    @classmethod
+    def from_azel(cls, az, el):
+        """Create unnamed stationary target (*azel* body type).
+
+        Parameters
+        ----------
+        az, el : :class:`~astropy.coordinates.Angle` or equivalent, string or float
+        Azimuth and elevation, as anything accepted by `Angle`, in 'D:M:S' or
+        decimal degree string format, or as a float in radians
+
+        Returns
+        -------
+        target : :class:`Target`
+            Constructed target object
+        """
+        return cls(StationaryBody(az, el))
+
+    @classmethod
+    def from_radec(cls, ra, dec):
+        """Create unnamed fixed target (*radec* body type, ICRS frame).
+
+        Parameters
+        ----------
+        ra : :class:`~astropy.coordinates.Angle` or equivalent, string or float
+            Right ascension, as anything accepted by `Angle`, in 'H:M:S' or
+            decimal degree string format, or as a float in radians
+        dec : :class:`~astropy.coordinates.Angle` or equivalent, string or float
+            Declination, as anything accepted by `Angle`, in 'D:M:S' or decimal
+            degree string format, or as a float in radians
+
+        Returns
+        -------
+        target : :class:`Target`
+            Constructed target object
+        """
+        ra = to_angle(ra, sexagesimal_unit=u.hour)
+        dec = to_angle(dec)
+        return cls(FixedBody(SkyCoord(ra=ra, dec=dec, frame=ICRS)))
 
     def add_tags(self, tags):
         """Add tags to target object.
@@ -252,12 +429,12 @@ class Target:
 
         Parameters
         ----------
-        tags : string, list of strings, or None
+        tags : str, list of str, or None
             Tag or list of tags to add (strings will be split on whitespace)
 
         Returns
         -------
-        target : :class:`Target` object
+        target : :class:`Target`
             Updated target object
         """
         if tags is None:
@@ -267,7 +444,7 @@ class Target:
         for tag_str in tags:
             for tag in tag_str.split():
                 if tag not in self.tags:
-                    self.tags.append(tag)
+                    self.user_tags.append(tag)
         return self
 
     def _astropy_funnel(self, timestamp, antenna):
@@ -593,7 +770,7 @@ class Target:
         else:
             radec = self.radec(time, location)
         offset_sign = -1 if radec.dec > 0 else 1
-        offset = construct_radec_target(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
+        offset = Target.from_radec(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
@@ -767,7 +944,7 @@ class Target:
 
         Parameters
         ----------
-        other_target : :class:`Target` object
+        other_target : :class:`Target`
             The other target
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp(s) when separation is measured (defaults to now)
@@ -871,214 +1048,16 @@ class Target:
             ref_azel = self.azel(timestamp, antenna)
             return plane_to_sphere[projection_type](ref_azel.az.rad, ref_azel.alt.rad, x, y)
 
-# --------------------------------------------------------------------------------------------------
-# --- FUNCTION :  construct_target_params
-# --------------------------------------------------------------------------------------------------
-
-
-def construct_target_params(description):
-    """Construct parameters of Target object from description string.
-
-    For more information on the description string format, see the help string
-    for :class:`Target`.
-
-    Parameters
-    ----------
-    description : string
-        String containing target name(s), tags, location and flux model
-
-    Returns
-    -------
-    body : :class:`ephem.Body` object
-        PyEphem Body object that will be used for position calculations
-    tags : list of strings
-        Descriptive tags associated with target, starting with its body type
-    aliases : list of strings
-        Alternate names of target
-    flux_model : :class:`FluxDensity` object
-        Object encapsulating spectral flux density model
-
-    Raises
-    ------
-    ValueError
-        If *description* has the wrong format
-    """
-    try:
-        description.encode('ascii')
-    except UnicodeError:
-        raise NonAsciiError("Target description %r contains non-ASCII characters" % description)
-    fields = [s.strip() for s in description.split(',')]
-    if len(fields) < 2:
-        raise ValueError("Target description '%s' must have at least two fields" % description)
-    # Check if first name starts with body type tag, while the next field does not
-    # This indicates a missing names field -> add an empty name list in front
-    body_types = ['azel', 'radec', 'gal', 'tle', 'special', 'xephem']
-    if np.any([fields[0].startswith(s) for s in body_types]) and \
-       not np.any([fields[1].startswith(s) for s in body_types]):
-        fields = [''] + fields
-    # Extract preferred name from name list (starred or first entry), and make the rest aliases
-    names = [s.strip() for s in fields[0].split('|')]
-    if len(names) == 0:
-        preferred_name, aliases = '', []
-    else:
-        try:
-            ind = [name.startswith('*') for name in names].index(True)
-            preferred_name, aliases = names[ind][1:], names[:ind] + names[ind + 1:]
-        except ValueError:
-            preferred_name, aliases = names[0], names[1:]
-    tags = [s.strip() for s in fields[1].split(' ')]
-    if len(tags) == 0:
-        raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
-    body_type = tags[0].lower()
-    # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
-    while len(fields[-1]) == 0:
-        fields.pop()
-
-    # Create appropriate PyEphem body based on body type
-    if body_type == 'azel':
-        if len(fields) < 4:
-            raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
-                             % description)
-        body = StationaryBody(fields[2], fields[3], preferred_name)
-
-    elif body_type == 'radec':
-        if len(fields) < 4:
-            raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
-                             % description)
-        ra = to_angle(fields[2], sexagesimal_unit=u.hour)
-        dec = to_angle(fields[3])
-        if not preferred_name:
-            preferred_name = "Ra: %s Dec: %s" % (ra, dec)
-        # Extract epoch info from tags
-        if ('B1900' in tags) or ('b1900' in tags):
-            frame = FK4(equinox=Time(1900.0, format='byear'))
-        elif ('B1950' in tags) or ('b1950' in tags):
-            frame = FK4(equinox=Time(1950.0, format='byear'))
-        else:
-            frame = ICRS
-        body = FixedBody(preferred_name, SkyCoord(ra=ra, dec=dec, frame=frame))
-
-    elif body_type == 'gal':
-        if len(fields) < 4:
-            raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
-                             % description)
-        l, b = float(fields[2]), float(fields[3])
-        if not preferred_name:
-            preferred_name = "Galactic l: %.4f b: %.4f" % (l, b)
-        body = FixedBody(preferred_name, SkyCoord(l=Angle(l, unit=u.deg),
-                                                  b=Angle(b, unit=u.deg), frame=Galactic))
-
-    elif body_type == 'tle':
-        if len(fields) < 4:
-            raise ValueError(f"Target description '{description}' contains *tle* body "
-                             "without the expected two comma-separated lines")
-        if not preferred_name:
-            preferred_name = 'Unnamed Satellite'
-        try:
-            body = EarthSatelliteBody.from_tle(preferred_name, fields[2], fields[3])
-        except ValueError as err:
-            raise ValueError(f"Target description '{description}' "
-                             f"contains malformed *tle* body: {err}") from err
-
-    elif body_type == 'special':
-        try:
-            if preferred_name.capitalize() != 'Nothing':
-                body = SolarSystemBody(preferred_name)
-            else:
-                body = NullBody()
-        except ValueError as err:
-            raise ValueError("Target description '%s' contains unknown *special* body '%s'"
-                             % (description, preferred_name)) from err
-
-    elif body_type == 'xephem':
-        edb_string = fields[-1].replace('~', ',')
-        edb_name_field = edb_string.partition(',')[0]
-        edb_names = [name.strip() for name in edb_name_field.split('|')]
-        if preferred_name:
-            edb_string = edb_string.replace(edb_name_field, preferred_name)
-        else:
-            preferred_name = edb_names[0]
-        if preferred_name != edb_names[0]:
-            aliases.append(edb_names[0])
-        for extra_name in edb_names[1:]:
-            if not (extra_name in aliases) and not (extra_name == preferred_name):
-                aliases.append(extra_name)
-        try:
-            body = Body.from_edb(edb_string)
-        except ValueError as err:
-            raise ValueError(f"Target description '{description}' "
-                             f"contains malformed *xephem* body: {err}") from err
-        # Add xephem body type as an extra tag, right after the main 'xephem' tag
-        edb_type = edb_string[edb_string.find(',') + 1]
-        if edb_type == 'f':
-            tags.insert(1, 'radec')
-        elif edb_type in ['e', 'h', 'p']:
-            tags.insert(1, 'solarsys')
-        elif edb_type == 'E':
-            tags.insert(1, 'tle')
-        elif edb_type == 'P':
-            tags.insert(1, 'special')
-
-    else:
-        raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
-
-    # Extract flux model if it is available
-    flux_model = FluxDensityModel(fields[4]) if (len(fields) > 4) and (len(fields[4].strip(' ()')) > 0) else None
-
-    return body, tags, aliases, flux_model
-
-# --------------------------------------------------------------------------------------------------
-# --- FUNCTION :  construct_azel_target
-# --------------------------------------------------------------------------------------------------
-
 
 def construct_azel_target(az, el):
-    """Convenience function to create unnamed stationary target (*azel* body type).
-
-    The input parameters will also accept :class:`ephem.Angle` objects, as these
-    are floats in radians internally.
-
-    Parameters
-    ----------
-    az : string or float
-        Azimuth, either in 'D:M:S' string format, or as a float in radians
-    el : string or float
-        Elevation, either in 'D:M:S' string format, or as a float in radians
-
-    Returns
-    -------
-    target : :class:`Target` object
-        Constructed target object
-    """
-    return Target(StationaryBody(az, el), 'azel')
-
-# --------------------------------------------------------------------------------------------------
-# --- FUNCTION :  construct_radec_target
-# --------------------------------------------------------------------------------------------------
+    """Create unnamed stationary target (*azel* body type) **DEPRECATED**."""
+    warnings.warn('This function is deprecated and will be removed - '
+                  'use Target.from_azel(az, el) instead', FutureWarning)
+    return Target.from_azel(az, el)
 
 
 def construct_radec_target(ra, dec):
-    """Convenience function to create unnamed fixed target (*radec* body type).
-
-    The input parameters will also accept :class:`ephem.Angle` objects, as these
-    are floats in radians internally. The epoch is assumed to be J2000.
-
-    Parameters
-    ----------
-    ra : string or float
-        Right ascension, either in 'H:M:S' or decimal degree string format, or
-        as a float in radians
-    dec : string or float
-        Declination, either in 'D:M:S' or decimal degree string format, or as
-        a float in radians
-
-    Returns
-    -------
-    target : :class:`Target` object
-        Constructed target object
-    """
-    ra = to_angle(ra, sexagesimal_unit=u.hour)
-    dec = to_angle(dec)
-    name = "Ra: %s Dec: %s" % (ra, dec)
-    body = FixedBody(name, SkyCoord(ra=ra, dec=dec, frame=ICRS))
-    return Target(body, 'radec')
+    """Create unnamed fixed target (*radec* body type) **DEPRECATED**."""
+    warnings.warn('This function is deprecated and will be removed - '
+                  'use Target.from_radec(ra, dec) instead', FutureWarning)
+    return Target.from_radec(ra, dec)

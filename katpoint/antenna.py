@@ -27,20 +27,15 @@ from types import SimpleNamespace
 import astropy.units as u
 from astropy.coordinates import EarthLocation
 
-from .body import to_angle
 from .timestamp import Timestamp
-from .conversion import enu_to_ecef, lla_to_ecef, ecef_to_enu
+from .conversion import (to_angle, strip_zeros, angle_to_string,
+                         enu_to_ecef, lla_to_ecef, ecef_to_enu)
 from .pointing import PointingModel
 from .delay_model import DelayModel
 
 
 # Singleton that identifies default antenna parameters
 _DEFAULT = object()
-
-
-def _strip_zeros(numerical_str):
-    """Remove trailing zeros and unnecessary decimal points from numerical strings."""
-    return numerical_str.rstrip('0').rstrip('.')
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  Antenna
@@ -218,13 +213,11 @@ class Antenna:
         fields = [self.name]
         # Store `EarthLocation` as WGS84 coordinates
         lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
-        # Strip off redundant zeros from coordinate strings (similar to {:.8g})
-        fields += [_strip_zeros(lat.to_string(sep=':', unit=u.deg, precision=8))]
-        fields += [_strip_zeros(lon.to_string(sep=':', unit=u.deg, precision=8))]
+        fields += [angle_to_string(lat), angle_to_string(lon)]  # these are already in degrees
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        fields += [_strip_zeros('{:.6f}'.format(height.to_value(u.m)))]
-        fields += [_strip_zeros('{:.6f}'.format(self.diameter.to_value(u.m)))]
+        fields += [strip_zeros('{:.6f}'.format(height.to_value(u.m)))]
+        fields += [strip_zeros('{:.6f}'.format(self.diameter.to_value(u.m)))]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
         fields += [str(self.beamwidth)]

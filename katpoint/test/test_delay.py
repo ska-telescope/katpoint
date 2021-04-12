@@ -66,7 +66,7 @@ class TestDelayCorrection:
     """Test correlator delay corrections."""
 
     def setup(self):
-        self.target1 = katpoint.construct_azel_target('45:00:00.0', '75:00:00.0')
+        self.target1 = katpoint.Target.from_azel('45:00:00.0', '75:00:00.0')
         self.target2 = katpoint.Target('Sun, special')
         self.ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
         self.ant2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
@@ -156,8 +156,8 @@ class TestDelayCorrection:
                            self.delays.delays(self.target1, self.ts, offset={}), atol=0, rtol=1e-15)
         azel = self.target1.azel(self.ts, self.ant1)
         offset = dict(projection_type='SIN')
-        target3 = katpoint.construct_azel_target(azel.az - Angle(1.0, unit=u.deg),
-                                                 azel.alt - Angle(1.0, unit=u.deg))
+        target3 = katpoint.Target.from_azel(azel.az - Angle(1.0, unit=u.deg),
+                                            azel.alt - Angle(1.0, unit=u.deg))
         x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
@@ -174,8 +174,8 @@ class TestDelayCorrection:
         # Now try (ra, dec) coordinate system
         radec = self.target1.radec(self.ts, self.ant1)
         offset = dict(projection_type='ARC', coord_system='radec')
-        target4 = katpoint.construct_radec_target(radec.ra - Angle(1.0, unit=u.deg),
-                                                  radec.dec - Angle(1.0, unit=u.deg))
+        target4 = katpoint.Target.from_radec(radec.ra - Angle(1.0, unit=u.deg),
+                                             radec.dec - Angle(1.0, unit=u.deg))
         x, y = target4.sphere_to_plane(radec.ra.rad, radec.dec.rad, self.ts, self.ant1, **offset)
         offset['x'] = x
         offset['y'] = y
@@ -206,7 +206,7 @@ def test_tropospheric_delay():
     dc = katpoint.DelayCorrection(json.dumps(model))
     tropospheric_delay = katpoint.refraction.TroposphericDelay(dc.ref_location)
     elevation = 15 * u.deg
-    target = katpoint.construct_azel_target(0, elevation.to_value(u.rad))
+    target = katpoint.Target.from_azel(0, elevation.to_value(u.rad))
     ts = katpoint.Timestamp(1605646800.0).time
     expected_delay = tropospheric_delay(elevation=elevation, timestamp=ts, **WEATHER)
     delay = dc.delays(target, ts, **WEATHER) - dc.delays(target, ts)

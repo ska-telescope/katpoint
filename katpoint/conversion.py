@@ -17,6 +17,114 @@
 """Coordinate conversions not found in PyEphem."""
 
 import numpy as np
+import astropy.units as u
+from astropy.coordinates import Angle
+
+# --------------------------------------------------------------------------------------------------
+# --- Angle conversion utilities
+# --------------------------------------------------------------------------------------------------
+
+
+def to_angle(s, sexagesimal_unit=u.deg):
+    """Construct an `Angle` with default units.
+
+    This creates an :class:`~astropy.coordinates.Angle` with the following
+    default units:
+
+      - A number is in radians.
+      - A decimal string ('123.4') is in degrees.
+      - A sexagesimal string ('12:34:56.7') or tuple has `sexagesimal_unit`.
+
+    In addition, bytes are decoded to ASCII strings to normalize user inputs.
+
+    Parameters
+    ----------
+    s : :class:`~astropy.coordinates.Angle` or equivalent, string, float, tuple
+        Anything accepted by `Angle` and also unitless strings, numbers, tuples
+    sexagesimal_unit : :class:`~astropy.units.UnitBase` or str, optional
+        The unit applied to sexagesimal strings and tuples
+
+    Returns
+    -------
+    angle : :class:`~astropy.coordinates.Angle`
+        Astropy `Angle`
+    """
+    try:
+        return Angle(s)
+    except u.UnitsError:
+        # Bytes is a sequence of ints that will inadvertently end up as radians, so crash instead
+        if isinstance(s, bytes):
+            raise TypeError(f'Raw bytes {s} not supported: first decode to string (or add unit)')
+        # We now have a number, string or tuple without a unit
+        if isinstance(s, str) and ':' in s or isinstance(s, tuple):
+            return Angle(s, unit=sexagesimal_unit)
+        elif isinstance(s, str):
+            return Angle(s, unit=u.deg)
+        else:
+            # XXX Maybe deprecate this in future and only deal with strings here
+            return Angle(s, unit=u.rad)
+
+
+def strip_zeros(str_or_array_of_str):
+    """Remove trailing zeros and unnecessary decimal points from numerical strings."""
+    s = np.char.rstrip(str_or_array_of_str, '0')
+    s = np.char.rstrip(s, '.')
+    return s if s.ndim else s.item()
+
+
+def angle_to_string(angle, show_unit=True, **kwargs):
+    """Convert an Angle to string(s) while maintaining precision and compatibility.
+
+    This serialises angles to strings with high precision (1 micron @ 13000 km)
+    while maintaining some compatibility with older katpoint angle strings.
+    The main difference is that the numerical representation (sexagesimal or
+    decimal) has a suffix indicating the unit ('d' for degree or 'h' for hour).
+    This allows Astropy Angles to be constructed directly from it without the
+    need for :func:`to_angle`. This suffix can be suppressed when generating
+    strings for display purposes. Extra keyword arguments are passed on to
+    :meth:`~astropy.coordinates.Angle.to_string` to control the appearance of
+    the string to some extent.
+
+    Parameters
+    ----------
+    angle : :class:`~astropy.coordinates.Angle`
+        An `Angle` object (may be multidimensional)
+    show_unit : bool, optional
+        True if the unit of the angle ('h' or 'd') is appended to the string
+    kwargs : dict, optional
+        Extra keyword arguments for :meth:`~astropy.coordinates.Angle.to_string`
+
+    Returns
+    -------
+    s : str or array of str
+        String(s) representing `angle`
+
+    Raises
+    ------
+    ValueError
+        If angle / kwargs unit is not supported, or separator is not ':'
+    """
+    unit = kwargs.setdefault('unit', angle.unit)
+    if unit not in (u.deg, u.hour, u.hourangle):
+        raise ValueError(f'The angle unit should be degree, hour or hourangle, not {unit}')
+    sep = kwargs.setdefault('sep', ':')
+    decimal = kwargs.get('decimal', False)
+    if not decimal and sep != ':':
+        raise ValueError(f"The sexagesimal separator should be ':', not '{sep}'")
+    precision = kwargs.get('precision')
+    if precision is None:
+        # Sufficient precision to discern 1 micron at 13000 km
+        precision = 12 if decimal else 8
+        # Hour angle needs a bit more precision
+        if unit != u.deg:
+            precision += 1
+        kwargs['precision'] = precision
+    number = strip_zeros(angle.to_string(**kwargs))
+    if not show_unit:
+        return number
+    suffix = 'd' if unit == u.deg else 'h'
+    s = np.char.add(number, suffix)
+    return s if s.ndim else s.item()
 
 # --------------------------------------------------------------------------------------------------
 # --- Geodetic coordinate transformations
