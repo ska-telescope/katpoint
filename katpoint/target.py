@@ -275,7 +275,7 @@ class Target:
         # Check if first name starts with body type tag, while the next field does not
         # This indicates a missing names field -> add an empty name list in front
         body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
-        def tags_in(field): return any([field.startswith(s) for s in body_types])  # noqa: E704
+        def tags_in(field): return any([field.startswith(s) for s in body_types])
         if tags_in(fields[0]) and not tags_in(fields[1]):
             fields.insert(0, '')
         # Extract preferred name from name list (starred or first entry), and make the rest aliases
@@ -710,7 +710,7 @@ class Target:
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)  # noqa: E1130
+        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)
         return delays[..., 1], delays[..., 2] - delays[..., 0]
 
     def uvw_basis(self, timestamp=None, antenna=None):

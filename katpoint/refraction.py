@@ -458,8 +458,8 @@ def _associated_legendre_polynomials(n, m, x):
             ir = (i - j) // 2
             s = 0
             for k in range(ir + 1):
-                s += ((-1)**k * fact[2*i - 2*k] / fact[k] / fact[i - k]  # noqa: E226
-                      / fact[i - j - 2*k] * x**(i - j - 2*k))  # noqa: E226
+                s += ((-1)**k * fact[2*i - 2*k] / fact[k] / fact[i - k]
+                      / fact[i - j - 2*k] * x**(i - j - 2*k))
             P[i, j] = 1.0 / 2**i * np.sqrt((1 - x**2) ** j) * s
     return P
 
