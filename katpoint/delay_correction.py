@@ -97,7 +97,7 @@ class DelayCorrection:
                 try:
                     extra_correction = descr['extra_delay'] * u.s
                 except KeyError:
-                    raise KeyError("no 'extra_correction' or 'extra_delay'")  # pylint: disable=raise-missing-from
+                    raise KeyError("no 'extra_correction' or 'extra_delay'") from None
             tropospheric_model = descr.get('tropospheric_model', 'None')
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():

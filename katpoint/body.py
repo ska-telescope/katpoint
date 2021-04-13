@@ -75,8 +75,8 @@ class Body:
         """
         try:
             edb_type = line.split(',')[1][0]
-        except (AttributeError, IndexError):
-            raise ValueError(f'Failed parsing XEphem EDB line: {line}')  # pylint: disable=raise-missing-from
+        except (AttributeError, IndexError) as err:
+            raise ValueError(f'Failed parsing XEphem EDB line: {line}') from err
         if edb_type == 'f':
             return FixedBody.from_edb(line)
         elif edb_type == 'E':

@@ -133,9 +133,8 @@ class RefractionCorrection:
         try:
             self.offset = self.models[model]
         except KeyError:
-            raise ValueError(  # pylint: disable=raise-missing-from
-                f"Unknown refraction correction model '{model}' - "
-                f"should be one of {self.models.keys()}")
+            raise ValueError(f"Unknown refraction correction model '{model}' - "
+                             f"should be one of {self.models.keys()}") from None
         self.model = model
 
     def __repr__(self):
