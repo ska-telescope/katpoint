@@ -381,10 +381,6 @@ class Catalogue:
         """Equality comparison operator (ignores order of targets)."""
         return isinstance(other, Catalogue) and set(self.targets) == set(other.targets)
 
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not self == other
-
     def __hash__(self):
         """Hash value is independent of order of targets in catalogue."""
         return hash(frozenset(self.targets))

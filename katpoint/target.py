@@ -173,10 +173,6 @@ class Target:
         """Equality comparison operator."""
         return self.description == (other.description if isinstance(other, Target) else other)
 
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not self == other
-
     def __lt__(self, other):
         """Less-than comparison operator (needed for sorting and np.unique)."""
         return self.description < (other.description if isinstance(other, Target) else other)

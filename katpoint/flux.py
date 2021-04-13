@@ -140,10 +140,6 @@ class FluxDensityModel:
         return self.description == \
             (other.description if isinstance(other, self.__class__) else other)
 
-    def __ne__(self, other):
-        """Inequality comparison operator (based on description string)."""
-        return not self == other
-
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
         return hash(self.description)

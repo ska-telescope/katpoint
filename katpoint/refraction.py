@@ -145,10 +145,6 @@ class RefractionCorrection:
         """Equality comparison operator."""
         return isinstance(other, RefractionCorrection) and (self.model == other.model)
 
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not self == other
-
     def __hash__(self):
         """Base hash on underlying model name, just like equality operator."""
         return hash((self.__class__, self.model))
