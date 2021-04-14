@@ -16,6 +16,8 @@
 
 """Tests for the antenna module."""
 
+# pylint: disable=missing-function-docstring
+
 import time
 import pickle
 
@@ -77,7 +79,7 @@ def test_construct_antenna():
     with pytest.raises(ValueError):
         katpoint.Antenna(location, name + ', oops', *fields[4:])
     # Exercise repr() and str()
-    print('{!r} {}'.format(a0, a0))
+    print(f'{a0!r} {a0}')
     # Override some parameters
     a0b = katpoint.Antenna(a0.description, name='bloop', beamwidth=np.pi)
     assert a0b.location == a0.location
@@ -188,7 +190,7 @@ def test_description_round_trip(description):
     "location",
     [
         # The canonical MeerKAT array centre in ITRS to nearest millimetre
-        EarthLocation.from_geocentric(5109360.133,  2006852.586, -3238948.127, unit=u.m),
+        EarthLocation.from_geocentric(5109360.133, 2006852.586, -3238948.127, unit=u.m),
         # The canonical MeerKAT array centre in WGS84
         EarthLocation.from_geodetic('-30:42:39.8', '21:26:38.0', '1086.6'),
         # The WGS84 array centre in XYZ format (0.5 mm difference...)

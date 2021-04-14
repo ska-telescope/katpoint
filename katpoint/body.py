@@ -21,7 +21,7 @@ import re
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS, Galactic,
+from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS,
                                  solar_system_ephemeris, get_body, UnitSphericalRepresentation,
                                  CartesianDifferential, CartesianRepresentation)
 from sgp4.api import Satrec, WGS72
@@ -57,7 +57,7 @@ class Body:
     def __repr__(self):
         """Short human-friendly string representation of target object."""
         class_name = 'katpoint.body.' + self.__class__.__name__
-        return f'<{class_name} {self.default_name!r} at 0x{id(self):x}>'
+        return f'<{class_name} {self.default_name!r} at {id(self):#x}>'
 
     @staticmethod
     def _check_location(frame):
@@ -75,8 +75,8 @@ class Body:
         """
         try:
             edb_type = line.split(',')[1][0]
-        except (AttributeError, IndexError):
-            raise ValueError(f'Failed parsing XEphem EDB line: {line}')
+        except (AttributeError, IndexError) as err:
+            raise ValueError(f'Failed parsing XEphem EDB line: {line}') from err
         if edb_type == 'f':
             return FixedBody.from_edb(line)
         elif edb_type == 'E':
@@ -187,8 +187,8 @@ class FixedBody(Body):
         else:
             coord = self.coord
         # If coordinate is dimensionless, it is already on the celestial sphere
-        is_unitspherical = (isinstance(coord.data, UnitSphericalRepresentation) or
-                            coord.cartesian.x.unit == u.one)
+        is_unitspherical = (isinstance(coord.data, UnitSphericalRepresentation)
+                            or coord.cartesian.x.unit == u.one)
         if to_celestial_sphere and not is_unitspherical:
             coord = _to_celestial_sphere(coord, obstime, location)
         return coord.transform_to(frame)
@@ -200,9 +200,9 @@ class GalacticBody(FixedBody):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
-        b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
-        return f'Galactic l: {l} b: {b}'
+        gal_l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
+        gal_b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
+        return f'Galactic l: {gal_l} b: {gal_b}'
 
     @property
     def tag(self):
@@ -220,7 +220,7 @@ class SolarSystemBody(Body):
     """
 
     def __init__(self, name):
-        if name.lower() not in solar_system_ephemeris.bodies:  # noqa: E1135
+        if name.lower() not in solar_system_ephemeris.bodies:  # pylint: disable=unsupported-membership-test
             raise ValueError("Unknown Solar System body '{}' - should be one of {}"
                              .format(name.lower(), solar_system_ephemeris.bodies))
         self._name = name

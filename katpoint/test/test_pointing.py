@@ -24,8 +24,8 @@ import katpoint
 from .helper import assert_angles_almost_equal
 
 
-@pytest.fixture
-def pointing_grid():
+@pytest.fixture(name='pointing_grid')
+def fixture_pointing_grid():
     """Generate a grid of (az, el) values in natural antenna coordinates."""
     az_range = np.radians(np.arange(-185.0, 275.0, 5.0))
     el_range = np.radians(np.arange(0.0, 86.0, 1.0))
@@ -35,8 +35,8 @@ def pointing_grid():
     return az, el
 
 
-@pytest.fixture
-def params():
+@pytest.fixture(name='params')
+def fixture_params():
     """Generate random parameters for a pointing model."""
     # Generate random parameter values with this spread
     param_stdev = np.radians(20. / 60.)
@@ -48,7 +48,7 @@ def params():
 def test_pointing_model_load_save(params):
     """Test construction / load / save of pointing model."""
     pm = katpoint.PointingModel(params)
-    print('%r %s' % (pm, pm))
+    print(f'{pm!r} {pm}')
     pm2 = katpoint.PointingModel(params[:-1])
     assert pm2.values()[-1] == 0.0, 'Unspecified pointing model params not zeroed'
     pm3 = katpoint.PointingModel(np.r_[params, 1.0])
@@ -61,7 +61,7 @@ def test_pointing_model_load_save(params):
     assert pm2 != pm, 'Pointing models should be inequal'
     # np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
     for (v4, v) in zip(pm4.values(), pm.values()):
-        if type(v4) == float:
+        if isinstance(v4, float):
             np.testing.assert_almost_equal(v4, v, decimal=6)
         else:
             np.testing.assert_almost_equal(v4.rad, v, decimal=6)
@@ -79,9 +79,9 @@ def test_pointing_closure(params, pointing_grid):
     pointed_az, pointed_el = pm.apply(grid_az, grid_el)
     az, el = pm.reverse(pointed_az, pointed_el)
     assert_angles_almost_equal(az, grid_az, decimal=6,
-                               err_msg='Azimuth closure error for params=%s' % (params,))
+                               err_msg=f'Azimuth closure error for params={params}')
     assert_angles_almost_equal(el, grid_el, decimal=7,
-                               err_msg='Elevation closure error for params=%s' % (params,))
+                               err_msg=f'Elevation closure error for params={params}')
 
 
 def test_pointing_fit(params, pointing_grid):
@@ -95,7 +95,7 @@ def test_pointing_fit(params, pointing_grid):
     # Comment out these removes, thereby testing more code paths in PointingModel
     # enabled_params.remove(2)
     # enabled_params.remove(10)
-    fitted_params, sigma_params = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=[])
+    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=[])
     np.testing.assert_equal(fitted_params, np.zeros(len(pm)))
-    fitted_params, sigma_params = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=enabled_params)
+    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el, enabled_params=enabled_params)
     np.testing.assert_almost_equal(fitted_params, params, decimal=9)

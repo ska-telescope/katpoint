@@ -54,7 +54,9 @@ outlines = ['Jupiter, special\n', 'Mars, special\n', 'Moon, special\n']
 for line in inlines:
     line = '~'.join([edb_field.strip() for edb_field in line.split(',')])
     try:
-        outlines.append('%s, xephem, %s\n' % (lookup[line.partition('~')[0]], line.replace('HYP', 'HIC ')))
+        name = lookup[line.partition('~')[0]]
+        edb = line.replace('HYP', 'HIC ')
+        outlines.append(f'{name}, xephem, {edb}\n')
     except KeyError:
         continue
 
@@ -91,7 +93,7 @@ for n, c in enumerate(constellation):
 plt.axis([0, 360, -90, 90])
 plt.xlabel('Right Ascension (degrees)')
 plt.ylabel('Declination (degrees)')
-plt.title("Catalogue seen from '%s' on %s UTC" % (ant.name, timestamp))
+plt.title(f"Catalogue seen from '{ant.name}' on {timestamp} UTC")
 
 plt.figure(2)
 plt.clf()
@@ -99,6 +101,6 @@ plt.plot(az, el, '*')
 plt.axis([0, 360, 0, 90])
 plt.xlabel('Azimuth (degrees)')
 plt.ylabel('Elevation (degrees)')
-plt.title("Catalogue seen from '%s'\nfor 24-hour period starting %s UT" % (ant.name, timestamp))
+plt.title(f"Catalogue seen from '{ant.name}'\nfor 24-hour period starting {timestamp} UT")
 
 plt.show()

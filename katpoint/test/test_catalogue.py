@@ -16,6 +16,8 @@
 
 """Tests for the catalogue module."""
 
+# pylint: disable=missing-function-docstring
+
 import pytest
 from numpy.testing import assert_allclose
 
@@ -57,7 +59,8 @@ def test_catalogue_tab_completion():
     cat.add('Earth | Terra Incognita, azel, 0, 0')
     cat.add('Earth | Sky, azel, 0, 90')
     # Check that it returns a sorted list
-    assert cat._ipython_key_completions_() == ['Earth', 'Nothing', 'Sky', 'Terra Incognita']
+    assert cat._ipython_key_completions_() == [  # pylint: disable=protected-access
+        'Earth', 'Nothing', 'Sky', 'Terra Incognita']
 
 
 def test_catalogue_same_name():
@@ -204,8 +207,8 @@ def test_sort_catalogue():
     cat6 = cat.sort(key='flux', ascending=False, flux_freq_MHz=1.5)
     assert 'flux' in (cat6.targets[0].name, cat6.targets[-1].name), (
         'Flux target should be at start or end of catalogue after sorting')
-    assert ((cat6.targets[0].flux_density(1.5) == 100.0) or
-            (cat6.targets[-1].flux_density(1.5) == 100.0)), 'Sorting on flux failed'
+    assert (cat6.targets[0].flux_density(1.5) == 100.0
+            or cat6.targets[-1].flux_density(1.5) == 100.0), 'Sorting on flux failed'
 
 
 def test_visibility_list():

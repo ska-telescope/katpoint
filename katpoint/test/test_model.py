@@ -38,7 +38,7 @@ def test_construct_save_load():
     m = katpoint.Model(params())
     m.header['date'] = '2014-01-15'
     # Exercise all string representations for coverage purposes
-    print('%r %s %r' % (m, m, m.params['POS_E']))
+    print(f"{m!r} {m} {m.params['POS_E']!r}")
     # An empty file should lead to a BadModelFile exception
     cfg_file = StringIO()
     with pytest.raises(katpoint.BadModelFile):
@@ -80,7 +80,7 @@ def test_construct_save_load():
     assert m == m7, 'Construction from model object failed'
 
     class OtherModel(katpoint.Model):
-        pass
+        """A different Model type used to check that one type cannot construct another."""
     m8 = OtherModel(params())
     with pytest.raises(katpoint.BadModelFile):
         m8.set(m)

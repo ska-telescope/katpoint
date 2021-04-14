@@ -295,16 +295,14 @@ class Catalogue:
             if add_specials:
                 raise ValueError('The add_specials parameter is not supported anymore - '
                                  'please add the targets manually')
-            else:
-                warnings.warn('The add_specials parameter is now permanently False '
-                              'and will be removed', FutureWarning)
+            warnings.warn('The add_specials parameter is now permanently False '
+                          'and will be removed', FutureWarning)
         if add_stars is not None:
             if add_stars:
                 raise ValueError('The add_stars parameter is not supported anymore - '
                                  'please add the stars manually (see scripts/ephem_stars.edb)')
-            else:
-                warnings.warn('The add_specials parameter is now permanently False '
-                              'and will be removed', FutureWarning)
+            warnings.warn('The add_specials parameter is now permanently False '
+                          'and will be removed', FutureWarning)
         if targets is None:
             targets = []
         self.add(targets, tags)
@@ -333,13 +331,14 @@ class Catalogue:
             target.flux_freq_MHz = freq
 
     def __str__(self):
-        """Verbose human-friendly string representation of catalogue object."""
-        return '\n'.join(['%s' % (target,) for target in self.targets])
+        """Target description strings making up the catalogue, joined by newlines."""
+        return '\n'.join([str(target) for target in self.targets]) + '\n'
 
     def __repr__(self):
         """Short human-friendly string representation of catalogue object."""
-        return "<katpoint.Catalogue targets=%d names=%d at 0x%x>" % \
-               (len(self.targets), len(self.lookup.keys()), id(self))
+        targets = len(self.targets)
+        names = len(self.lookup.keys())
+        return f"<katpoint.Catalogue targets={targets} names={names} at {id(self):#x}>"
 
     def __len__(self):
         """Number of targets in catalogue."""
@@ -381,10 +380,6 @@ class Catalogue:
     def __eq__(self, other):
         """Equality comparison operator (ignores order of targets)."""
         return isinstance(other, Catalogue) and set(self.targets) == set(other.targets)
-
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not (self == other)
 
     def __hash__(self):
         """Hash value is independent of order of targets in catalogue."""
@@ -428,7 +423,7 @@ class Catalogue:
         >>> cat2 = Catalogue()
         >>> cat2.add(cat.targets)
         """
-        if isinstance(targets, str) or isinstance(targets, Target):
+        if isinstance(targets, (Target, str)):
             targets = [targets]
         for target in targets:
             if isinstance(target, str):
@@ -574,11 +569,11 @@ class Catalogue:
         """
         target = self[name]
         if target is not None:
-            for name in target.names:
-                targets_with_name = self.lookup[_normalised(name)]
+            for name_to_scrap in target.names:
+                targets_with_name = self.lookup[_normalised(name_to_scrap)]
                 targets_with_name.remove(target)
                 if not targets_with_name:
-                    del self.lookup[_normalised(name)]
+                    del self.lookup[_normalised(name_to_scrap)]
             self.targets.remove(target)
 
     def save(self, filename):
@@ -700,12 +695,12 @@ class Catalogue:
         if tag_filter:
             if isinstance(tags, str):
                 tags = tags.split()
-            desired_tags = set([tag for tag in tags if tag[0] != '~'])
-            undesired_tags = set([tag[1:] for tag in tags if tag[0] == '~'])
+            desired_tags = {tag for tag in tags if tag[0] != '~'}
+            undesired_tags = {tag[1:] for tag in tags if tag[0] == '~'}
             if desired_tags:
                 targets = [target for target in targets if set(target.tags) & desired_tags]
             if undesired_tags:
-                targets = [target for target in targets if not (set(target.tags) & undesired_tags)]
+                targets = [target for target in targets if not set(target.tags) & undesired_tags]
 
         if flux_filter:
             if np.isscalar(flux_limit_Jy):
@@ -829,9 +824,9 @@ class Catalogue:
         >>> cat4 = cat.filter(tags='special ~radec')
         >>> cat5 = cat.filter(dist_limit_deg=5, proximity_targets=cat['Sun'])
         """
-        return Catalogue([target for target in
-                          self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg, el_limit_deg,
-                                          dist_limit_deg, proximity_targets, timestamp, antenna)],
+        return Catalogue(list(self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg,
+                                              el_limit_deg, dist_limit_deg, proximity_targets,
+                                              timestamp, antenna)),
                          antenna=self.antenna, flux_freq_MHz=self.flux_freq_MHz)
 
     def sort(self, key='name', ascending=True, flux_freq_MHz=None, timestamp=None, antenna=None):
@@ -919,13 +914,13 @@ class Catalogue:
             antenna = self.antenna
         if antenna is None:
             raise ValueError('Antenna object needed to calculate target position')
-        title = "Targets visible from antenna '%s' at %s" % (antenna.name, timestamp.local())
+        title = f"Targets visible from antenna '{antenna.name}' at {timestamp.local()}"
         if flux_freq_MHz is None:
             flux_freq_MHz = self.flux_freq_MHz
         if flux_freq_MHz is not None:
-            title += ', with flux density (Jy) evaluated at %g MHz' % (flux_freq_MHz,)
+            title += f', with flux density (Jy) evaluated at {flux_freq_MHz:g} MHz'
         if antenna2 is not None:
-            title += " and fringe period (s) toward antenna '%s' at same frequency" % (antenna2.name)
+            title += f" and fringe period (s) toward antenna '{antenna2.name}' at same frequency"
         print(title)
         print()
         print('Target                        Azimuth    Elevation <    Flux Fringe period')
@@ -951,7 +946,7 @@ class Catalogue:
             az = azel.az.wrap_at('180deg').to_string(sep=':', precision=1)
             el = azel.alt.to_string(sep=':', precision=1)
             line = '%-24s %12s %12s %c' % (target.name, az, el, el_code)
-            line = line + ' %7.1f' % (flux,) if not np.isnan(flux) else line + '        '
+            line = line + f' {flux:7.1f}' if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
-                line += '    %10.2f' % (fringe_period,)
+                line += f'    {fringe_period:10.2f}'
             print(line)

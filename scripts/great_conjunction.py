@@ -133,7 +133,7 @@ Fy = np.array([[1., 0.], [0., -1.]])
 scaled_cos = m_lon * m_dx + m_lat * (-m_dy)
 scaled_sin = m_lon * (-m_dy) - m_lat * m_dx
 R = np.array([[scaled_cos, -scaled_sin],
-              [scaled_sin,  scaled_cos]]) / ruler_pix / ruler_deg
+              [scaled_sin, scaled_cos]]) / ruler_pix / ruler_deg
 # Rotate, flip, uniformly scale and translate coordinates to match photo
 A = scale * Fy @ R
 jupiter_pix = A @ [j_lon, j_lat] + origin_pix

@@ -95,22 +95,22 @@ src_strings = []
 for src in table:
     # Select sources based on various criteria
     if src['S6cm'] < flux_limit:
-        print('%s skipped: flux @ 6cm: %.2f < %.2f' % (src['Name'], src['S6cm'], flux_limit))
+        print(f"{src['Name']} skipped: flux @ 6cm: {src['S6cm']:.2f} < {flux_limit:.2f}")
         continue
     if src['_DEJ2000'] > dec_limit:
-        print('%s skipped: dec %.2f > %.2f' % (src['Name'], src['_DEJ2000'], dec_limit))
+        print(f"{src['Name']} skipped: dec {src['_DEJ2000']:.2f} > {dec_limit:.2f}")
         continue
     if np.abs(src['RM']) > rm_limit:
-        print('%s skipped: RM abs(%.2f) > %.2f' % (src['Name'], src['RM'], rm_limit))
+        print(f"{src['Name']} skipped: RM abs({src['RM']:.2f}) > {rm_limit:.2f}")
         continue
     if src['DEP'] > 0 and src['DEP'] < dep_limit:
-        print('%s skipped: DEP %.2f < %.2f' % (src['Name'], src['DEP'], dep_limit))
+        print(f"{src['Name']} skipped: DEP {src['DEP']:.2f} < {dep_limit:.2f}")
         continue
     if src['Type'] not in accepted_types:
-        print("%s skipped: type '%s' not in %s" % (src['Name'], src['Type'], accepted_types))
+        print(f"{src['Name']} skipped: type '{src['Type']}' not in {accepted_types}")
         continue
     if use_atca and src['Name'] not in atca_cat:
-        print("%s skipped: not an ATCA calibrator" % (src['Name'],))
+        print(f"{src['Name']} skipped: not an ATCA calibrator")
         continue
     names = '[TI80] ' + src['Name']
     if len(src['_3C']) > 0:
@@ -145,12 +145,13 @@ for src in table:
     # Evaluate polarised flux at expected centre frequency and filter on that
     pol_flux = target.flux_density(freq_MHz) * pol_interp(freq_MHz) / 100.
     if pol_flux < polflux_limit:
-        print('%s skipped: polarised flux @ %d MHz: %.2f < %.2f' % (src['Name'], freq_MHz, pol_flux, polflux_limit))
+        print(f"{src['Name']} skipped: polarised flux @ {freq_MHz:.0f} MHz: {pol_flux:.2f} < {polflux_limit:.2f}")
         continue
     src_strings.append(target_description + '\n')
-    print("%s cat flux @ 6cm: %.2f, model flux @ 6cm: %.2f, @ %d MHz: %.2f, %%pol: %.2f polflux: %.3f" %
-          (src['Name'], src['S6cm'], target.flux_density(4996.54), freq_MHz, target.flux_density(freq_MHz),
-           pol_interp(freq_MHz), pol_flux))
+    print(f"{src['Name']} cat flux @ 6cm: {src['S6cm']:.2f}, "
+          f"model flux @ 6cm: {target.flux_density(4996.54):.2f}, "
+          f"@ {freq_MHz:.0f} MHz: {target.flux_density(freq_MHz):.2f}, "
+          f"%pol: {pol_interp(freq_MHz):.2f} polflux: {pol_flux:.3f}")
 
 with open('tabara_source_list.csv', 'w') as f:
     f.writelines(src_strings)

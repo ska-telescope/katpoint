@@ -16,6 +16,8 @@
 
 """Tests for the delay modules."""
 
+# pylint: disable=missing-function-docstring
+
 import json
 from io import StringIO
 from distutils.version import LooseVersion
@@ -62,133 +64,131 @@ def test_construct_save_load():
         pytest.fail('DelayModel object not hashable')
 
 
-class TestDelayCorrection:
-    """Test correlator delay corrections."""
+TARGET1 = katpoint.Target.from_azel('45:00:00.0', '75:00:00.0')
+TARGET2 = katpoint.Target('Sun, special')
+ANT1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
+ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
+ANT3 = katpoint.Antenna('A3, -31.0, 18.0, 0.0, 12.0, 5.0 10.0 3.0')
+TS = katpoint.Timestamp('2013-08-14 08:25')
+DELAYS = katpoint.DelayCorrection([ANT2, ANT3], ANT1, 1.285 * u.GHz)
 
-    def setup(self):
-        self.target1 = katpoint.Target.from_azel('45:00:00.0', '75:00:00.0')
-        self.target2 = katpoint.Target('Sun, special')
-        self.ant1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
-        self.ant2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
-        self.ant3 = katpoint.Antenna('A3, -31.0, 18.0, 0.0, 12.0, 5.0 10.0 3.0')
-        self.ts = katpoint.Timestamp('2013-08-14 08:25')
-        self.delays = katpoint.DelayCorrection([self.ant2, self.ant3], self.ant1,
-                                               1.285 * u.GHz)
 
-    def test_construction(self):
-        """Test construction of DelayCorrection object."""
-        descr = self.delays.description
-        assert self.delays.inputs == ['A2h', 'A2v', 'A3h', 'A3v']
-        assert self.delays.ant_locations.shape == (2,), "Ant_locations property has wrong size"
-        assert self.delays.ant_locations[0] == self.ant2.location, "Wrong location for first antenna"
-        assert self.delays.ant_locations[1] == self.ant3.location, "Wrong location for second antenna"
-        assert self.delays.ref_location == self.ant1.location, "Wrong reference location"
-        delays2 = katpoint.DelayCorrection(descr)
-        delays_dict = json.loads(descr)
-        delays2_dict = json.loads(delays2.description)
-        assert delays2_dict == delays_dict, 'Objects created through description strings differ'
-        with pytest.raises(ValueError):
-            katpoint.DelayCorrection('')
-        delays3 = katpoint.DelayCorrection([], self.ant1)
-        assert delays3.ant_locations.shape == (0,), "Ant_locations property has wrong size"
-        d = delays3.delays(self.target1, self.ts + np.arange(3))
-        assert d.shape == (0, 3), "Delay correction with no antennas should fail gracefully"
-        # Check construction with different antenna reference positions
-        delays4 = katpoint.DelayCorrection([self.ant1, self.ant2], self.ant3)
-        ant1_vs_ant3 = np.array(delays4.ant_models['A1'].values())
-        ant3_vs_ant1 = np.array(self.delays.ant_models['A3'].values())
-        assert np.allclose(ant3_vs_ant1, -ant1_vs_ant3, rtol=0, atol=2e-5)
-        delays5 = katpoint.DelayCorrection([self.ant1, self.ant2])
-        assert delays5.ref_ant == self.ant1
-        # Check that older extra_delay attribute still works in description dict
-        older_dict = dict(delays_dict)
-        older_dict['extra_delay'] = older_dict['extra_correction']
-        del older_dict['extra_correction']
-        delays6 = katpoint.DelayCorrection(json.dumps(older_dict))
-        assert delays6.extra_correction == self.delays.extra_correction
-        assert self.delays.tropospheric_model == 'None'
-        del older_dict['extra_delay']
-        with pytest.raises(KeyError):
-            katpoint.DelayCorrection(json.dumps(older_dict))
+def test_construction():
+    """Test construction of DelayCorrection object."""
+    descr = DELAYS.description
+    assert DELAYS.inputs == ['A2h', 'A2v', 'A3h', 'A3v']
+    assert DELAYS.ant_locations.shape == (2,), "Ant_locations property has wrong size"
+    assert DELAYS.ant_locations[0] == ANT2.location, "Wrong location for first antenna"
+    assert DELAYS.ant_locations[1] == ANT3.location, "Wrong location for second antenna"
+    assert DELAYS.ref_location == ANT1.location, "Wrong reference location"
+    delays2 = katpoint.DelayCorrection(descr)
+    delays_dict = json.loads(descr)
+    delays2_dict = json.loads(delays2.description)
+    assert delays2_dict == delays_dict, 'Objects created through description strings differ'
+    with pytest.raises(ValueError):
+        katpoint.DelayCorrection('')
+    delays3 = katpoint.DelayCorrection([], ANT1)
+    assert delays3.ant_locations.shape == (0,), "Ant_locations property has wrong size"
+    d = delays3.delays(TARGET1, TS + np.arange(3))
+    assert d.shape == (0, 3), "Delay correction with no antennas should fail gracefully"
+    # Check construction with different antenna reference positions
+    delays4 = katpoint.DelayCorrection([ANT1, ANT2], ANT3)
+    ant1_vs_ant3 = np.array(delays4.ant_models['A1'].values())
+    ant3_vs_ant1 = np.array(DELAYS.ant_models['A3'].values())
+    assert np.allclose(ant3_vs_ant1, -ant1_vs_ant3, rtol=0, atol=2e-5)
+    delays5 = katpoint.DelayCorrection([ANT1, ANT2])
+    assert delays5.ref_ant == ANT1
+    # Check that older extra_delay attribute still works in description dict
+    older_dict = dict(delays_dict)
+    older_dict['extra_delay'] = older_dict['extra_correction']
+    del older_dict['extra_correction']
+    delays6 = katpoint.DelayCorrection(json.dumps(older_dict))
+    assert delays6.extra_correction == DELAYS.extra_correction
+    assert DELAYS.tropospheric_model == 'None'
+    del older_dict['extra_delay']
+    with pytest.raises(KeyError):
+        katpoint.DelayCorrection(json.dumps(older_dict))
 
-    def test_delays(self):
-        """Test delay calculations."""
-        delay0 = self.delays.delays(self.target1, self.ts)
-        assert delay0.shape == (4,)
-        assert np.allclose(delay0[:2], 0.0, rtol=0, atol=1e-20)
-        delay1 = self.delays.delays(self.target1, [self.ts - 1.0, self.ts, self.ts + 1.0])
-        assert delay1.shape == (4, 3)
-        assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-20)
-        delay_now = self.delays.delays(self.target1, None)
-        np.testing.assert_array_equal(delay_now, delay0)
 
-    def test_correction(self):
-        """Test delay correction."""
-        extra_correction = self.delays.extra_correction
-        delay0, phase0, drate0, frate0 = self.delays.corrections(self.target1, self.ts)
-        delay1, phase1, drate1, frate1 = self.delays.corrections(self.target1,
-                                                                 [self.ts, self.ts + 1.0])
-        # First check dimensions for time dimension T0 = () and T1 = (2,), respectively
-        assert np.shape(delay0['A2h']) == np.shape(phase0['A2h']) == ()
-        assert np.shape(drate0['A2h']) == np.shape(frate0['A2h']) == (0,)
-        assert np.shape(delay1['A2h']) == np.shape(phase1['A2h']) == (2,)
-        assert np.shape(drate1['A2h']) == np.shape(frate1['A2h']) == (1,)
-        # This target is special - direction perpendicular to baseline (and stationary)
-        assert delay0['A2h'] == delay0['A2v'] == extra_correction
-        assert drate1['A2h'] == drate1['A2v'] == [0.0]
-        assert frate1['A2h'] == frate1['A2v'] == [0.0]
-        np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
-        np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
-        np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
-        np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
-        np.testing.assert_array_equal(frate1['A2h'], np.array([0.0]) * u.rad / u.s)
-        np.testing.assert_array_equal(frate1['A2v'], np.array([0.0]) * u.rad / u.s)
-        # Compare to target geometric delay calculations
-        delay0, _, _, _ = self.delays.corrections(self.target2, self.ts)
-        _, _, drate1, _ = self.delays.corrections(self.target2, (self.ts - 0.5, self.ts + 0.5))
-        tgt_delay, tgt_delay_rate = self.target2.geometric_delay(self.ant2, self.ts, self.ant1)
-        assert np.allclose(delay0['A2h'], extra_correction - tgt_delay * u.s, atol=0, rtol=1e-15)
-        assert np.allclose(drate1['A2h'][0], -tgt_delay_rate * u.s / u.s, atol=0, rtol=1e-11)
+def test_delays():
+    """Test delay calculations."""
+    delay0 = DELAYS.delays(TARGET1, TS)
+    assert delay0.shape == (4,)
+    assert np.allclose(delay0[:2], 0.0, rtol=0, atol=1e-20)
+    delay1 = DELAYS.delays(TARGET1, [TS - 1.0, TS, TS + 1.0])
+    assert delay1.shape == (4, 3)
+    assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-20)
+    delay_now = DELAYS.delays(TARGET1, None)
+    np.testing.assert_array_equal(delay_now, delay0)
 
-    def test_offset(self):
-        """Test target offset."""
-        assert np.allclose(self.delays.delays(self.target1, self.ts, offset=None),
-                           self.delays.delays(self.target1, self.ts, offset={}), atol=0, rtol=1e-15)
-        azel = self.target1.azel(self.ts, self.ant1)
-        offset = dict(projection_type='SIN')
-        target3 = katpoint.Target.from_azel(azel.az - Angle(1.0, unit=u.deg),
-                                            azel.alt - Angle(1.0, unit=u.deg))
-        x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, self.ts, self.ant1, **offset)
-        offset['x'] = x
-        offset['y'] = y
-        extra_correction = self.delays.extra_correction
-        delay0, _, _, _ = self.delays.corrections(target3, self.ts, offset=offset)
-        delay1, _, drate1, _ = self.delays.corrections(target3, (self.ts, self.ts + 1.0), offset)
-        # Conspire to return to special target1
-        assert delay0['A2h'] == extra_correction, 'Delay for ant2h should be zero'
-        assert delay0['A2v'] == extra_correction, 'Delay for ant2v should be zero'
-        np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
-        np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
-        np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
-        np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
-        # Now try (ra, dec) coordinate system
-        radec = self.target1.radec(self.ts, self.ant1)
-        offset = dict(projection_type='ARC', coord_system='radec')
-        target4 = katpoint.Target.from_radec(radec.ra - Angle(1.0, unit=u.deg),
-                                             radec.dec - Angle(1.0, unit=u.deg))
-        x, y = target4.sphere_to_plane(radec.ra.rad, radec.dec.rad, self.ts, self.ant1, **offset)
-        offset['x'] = x
-        offset['y'] = y
-        extra_correction = self.delays.extra_correction
-        delay0, _, _, _ = self.delays.corrections(target4, self.ts, offset=offset)
-        delay1, _, drate1, _ = self.delays.corrections(target4, (self.ts, self.ts + 1.0), offset)
-        # Conspire to return to special target1
-        assert np.allclose(delay0['A2h'], extra_correction, atol=0, rtol=1e-12)
-        assert np.allclose(delay0['A2v'], extra_correction, atol=0, rtol=1e-12)
-        assert np.allclose(delay1['A2h'][0], extra_correction, atol=0, rtol=1e-12)
-        assert np.allclose(delay1['A2v'][0], extra_correction, atol=0, rtol=1e-12)
-        assert np.allclose(drate1['A2h'], [0.0], atol=5e-12)
-        assert np.allclose(drate1['A2v'], [0.0], atol=5e-12)
+
+def test_correction():
+    """Test delay correction."""
+    extra_correction = DELAYS.extra_correction
+    delay0, phase0, drate0, frate0 = DELAYS.corrections(TARGET1, TS)
+    delay1, phase1, drate1, frate1 = DELAYS.corrections(TARGET1, [TS, TS + 1.0])
+    # First check dimensions for time dimension T0 = () and T1 = (2,), respectively
+    assert np.shape(delay0['A2h']) == np.shape(phase0['A2h']) == ()
+    assert np.shape(drate0['A2h']) == np.shape(frate0['A2h']) == (0,)
+    assert np.shape(delay1['A2h']) == np.shape(phase1['A2h']) == (2,)
+    assert np.shape(drate1['A2h']) == np.shape(frate1['A2h']) == (1,)
+    # This target is special - direction perpendicular to baseline (and stationary)
+    assert delay0['A2h'] == delay0['A2v'] == extra_correction
+    assert drate1['A2h'] == drate1['A2v'] == [0.0]
+    assert frate1['A2h'] == frate1['A2v'] == [0.0]
+    np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
+    np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
+    np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
+    np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
+    np.testing.assert_array_equal(frate1['A2h'], np.array([0.0]) * u.rad / u.s)
+    np.testing.assert_array_equal(frate1['A2v'], np.array([0.0]) * u.rad / u.s)
+    # Compare to target geometric delay calculations
+    delay0, _, _, _ = DELAYS.corrections(TARGET2, TS)
+    _, _, drate1, _ = DELAYS.corrections(TARGET2, (TS - 0.5, TS + 0.5))
+    tgt_delay, tgt_delay_rate = TARGET2.geometric_delay(ANT2, TS, ANT1)
+    assert np.allclose(delay0['A2h'], extra_correction - tgt_delay * u.s, atol=0, rtol=1e-15)
+    assert np.allclose(drate1['A2h'][0], -tgt_delay_rate * u.s / u.s, atol=0, rtol=1e-11)
+
+
+def test_offset():
+    """Test target offset."""
+    assert np.allclose(DELAYS.delays(TARGET1, TS, offset=None),
+                       DELAYS.delays(TARGET1, TS, offset={}), atol=0, rtol=1e-15)
+    azel = TARGET1.azel(TS, ANT1)
+    offset = dict(projection_type='SIN')
+    target3 = katpoint.Target.from_azel(azel.az - Angle(1.0, unit=u.deg),
+                                        azel.alt - Angle(1.0, unit=u.deg))
+    x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, TS, ANT1, **offset)
+    offset['x'] = x
+    offset['y'] = y
+    extra_correction = DELAYS.extra_correction
+    delay0, _, _, _ = DELAYS.corrections(target3, TS, offset=offset)
+    delay1, _, drate1, _ = DELAYS.corrections(target3, (TS, TS + 1.0), offset)
+    # Conspire to return to special target1
+    assert delay0['A2h'] == extra_correction, 'Delay for ant2h should be zero'
+    assert delay0['A2v'] == extra_correction, 'Delay for ant2v should be zero'
+    np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
+    np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
+    np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
+    np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
+    # Now try (ra, dec) coordinate system
+    radec = TARGET1.radec(TS, ANT1)
+    offset = dict(projection_type='ARC', coord_system='radec')
+    target4 = katpoint.Target.from_radec(radec.ra - Angle(1.0, unit=u.deg),
+                                         radec.dec - Angle(1.0, unit=u.deg))
+    x, y = target4.sphere_to_plane(radec.ra.rad, radec.dec.rad, TS, ANT1, **offset)
+    offset['x'] = x
+    offset['y'] = y
+    extra_correction = DELAYS.extra_correction
+    delay0, _, _, _ = DELAYS.corrections(target4, TS, offset=offset)
+    delay1, _, drate1, _ = DELAYS.corrections(target4, (TS, TS + 1.0), offset)
+    # Conspire to return to special target1
+    assert np.allclose(delay0['A2h'], extra_correction, atol=0, rtol=1e-12)
+    assert np.allclose(delay0['A2v'], extra_correction, atol=0, rtol=1e-12)
+    assert np.allclose(delay1['A2h'][0], extra_correction, atol=0, rtol=1e-12)
+    assert np.allclose(delay1['A2v'][0], extra_correction, atol=0, rtol=1e-12)
+    assert np.allclose(drate1['A2h'], [0.0], atol=5e-12)
+    assert np.allclose(drate1['A2v'], [0.0], atol=5e-12)
 
 
 TARGET = katpoint.Target('J1939-6342, radec, 19:39:25.03, -63:42:45.6')

@@ -97,7 +97,7 @@ class DelayCorrection:
                 try:
                     extra_correction = descr['extra_delay'] * u.s
                 except KeyError:
-                    raise KeyError("no 'extra_correction' or 'extra_delay'")
+                    raise KeyError("no 'extra_correction' or 'extra_delay'") from None
             tropospheric_model = descr.get('tropospheric_model', 'None')
             ant_models = {}
             for ant_name, ant_model_str in descr['ant_models'].items():
@@ -144,7 +144,8 @@ class DelayCorrection:
     @property
     def tropospheric_model(self):
         """Unique identifier of tropospheric model, or 'None' for no correction."""
-        return self._tropospheric_delay.model_id if self._tropospheric_delay else 'None'
+        return (self._tropospheric_delay.model_id  # pylint: disable=no-member
+                if self._tropospheric_delay else 'None')
 
     @property
     def ant_locations(self):

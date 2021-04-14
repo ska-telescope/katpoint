@@ -133,21 +133,17 @@ class RefractionCorrection:
         try:
             self.offset = self.models[model]
         except KeyError:
-            raise ValueError("Unknown refraction correction model '%s' - should be one of %s" %
-                             (model, self.models.keys()))
+            raise ValueError(f"Unknown refraction correction model '{model}' - "
+                             f"should be one of {self.models.keys()}") from None
         self.model = model
 
     def __repr__(self):
         """Short human-friendly string representation of refraction correction object."""
-        return "<katpoint.RefractionCorrection model='%s' at 0x%x>" % (self.model, id(self))
+        return f"<katpoint.RefractionCorrection model='{self.model}' at {id(self):#x}>"
 
     def __eq__(self, other):
         """Equality comparison operator."""
         return isinstance(other, RefractionCorrection) and (self.model == other.model)
-
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not (self == other)
 
     def __hash__(self):
         """Base hash on underlying model name, just like equality operator."""
@@ -565,7 +561,7 @@ class GlobalMappingFunction:
             # Northern hemisphere
             c11 = 0.005
             c10 = 0.001
-        c = c0 + ((season + 1) * c11/2 + c10) * (1 - np.cos(latitude))
+        c = c0 + ((season + 1) * c11 / 2 + c10) * (1 - np.cos(latitude))
         gmf = _continued_fraction(elevation, a, b, c)
         # Niell's hydrostatic height correction (<0.05% for 1 km altitude)
         correction = (1. / np.sin(elevation)
@@ -642,10 +638,10 @@ class TroposphericDelay:
         zenith_delay = get(_ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
         mapping_function = get(_MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
 
-        def hydrostatic(p, t, h, el, ts):  # noqa: W0613
+        def hydrostatic(p, t, h, el, ts):  # pylint: disable=unused-argument
             return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(el, ts)
 
-        def wet(p, t, h, el, ts):  # noqa: W0613
+        def wet(p, t, h, el, ts):  # pylint: disable=unused-argument
             return zenith_delay.wet(t, h) * mapping_function.wet(el, ts)
 
         def total(p, t, h, el, ts):
@@ -682,5 +678,5 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
-        return self._delay(pressure, temperature, relative_humidity,  # noqa: E1101
+        return self._delay(pressure, temperature, relative_humidity,  # pylint: disable=no-member
                            elevation, timestamp)

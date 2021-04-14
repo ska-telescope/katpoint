@@ -165,7 +165,7 @@ class Antenna:
 
     def __repr__(self):
         """Short human-friendly string representation of antenna object."""
-        return f'<katpoint.Antenna {self.name!r} diam={self.diameter} at 0x{id(self):x}>'
+        return f'<katpoint.Antenna {self.name!r} diam={self.diameter} at {id(self):#x}>'
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -231,8 +231,8 @@ class Antenna:
             raise ValueError(errmsg_prefix + 'is empty')
         try:
             description.encode('ascii')
-        except UnicodeError:
-            raise ValueError(errmsg_prefix + 'contains non-ASCII characters')
+        except UnicodeError as err:
+            raise ValueError(errmsg_prefix + 'contains non-ASCII characters') from err
         # Split description string on commas
         fields = [s.strip() for s in description.split(',')]
         # Extract required fields

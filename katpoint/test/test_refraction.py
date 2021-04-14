@@ -70,9 +70,9 @@ def test_refraction_closure():
     # Test closure on el grid
     refracted_el = rc.apply(el, temp, pressure, humidity)
     reversed_el = rc.reverse(refracted_el, temp, pressure, humidity)
-    assert_angles_almost_equal(reversed_el, el, decimal=7,
-                               err_msg='Elevation closure error for temp=%s, pressure=%s, humidity=%s' %
-                                       (temp, pressure, humidity))
+    assert_angles_almost_equal(
+        reversed_el, el, decimal=7,
+        err_msg=f'Elevation closure error for temp={temp}, pressure={pressure}, humidity={humidity}')
 
 
 _locations_and_times = [
@@ -86,7 +86,7 @@ _locations_and_times = [
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize("latitude,longitude,height,timestamp", _locations_and_times)
-def test_zenith_delay(latitude, longitude, height, timestamp):  # noqa: W0613
+def test_zenith_delay(latitude, longitude, height, timestamp):  # pylint: disable=unused-argument
     """Test hydrostatic and wet zenith delays against AlmaCalc."""
     location = EarthLocation.from_geodetic(longitude, latitude, height)
     zd = SaastamoinenZenithDelay(location)

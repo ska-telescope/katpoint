@@ -162,8 +162,8 @@ class Target:
 
     def __repr__(self):
         """Short human-friendly string representation of target object."""
-        sub_type = (' (%s)' % self.tags[1]) if (self.body_type == 'xephem') and (len(self.tags) > 1) else ''
-        return "<katpoint.Target '%s' body=%s at 0x%x>" % (self.name, self.body_type + sub_type, id(self))
+        sub_type = f' ({self.tags[1]})' if self.body_type == 'xephem' and len(self.tags) > 1 else ''
+        return f"<katpoint.Target '{self.name}' body={self.body_type + sub_type} at {id(self):#x}>"
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -172,10 +172,6 @@ class Target:
     def __eq__(self, other):
         """Equality comparison operator."""
         return self.description == (other.description if isinstance(other, Target) else other)
-
-    def __ne__(self, other):
-        """Inequality comparison operator."""
-        return not (self == other)
 
     def __lt__(self, other):
         """Less-than comparison operator (needed for sorting and np.unique)."""
@@ -264,13 +260,14 @@ class Target:
         ValueError
             If *description* has the wrong format
         """
+        prefix = f"Target description '{description}'"
         try:
             description.encode('ascii')
-        except UnicodeError:
-            raise NonAsciiError("Target description %r contains non-ASCII characters" % description)
+        except UnicodeError as err:
+            raise NonAsciiError(f"{prefix} contains non-ASCII characters") from err
         fields = [s.strip() for s in description.split(',')]
         if len(fields) < 2:
-            raise ValueError("Target description '%s' must have at least two fields" % description)
+            raise ValueError(f"{prefix} must have at least two fields")
         # Check if first name starts with body type tag, while the next field does not
         # This indicates a missing names field -> add an empty name list in front
         body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
@@ -291,7 +288,7 @@ class Target:
         tag_field = fields.pop(0)
         tags = [s.strip() for s in tag_field.split(' ')]
         if not tags:
-            raise ValueError("Target description '%s' needs at least one tag (body type)" % description)
+            raise ValueError(f"{prefix} needs at least one tag (body type)")
         body_type = tags.pop(0).lower()
         # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
         while fields and not fields[-1]:
@@ -300,16 +297,14 @@ class Target:
         # Create appropriate Body based on body type
         if body_type == 'azel':
             if len(fields) < 2:
-                raise ValueError("Target description '%s' contains *azel* body with no (az, el) coordinates"
-                                 % description)
+                raise ValueError(f"{prefix} contains *azel* body with no (az, el) coordinates")
             az = fields.pop(0)
             el = fields.pop(0)
             body = StationaryBody(az, el)
 
         elif body_type == 'radec':
             if len(fields) < 2:
-                raise ValueError("Target description '%s' contains *radec* body with no (ra, dec) coordinates"
-                                 % description)
+                raise ValueError(f"{prefix} contains *radec* body with no (ra, dec) coordinates")
             ra = to_angle(fields.pop(0), sexagesimal_unit=u.hour)
             dec = to_angle(fields.pop(0))
             # Extract epoch info from tags
@@ -323,23 +318,21 @@ class Target:
 
         elif body_type == 'gal':
             if len(fields) < 2:
-                raise ValueError("Target description '%s' contains *gal* body with no (l, b) coordinates"
-                                 % description)
-            l = to_angle(fields.pop(0))
-            b = to_angle(fields.pop(0))
-            body = GalacticBody(SkyCoord(l=l, b=b, frame=Galactic))
+                raise ValueError(f"{prefix} contains *gal* body with no (l, b) coordinates")
+            gal_l = to_angle(fields.pop(0))
+            gal_b = to_angle(fields.pop(0))
+            body = GalacticBody(SkyCoord(l=gal_l, b=gal_b, frame=Galactic))
 
         elif body_type == 'tle':
             if len(fields) < 2:
-                raise ValueError(f"Target description '{description}' contains *tle* body "
-                                 "without the expected two comma-separated lines")
+                raise ValueError(f"{prefix} contains *tle* body without "
+                                 "the expected two comma-separated lines")
             line1 = fields.pop(0)
             line2 = fields.pop(0)
             try:
                 body = EarthSatelliteBody.from_tle(line1, line2)
             except ValueError as err:
-                raise ValueError(f"Target description '{description}' "
-                                 f"contains malformed *tle* body: {err}") from err
+                raise ValueError(f"{prefix} contains malformed *tle* body: {err}") from err
 
         elif body_type == 'special':
             try:
@@ -348,8 +341,8 @@ class Target:
                 else:
                     body = NullBody()
             except ValueError as err:
-                raise ValueError("Target description '%s' contains unknown *special* body '%s'"
-                                 % (description, preferred_name)) from err
+                raise ValueError(f"{prefix} contains unknown "
+                                 f"*special* body '{preferred_name}'") from err
 
         elif body_type == 'xephem':
             if len(fields) < 1:
@@ -366,11 +359,10 @@ class Target:
             try:
                 body = Body.from_edb(comma + edb_coord_fields)
             except ValueError as err:
-                raise ValueError(f"Target description '{description}' "
-                                 f"contains malformed *xephem* body: {err}") from err
+                raise ValueError(f"{prefix} contains malformed *xephem* body: {err}") from err
 
         else:
-            raise ValueError("Target description '%s' contains unknown body type '%s'" % (description, body_type))
+            raise ValueError(f"{prefix} contains unknown body type '{body_type}'")
 
         # Extract flux model if it is available
         if fields and fields[0].strip(' ()'):
@@ -714,7 +706,7 @@ class Target:
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)  # noqa: E1130
+        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)
         return delays[..., 1], delays[..., 2] - delays[..., 0]
 
     def uvw_basis(self, timestamp=None, antenna=None):
@@ -774,17 +766,17 @@ class Target:
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
-        z = np.array(azel_to_enu(offset_azel.az.rad, offset_azel.alt.rad))
+        towards_pole = np.array(azel_to_enu(offset_azel.az.rad, offset_azel.alt.rad))
         # Obtain direction vector(s) from reference antenna to target
         azel = self.azel(time, location)
         # w axis points toward target
-        w = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
+        w_basis = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # u axis is orthogonal to z and w
-        u = np.cross(z, w, axis=0) * offset_sign
-        u /= np.linalg.norm(u, axis=0)
+        u_basis = np.cross(towards_pole, w_basis, axis=0) * offset_sign
+        u_basis /= np.linalg.norm(u_basis, axis=0)
         # v axis completes the orthonormal basis
-        v = np.cross(w, u, axis=0)
-        return np.array([u, v, w])
+        v_basis = np.cross(w_basis, u_basis, axis=0)
+        return np.array([u_basis, v_basis, w_basis])
 
     def uvw(self, antenna2, timestamp=None, antenna=None):
         """Calculate (u,v,w) coordinates of baseline while pointing at target.

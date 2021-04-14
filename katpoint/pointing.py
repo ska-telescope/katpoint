@@ -63,7 +63,7 @@ class PointingModel(Model):
 
         def scale_param(name, doc):
             """Create scale-valued parameter."""
-            return Parameter(name, '', doc, to_str=lambda s: ('%.9g' % (s,)) if s else '0')
+            return Parameter(name, '', doc, to_str=lambda s: (f'{s:.9g}') if s else '0')
 
         # Instantiate the relevant model parameters and register with base class
         params = []
@@ -144,10 +144,11 @@ class PointingModel(Model):
         tan_el = sin_el * sec_el
 
         # Obtain pointing correction using full VLBI model for alt-az mount (no P2 or P10 allowed!)
-        delta_az = P1 + P3*tan_el - P4*sec_el + P5*sin_az*tan_el - P6*cos_az*tan_el + \
-            P12*az + P13*cos_az + P14*sin_az + P17*cos_2az + P18*sin_2az
-        delta_el = P5*cos_az + P6*sin_az + P7 + P8*cos_el + \
-            P9*el + P11*sin_el + P15*cos_2az + P16*sin_2az + P19*cos_8el + P20*sin_8el + P21*cos_az + P22*sin_az
+        delta_az = (P1 + P3*tan_el - P4*sec_el + P5*sin_az*tan_el - P6*cos_az*tan_el
+                    + P12*az + P13*cos_az + P14*sin_az + P17*cos_2az + P18*sin_2az)
+        delta_el = (P5*cos_az + P6*sin_az + P7 + P8*cos_el
+                    + P9*el + P11*sin_el + P15*cos_2az + P16*sin_2az
+                    + P19*cos_8el + P20*sin_8el + P21*cos_az + P22*sin_az)
 
         return delta_az, delta_el
 
@@ -203,8 +204,8 @@ class PointingModel(Model):
         sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6. / 60.), 1.0)
         tan_el = sin_el * sec_el
 
-        d_corraz_d_az = 1.0 + P5*cos_az*tan_el + P6*sin_az*tan_el + \
-            P12 - P13*sin_az + P14*cos_az - P17*2*sin_2az + P18*2*cos_2az
+        d_corraz_d_az = (1.0 + P5*cos_az*tan_el + P6*sin_az*tan_el
+                         + P12 - P13*sin_az + P14*cos_az - P17*2*sin_2az + P18*2*cos_2az)
         d_corraz_d_el = sec_el * (P3*sec_el - P4*tan_el + P5*sin_az*sec_el - P6*cos_az*sec_el)
         d_correl_d_az = -P5*sin_az + P6*cos_az - P15*2*sin_2az + P16*2*cos_2az - P21*sin_az + P22*cos_az
         d_correl_d_el = 1.0 - P8*sin_el + P9 + P11*cos_el - P19*8*sin_8el + P20*8*cos_8el

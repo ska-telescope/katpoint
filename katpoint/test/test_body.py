@@ -21,6 +21,8 @@ pyephem package.
 
 """
 
+# pylint: disable=missing-function-docstring
+
 from distutils.version import LooseVersion
 
 import pytest
@@ -129,7 +131,7 @@ def test_galactic():
     body = GalacticBody(Galactic(l='-10d', b='20d'))
     assert body.tag == 'gal'
     assert body.default_name
-    assert body.coord.l == Longitude('-10d')
+    assert body.coord.l == Longitude('-10d')  # noqa: E741
     assert body.coord.b == Latitude('20d')
 
 
@@ -149,7 +151,7 @@ def test_earth_satellite_vs_skyfield():
     obstime = Time(TLE_TS)
     t = ts.from_astropy(obstime)
     towards_sat = (satellite - antenna).at(t)
-    alt, az, distance = towards_sat.altaz()
+    alt, az, _ = towards_sat.altaz()
     altaz = AltAz(alt=alt.to(u.rad), az=az.to(u.rad), obstime=obstime, location=LOCATION)
     check_separation(altaz, TLE_AZ, TLE_EL, 4.0 * u.arcsec)
 
