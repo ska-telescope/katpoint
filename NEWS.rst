@@ -1,6 +1,15 @@
 History
 =======
 
+1.0a1 (2021-04-14)
+------------------
+* A mammoth rewrite to use Astropy 4.1+ and sgp4 instead of PyEphem (!11, !21)
+* Depend on Python 3.6+ and remove all Python 2 fluff (!3, !12, !23)
+* Use pytest and compare coordinates against Calc and Skyfield (!4, !7, !14)
+* The new Body class encapsulates and vectorises coordinates (!6, !22)
+* Timestamp/Antenna/Target mirrors Time/EarthLocation/SkyCoord (!5, !10, !22)
+* Add tropospheric delays and proper NIAO to DelayCorrection (!13, !18, !20)
+
 0.9 (2019-10-02)
 ----------------
 * Add Antenna.array_reference_antenna utility function (#51)
