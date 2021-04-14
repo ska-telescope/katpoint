@@ -14,7 +14,7 @@
 # limitations under the License.
 ################################################################################
 
-"""Coordinate conversions not found in PyEphem."""
+"""Geodetic and spherical coordinate transformations, and angle conversions."""
 
 import numpy as np
 import astropy.units as u
