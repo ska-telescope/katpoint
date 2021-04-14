@@ -19,7 +19,7 @@
 # pylint: disable=missing-function-docstring
 
 import pytest
-from numpy.testing import assert_allclose
+import numpy as np
 import astropy.units as u
 
 import katpoint
@@ -140,8 +140,7 @@ def test_construct_catalogue(caplog):
     assert len(cat.targets) == num_targets + 2, 'Number of targets incorrect'
     closest_target, dist = cat.closest_to(test_target)
     assert closest_target.description == test_target.description, 'Closest target incorrect'
-    assert_allclose(dist, 0.0, rtol=0.0, atol=0.5e-5 * u.deg,
-                    err_msg='Target should be on top of itself')
+    assert np.allclose(dist, 0.0, rtol=0.0, atol=0.5e-5 * u.deg), 'Target should be on top of itself'
 
 
 def test_that_equality_and_hash_ignore_order():

@@ -395,8 +395,8 @@ def test_array_valued_methods(description):
     _array_vs_scalar(lambda t: target.lmn(0.0, 0.0, t, ANT1), times, pre_shape=(3,))
     l, m, n = target.lmn(np.zeros_like(offsets), np.zeros_like(offsets), times, ANT1)
     assert l.shape == m.shape == n.shape == offsets.shape
-    np.testing.assert_allclose(target.separation(target, times, ANT1).rad,
-                               np.zeros_like(offsets), atol=1e-12)
+    assert np.allclose(target.separation(target, times, ANT1).rad,
+                       np.zeros_like(offsets), atol=1e-12)
 
 
 def test_coords():
@@ -532,9 +532,9 @@ def _ant_vs_location(func, atol=0.0):
     try:
         # Use sky coordinate separation to obtain floating-point difference
         separation = location_output.separation(ant_output)
-        np.testing.assert_allclose(separation, 0.0, rtol=0.0, atol=atol)
+        assert np.allclose(separation, 0.0, rtol=0.0, atol=atol)
     except AttributeError:
-        np.testing.assert_allclose(location_output, ant_output, rtol=0.0, atol=atol)
+        assert np.allclose(location_output, ant_output, rtol=0.0, atol=atol)
 
 
 def test_earth_location():
