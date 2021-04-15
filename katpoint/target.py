@@ -23,7 +23,8 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 import astropy.constants as const
-from astropy.coordinates import SkyCoord, Angle, ICRS, Galactic, FK4, AltAz, CIRS
+from astropy.coordinates import (SkyCoord, Angle, ICRS, Galactic, FK4, AltAz, CIRS,
+                                 CartesianRepresentation)
 
 from .timestamp import Timestamp, delta_seconds
 from .antenna import Antenna
@@ -735,18 +736,18 @@ class Target:
         Parameters
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp(s), defaults to now
+            Timestamp(s) of shape T, defaults to now
         antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Reference antenna of baseline pairs, which also serves as
             pointing reference (defaults to default antenna)
 
         Returns
         -------
-        uvw_basis : 2D or 3D array
+        uvw_basis : array of float, shape (3, 3) + T
             Orthogonal basis vectors for the transformation. If `timestamp` is
             scalar, the return value is a matrix to multiply by ENU column
-            vectors to produce UVW vectors. If `timestamp` is a vector,
-            the first two dimensions correspond to the matrix and the
+            vectors to produce UVW vectors. If `timestamp` is an array of
+            shape T, the first two dimensions correspond to the matrix and the
             remaining dimension(s) to the timestamp.
         """
         time, location = self._astropy_funnel(timestamp, antenna)
@@ -805,21 +806,18 @@ class Target:
         Parameters
         ----------
         antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna` or sequence
-            Second antenna of baseline pair (baseline vector points toward it)
+            Second antenna of baseline pair (baseline vector points toward it), shape A
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp(s), defaults to now
+            Timestamp(s) of shape T, defaults to now
         antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
 
         Returns
         -------
-        uvw : :class:`~astropy.units.Quantity`
-            (u, v, w) coordinates of baseline, in metres. The axes are:
-
-            - u/v/w
-            - time, if `timestamp` is not scalar
-            - antenna, if `antenna2` is a sequence
+        uvw : :class:`~astropy.coordinates.CartesianRepresentation`, shape T + A
+            (u, v, w) coordinates of baseline as Cartesian (x, y, z), in metres.
+            The shape is a concatenation of the `timestamp` and `antenna2` shapes.
 
         Notes
         -----
@@ -839,7 +837,7 @@ class Target:
         # Apply linear coordinate transformation. A single call np.dot won't
         # work for both the scalar and array case, so we explicitly specify the
         # axes to sum over.
-        return np.tensordot(basis, baseline, ([1], [-1]))
+        return CartesianRepresentation(np.tensordot(basis, baseline, ([1], [-1])))
 
     def lmn(self, ra, dec, timestamp=None, antenna=None):
         """Calculate (l, m, n) coordinates for another target, while pointing at

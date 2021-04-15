@@ -390,8 +390,7 @@ def test_array_valued_methods(description):
     _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[0], times)
     _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[1], times)
     _array_vs_scalar(lambda t: target.uvw_basis(t, ANT1), times, pre_shape=(3, 3))
-    _array_vs_scalar(lambda t: target.uvw([ANT1, ANT2], t, ANT1),
-                     times, pre_shape=(3,), post_shape=(2,))
+    _array_vs_scalar(lambda t: target.uvw([ANT1, ANT2], t, ANT1), times, post_shape=(2,))
     _array_vs_scalar(lambda t: target.lmn(0.0, 0.0, t, ANT1), times, pre_shape=(3,))
     l, m, n = target.lmn(np.zeros_like(offsets), np.zeros_like(offsets), times, ANT1)
     assert l.shape == m.shape == n.shape == offsets.shape
@@ -438,9 +437,9 @@ def test_delay():
 def test_uvw():
     """Test uvw calculation."""
     uvw = DELAY_TARGET.uvw(ANT2, DELAY_TS[0], ANT1)
-    assert np.allclose(uvw, UVW[0], rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw.xyz, UVW[0], rtol=0, atol=10 * u.nm)
     uvw = DELAY_TARGET.uvw(ANT2, DELAY_TS, ANT1)
-    assert np.allclose(uvw, UVW.T, rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw.xyz, UVW.T, rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_timestamp_array_azel():
@@ -448,20 +447,20 @@ def test_uvw_timestamp_array_azel():
     azel = DELAY_TARGET.azel(DELAY_TS[0], ANT1)
     target = katpoint.Target.from_azel(azel.az, azel.alt)
     uvw = target.uvw(ANT2, DELAY_TS, ANT1)
-    assert np.allclose(uvw[:, 0], UVW[0], rtol=0, atol=10 * u.nm)
-    assert np.allclose(uvw[2], [UVW[0, 2]] * len(DELAY_TS), rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw[0].xyz, UVW[0], rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw.z, [UVW[0, 2]] * len(DELAY_TS), rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_antenna_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
-    assert np.allclose(uvw, np.c_[np.zeros(3), UVW[0]], rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw.xyz, np.c_[np.zeros(3), UVW[0]], rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_both_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
     # UVW array has shape (3, n_times, n_bls) - stack times along dim 1 and ants along dim 2
     desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), UVW.T])
-    assert np.allclose(uvw, desired_uvw, rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw.xyz, desired_uvw, rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_hemispheres():
@@ -474,7 +473,7 @@ def test_uvw_hemispheres():
     target2 = katpoint.Target.from_radec(0 * u.deg, +0.2 * u.mas)
     uvw1 = target1.uvw(ANT2, TS, ANT1)
     uvw2 = target2.uvw(ANT2, TS, ANT1)
-    assert np.allclose(uvw1, uvw2, rtol=0, atol=25 * u.micron)
+    assert np.allclose(uvw1.xyz, uvw2.xyz, rtol=0, atol=25 * u.micron)
 
 
 def test_lmn():
@@ -534,7 +533,10 @@ def _ant_vs_location(func, atol=0.0):
         separation = location_output.separation(ant_output)
         assert np.allclose(separation, 0.0, rtol=0.0, atol=atol)
     except AttributeError:
-        assert np.allclose(location_output, ant_output, rtol=0.0, atol=atol)
+        try:
+            assert np.allclose(location_output.xyz, ant_output.xyz, rtol=0.0, atol=atol)
+        except AttributeError:
+            assert np.allclose(location_output, ant_output, rtol=0.0, atol=atol)
 
 
 def test_earth_location():
