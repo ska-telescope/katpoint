@@ -180,7 +180,7 @@ class FluxDensityModel:
         Returns
         -------
         flux_density : :class:`~astropy.units.Quantity`
-            Flux density in Jy, or np.nan if frequency is out of range.
+            Flux density, or NaN Jy if frequency is out of range.
             The shape matches the input.
         """
         flux = self._flux_density_raw(frequency) * self.iquv_scale[0]
@@ -200,7 +200,7 @@ class FluxDensityModel:
         Returns
         -------
         flux_density : :class:`~astropy.units.Quantity`
-            Flux density in Jy, or np.nan if frequency is out of range.
+            Flux density, or NaN Jy if frequency is out of range.
             The shape matches the input with an extra trailing dimension
             of size 4 containing Stokes I, Q, U, V.
         """

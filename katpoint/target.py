@@ -692,7 +692,7 @@ class Target:
         Returns
         -------
         delay : :class:`~astropy.units.Quantity` of same shape as *timestamp*
-            Geometric delay, in seconds
+            Geometric delay
         delay_rate : :class:`~astropy.units.Quantity` of same shape as *timestamp*
             Rate of change of geometric delay, in seconds per second
 
@@ -816,7 +816,7 @@ class Target:
         Returns
         -------
         uvw : :class:`~astropy.coordinates.CartesianRepresentation`, shape T + A
-            (u, v, w) coordinates of baseline as Cartesian (x, y, z), in metres.
+            (u, v, w) coordinates of baseline as Cartesian (x, y, z), in units of length.
             The shape is a concatenation of the `timestamp` and `antenna2` shapes.
 
         Notes
