@@ -623,7 +623,8 @@ class Catalogue:
         """
         if len(self.targets) == 0:
             return None, Angle(180.0 * u.deg)
-        if antenna is None:
+        # Use the given target's default antenna unless it has none
+        if antenna is None and target.antenna is None:
             antenna = self.antenna
         dist = np.stack([target.separation(tgt, timestamp, antenna) for tgt in self.targets])
         closest = dist.argmin()
@@ -730,10 +731,10 @@ class Catalogue:
             try:
                 flux_lower, flux_upper = flux_limit
             except ValueError as err:
-                raise ValueError('Flux limit should have the form [lower, upper], '
+                raise ValueError('Flux limit should have the form <lower> or [<lower>, <upper>], '
                                  f'not {flux_limit}') from err
-            flux = np.stack([target.flux_density(flux_frequency) for target in targets])
-            targets = [target for n, target in enumerate(targets) if flux_lower <= flux[n] < flux_upper]
+            targets = [target for target in targets
+                       if flux_lower <= target.flux_density(flux_frequency) < flux_upper]
 
         # Now prepare for dynamic criteria (azimuth, elevation, proximity)
         # which depend on potentially changing timestamp
@@ -742,7 +743,7 @@ class Catalogue:
                 # Wrap negative azimuth values to the expected range of 0-360 degrees
                 az_left, az_right = Longitude(az_limit)
             except TypeError as err:
-                raise ValueError('Azimuth limit should have the form [left, right], '
+                raise ValueError('Azimuth limit should have the form [<left>, <right>], '
                                  f'not {az_limit}') from err
         if elevation_filter:
             if el_limit.isscalar:
@@ -750,8 +751,8 @@ class Catalogue:
             try:
                 el_lower, el_upper = el_limit
             except ValueError as err:
-                raise ValueError('Elevation limit should have the form [lower, upper], '
-                                 f'not {el_limit}') from err
+                raise ValueError('Elevation limit should have the form <lower> '
+                                 f'or [<lower>, <upper>], not {el_limit}') from err
         if proximity_filter:
             if proximity_targets is None:
                 raise ValueError('Please specify proximity target(s) for proximity filter')
@@ -760,8 +761,8 @@ class Catalogue:
             try:
                 dist_lower, dist_upper = dist_limit
             except ValueError as err:
-                raise ValueError('Distance limit should have the form [lower, upper], '
-                                 f'not {dist_limit}') from err
+                raise ValueError('Distance limit should have the form <lower> '
+                                 f'or [<lower>, <upper>], not {dist_limit}') from err
             if isinstance(proximity_targets, Target):
                 proximity_targets = [proximity_targets]
 
@@ -934,7 +935,7 @@ class Catalogue:
         if flux_frequency is None:
             flux_frequency = self.flux_frequency
         if flux_frequency is not None:
-            title += f', with flux density (Jy) evaluated at {flux_frequency}'
+            title += f', with flux density (Jy) evaluated at {flux_frequency:g}'
         if antenna2 is not None:
             title += f" and fringe period (s) toward antenna '{antenna2.name}' at same frequency"
         print(title)

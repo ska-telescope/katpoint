@@ -58,6 +58,7 @@ anomalies = {'J0108+1320': 6, 'J0541-0154': 2, 'J2253+1608': 6}
 
 # Load main table in one shot (don't verify, as the VizieR VOTables contain a deprecated DEFINITIONS element)
 table = Table.read('pkscat90_S1410_min_10Jy.vot')
+table = table.filled(np.nan)
 
 # Fit all sources onto one figure
 plt.figure(1)
@@ -73,7 +74,7 @@ for n, src in enumerate(table):
     tags = 'radec J2000'
     ra = src['RA2000'].strip().replace(' ', ':')
     dec = src['DE2000'].strip().replace(' ', ':')
-    flux = np.array([np.nan if np.ma.is_masked(src[bin]) else src[bin] for bin in flux_bins])
+    flux = np.array([src[bin] for bin in flux_bins])
     # Edit out anomalous flux bins for specific sources to improve fit (these are outside KAT7 frequency band anyway)
     anomalous_flux, anomalous_bin = np.nan, -1
     if src['Jname'] in anomalies:

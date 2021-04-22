@@ -134,9 +134,9 @@ for src in table:
     pol_freq, pol_perc = [], []
     for freq in np.unique(pol_freqs):
         freqfind = (pol_freqs == freq)
-        pol_freq.append(freq.to_value(u.MHz))
+        pol_freq.append(freq)
         pol_perc.append(pol_percent[freqfind].mean())
-    pol_interp = np.interp(frequency.to_value(u.MHz), pol_freq, pol_perc)
+    pol_interp = np.interp(frequency, pol_freq, pol_perc)
     # Look up source name in 1Jy catalogue and extract its flux density model
     flux_target = flux_cat['1Jy ' + src['Name']]
     if flux_target is None:

@@ -148,7 +148,7 @@ def test_coordinates():
     assert np.array_equal(ant0.baseline_toward(ant).xyz, enu * u.m)
     reverse_bl = ant.baseline_toward(ant0)
     assert np.allclose(reverse_bl.xyz[:2], -(enu * u.m)[:2], rtol=0, atol=0.5 * u.mm)
-    assert np.allclose(reverse_bl.xyz[2], -(enu * u.m)[2], rtol=0, atol=1 * u.cm)
+    assert np.allclose(reverse_bl.xyz[2], -(enu * u.m)[2], rtol=0, atol=10 * u.mm)
 
 
 def test_local_sidereal_time():
