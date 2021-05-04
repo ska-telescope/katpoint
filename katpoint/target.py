@@ -214,7 +214,7 @@ class Target:
         return self._flux_frequency
 
     @flux_frequency.setter
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def flux_frequency(self, frequency: u.Hz = None):
         """Check that frequency has a valid unit or is `None`."""
         self._flux_frequency = frequency
@@ -866,7 +866,7 @@ class Target:
         ref_radec = self.radec(timestamp, antenna)
         return sphere_to_ortho(ref_radec.ra.rad, ref_radec.dec.rad, ra, dec)
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def flux_density(self, frequency: u.Hz = None) -> u.Jy:
         """Calculate flux density for given observation frequency (or frequencies).
 
@@ -906,7 +906,7 @@ class Target:
             return np.full(np.shape(frequency), np.nan) * u.Jy
         return self.flux_model.flux_density(frequency)
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def flux_density_stokes(self, frequency: u.Hz = None) -> u.Jy:
         """Calculate flux density for given observation frequency (or frequencies), full-Stokes.
 

@@ -19,6 +19,7 @@
 import pytest
 import numpy as np
 import astropy.units as u
+import astropy.constants as const
 
 import katpoint
 
@@ -114,3 +115,16 @@ def test_flux_density_stokes():
     np.testing.assert_array_equal(FLUX_TARGET.flux_density_stokes(),
                                   np.array([200.0, 50.0, 25.0, -75.0]) * u.Jy,
                                   'Flux calculation for default freq wrong')
+
+
+def test_wavelength_inputs():
+    model = katpoint.FluxDensityModel(100 * u.MHz, 200 * u.MHz, [0., 1.])
+    freq = 150 * u.MHz
+    assert np.allclose(model.flux_density(freq), 150 * u.Jy, rtol=1e-15)
+    wavelength = const.c / freq
+    assert np.allclose(model.flux_density(wavelength), 150 * u.Jy, rtol=1e-15)
+    model2 = katpoint.FluxDensityModel(const.c / (100 * u.MHz), const.c / (200 * u.MHz), [0., 1.])
+    freq = 150 * u.MHz
+    assert np.allclose(model2.flux_density(freq), 150 * u.Jy, rtol=1e-15)
+    wavelength = const.c / freq
+    assert np.allclose(model2.flux_density(wavelength), 150 * u.Jy, rtol=1e-15)

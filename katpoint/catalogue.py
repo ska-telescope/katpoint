@@ -296,7 +296,7 @@ class Catalogue:
     catalogue was assembled, which seems the most natural.
     """
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def __init__(self, targets=None, tags=None, add_specials=None, add_stars=None,
                  antenna=None, flux_frequency: u.Hz = None):
         self.lookup = defaultdict(list)
@@ -667,7 +667,7 @@ class Catalogue:
             Antenna which points at targets (defaults to default antenna)
         """.strip()
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def iterfilter(self, tags=None, flux_limit: u.Jy = None, flux_frequency: u.Hz = None,
                    az_limit: u.deg = None, el_limit: u.deg = None, dist_limit: u.deg = None,
                    proximity_targets=None, timestamp=None, antenna=None):
@@ -798,7 +798,7 @@ class Catalogue:
             # Return successful target and remove from list to ensure it is not picked again
             yield targets.pop(found_one)
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def filter(self, tags=None, flux_limit: u.Jy = None, flux_frequency: u.Hz = None,
                az_limit: u.deg = None, el_limit: u.deg = None, dist_limit: u.deg = None,
                proximity_targets=None, timestamp=None, antenna=None):
@@ -843,7 +843,7 @@ class Catalogue:
                                               proximity_targets, timestamp, antenna)),
                          antenna=self.antenna, flux_frequency=self.flux_frequency)
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def sort(self, key='name', ascending=True, flux_frequency: u.Hz = None, timestamp=None, antenna=None):
         """Sort targets in catalogue.
 
@@ -896,7 +896,7 @@ class Catalogue:
             self.targets = np.array(self.targets, dtype=object)[np.flipud(index)].tolist()
         return self
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def visibility_list(self, timestamp=None, antenna=None, flux_frequency: u.Hz = None, antenna2=None):
         r"""Print out list of targets in catalogue, sorted by decreasing elevation.
 

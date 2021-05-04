@@ -83,10 +83,10 @@ class FluxDensityModel:
     _DEFAULT_COEFS = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0,    # a, b, c, d, e, f
                                1.0, 0.0, 0.0, 0.0])             # I, Q, U, V
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def __init__(self, min_frequency: u.Hz, max_frequency: u.Hz, coefs):
-        self.min_frequency = min_frequency
-        self.max_frequency = max_frequency
+        self.min_frequency = min_frequency << u.MHz
+        self.max_frequency = max_frequency << u.MHz
         self.coefs = self._DEFAULT_COEFS.copy()
         # Extract up to the maximum number of coefficients from given sequence
         if len(coefs) > len(self.coefs):
@@ -168,7 +168,7 @@ class FluxDensityModel:
         log10_S = a + b * log10_v + c * log10_v ** 2 + d * log10_v ** 3 + e * np.exp(f * log10_v)
         return 10 ** log10_S * u.Jy
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def flux_density(self, frequency: u.Hz) -> u.Jy:
         """Calculate Stokes I flux density for given observation frequency.
 
@@ -183,12 +183,13 @@ class FluxDensityModel:
             Flux density, or NaN Jy if frequency is out of range.
             The shape matches the input.
         """
+        frequency <<= u.MHz
         flux = self._flux_density_raw(frequency) * self.iquv_scale[0]
         flux[frequency < self.min_frequency] = np.nan * u.Jy
         flux[frequency > self.max_frequency] = np.nan * u.Jy
         return flux
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def flux_density_stokes(self, frequency: u.Hz) -> u.Jy:
         """Calculate full-Stokes flux density for given observation frequency.
 
@@ -204,6 +205,7 @@ class FluxDensityModel:
             The shape matches the input with an extra trailing dimension
             of size 4 containing Stokes I, Q, U, V.
         """
+        frequency <<= u.MHz
         flux = self._flux_density_raw(frequency)
         flux[frequency < self.min_frequency] = np.nan * u.Jy
         flux[frequency > self.max_frequency] = np.nan * u.Jy

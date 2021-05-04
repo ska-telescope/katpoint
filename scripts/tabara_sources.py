@@ -151,7 +151,7 @@ for src in table:
         continue
     src_strings.append(target_description + '\n')
     print(f"{src['Name']} cat flux @ 6cm: {src['S6cm'] * u.Jy:.2f}, "
-          f"model flux @ 6cm: {target.flux_density(4996.54 * u.MHz):.2f}, "
+          f"model flux @ 6cm: {target.flux_density(6 * u.cm):.2f}, "
           f"@ {frequency:.0f}: {target.flux_density(frequency):.2f}, "
           f"%pol: {pol_interp:.2f} polflux: {pol_flux:.3f}")
 
