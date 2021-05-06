@@ -23,7 +23,8 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 import astropy.constants as const
-from astropy.coordinates import SkyCoord, Angle, ICRS, Galactic, FK4, AltAz, CIRS
+from astropy.coordinates import (SkyCoord, Angle, ICRS, Galactic, FK4, AltAz, CIRS,
+                                 CartesianRepresentation)
 
 from .timestamp import Timestamp, delta_seconds
 from .antenna import Antenna
@@ -121,8 +122,8 @@ class Target:
         Object encapsulating spectral flux density model
     antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
         Default antenna / location to use for position calculations
-    flux_freq_MHz : float, optional
-        Default frequency at which to evaluate flux density, in MHz
+    flux_frequency : :class:`~astropy.units.Quantity`, optional
+        Default frequency at which to evaluate flux density
 
     Raises
     ------
@@ -131,9 +132,9 @@ class Target:
     """
 
     def __init__(self, target, name=_DEFAULT, user_tags=_DEFAULT, aliases=_DEFAULT,
-                 flux_model=_DEFAULT, antenna=_DEFAULT, flux_freq_MHz=_DEFAULT):
+                 flux_model=_DEFAULT, antenna=_DEFAULT, flux_frequency=_DEFAULT):
         default = SimpleNamespace(name='', user_tags=[], aliases=(), flux_model=None,
-                                  antenna=None, flux_freq_MHz=None)
+                                  antenna=None, flux_frequency=None)
         if isinstance(target, str):
             # Create a temporary Target object to serve up default parameters instead
             target = Target.from_description(target)
@@ -154,7 +155,8 @@ class Target:
         self._aliases = default.aliases if aliases is _DEFAULT else tuple(aliases)
         self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
         self.antenna = default.antenna if antenna is _DEFAULT else antenna
-        self.flux_freq_MHz = default.flux_freq_MHz if flux_freq_MHz is _DEFAULT else flux_freq_MHz
+        self._flux_frequency = None
+        self.flux_frequency = default.flux_frequency if flux_frequency is _DEFAULT else flux_frequency
 
     def __str__(self):
         """Complete string representation of target object, sufficient to reconstruct it."""
@@ -205,6 +207,17 @@ class Target:
     def names(self):
         """Tuple of all names (both preferred and alternate) of the target."""
         return (self.name,) + self._aliases
+
+    @property
+    def flux_frequency(self):
+        """Default frequency at which to evaluate flux density."""
+        return self._flux_frequency
+
+    @flux_frequency.setter
+    @u.quantity_input(equivalencies=u.spectral())
+    def flux_frequency(self, frequency: u.Hz = None):
+        """Check that frequency has a valid unit or is `None`."""
+        self._flux_frequency = frequency
 
     @property
     def description(self):
@@ -366,7 +379,7 @@ class Target:
 
         # Extract flux model if it is available
         if fields and fields[0].strip(' ()'):
-            flux_model = FluxDensityModel(fields[0])
+            flux_model = FluxDensityModel.from_description(fields[0])
         else:
             flux_model = None
         return cls(body, preferred_name, tags, aliases, flux_model)
@@ -678,9 +691,9 @@ class Target:
 
         Returns
         -------
-        delay : float, or array of same shape as *timestamp*
-            Geometric delay, in seconds
-        delay_rate : float, or array of same shape as *timestamp*
+        delay : :class:`~astropy.units.Quantity` of same shape as *timestamp*
+            Geometric delay
+        delay_rate : :class:`~astropy.units.Quantity` of same shape as *timestamp*
             Rate of change of geometric delay, in seconds per second
 
         Raises
@@ -698,16 +711,18 @@ class Target:
         time, location = self._astropy_funnel(timestamp, antenna)
         antenna = self._valid_antenna(antenna)
         # Obtain baseline vector from reference antenna to second antenna
-        baseline_m = antenna.baseline_toward(antenna2)
+        baseline = antenna.baseline_toward(antenna2)
         # Obtain direction vector(s) from reference antenna to target, and numerically
         # estimate delay rate from difference across 1-second interval spanning timestamp(s)
-        times = time[..., np.newaxis] + delta_seconds([-0.5, 0.0, 0.5])
+        offset = delta_seconds([-0.5, 0.0, 0.5])
+        times = time[..., np.newaxis] + offset
         azel = self.azel(times, location)
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline_m, targetdirs) / const.c.to_value(u.m / u.s)
-        return delays[..., 1], delays[..., 2] - delays[..., 0]
+        delays = -np.einsum('j,j...', baseline.xyz, targetdirs) / const.c
+        delay_rate = (delays[..., 2] - delays[..., 0]) / (offset[2] - offset[0]).to(u.s)
+        return delays[..., 1], delay_rate
 
     def uvw_basis(self, timestamp=None, antenna=None):
         """Calculate the coordinate transformation from local ENU coordinates
@@ -721,18 +736,18 @@ class Target:
         Parameters
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp(s), defaults to now
+            Timestamp(s) of shape T, defaults to now
         antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             Reference antenna of baseline pairs, which also serves as
             pointing reference (defaults to default antenna)
 
         Returns
         -------
-        uvw : 2D or 3D array
+        uvw_basis : array of float, shape (3, 3) + T
             Orthogonal basis vectors for the transformation. If `timestamp` is
             scalar, the return value is a matrix to multiply by ENU column
-            vectors to produce UVW vectors. If `timestamp` is a vector,
-            the first two dimensions correspond to the matrix and the
+            vectors to produce UVW vectors. If `timestamp` is an array of
+            shape T, the first two dimensions correspond to the matrix and the
             remaining dimension(s) to the timestamp.
         """
         time, location = self._astropy_funnel(timestamp, antenna)
@@ -762,7 +777,7 @@ class Target:
         else:
             radec = self.radec(time, location)
         offset_sign = -1 if radec.dec > 0 else 1
-        offset = Target.from_radec(radec.ra.rad, radec.dec.rad + 0.03 * offset_sign)
+        offset = Target.from_radec(radec.ra, radec.dec + offset_sign * 0.03 * u.rad)
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
@@ -791,21 +806,18 @@ class Target:
         Parameters
         ----------
         antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna` or sequence
-            Second antenna of baseline pair (baseline vector points toward it)
+            Second antenna of baseline pair (baseline vector points toward it), shape A
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp(s), defaults to now
+            Timestamp(s) of shape T, defaults to now
         antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
 
         Returns
         -------
-        uvw : array
-            (u, v, w) coordinates of baseline, in metres. The axes are:
-
-            - u/v/w
-            - time, if `timestamp` is not scalar
-            - antenna, if `antenna2` is a sequence
+        uvw : :class:`~astropy.coordinates.CartesianRepresentation`, shape T + A
+            (u, v, w) coordinates of baseline as Cartesian (x, y, z), in units of length.
+            The shape is a concatenation of the `timestamp` and `antenna2` shapes.
 
         Notes
         -----
@@ -817,15 +829,15 @@ class Target:
         # Obtain basis vectors
         basis = self.uvw_basis(timestamp, antenna)
         antenna = self._valid_antenna(antenna)
-        # Obtain baseline vector from reference antenna to second antenna
+        # Obtain baseline vector from reference antenna to second antenna(s)
         try:
-            baseline_m = np.stack([antenna.baseline_toward(a2) for a2 in antenna2])
+            baseline = np.stack([antenna.baseline_toward(a2).xyz for a2 in antenna2])
         except TypeError:
-            baseline_m = antenna.baseline_toward(antenna2)
+            baseline = antenna.baseline_toward(antenna2).xyz
         # Apply linear coordinate transformation. A single call np.dot won't
         # work for both the scalar and array case, so we explicitly specify the
         # axes to sum over.
-        return np.tensordot(basis, baseline_m, ([1], [-1]))
+        return CartesianRepresentation(np.tensordot(basis, baseline, ([1], [-1])))
 
     def lmn(self, ra, dec, timestamp=None, antenna=None):
         """Calculate (l, m, n) coordinates for another target, while pointing at
@@ -854,7 +866,8 @@ class Target:
         ref_radec = self.radec(timestamp, antenna)
         return sphere_to_ortho(ref_radec.ra.rad, ref_radec.dec.rad, ra, dec)
 
-    def flux_density(self, flux_freq_MHz=None):
+    @u.quantity_input(equivalencies=u.spectral())
+    def flux_density(self, frequency: u.Hz = None) -> u.Jy:
         """Calculate flux density for given observation frequency (or frequencies).
 
         This uses the stored flux density model to calculate the flux density at
@@ -870,31 +883,31 @@ class Target:
 
         Parameters
         ----------
-        freq_MHz : float or sequence, optional
-            Frequency at which to evaluate flux density, in MHz
+        frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate flux density
 
         Returns
         -------
-        flux_density : float, or array of same shape as *freq_MHz*
+        flux_density : :class:`~astropy.units.Quantity`
             Flux density in Jy, or np.nan if frequency is out of range or target
-            does not have flux model
+            does not have flux model. The shape matches the input.
 
         Raises
         ------
         ValueError
             If no frequency is specified, and no default frequency was set either
         """
-        if flux_freq_MHz is None:
-            flux_freq_MHz = self.flux_freq_MHz
-        if flux_freq_MHz is None:
+        if frequency is None:
+            frequency = self._flux_frequency
+        if frequency is None:
             raise ValueError('Please specify frequency at which to measure flux density')
         if self.flux_model is None:
             # Target has no specified flux density
-            flux = np.full(np.shape(flux_freq_MHz), np.nan)
-            return flux if flux.ndim else flux.item()
-        return self.flux_model.flux_density(flux_freq_MHz)
+            return np.full(np.shape(frequency), np.nan) * u.Jy
+        return self.flux_model.flux_density(frequency)
 
-    def flux_density_stokes(self, flux_freq_MHz=None):
+    @u.quantity_input(equivalencies=u.spectral())
+    def flux_density_stokes(self, frequency: u.Hz = None) -> u.Jy:
         """Calculate flux density for given observation frequency (or frequencies), full-Stokes.
 
         See :meth:`flux_density`
@@ -908,12 +921,12 @@ class Target:
 
         Parameters
         ----------
-        freq_MHz : float or sequence, optional
-            Frequency at which to evaluate flux density, in MHz
+        frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate flux density
 
         Returns
         -------
-        flux_density : array of float
+        flux_density : :class:`~astropy.units.Quantity`
             Flux density in Jy, or np.nan if frequency is out of range or target
             does not have flux model. The shape matches the input with an extra
             trailing dimension of size 4 containing Stokes I, Q, U, V.
@@ -923,13 +936,13 @@ class Target:
         ValueError
             If no frequency is specified, and no default frequency was set either
         """
-        if flux_freq_MHz is None:
-            flux_freq_MHz = self.flux_freq_MHz
-        if flux_freq_MHz is None:
+        if frequency is None:
+            frequency = self._flux_frequency
+        if frequency is None:
             raise ValueError('Please specify frequency at which to measure flux density')
         if self.flux_model is None:
-            return np.full(np.shape(flux_freq_MHz) + (4,), np.nan)
-        return self.flux_model.flux_density_stokes(flux_freq_MHz)
+            return np.full(np.shape(frequency) + (4,), np.nan) * u.Jy
+        return self.flux_model.flux_density_stokes(frequency)
 
     def separation(self, other_target, timestamp=None, antenna=None):
         """Angular separation between this target and another as viewed from antenna.

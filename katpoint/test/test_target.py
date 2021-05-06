@@ -50,7 +50,7 @@ def test_construct_target():
     # Override some parameters
     a0 = katpoint.Antenna('XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0, 1 2 3, 1 2 3, 1.14')
     t0b = katpoint.Target(t0.description, name='Marie', user_tags='no_collab',
-                          aliases=['Fee', 'Fie', 'Foe'], antenna=a0, flux_freq_MHz=1284.)
+                          aliases=['Fee', 'Fie', 'Foe'], antenna=a0, flux_frequency=1284. * u.MHz)
     assert t0b.body.coord == t0.body.coord
     assert t0b.name == 'Marie'
     assert t0b.tags == ['radec', 'no_collab']
@@ -58,16 +58,16 @@ def test_construct_target():
     assert t0b.aliases == ('Fee', 'Fie', 'Foe')
     assert t0b.flux_model == t0.flux_model
     assert t0b.antenna == a0
-    assert t0b.flux_freq_MHz == 1284.
+    assert t0b.flux_frequency == 1.284 * u.GHz
     # Check that we can also replace non-default parameters with defaults
-    t0c = katpoint.Target(t0, name='', flux_model=None, antenna=None, flux_freq_MHz=None)
+    t0c = katpoint.Target(t0, name='', flux_model=None, antenna=None, flux_frequency=None)
     assert t0c.body.coord == t0.body.coord
     assert t0c.name == t0.body.default_name  # Target name cannot be empty - use default
     assert t0c.tags == t0.tags
     assert t0c.aliases == t0.aliases
     assert t0c.flux_model is None
     assert t0c.antenna is None
-    assert t0c.flux_freq_MHz is None
+    assert t0c.flux_frequency is None
     # Check that construction from Target is nearly exact (within 10 nanoarcsec)
     t1 = katpoint.Target.from_radec(np.e * u.deg, np.pi * u.deg)
     t2 = katpoint.Target(t1)
@@ -82,6 +82,8 @@ def test_construct_target():
     # Bytes are right out
     with pytest.raises(TypeError):
         katpoint.Target(b'azel, -30.0, 90.0')
+    with pytest.raises(TypeError):
+        katpoint.Target(t0, flux_frequency=1284.)
 
 
 def test_construct_target_from_azel():
@@ -196,7 +198,7 @@ def test_add_tags():
     assert tag_target.user_tags == ['J2000', 'GPS', 'pulsar', 'SNR'], 'Added tags not correct'
 
 
-FLUX_MODEL = katpoint.FluxDensityModel('(1000.0 2000.0 1.0 10.0)')
+FLUX_MODEL = katpoint.FluxDensityModel.from_description('(1000.0 2000.0 1.0 10.0)')
 
 
 @pytest.mark.parametrize(
@@ -385,15 +387,15 @@ def test_array_valued_methods(description):
     _array_vs_scalar(lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.galactic(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.parallactic_angle(t, ANT1), times)
-    _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1), times, pre_shape=(2,))
+    _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[0], times)
+    _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[1], times)
     _array_vs_scalar(lambda t: target.uvw_basis(t, ANT1), times, pre_shape=(3, 3))
-    _array_vs_scalar(lambda t: target.uvw([ANT1, ANT2], t, ANT1),
-                     times, pre_shape=(3,), post_shape=(2,))
+    _array_vs_scalar(lambda t: target.uvw([ANT1, ANT2], t, ANT1), times, post_shape=(2,))
     _array_vs_scalar(lambda t: target.lmn(0.0, 0.0, t, ANT1), times, pre_shape=(3,))
     l, m, n = target.lmn(np.zeros_like(offsets), np.zeros_like(offsets), times, ANT1)
     assert l.shape == m.shape == n.shape == offsets.shape
-    np.testing.assert_allclose(target.separation(target, times, ANT1).rad,
-                               np.zeros_like(offsets), atol=1e-12)
+    assert np.allclose(target.separation(target, times, ANT1).rad,
+                       np.zeros_like(offsets), atol=1e-12)
 
 
 def test_coords():
@@ -416,28 +418,28 @@ def test_coords():
 
 DELAY_TARGET = katpoint.Target('radec, 20.0, -20.0')
 DELAY_TS = [TS, TS + 1.0]
-DELAY = [1.75538294e-08, 1.75522002e-08]
-DELAY_RATE = [-1.62915174e-12, -1.62929689e-12]
+DELAY = [1.75538294e-08, 1.75522002e-08] * u.s
+DELAY_RATE = [-1.62915174e-12, -1.62929689e-12] * (u.s / u.s)
 UVW = ([-7.118580813334029, -11.028682662045913, -5.262505671628351],
-       [-7.119215642091996, -11.028505936045280, -5.262017242465739])
+       [-7.119215642091996, -11.028505936045280, -5.262017242465739]) * u.m
 
 
 def test_delay():
     """Test geometric delay."""
     delay, delay_rate = DELAY_TARGET.geometric_delay(ANT2, DELAY_TS[0], ANT1)
-    np.testing.assert_allclose(delay, DELAY[0])
-    np.testing.assert_allclose(delay_rate, DELAY_RATE[0])
+    assert np.allclose(delay, DELAY[0], rtol=0, atol=0.001 * u.ps)
+    assert np.allclose(delay_rate, DELAY_RATE[0], rtol=1e-10, atol=1e-20)
     delay, delay_rate = DELAY_TARGET.geometric_delay(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_allclose(delay, DELAY)
-    np.testing.assert_allclose(delay_rate, DELAY_RATE)
+    assert np.allclose(delay, DELAY, rtol=0, atol=0.001 * u.ps)
+    assert np.allclose(delay_rate, DELAY_RATE, rtol=1e-10, atol=1e-20)
 
 
 def test_uvw():
     """Test uvw calculation."""
     uvw = DELAY_TARGET.uvw(ANT2, DELAY_TS[0], ANT1)
-    np.testing.assert_almost_equal(uvw, UVW[0], decimal=8)
+    assert np.allclose(uvw.xyz, UVW[0], rtol=0, atol=10 * u.nm)
     uvw = DELAY_TARGET.uvw(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_array_almost_equal(uvw, np.c_[UVW], decimal=8)
+    assert np.allclose(uvw.xyz, UVW.T, rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_timestamp_array_azel():
@@ -445,20 +447,20 @@ def test_uvw_timestamp_array_azel():
     azel = DELAY_TARGET.azel(DELAY_TS[0], ANT1)
     target = katpoint.Target.from_azel(azel.az, azel.alt)
     uvw = target.uvw(ANT2, DELAY_TS, ANT1)
-    np.testing.assert_array_almost_equal(uvw[:, 0], UVW[0], decimal=8)
-    np.testing.assert_array_almost_equal(uvw[2], [UVW[0][2]] * len(DELAY_TS), decimal=8)
+    assert np.allclose(uvw[0].xyz, UVW[0], rtol=0, atol=10 * u.nm)
+    assert np.allclose(uvw.z, [UVW[0, 2]] * len(DELAY_TS), rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_antenna_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
-    np.testing.assert_array_almost_equal(uvw, np.c_[np.zeros(3), UVW[0]], decimal=8)
+    assert np.allclose(uvw.xyz, np.c_[np.zeros(3), UVW[0]], rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_both_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
     # UVW array has shape (3, n_times, n_bls) - stack times along dim 1 and ants along dim 2
-    desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), np.c_[UVW]])
-    np.testing.assert_array_almost_equal(uvw, desired_uvw, decimal=8)
+    desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), UVW.T])
+    assert np.allclose(uvw.xyz, desired_uvw, rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_hemispheres():
@@ -467,13 +469,11 @@ def test_uvw_hemispheres():
     The implementation behaves differently depending on the sign of
     declination. This test is to catch sign flip errors.
     """
-    target1 = katpoint.Target.from_radec(0.0, -1e-9)
-    target2 = katpoint.Target.from_radec(0.0, +1e-9)
-    u1, v1, w1 = target1.uvw(ANT2, TS, ANT1)
-    u2, v2, w2 = target2.uvw(ANT2, TS, ANT1)
-    np.testing.assert_almost_equal(u1, u2, decimal=3)
-    np.testing.assert_almost_equal(v1, v2, decimal=3)
-    np.testing.assert_almost_equal(w1, w2, decimal=3)
+    target1 = katpoint.Target.from_radec(0 * u.deg, -0.2 * u.mas)
+    target2 = katpoint.Target.from_radec(0 * u.deg, +0.2 * u.mas)
+    uvw1 = target1.uvw(ANT2, TS, ANT1)
+    uvw2 = target2.uvw(ANT2, TS, ANT1)
+    assert np.allclose(uvw1.xyz, uvw2.xyz, rtol=0, atol=25 * u.micron)
 
 
 def test_lmn():
@@ -531,9 +531,12 @@ def _ant_vs_location(func, atol=0.0):
     try:
         # Use sky coordinate separation to obtain floating-point difference
         separation = location_output.separation(ant_output)
-        np.testing.assert_allclose(separation, 0.0, rtol=0.0, atol=atol)
+        assert np.allclose(separation, 0.0, rtol=0.0, atol=atol)
     except AttributeError:
-        np.testing.assert_allclose(location_output, ant_output, rtol=0.0, atol=atol)
+        try:
+            assert np.allclose(location_output.xyz, ant_output.xyz, rtol=0.0, atol=atol)
+        except AttributeError:
+            assert np.allclose(location_output, ant_output, rtol=0.0, atol=atol)
 
 
 def test_earth_location():

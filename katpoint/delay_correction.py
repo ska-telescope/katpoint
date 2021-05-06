@@ -78,7 +78,7 @@ class DelayCorrection:
         If description string is invalid
     """
 
-    @u.quantity_input
+    @u.quantity_input(equivalencies=u.spectral())
     def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
                  extra_correction: u.s = None, tropospheric_model='None'):
         # Unpack JSON-encoded description string

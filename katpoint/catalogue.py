@@ -23,6 +23,7 @@ from collections import defaultdict
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
+from astropy.coordinates import Angle, Longitude
 
 from .target import Target
 from .timestamp import Timestamp
@@ -169,10 +170,13 @@ class Catalogue:
       supplied to the catalogue during initialisation. This is stored in each
       target in the catalogue. An example is::
 
+        import astropy.units as u
         cat = katpoint.Catalogue(open('source_list.csv'))
-        cat1 = cat.filter(flux_limit_Jy=[1, 100], flux_freq_MHz=1500)
-        cat = katpoint.Catalogue(open('source_list.csv'), flux_freq_MHz=1500)
-        cat1 = cat.filter(flux_limit_Jy=1)
+        cat1 = cat.filter(flux_limit=[1, 100] * u.Jy,
+                          flux_frequency=1500 * u.MHz)
+        cat = katpoint.Catalogue(open('source_list.csv'),
+                                 flux_frequency=1500 * u.MHz)
+        cat1 = cat.filter(flux_limit=1 * u.Jy)
 
     - *Azimuth filter*. Returns all targets with an azimuth angle in the given
       range. The range is specified in degrees as [left, right], where *left* is
@@ -185,24 +189,28 @@ class Catalogue:
       associated with the catalogue during initialisation, from where it is
       stored in each target. An example is::
 
+        import astropy.units as u
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
         targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
         cat = katpoint.Catalogue(targets)
-        cat1 = cat.filter(az_limit_deg=[0, 90], timestamp='2009-10-10', antenna=ant)
+        cat1 = cat.filter(az_limit=[0, 90] * u.deg,
+                          timestamp='2009-10-10', antenna=ant)
         cat = katpoint.Catalogue(antenna=ant)
-        cat1 = cat.filter(az_limit_deg=[90, 0])
+        cat1 = cat.filter(az_limit=[90, 0] * u.deg)
 
     - *Elevation filter*. Returns all targets with an elevation angle within the
       given limits, in degrees. If only one limit is given, it is assumed to be
       a lower limit. As with the azimuth filter, a timestamp and antenna object
       is required (or defaults will be used). An example is::
 
+        import astropy.units as u
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
         targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
         cat = katpoint.Catalogue(targets)
-        cat1 = cat.filter(el_limit_deg=[10, 30], timestamp='2009-10-10', antenna=ant)
+        cat1 = cat.filter(el_limit=[10, 30] * u.deg,
+                          timestamp='2009-10-10', antenna=ant)
         cat = katpoint.Catalogue(antenna=ant)
-        cat1 = cat.filter(el_limit_deg=10)
+        cat1 = cat.filter(el_limit=10 * u.deg)
 
     - *Proximity filter*. Returns all targets with angular separation from a
       given set of targets within a specified range. The range is given as a
@@ -212,16 +220,18 @@ class Catalogue:
       targets. As with the azimuth filter, a timestamp and antenna object is
       required (or defaults will be used). An example is::
 
+        import astropy.units as u
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
         targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
         cat = katpoint.Catalogue(targets)
         cat.add_tle(open('geo.txt'))
         sun = cat['Sun']
         afristar = cat['AFRISTAR']
-        cat1 = cat.filter(dist_limit_deg=5, proximity_targets=[sun, afristar],
+        cat1 = cat.filter(dist_limit=5 * u.deg,
+                          proximity_targets=[sun, afristar],
                           timestamp='2009-10-10', antenna=ant)
         cat = katpoint.Catalogue(antenna=ant)
-        cat1 = cat.filter(dist_limit_deg=[0, 5], proximity_targets=sun)
+        cat1 = cat.filter(dist_limit=[0, 5] * u.deg, proximity_targets=sun)
 
     The criteria may be divided into *static* criteria which are independent of
     time (tags and flux) and *dynamic* criteria which do depend on time
@@ -235,7 +245,8 @@ class Catalogue:
       the same time instant. A typical use-case is::
 
         cat = katpoint.Catalogue(open('source_list.csv'))
-        strong_sources = cat.filter(flux_limit_Jy=10.0, flux_freq_MHz=1500)
+        strong_sources = cat.filter(flux_limit=10 * u.Jy,
+                                    flux_frequency=1500 * u.MHz)
 
     - An iterator filter, implemented by the :meth:`Catalogue.iterfilter`
       method. This is a Python *generator function*, which returns a
@@ -248,7 +259,7 @@ class Catalogue:
 
         cat = katpoint.Catalogue(open('source_list.csv'))
         ant = katpoint.Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
-        for t in cat.iterfilter(el_limit_deg=10, antenna=ant):
+        for t in cat.iterfilter(el_limit=10 * u.deg, antenna=ant):
             # < observe target t >
 
     When a catalogue is sorted, the order of the target list is changed. The
@@ -271,8 +282,8 @@ class Catalogue:
         Always False (stars have no special support anymore) **DEPRECATED**
     antenna : :class:`Antenna` object, optional
         Default antenna to use for position calculations for all targets
-    flux_freq_MHz : float, optional
-        Default frequency at which to evaluate flux density of all targets (MHz)
+    flux_frequency : :class:`~astropy.units.Quantity`, optional
+        Default frequency at which to evaluate flux density of all targets
 
     Notes
     -----
@@ -285,12 +296,13 @@ class Catalogue:
     catalogue was assembled, which seems the most natural.
     """
 
+    @u.quantity_input(equivalencies=u.spectral())
     def __init__(self, targets=None, tags=None, add_specials=None, add_stars=None,
-                 antenna=None, flux_freq_MHz=None):
+                 antenna=None, flux_frequency: u.Hz = None):
         self.lookup = defaultdict(list)
         self.targets = []
         self._antenna = antenna
-        self._flux_freq_MHz = flux_freq_MHz
+        self._flux_frequency = flux_frequency
         if add_specials is not None:
             if add_specials:
                 raise ValueError('The add_specials parameter is not supported anymore - '
@@ -320,15 +332,15 @@ class Catalogue:
             target.antenna = ant
 
     @property
-    def flux_freq_MHz(self):
-        """Default frequency at which to evaluate flux density, in MHz."""
-        return self._flux_freq_MHz
+    def flux_frequency(self):
+        """Default frequency at which to evaluate flux density."""
+        return self._flux_frequency
 
-    @flux_freq_MHz.setter
-    def flux_freq_MHz(self, freq):
-        self._flux_freq_MHz = freq
+    @flux_frequency.setter
+    def flux_frequency(self, frequency):
+        self._flux_frequency = frequency
         for target in self.targets:
-            target.flux_freq_MHz = freq
+            target.flux_frequency = frequency
 
     def __str__(self):
         """Target description strings making up the catalogue, joined by newlines."""
@@ -446,7 +458,7 @@ class Catalogue:
                 logger.warning("Found different targets with same name(s) "
                                "'%s' in catalogue", ', '.join(existing_names))
             target.antenna = self.antenna
-            target.flux_freq_MHz = self.flux_freq_MHz
+            target.flux_frequency = self.flux_frequency
             self.targets.append(target)
             for name in target.names:
                 self.lookup[_normalised(name)].append(target)
@@ -594,29 +606,71 @@ class Catalogue:
 
         Parameters
         ----------
-        target : :class:`Target` object
+        target : :class:`Target`
             Target with which catalogue targets are compared
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp at which to evaluate target positions (defaults to now)
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`Antenna`, optional
             Antenna which points at targets (defaults to default antenna)
 
         Returns
         -------
-        closest_target : :class:`Target` object or None
+        closest_target : :class:`Target` or None
             Target in catalogue that is closest to given *target*, or None if
             catalogue is empty
-        min_dist : float
-            Angular separation between *target* and *closest_target*, in degrees
+        min_dist : :class:`~astropy.coordinates.Angle`
+            Angular separation between *target* and *closest_target*
         """
         if len(self.targets) == 0:
-            return None, 180.0
-        dist = np.array([target.separation(tgt, timestamp, antenna).deg for tgt in self.targets])
+            return None, Angle(180.0 * u.deg)
+        # Use the given target's default antenna unless it has none
+        if antenna is None and target.antenna is None:
+            antenna = self.antenna
+        dist = np.stack([target.separation(tgt, timestamp, antenna) for tgt in self.targets])
         closest = dist.argmin()
         return self.targets[closest], dist[closest]
 
-    def iterfilter(self, tags=None, flux_limit_Jy=None, flux_freq_MHz=None, az_limit_deg=None, el_limit_deg=None,
-                   dist_limit_deg=None, proximity_targets=None, timestamp=None, antenna=None):
+    _FILTER_PARAMETERS_DOCSTRING = """
+        Parameters
+        ----------
+        tags : string, or sequence of strings, optional
+            Tag or list of tags which targets should have. Tags prepended with
+            a tilde (~) indicate tags which targets should *not* have. The string
+            may contain multiple tags separated by whitespace. If None or an
+            empty list, all tags are accepted. Remember that the body type is
+            also a tag.
+        flux_limit : :class:`~astropy.units.Quantity`, optional
+            Allowed flux density range. If this is a single number, it is the
+            lower limit, otherwise it takes the form [lower, upper]. If None,
+            any flux density is accepted.
+        flux_frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate the flux density
+        az_limit : :class:`~astropy.units.Quantity`, optional
+            Allowed azimuth range. It takes the form [left, right], where *left*
+            is the leftmost or starting azimuth, and *right* is the rightmost or
+            ending azimuth. If *right* is less than *left*, the azimuth angles
+            range around +-180. If None, any azimuth is accepted.
+        el_limit : :class:`~astropy.units.Quantity`, optional
+            Allowed elevation range. If this is a single number, it is the
+            lower limit, otherwise it takes the form [lower, upper]. If None,
+            any elevation is accepted.
+        dist_limit : :class:`~astropy.units.Quantity`, optional
+            Allowed range of angular distance to proximity targets. If this is
+            a single number, it is the lower limit, otherwise it takes the form
+            [lower, upper]. If None, any distance is accepted.
+        proximity_targets : :class:`Target`, or sequence of :class:`Target`
+            Target or list of targets used in proximity filter
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+            Timestamp at which to evaluate target positions (defaults to now).
+            For :meth:`iterfilter` the default is the current time *at each iteration*.
+        antenna : :class:`Antenna` object, optional
+            Antenna which points at targets (defaults to default antenna)
+        """.strip()
+
+    @u.quantity_input(equivalencies=u.spectral())
+    def iterfilter(self, tags=None, flux_limit: u.Jy = None, flux_frequency: u.Hz = None,
+                   az_limit: u.deg = None, el_limit: u.deg = None, dist_limit: u.deg = None,
+                   proximity_targets=None, timestamp=None, antenna=None):
         """Generator function which returns targets satisfying various criteria.
 
         This returns a (generator-)iterator which returns targets satisfying
@@ -627,40 +681,7 @@ class Catalogue:
         not in advance as with :meth:`filter`. This simplifies finding the next
         suitable target during an extended observation of several targets.
 
-        Parameters
-        ----------
-        tags : string, or sequence of strings, optional
-            Tag or list of tags which targets should have. Tags prepended with
-            a tilde (~) indicate tags which targets should *not* have. The string
-            may contain multiple tags separated by whitespace. If None or an
-            empty list, all tags are accepted. Remember that the body type is
-            also a tag.
-        flux_limit_Jy : float or sequence of 2 floats, optional
-            Allowed flux density range, in Jy. If this is a single number, it is
-            the lower limit, otherwise it takes the form [lower, upper]. If None,
-            any flux density is accepted.
-        flux_freq_MHz : float, optional
-            Frequency at which to evaluate the flux density, in MHz
-        az_limit_deg : sequence of 2 floats, optional
-            Allowed azimuth range, in degrees. It takes the form [left, right],
-            where *left* is the leftmost or starting azimuth, and *right* is the
-            rightmost or ending azimuth. If *right* is less than *left*, the
-            azimuth angles range around +-180. If None, any azimuth is accepted.
-        el_limit_deg : float or sequence of 2 floats, optional
-            Allowed elevation range, in degrees. If this is a single number, it
-            is the lower limit, otherwise it takes the form [lower, upper].
-            If None, any elevation is accepted.
-        dist_limit_deg : float or sequence of 2 floats, optional
-            Allowed range of angular distance to proximity targets, in degrees.
-            If this is a single number, it is the lower limit, otherwise it
-            takes the form [lower, upper]. If None, any distance is accepted.
-        proximity_targets : :class:`Target` object, or sequence of objects
-            Target or list of targets used in proximity filter
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp at which to evaluate target positions.
-            If None, the current time *at each iteration* is used.
-        antenna : :class:`Antenna` object, optional
-            Antenna which points at targets (defaults to default antenna)
+        {Parameters}
 
         Returns
         -------
@@ -670,24 +691,26 @@ class Catalogue:
         Raises
         ------
         ValueError
-            If some required parameters are missing
+            If some required parameters are missing or limits are invalid
 
         Examples
         --------
         Here are some ways to filter a catalogue iteratively:
 
         >>> from katpoint import Catalogue, Antenna
+        >>> import astropy.units as u
         >>> ant = Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
-        >>> cat = Catalogue(antenna=ant)
-        >>> for t in cat.iterfilter(el_limit_deg=10):
+        >>> targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
+        >>> cat = Catalogue(targets, antenna=ant)
+        >>> for t in cat.iterfilter(el_limit=10 * u.deg):
                 # Observe target t
                 pass
         """
         tag_filter = tags is not None
-        flux_filter = flux_limit_Jy is not None
-        azimuth_filter = az_limit_deg is not None
-        elevation_filter = el_limit_deg is not None
-        proximity_filter = dist_limit_deg is not None
+        flux_filter = flux_limit is not None
+        azimuth_filter = az_limit is not None
+        elevation_filter = el_limit is not None
+        proximity_filter = dist_limit is not None
         # Copy targets to a new list which will be pruned by filters
         targets = list(self.targets)
 
@@ -703,23 +726,43 @@ class Catalogue:
                 targets = [target for target in targets if not set(target.tags) & undesired_tags]
 
         if flux_filter:
-            if np.isscalar(flux_limit_Jy):
-                flux_limit_Jy = [flux_limit_Jy, np.inf]
-            flux = [target.flux_density(flux_freq_MHz) for target in targets]
-            targets = [target for n, target in enumerate(targets)
-                       if (flux[n] >= flux_limit_Jy[0]) & (flux[n] <= flux_limit_Jy[1])]
+            if flux_limit.isscalar:
+                flux_limit = flux_limit, np.inf * u.Jy  # scalar becomes lower limit
+            try:
+                flux_lower, flux_upper = flux_limit
+            except ValueError as err:
+                raise ValueError('Flux limit should have the form <lower> or [<lower>, <upper>], '
+                                 f'not {flux_limit}') from err
+            targets = [target for target in targets
+                       if flux_lower <= target.flux_density(flux_frequency) < flux_upper]
 
-        # Now prepare for dynamic criteria (elevation, proximity) which depend on potentially changing timestamp
-        if elevation_filter and np.isscalar(el_limit_deg):
-            el_limit_deg = [el_limit_deg, 90.0]
-        # Quick fix to accommodate negative azimuth values (assumes target az is in range 0 to 360 degrees)
+        # Now prepare for dynamic criteria (azimuth, elevation, proximity)
+        # which depend on potentially changing timestamp
         if azimuth_filter:
-            az_limit_deg = [az_limit_deg[0] % 360., az_limit_deg[1] % 360.]
+            try:
+                # Wrap negative azimuth values to the expected range of 0-360 degrees
+                az_left, az_right = Longitude(az_limit)
+            except TypeError as err:
+                raise ValueError('Azimuth limit should have the form [<left>, <right>], '
+                                 f'not {az_limit}') from err
+        if elevation_filter:
+            if el_limit.isscalar:
+                el_limit = el_limit, None  # scalar becomes lower limit
+            try:
+                el_lower, el_upper = el_limit
+            except ValueError as err:
+                raise ValueError('Elevation limit should have the form <lower> '
+                                 f'or [<lower>, <upper>], not {el_limit}') from err
         if proximity_filter:
             if proximity_targets is None:
                 raise ValueError('Please specify proximity target(s) for proximity filter')
-            if np.isscalar(dist_limit_deg):
-                dist_limit_deg = [dist_limit_deg, 180.0]
+            if dist_limit.isscalar:
+                dist_limit = dist_limit, None  # scalar becomes lower limit
+            try:
+                dist_lower, dist_upper = dist_limit
+            except ValueError as err:
+                raise ValueError('Distance limit should have the form <lower> '
+                                 f'or [<lower>, <upper>], not {dist_limit}') from err
             if isinstance(proximity_targets, Target):
                 proximity_targets = [proximity_targets]
 
@@ -731,23 +774,20 @@ class Catalogue:
                 latest_timestamp = Timestamp()
             # Iterate over targets until one is found that satisfies dynamic criteria
             for n, target in enumerate(targets):
+                if azimuth_filter or elevation_filter:
+                    azel = target.azel(latest_timestamp, antenna)
                 if azimuth_filter:
-                    az_deg = target.azel(latest_timestamp, antenna).az.deg
-                    el_deg = target.azel(latest_timestamp, antenna).alt.deg
-                    if az_limit_deg[1] > az_limit_deg[0]:
-                        if (az_deg < az_limit_deg[0]) or (az_deg > az_limit_deg[1]):
-                            continue
-                    else:
-                        if (az_deg > az_limit_deg[1]) and (az_deg < az_limit_deg[0]):
-                            continue
+                    if az_left <= az_right and not azel.az.is_within_bounds(az_left, az_right):
+                        continue
+                    if az_left > az_right and azel.az.is_within_bounds(az_right, az_left):
+                        continue
                 if elevation_filter:
-                    el_deg = target.azel(latest_timestamp, antenna).alt.deg
-                    if (el_deg < el_limit_deg[0]) or (el_deg > el_limit_deg[1]):
+                    if not azel.alt.is_within_bounds(el_lower, el_upper):
                         continue
                 if proximity_filter:
-                    dist_deg = np.array([target.separation(prox_target, latest_timestamp, antenna).deg
-                                         for prox_target in proximity_targets])
-                    if (dist_deg < dist_limit_deg[0]).any() or (dist_deg > dist_limit_deg[1]).any():
+                    dist = np.stack([target.separation(prox_target, latest_timestamp, antenna)
+                                     for prox_target in proximity_targets])
+                    if not dist.is_within_bounds(dist_lower, dist_upper):
                         continue
                 # Break if target is found - popping the target inside the for-loop is a bad idea!
                 found_one = n
@@ -758,8 +798,10 @@ class Catalogue:
             # Return successful target and remove from list to ensure it is not picked again
             yield targets.pop(found_one)
 
-    def filter(self, tags=None, flux_limit_Jy=None, flux_freq_MHz=None, az_limit_deg=None, el_limit_deg=None,
-               dist_limit_deg=None, proximity_targets=None, timestamp=None, antenna=None):
+    @u.quantity_input(equivalencies=u.spectral())
+    def filter(self, tags=None, flux_limit: u.Jy = None, flux_frequency: u.Hz = None,
+               az_limit: u.deg = None, el_limit: u.deg = None, dist_limit: u.deg = None,
+               proximity_targets=None, timestamp=None, antenna=None):
         """Filter catalogue on various criteria.
 
         This returns a new catalogue containing the subset of targets that
@@ -767,69 +809,42 @@ class Catalogue:
         instant. For real-time continuous filtering, consider using
         :meth:`iterfilter` instead.
 
-        Parameters
-        ----------
-        tags : string, or sequence of strings, optional
-            Tag or list of tags which targets should have. Tags prepended with
-            a tilde (~) indicate tags which targets should *not* have. The string
-            may contain multiple tags separated by whitespace. If None or an
-            empty list, all tags are accepted. Remember that the body type is
-            also a tag.
-        flux_limit_Jy : float or sequence of 2 floats, optional
-            Allowed flux density range, in Jy. If this is a single number, it is
-            the lower limit, otherwise it takes the form [lower, upper]. If None,
-            any flux density is accepted.
-        flux_freq_MHz : float, optional
-            Frequency at which to evaluate the flux density, in MHz
-        az_limit_deg : sequence of 2 floats, optional
-            Allowed azimuth range, in degrees. It takes the form [left, right],
-            where *left* is the leftmost or starting azimuth, and *right* is the
-            rightmost or ending azimuth. If *right* is less than *left*, the
-            azimuth angles range around +-180. If None, any azimuth is accepted.
-        el_limit_deg : float or sequence of 2 floats, optional
-            Allowed elevation range, in degrees. If this is a single number, it
-            is the lower limit, otherwise it takes the form [lower, upper].
-            If None, any elevation is accepted.
-        dist_limit_deg : float or sequence of 2 floats, optional
-            Allowed range of angular distance to proximity targets, in degrees.
-            If this is a single number, it is the lower limit, otherwise it
-            takes the form [lower, upper]. If None, any distance is accepted.
-        proximity_targets : :class:`Target` object, or sequence of objects
-            Target or list of targets used in proximity filter
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
-            Timestamp at which to evaluate target positions (defaults to now)
-        antenna : :class:`Antenna` object, optional
-            Antenna which points at targets (defaults to default antenna)
+        {Parameters}
 
         Returns
         -------
-        subset : :class:`Catalogue` object
+        subset : :class:`Catalogue`
             Filtered catalogue
 
         Raises
         ------
         ValueError
-            If some required parameters are missing
+            If some required parameters are missing or limits are invalid
 
         Examples
         --------
         Here are some ways to filter a catalogue:
 
         >>> from katpoint import Catalogue, Antenna
+        >>> import astropy.units as u
         >>> ant = Antenna('XDM, -25:53:23, 27:41:03, 1406, 15.0')
-        >>> cat = Catalogue(antenna=ant, flux_freq_MHz=1500)
-        >>> cat1 = cat.filter(el_limit_deg=10)
-        >>> cat2 = cat.filter(az_limit_deg=[150, -150])
-        >>> cat3 = cat.filter(flux_limit_Jy=10)
+        >>> targets = ['Sun, special', 'Moon, special', 'Jupiter, special']
+        >>> cat = Catalogue(targets, antenna=ant, flux_frequency=1500 * u.MHz)
+        >>> cat1 = cat.filter(el_limit=10 * u.deg)
+        >>> cat2 = cat.filter(az_limit=[150, -150] * u.deg)
+        >>> cat3 = cat.filter(flux_limit=10 * u.Jy)
         >>> cat4 = cat.filter(tags='special ~radec')
-        >>> cat5 = cat.filter(dist_limit_deg=5, proximity_targets=cat['Sun'])
+        >>> cat5 = cat.filter(dist_limit=5 * u.deg, proximity_targets=cat['Sun'])
         """
-        return Catalogue(list(self.iterfilter(tags, flux_limit_Jy, flux_freq_MHz, az_limit_deg,
-                                              el_limit_deg, dist_limit_deg, proximity_targets,
-                                              timestamp, antenna)),
-                         antenna=self.antenna, flux_freq_MHz=self.flux_freq_MHz)
+        # Ensure that iterfilter operates on a single unique timestamp
+        timestamp = Timestamp(timestamp)
+        return Catalogue(list(self.iterfilter(tags, flux_limit, flux_frequency,
+                                              az_limit, el_limit, dist_limit,
+                                              proximity_targets, timestamp, antenna)),
+                         antenna=self.antenna, flux_frequency=self.flux_frequency)
 
-    def sort(self, key='name', ascending=True, flux_freq_MHz=None, timestamp=None, antenna=None):
+    @u.quantity_input(equivalencies=u.spectral())
+    def sort(self, key='name', ascending=True, flux_frequency: u.Hz = None, timestamp=None, antenna=None):
         """Sort targets in catalogue.
 
         This returns a new catalogue with the target list sorted according to
@@ -841,8 +856,8 @@ class Catalogue:
             Sort the targets according to this field
         ascending : {True, False}, optional
             True if key should be sorted in ascending order
-        flux_freq_MHz : float, optional
-            Frequency at which to evaluate the flux density, in MHz
+        flux_frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate the flux density
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
@@ -858,29 +873,31 @@ class Catalogue:
         ValueError
             If some required parameters are missing or key is unknown
         """
-        # Set up index list that will be sorted
+        # Set up values that will be sorted
         if key == 'name':
-            index = [target.name for target in self.targets]
+            values = [target.name for target in self.targets]
         elif key == 'ra':
-            index = [target.radec(timestamp, antenna).ra.rad for target in self.targets]
+            values = [target.radec(timestamp, antenna).ra for target in self.targets]
         elif key == 'dec':
-            index = [target.radec(timestamp, antenna).dec.rad for target in self.targets]
+            values = [target.radec(timestamp, antenna).dec for target in self.targets]
         elif key == 'az':
-            index = [target.azel(timestamp, antenna).az.rad for target in self.targets]
+            values = [target.azel(timestamp, antenna).az for target in self.targets]
         elif key == 'el':
-            index = [target.azel(timestamp, antenna).alt.rad for target in self.targets]
+            values = [target.azel(timestamp, antenna).alt for target in self.targets]
         elif key == 'flux':
-            index = [target.flux_density(flux_freq_MHz) for target in self.targets]
+            values = [target.flux_density(flux_frequency) for target in self.targets]
         else:
             raise ValueError('Unknown key to sort on')
-        # Sort index indirectly, either in ascending or descending order
+        # Sort targets indirectly, either in ascending or descending order
+        index = np.stack(values).argsort()
         if ascending:
-            self.targets = np.array(self.targets, dtype=object)[np.argsort(index)].tolist()
+            self.targets = np.array(self.targets, dtype=object)[index].tolist()
         else:
-            self.targets = np.array(self.targets, dtype=object)[np.flipud(np.argsort(index))].tolist()
+            self.targets = np.array(self.targets, dtype=object)[np.flipud(index)].tolist()
         return self
 
-    def visibility_list(self, timestamp=None, antenna=None, flux_freq_MHz=None, antenna2=None):
+    @u.quantity_input(equivalencies=u.spectral())
+    def visibility_list(self, timestamp=None, antenna=None, flux_frequency: u.Hz = None, antenna2=None):
         r"""Print out list of targets in catalogue, sorted by decreasing elevation.
 
         This prints out the name, azimuth and elevation of each target in the
@@ -899,11 +916,11 @@ class Catalogue:
         ----------
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
             Timestamp at which to evaluate target positions (defaults to now)
-        antenna : :class:`Antenna` object, optional
+        antenna : :class:`Antenna`, optional
             Antenna which points at targets (defaults to default antenna)
-        flux_freq_MHz : float, optional
-            Frequency at which to evaluate flux density, in MHz
-        antenna2 : :class:`Antenna` object, optional
+        flux_frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate flux density
+        antenna2 : :class:`Antenna`, optional
             Second antenna of baseline pair (baseline vector points from
             *antenna* to *antenna2*), used to calculate delays and fringe rates
             per target
@@ -915,10 +932,10 @@ class Catalogue:
         if antenna is None:
             raise ValueError('Antenna object needed to calculate target position')
         title = f"Targets visible from antenna '{antenna.name}' at {timestamp.local()}"
-        if flux_freq_MHz is None:
-            flux_freq_MHz = self.flux_freq_MHz
-        if flux_freq_MHz is not None:
-            title += f', with flux density (Jy) evaluated at {flux_freq_MHz:g} MHz'
+        if flux_frequency is None:
+            flux_frequency = self.flux_frequency
+        if flux_frequency is not None:
+            title += f', with flux density (Jy) evaluated at {flux_frequency:g}'
         if antenna2 is not None:
             title += f" and fringe period (s) toward antenna '{antenna2.name}' at same frequency"
         print(title)
@@ -926,27 +943,36 @@ class Catalogue:
         print('Target                        Azimuth    Elevation <    Flux Fringe period')
         print('------                        -------    --------- -    ---- -------------')
         azels = [target.azel(timestamp + (-30.0, 0.0, 30.0), antenna) for target in self.targets]
-        elevations = [azel[1].alt.deg for azel in azels]
+        elevations = np.stack([azel[1].alt for azel in azels])
         for index in np.argsort(elevations)[::-1]:
             target = self.targets[index]
             azel = azels[index][1]
-            delta_el = azels[index][2].alt.deg - azels[index][0].alt.deg
-            el_code = '-' if (np.abs(delta_el) < 1 / 60) else ('/' if delta_el > 0 else '\\')
+            delta_el = azels[index][2].alt - azels[index][0].alt
+            el_code = '-' if (np.abs(delta_el) < 1 * u.arcmin) else ('/' if delta_el > 0 else '\\')
             # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
-            flux = target.flux_density(flux_freq_MHz) if flux_freq_MHz is not None else np.nan
-            if antenna2 is not None and flux_freq_MHz is not None:
+            if flux_frequency is None:
+                flux = np.nan
+            else:
+                flux = target.flux_density(flux_frequency).to_value(u.Jy)
+            if antenna2 is not None and flux_frequency is not None:
                 _, delay_rate = target.geometric_delay(antenna2, timestamp, antenna)
-                fringe_period = 1. / (delay_rate * flux_freq_MHz * 1e6) if delay_rate else np.inf
+                if delay_rate != 0:
+                    fringe_period = 1. / (delay_rate * flux_frequency.to_value(u.Hz))
+                else:
+                    fringe_period = np.inf
             else:
                 fringe_period = None
             if above_horizon and azel.alt < 0.0:
                 # Draw horizon line
                 print('--------------------------------------------------------------------------')
                 above_horizon = False
-            az = azel.az.wrap_at('180deg').to_string(sep=':', precision=1)
+            az = azel.az.wrap_at(180 * u.deg).to_string(sep=':', precision=1)
             el = azel.alt.to_string(sep=':', precision=1)
             line = '%-24s %12s %12s %c' % (target.name, az, el, el_code)
             line = line + f' {flux:7.1f}' if not np.isnan(flux) else line + '        '
             if fringe_period is not None:
                 line += f'    {fringe_period:10.2f}'
             print(line)
+
+    iterfilter.__doc__ = iterfilter.__doc__.format(Parameters=_FILTER_PARAMETERS_DOCSTRING)
+    filter.__doc__ = filter.__doc__.format(Parameters=_FILTER_PARAMETERS_DOCSTRING)

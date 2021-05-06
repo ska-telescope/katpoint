@@ -19,6 +19,7 @@
 import warnings
 
 import numpy as np
+import astropy.units as u
 
 
 class FluxError(ValueError):
@@ -62,23 +63,12 @@ class FluxDensityModel:
 
     Parameters
     ----------
-    min_freq_MHz : float or string
-        Minimum frequency for which model is valid, in MHz. Alternatively, this
-        is a description string containing the minimum frequency, maximum
-        frequency and model coefficients as space-separated values (optionally
-        with parentheses enclosing the entire string).
-    max_freq_MHz : float, optional
-        Maximum frequency for which model is valid, in MHz
+    min_frequency, max_frequency : :class:`~astropy.units.Quantity`
+        Minimum and maximum frequency for which model is valid
     coefs : sequence of floats, optional
         Model coefficients (a, b, c, d, e, f, I, Q, U, V), where missing
-        coefficients at the end of the sequence are assumed to be zero (except
-        for I, assumes to be one), and extra coefficients are ignored.
-
-    Raises
-    ------
-    ValueError
-        If description string has the wrong format or is mixed with normal
-        parameters
+        coefficients at the end of the sequence are assumed to be zero
+        (except for I, assumed to be one), and extra coefficients are ignored.
 
     References
     ----------
@@ -93,45 +83,26 @@ class FluxDensityModel:
     _DEFAULT_COEFS = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0,    # a, b, c, d, e, f
                                1.0, 0.0, 0.0, 0.0])             # I, Q, U, V
 
-    def __init__(self, min_freq_MHz, max_freq_MHz=None, coefs=None):
-        # If the first parameter is a description string, extract the relevant flux parameters from it
-        if isinstance(min_freq_MHz, str):
-            # Cannot have other parameters if description string is given - this is a safety check
-            if not (max_freq_MHz is None and coefs is None):
-                raise ValueError(f"First parameter '{min_freq_MHz}' is description string - "
-                                 "cannot have other parameters")
-            # Split description string on spaces and turn into numbers (discarding any parentheses)
-            try:
-                flux_info = [float(num) for num in min_freq_MHz.strip(' ()').split()]
-            except ValueError as err:
-                raise FluxError(f"Floating point number '{min_freq_MHz}' is invalid") from err
-            if len(flux_info) < 2:
-                raise FluxError(f"Flux density description string '{min_freq_MHz}' is invalid")
-            min_freq_MHz, max_freq_MHz, coefs = flux_info[0], flux_info[1], tuple(flux_info[2:])
-        self.min_freq_MHz = min_freq_MHz
-        self.max_freq_MHz = max_freq_MHz
+    @u.quantity_input(equivalencies=u.spectral())
+    def __init__(self, min_frequency: u.Hz, max_frequency: u.Hz, coefs):
+        self.min_frequency = min_frequency << u.MHz
+        self.max_frequency = max_frequency << u.MHz
         self.coefs = self._DEFAULT_COEFS.copy()
         # Extract up to the maximum number of coefficients from given sequence
         if len(coefs) > len(self.coefs):
             warnings.warn(f'Received {len(coefs)} coefficients but only expected {len(self.coefs)} - '
                           'ignoring the rest', FutureWarning)
         self.coefs[:min(len(self.coefs), len(coefs))] = coefs[:min(len(self.coefs), len(coefs))]
-        # Prune defaults at the end of coefficient list for the description string
-        nondefault_coefs = np.nonzero(self.coefs != self._DEFAULT_COEFS)[0]
-        last_nondefault_coef = nondefault_coefs[-1] if len(nondefault_coefs) > 0 else 0
-        pruned_coefs = self.coefs[:last_nondefault_coef + 1]
-        coefs_str = ' '.join([repr(c) for c in pruned_coefs])
-        self.description = f'({min_freq_MHz} {max_freq_MHz} {coefs_str})'
 
     def __str__(self):
-        """Verbose human-friendly string representation."""
-        freq_range = f'{self.min_freq_MHz:.0f}-{self.max_freq_MHz:.0f} MHz'
-        coefs_str = ', '.join([repr(c) for c in self.coefs])
-        return f"Flux density defined for {freq_range}, coefs=({coefs_str})"
+        """Complete string representation of object, sufficient to reconstruct it."""
+        return self.description
 
     def __repr__(self):
         """Short human-friendly string representation."""
-        freq_range = f'{self.min_freq_MHz:.0f}-{self.max_freq_MHz:.0f} MHz'
+        min_freq = self.min_frequency.to_value(u.MHz)
+        max_freq = self.max_frequency.to_value(u.MHz)
+        freq_range = f'{min_freq:.0f}-{max_freq:.0f} MHz'
         param_str = ','.join(np.array(list('abcdefIQUV'))[self.coefs != self._DEFAULT_COEFS])
         return f"<katpoint.FluxDensityModel {freq_range} params={param_str} at {id(self):#x}>"
 
@@ -145,52 +116,97 @@ class FluxDensityModel:
         return hash(self.description)
 
     @property
+    def description(self):
+        """Complete string representation of object, sufficient to reconstruct it."""
+        min_freq = self.min_frequency.to_value(u.MHz)
+        max_freq = self.max_frequency.to_value(u.MHz)
+        # Prune defaults at the end of coefficient list for the description string
+        nondefault_coefs = np.nonzero(self.coefs != self._DEFAULT_COEFS)[0]
+        last_nondefault_coef = nondefault_coefs[-1] if len(nondefault_coefs) > 0 else 0
+        pruned_coefs = self.coefs[:last_nondefault_coef + 1]
+        coefs_str = ' '.join([repr(c) for c in pruned_coefs])
+        return f'({min_freq} {max_freq} {coefs_str})'
+
+    @classmethod
+    def from_description(cls, description):
+        """Construct flux density model object from description string.
+
+        Parameters
+        ----------
+        description : str
+            String of space-separated parameters (optionally in parentheses)
+
+        Returns
+        -------
+        flux_model : :class:`FluxDensityModel`
+            Constructed flux density model object
+
+        Raises
+        ------
+        FluxError
+            If `description` has the wrong format
+        """
+        # Split description string on spaces and turn into numbers (discarding any parentheses)
+        prefix = f"Flux density description string '{description}'"
+        try:
+            flux_info = [float(num) for num in description.strip(' ()').split()]
+        except ValueError as err:
+            raise FluxError(f"{prefix} contains invalid floats") from err
+        if len(flux_info) < 2:
+            raise FluxError(f"{prefix} should have at least two parameters")
+        return cls(flux_info[0] * u.MHz, flux_info[1] * u.MHz, flux_info[2:])
+
+    @property
     def iquv_scale(self):
         """Fractional Stokes parameters which scale the flux density."""
         return self.coefs[6:10]
 
-    def _flux_density_raw(self, freq_MHz):
+    @u.quantity_input
+    def _flux_density_raw(self, frequency: u.Hz) -> u.Jy:
         a, b, c, d, e, f = self.coefs[:6]
-        log10_v = np.log10(freq_MHz)
+        log10_v = np.log10(frequency.to_value(u.MHz))
         log10_S = a + b * log10_v + c * log10_v ** 2 + d * log10_v ** 3 + e * np.exp(f * log10_v)
-        return 10 ** log10_S
+        return 10 ** log10_S * u.Jy
 
-    def flux_density(self, freq_MHz):
+    @u.quantity_input(equivalencies=u.spectral())
+    def flux_density(self, frequency: u.Hz) -> u.Jy:
         """Calculate Stokes I flux density for given observation frequency.
 
         Parameters
         ----------
-        freq_MHz : float, or sequence of floats
-            Frequency at which to evaluate flux density, in MHz
+        frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate flux density
 
         Returns
         -------
-        flux_density : float, or array of floats of same shape as *freq_MHz*
-            Flux density in Jy, or np.nan if the frequency is out of range
+        flux_density : :class:`~astropy.units.Quantity`
+            Flux density, or NaN Jy if frequency is out of range.
+            The shape matches the input.
         """
-        freq_MHz = np.asarray(freq_MHz)
-        flux = np.asarray(self._flux_density_raw(freq_MHz) * self.iquv_scale[0])
-        flux[freq_MHz < self.min_freq_MHz] = np.nan
-        flux[freq_MHz > self.max_freq_MHz] = np.nan
-        return flux if flux.ndim else flux.item()
+        frequency <<= u.MHz
+        flux = self._flux_density_raw(frequency) * self.iquv_scale[0]
+        flux[frequency < self.min_frequency] = np.nan * u.Jy
+        flux[frequency > self.max_frequency] = np.nan * u.Jy
+        return flux
 
-    def flux_density_stokes(self, freq_MHz):
+    @u.quantity_input(equivalencies=u.spectral())
+    def flux_density_stokes(self, frequency: u.Hz) -> u.Jy:
         """Calculate full-Stokes flux density for given observation frequency.
 
         Parameters
         ----------
-        freq_MHz : float, or sequence of floats
-            Frequency at which to evaluate flux density, in MHz
+        frequency : :class:`~astropy.units.Quantity`, optional
+            Frequency at which to evaluate flux density
 
         Returns
         -------
-        flux_density : array of floats
-            Flux density in Jy, or np.nan if the frequency is out of range. The
-            array has an extra final axis of length 4, corresponding to the I, Q, U, V
-            components.
+        flux_density : :class:`~astropy.units.Quantity`
+            Flux density, or NaN Jy if frequency is out of range.
+            The shape matches the input with an extra trailing dimension
+            of size 4 containing Stokes I, Q, U, V.
         """
-        freq_MHz = np.asarray(freq_MHz)
-        flux = np.asarray(self._flux_density_raw(freq_MHz))
-        flux[freq_MHz < self.min_freq_MHz] = np.nan
-        flux[freq_MHz > self.max_freq_MHz] = np.nan
+        frequency <<= u.MHz
+        flux = self._flux_density_raw(frequency)
+        flux[frequency < self.min_frequency] = np.nan * u.Jy
+        flux[frequency > self.max_frequency] = np.nan * u.Jy
         return np.multiply.outer(flux, self.iquv_scale)

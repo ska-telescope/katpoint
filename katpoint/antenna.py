@@ -24,8 +24,9 @@ and other parameters that affect pointing and delay calculations.
 import functools
 from types import SimpleNamespace
 
+import numpy as np
 import astropy.units as u
-from astropy.coordinates import EarthLocation
+from astropy.coordinates import EarthLocation, CartesianRepresentation
 
 from .timestamp import Timestamp
 from .conversion import (to_angle, strip_zeros, angle_to_string,
@@ -257,15 +258,16 @@ class Antenna:
 
         Returns
         -------
-        e_m, n_m, u_m : float or array
-            East, North, Up coordinates of baseline vector, in metres
+        enu : :class:`~astropy.coordinates.CartesianRepresentation`
+            East, North, Up coordinates of baseline vector as Cartesian (x, y, z)
         """
         antenna2 = Antenna(antenna2)
         # If this antenna is at reference position of second antenna, simply return its ENU offset
-        if self.position_wgs84 == antenna2.ref_position_wgs84:
-            return antenna2.position_enu
+        if np.array_equal(self.position_wgs84, antenna2.ref_position_wgs84):
+            enu = antenna2.position_enu
         else:
-            return ecef_to_enu(*self.position_wgs84, *lla_to_ecef(*antenna2.position_wgs84))
+            enu = ecef_to_enu(*self.position_wgs84, *lla_to_ecef(*antenna2.position_wgs84))
+        return CartesianRepresentation(*enu, unit=u.m)
 
     def local_sidereal_time(self, timestamp=None):
         """Calculate local apparent sidereal time at antenna for timestamp(s).

@@ -127,8 +127,8 @@ def test_mapping_function(latitude, longitude, height, timestamp):
         time.utc.jd, location.lat.rad, location.lon.rad,
         location.height.to_value(u.m), elevation.to_value(u.rad))
     # Measure relative tolerance because mapping function is a scale factor
-    np.testing.assert_allclose(actual_hydrostatic, expected_hydrostatic, rtol=1e-9)
-    np.testing.assert_allclose(actual_wet, expected_wet, rtol=1e-8)
+    assert np.allclose(actual_hydrostatic, expected_hydrostatic, rtol=1e-9)
+    assert np.allclose(actual_wet, expected_wet, rtol=1e-8)
 
 
 _default_model = 'SaastamoinenZenithDelay-GlobalMappingFunction'

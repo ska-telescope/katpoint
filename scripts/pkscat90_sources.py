@@ -42,6 +42,7 @@
 #
 
 import numpy as np
+import astropy.units as u
 import matplotlib.pyplot as plt
 
 import katpoint
@@ -57,6 +58,7 @@ anomalies = {'J0108+1320': 6, 'J0541-0154': 2, 'J2253+1608': 6}
 
 # Load main table in one shot (don't verify, as the VizieR VOTables contain a deprecated DEFINITIONS element)
 table = Table.read('pkscat90_S1410_min_10Jy.vot')
+table = table.filled(np.nan)
 
 # Fit all sources onto one figure
 plt.figure(1)
@@ -84,12 +86,14 @@ for n, src in enumerate(table):
     log_freq = np.log10(freq[flux_defined])
     log_flux = np.log10(flux[flux_defined])
     flux_poly = np.polyfit(log_freq, log_flux, 2 if len(log_flux) > 3 else 1 if len(log_flux) > 1 else 0)
+    # Round to 4 significant digits
+    coefs = [float(f'{c:.4g}') for c in flux_poly[::-1]]
     # Determine widest possible frequency range where flux is defined (ignore internal gaps in this range)
     defined_bins = flux_defined.nonzero()[0]
     freq_range = [start[defined_bins[0]], start[defined_bins[-1] + 1]]
     # For better or worse, extend range to at least KAT7 frequency band
     freq_range = [min(freq_range[0], 1000.0), max(freq_range[1], 2000.0)]
-    flux_str = katpoint.FluxDensityModel(freq_range[0], freq_range[1], flux_poly[::-1]).description
+    flux_str = katpoint.FluxDensityModel(freq_range[0] * u.MHz, freq_range[1] * u.MHz, coefs).description
     src_strings.append(', '.join((names, tags, ra, dec, flux_str)) + '\n')
     print(src_strings[-1].strip())
 
@@ -105,7 +109,7 @@ for n, src in enumerate(table):
     plt.yticks([])
     plt.axvspan(np.log10(freq_range[0]), np.log10(freq_range[1]), facecolor='g', alpha=0.5)
 
-with open('parkes_source_list.csv', 'w') as f:
+with open('pkscat90_source_list.csv', 'w') as f:
     f.writelines(src_strings)
 
 plt.figtext(0.5, 0.93, 'Spectra (log S vs. log v) for %d sources' % (len(src_strings)), ha='center', va='center')
