@@ -367,7 +367,7 @@ def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=(
         scalar = func(array_in[index_in])
         if sky_coord:
             # Treat output as if it is SkyCoord with internal array, check separation instead
-            assert array_out[index_in].separation(scalar).rad == pytest.approx(0.0)
+            assert array_out[index_in].separation(scalar).rad == pytest.approx(0.0, abs=2e-12)
         else:
             # Assume that function outputs more complicated ndarrays of numbers (or equivalent)
             array_slice = np.asarray(array_out)[all_pre + index_in + all_post]
@@ -395,7 +395,7 @@ def test_array_valued_methods(description):
     l, m, n = target.lmn(np.zeros_like(offsets), np.zeros_like(offsets), times, ANT1)
     assert l.shape == m.shape == n.shape == offsets.shape
     assert np.allclose(target.separation(target, times, ANT1).rad,
-                       np.zeros_like(offsets), atol=1e-12)
+                       np.zeros_like(offsets), atol=2e-12)
 
 
 def test_coords():
