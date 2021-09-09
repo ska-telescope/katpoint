@@ -1,6 +1,7 @@
 astropy>=4.1
 docutils
 markupsafe
+katversion  # Required for the correct tagging of the python wheel(s)
 numpy
 pipdeptree
 pygments
