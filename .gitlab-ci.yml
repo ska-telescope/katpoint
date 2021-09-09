@@ -44,6 +44,7 @@ docs:
   stage: docs
   before_script:
     - echo "error" > .docs_status
+    - python3 -m pip install -r gitlab-ci-requirements.txt
     - python3 -m pip install anybadge
   script:
     - tox -e docs
