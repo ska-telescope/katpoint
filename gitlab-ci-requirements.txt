@@ -1,6 +1,5 @@
 astropy>=4.1
 docutils
-jplephem
 markupsafe
 numpy
 pipdeptree
@@ -10,7 +9,6 @@ pylint-junit
 pytest
 pytest-cov
 pytest-json-report
-pytest-metadata
 pytest-pylint
 python-dotenv>=0.5.1
 setuptools
