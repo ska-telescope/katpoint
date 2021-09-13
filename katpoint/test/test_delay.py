@@ -301,3 +301,9 @@ def test_astropy_broadcasting(description):
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=tol)
     offset = dict(x=0.0, y=0.0, projection_type='STG', coord_system='azel')
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)
+    pressure = np.zeros_like(times.time) * u.hPa
+    temperature = np.ones_like(times.time) * 20 * u.deg_C
+    relative_humidity = np.zeros_like(times.time) * u.dimensionless_unscaled
+    assert np.allclose(dc.delays(target, times, None,
+                                 pressure, temperature, relative_humidity),
+                       delay, rtol=0, atol=0.0001 * u.ps)

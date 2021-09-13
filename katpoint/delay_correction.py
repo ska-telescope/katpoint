@@ -262,7 +262,7 @@ class DelayCorrection:
         ant_delays = enu_offset @ -target_dir
         ant_delays -= niao * np.cos(elevations)
         if self._tropospheric_delay:
-            if temperature == NO_TEMPERATURE and relative_humidity > 0:
+            if temperature is NO_TEMPERATURE and np.any(relative_humidity > 0):
                 raise ValueError(f'The relative humidity is set to {relative_humidity} '
                                  'but the temperature has not been specified')
             ant_delays += self._tropospheric_delay(pressure, temperature, relative_humidity,
