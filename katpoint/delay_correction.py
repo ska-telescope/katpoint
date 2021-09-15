@@ -248,18 +248,20 @@ class DelayCorrection:
             else:
                 az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
                 azel = AltAz(az=az * u.rad, alt=el * u.rad, obstime=time, location=locations)
+        # Shorthand to select actual antennas and reference location from combined list
+        ants, ref = slice(-1), -1
         # Elevations of antennas proper, shape (A, prod(T))
-        elevations = azel.alt[:-1]
+        elevations = azel.alt[ants]
         # Discard distance from reference location (as well as any differentials),
         # so that we have a unit vector towards the target. We have to do this at AltAz
         # level (and not ITRS) to handle offsets on targets within the Solar System.
-        direction_repr = azel[-1].represent_as(UnitSphericalRepresentation, s=None)
-        target_dir_azel = azel[-1].realize_frame(direction_repr)
+        direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
+        target_dir_azel = azel[ref].realize_frame(direction_repr)
         # Obtain XYZ target direction as seen from reference location => shape (prod(T),)
-        target_dir_xyz = target_dir_azel.transform_to(ITRS(obstime=time[-1])).cartesian
+        target_dir_xyz = target_dir_azel.transform_to(ITRS(obstime=time[ref])).cartesian
         locations_xyz = locations.itrs.cartesian
         # Antenna XYZ positions relative to reference location => shape (A, prod(T))
-        relative_locations = locations_xyz[:-1] - locations_xyz[-1]
+        relative_locations = locations_xyz[ants] - locations_xyz[ref]
         # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
         geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
         # Split up delay model parameters into constituent parts (unit = seconds)
@@ -272,7 +274,7 @@ class DelayCorrection:
                 raise ValueError(f'The relative humidity is set to {relative_humidity} '
                                  'but the temperature has not been specified')
             ant_delays += self._tropospheric_delay(pressure, temperature, relative_humidity,
-                                                   elevations, time[:-1])
+                                                   elevations, time[ants])
         # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
         input_delays = np.stack([ant_delays, ant_delays], axis=1)
         input_delays += fixed_delays[..., np.newaxis]
