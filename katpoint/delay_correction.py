@@ -23,7 +23,8 @@ import json
 
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import Angle
+import astropy.constants as const
+from astropy.coordinates import Angle, ITRS, AltAz, UnitSphericalRepresentation
 
 from .delay_model import DelayModel
 from .antenna import Antenna
@@ -235,8 +236,6 @@ class DelayCorrection:
         # Obtain (az, el) pointings per location and timestamp => shape (A + 1, prod(T))
         if not offset:
             azel = target.azel(time, locations)
-            az = azel.az.rad
-            el = azel.alt.rad
         else:
             coord_system = offset.get('coord_system', 'azel')
             if coord_system == 'radec':
@@ -246,21 +245,28 @@ class DelayCorrection:
                 # It is probably better to support this explicitly somehow.
                 offset_target = Target.from_radec(ra, dec)
                 azel = offset_target.azel(time, locations)
-                az = azel.az.rad
-                el = azel.alt.rad
             else:
                 az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+                azel = AltAz(az=az * u.rad, alt=el * u.rad, obstime=time, location=locations)
         # Elevations of antennas proper, shape (A, prod(T))
-        elevations = el[:-1] * u.rad
-        # Obtain target direction as seen from reference location => shape (3, prod(T))
-        target_dir = np.array(azel_to_enu(az[-1], el[-1]))
+        elevations = azel.alt[:-1]
+        # Discard distance from reference location (as well as any differentials),
+        # so that we have a unit vector towards the target. We have to do this at AltAz
+        # level (and not ITRS) to handle offsets on targets within the Solar System.
+        direction_repr = azel[-1].represent_as(UnitSphericalRepresentation, s=None)
+        target_dir_azel = azel[-1].realize_frame(direction_repr)
+        # Obtain XYZ target direction as seen from reference location => shape (prod(T),)
+        target_dir_xyz = target_dir_azel.transform_to(ITRS(obstime=time[-1])).cartesian
+        locations_xyz = locations.itrs.cartesian
+        # Antenna XYZ positions relative to reference location => shape (A, prod(T))
+        relative_locations = locations_xyz[:-1] - locations_xyz[-1]
+        # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
+        geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
         # Split up delay model parameters into constituent parts (unit = seconds)
-        enu_offset = self._params[:, :3]  # shape (A, 3)
         fixed_path_length = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
         # Combine all delays per antenna (geometric, NIAO, troposphere) => shape (A, prod(T))
-        ant_delays = enu_offset @ -target_dir
-        ant_delays -= niao * np.cos(elevations)
+        ant_delays = geometric_delays - niao * np.cos(elevations)
         if self._tropospheric_delay:
             if temperature is NO_TEMPERATURE and np.any(relative_humidity > 0):
                 raise ValueError(f'The relative humidity is set to {relative_humidity} '
