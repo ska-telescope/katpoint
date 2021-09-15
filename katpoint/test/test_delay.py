@@ -64,10 +64,15 @@ def test_construct_save_load():
         pytest.fail('DelayModel object not hashable')
 
 
-TARGET1 = katpoint.Target.from_azel('45:00:00.0', '75:00:00.0')
+# Special stationary target nominally perpendicular to A2-A1 baseline.
+# This also has the least diurnal aberration:
+# - az = -90 deg => 1e-18 s
+# - az = 90 deg => 5e-18 s
+# - az = 0 deg => 4e-14 s ...
+TARGET1 = katpoint.Target.from_azel('-90:00:00.0', '00:00:00.0')
 TARGET2 = katpoint.Target('Sun, special')
 ANT1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
-ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
+ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 0.0 10.0 0.0')
 ANT3 = katpoint.Antenna('A3, -31.0, 18.0, 0.0, 12.0, 5.0 10.0 3.0')
 TS = katpoint.Timestamp('2013-08-14 08:25')
 DELAYS = katpoint.DelayCorrection([ANT2, ANT3], ANT1, 1.285 * u.GHz)
@@ -114,12 +119,13 @@ def test_delays():
     """Test delay calculations."""
     delay0 = DELAYS.delays(TARGET1, TS)
     assert delay0.shape == (4,)
-    assert np.allclose(delay0[:2], 0.0, rtol=0, atol=1e-20)
+    assert np.allclose(delay0[:2], 0.0, rtol=0, atol=1e-18)
     delay1 = DELAYS.delays(TARGET1, [TS - 1.0, TS, TS + 1.0])
     assert delay1.shape == (4, 3)
-    assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-20)
+    assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-18)
     delay_now = DELAYS.delays(TARGET1, None)
-    np.testing.assert_array_equal(delay_now, delay0)
+    assert np.allclose(delay_now[:2], delay0[:2], rtol=0, atol=1e-18)
+    assert np.allclose(delay_now[2:], delay0[2:], rtol=1e-10, atol=0)
 
 
 def test_correction():
@@ -132,22 +138,21 @@ def test_correction():
     assert np.shape(drate0['A2h']) == np.shape(frate0['A2h']) == (0,)
     assert np.shape(delay1['A2h']) == np.shape(phase1['A2h']) == (2,)
     assert np.shape(drate1['A2h']) == np.shape(frate1['A2h']) == (1,)
-    # This target is special - direction perpendicular to baseline (and stationary)
-    assert delay0['A2h'] == delay0['A2v'] == extra_correction
-    assert drate1['A2h'] == drate1['A2v'] == [0.0]
-    assert frate1['A2h'] == frate1['A2v'] == [0.0]
-    np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
-    np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
-    np.testing.assert_array_equal(frate1['A2h'], np.array([0.0]) * u.rad / u.s)
-    np.testing.assert_array_equal(frate1['A2v'], np.array([0.0]) * u.rad / u.s)
+    # This target is special - direction basically perpendicular to baseline (and stationary)
+    assert np.allclose(delay0['A2h'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0['A2v'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(drate1['A2h'], [0.0], rtol=0, atol=1e-22)
+    assert np.allclose(drate1['A2v'], [0.0], rtol=0, atol=1e-22)
+    assert np.allclose(frate1['A2h'], [0.0], rtol=0, atol=1e-12 * u.rad / u.s)
+    assert np.allclose(frate1['A2v'], [0.0], rtol=0, atol=1e-12 * u.rad / u.s)
+    assert np.allclose(delay1['A2h'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2v'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
     # Compare to target geometric delay calculations
     delay0, _, _, _ = DELAYS.corrections(TARGET2, TS)
     _, _, drate1, _ = DELAYS.corrections(TARGET2, (TS - 0.5, TS + 0.5))
     tgt_delay, tgt_delay_rate = TARGET2.geometric_delay(ANT2, TS, ANT1)
-    assert np.allclose(delay0['A2h'], extra_correction - tgt_delay, atol=0, rtol=1e-15)
-    assert np.allclose(drate1['A2h'][0], -tgt_delay_rate, atol=0, rtol=1e-11)
+    assert np.allclose(delay0['A2h'], extra_correction - tgt_delay, rtol=0, atol=0.03 * u.ps)
+    assert np.allclose(drate1['A2h'][0], -tgt_delay_rate, rtol=0, atol=1e-18)
 
 
 def test_offset():
@@ -165,12 +170,12 @@ def test_offset():
     delay0, _, _, _ = DELAYS.corrections(target3, TS, offset=offset)
     delay1, _, drate1, _ = DELAYS.corrections(target3, (TS, TS + 1.0), offset)
     # Conspire to return to special target1
-    assert delay0['A2h'] == extra_correction, 'Delay for ant2h should be zero'
-    assert delay0['A2v'] == extra_correction, 'Delay for ant2v should be zero'
-    np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
-    np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
+    assert np.allclose(delay0['A2h'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0['A2v'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2h'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2v'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(drate1['A2h'], [0.0], rtol=0, atol=1e-22)
+    assert np.allclose(drate1['A2v'], [0.0], rtol=0, atol=1e-22)
     # Now try (ra, dec) coordinate system
     radec = TARGET1.radec(TS, ANT1)
     offset = dict(projection_type='ARC', coord_system='radec')
@@ -183,12 +188,12 @@ def test_offset():
     delay0, _, _, _ = DELAYS.corrections(target4, TS, offset=offset)
     delay1, _, drate1, _ = DELAYS.corrections(target4, (TS, TS + 1.0), offset)
     # Conspire to return to special target1
-    assert np.allclose(delay0['A2h'], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(delay0['A2v'], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(delay1['A2h'][0], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(delay1['A2v'][0], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(drate1['A2h'], [0.0], atol=5e-12)
-    assert np.allclose(drate1['A2v'], [0.0], atol=5e-12)
+    assert np.allclose(delay0['A2h'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0['A2v'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2h'][0], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2v'][0], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(drate1['A2h'], [0.0], rtol=0, atol=5e-12)
+    assert np.allclose(drate1['A2v'], [0.0], rtol=0, atol=5e-12)
 
 
 TARGET = katpoint.Target('J1939-6342, radec, 19:39:25.03, -63:42:45.6')
