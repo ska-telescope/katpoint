@@ -263,7 +263,7 @@ class DelayCorrection:
         # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
         geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
         # Split up delay model parameters into constituent parts (unit = seconds)
-        fixed_path_length = self._params[:, 3:5]  # shape (A, 2)
+        fixed_delays = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
         # Combine all delays per antenna (geometric, NIAO, troposphere) => shape (A, prod(T))
         ant_delays = geometric_delays - niao * np.cos(elevations)
@@ -275,7 +275,7 @@ class DelayCorrection:
                                                    elevations, time[:-1])
         # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
         input_delays = np.stack([ant_delays, ant_delays], axis=1)
-        input_delays += fixed_path_length[..., np.newaxis]
+        input_delays += fixed_delays[..., np.newaxis]
         # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
         return input_delays.reshape((-1,) + T)
 
