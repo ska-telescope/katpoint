@@ -67,56 +67,54 @@ TLE_EL = '-54:06:29.1898d'  # Astropy 4.3
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 
 
-# All reference coordinate values below are based on Astropy 4.3 with astropy/astropy#10994
+# Most reference coordinate values below are based on Astropy 4.3 with astropy/astropy#10994
 # (topocentric CIRS). This PR improved (az, el) for nearby objects, and their tolerances are
-# adjusted so that the tests still pass on Astropy 4.1.
+# adjusted so that the tests still pass on Astropy 4.1. One exception is the reference
+# coordinates for the Moon, which is based on the more accurate Moon model in Astropy 5.0.
 @pytest.mark.parametrize(
-    "body, date_str, ra_str, dec_str, az_str, el_str, tol",
+    "body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver",
     [
         (_get_fixed_body('10:10:40.123', '40:20:50.567'), '2020-01-01 00:00:00.000',
-         '10:10:40.123h', '40:20:50.567d', '326:05:57.5409d', '51:21:20.0118d', 1 * u.mas),
+         '10:10:40.123h', '40:20:50.567d', '326:05:57.5409d', '51:21:20.0118d', 1 * u.mas, '4.3'),
         # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
         # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
         (_get_fixed_body('10:10:40.123', '40:20:50.567', 0 * u.m), '2020-01-01 00:00:00.000',
-         '18:43:01.1355h', '-23:04:13.1204d', '111:27:59.773d', '-13:52:32.0914d', 60 * u.mas),
+         '18:43:01.1355h', '-23:04:13.1204d', '111:27:59.773d', '-13:52:32.0914d', 60 * u.mas, '4.3'),
         # A distance of 0 m takes us to the barycentre, so way different (ra, dec); cf. Sun below
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
-         '15:43:47.3413h', '-19:23:08.1338d', '118:10:05.112d', '27:23:12.8455d', 1 * u.mas),
+         '15:43:47.3413h', '-19:23:08.1338d', '118:10:05.112d', '27:23:12.8455d', 1 * u.mas, '4.3'),
         # 15:43:47.22       -19:23:07.0        118:10:06.1d       27:23:13.3d  (PyEphem)
         (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
-         '23:35:44.1395h', '-8:32:55.5551d', '127:15:16.9489d', '60:05:10.3679d', 220 * u.mas),
+         '23:35:44.1441h', '-8:32:55.3779d', '127:15:16.5845d', '60:05:10.4223d', 320 * u.mas, '5.0'),
         # 23:34:17.02       -8:16:33.4        127:15:23.6d       60:05:13.7d  (PyEphem)
         # The Moon radec differs by quite a bit (16') because PyEphem's astrometric radec is
         # geocentric while katpoint's version is topocentric (FWIW, Skyfield has both).
         # Katpoint's geocentric astrometric radec is 23:34:17.5082, -8:16:28.6389.
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
-         '18:44:13.362h', '-23:02:54.8156d', '234:53:19.4761d', '31:38:11.4251d', 160 * u.mas),
+         '18:44:13.362h', '-23:02:54.8156d', '234:53:19.4761d', '31:38:11.4251d', 160 * u.mas, '4.3'),
         # 18:44:13.84       -23:02:51.2        234:53:20.8d       31:38:09.4d  (PyEphem)
         (EarthSatelliteBody.from_tle(TLE_LINE1, TLE_LINE2), TLE_TS,
-         '3:32:58.1741h', '-2:04:30.0658d', TLE_AZ, TLE_EL, 4200 * u.mas),
+         '3:32:58.1741h', '-2:04:30.0658d', TLE_AZ, TLE_EL, 4200 * u.mas, '4.3'),
         # 3:33:00.26       -2:04:32.2  (PyEphem)
         (StationaryBody('127:15:17.1418', '60:05:10.5475'), '2020-01-01 10:00:00.000',
-         '23:35:44.1259h', '-8:32:55.5217d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas),
+         '23:35:44.1259h', '-8:32:55.5217d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas, '4.3'),
         # 23:35:44.31       -8:32:55.3        127:15:17.1        60:05:10.5  (PyEphem)
     ]
 )
-def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol):
+def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver):
     """Test `body.compute()` for the two ends of the coordinate chain."""
     obstime = Time(date_str)
-    # Tighten the (az, el) tolerance if we have topocentric CIRS (first added in Astropy 4.3)
-    if LooseVersion(astropy_version) >= '4.3':
-        tol = 1 * u.mas
+    is_moon = body.default_name == 'Moon'
+    accurate = LooseVersion(astropy_version) >= min_astropy_ver
     # Go to the bottom of the coordinate chain: (az, el)
     altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
-    check_separation(altaz, az_str, el_str, tol)
+    check_separation(altaz, az_str, el_str, 1 * u.mas if accurate else tol)
     # Go to the top of the coordinate chain: astrometric (ra, dec)
     radec = body.compute(ICRS(), obstime, LOCATION, to_celestial_sphere=True)
-    check_separation(radec, ra_str, dec_str, 1 * u.mas)
+    check_separation(radec, ra_str, dec_str, 1 * u.mas if not is_moon or accurate else tol)
     # Check that astrometric (ra, dec) results in the same (az, el) as a double-check
     altaz2 = radec.transform_to(AltAz(obstime=obstime, location=LOCATION))
-    if LooseVersion(astropy_version) >= '4.3':
-        tol = 0.05 * u.mas
-    check_separation(altaz2, az_str, el_str, tol)
+    check_separation(altaz2, az_str, el_str, 0.05 * u.mas if accurate else tol)
 
 
 def test_fixed():

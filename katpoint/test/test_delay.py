@@ -124,8 +124,8 @@ def test_delays():
     assert delay1.shape == (4, 3)
     assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-18)
     delay_now = DELAYS.delays(TARGET1, None)
-    assert np.allclose(delay_now[:2], delay0[:2], rtol=0, atol=1e-18)
-    assert np.allclose(delay_now[2:], delay0[2:], rtol=1e-10, atol=0)
+    assert np.allclose(delay_now[:2], delay0[:2], rtol=0, atol=3e-18)
+    assert np.allclose(delay_now[2:], delay0[2:], rtol=2e-10, atol=0)
 
 
 def test_correction():
