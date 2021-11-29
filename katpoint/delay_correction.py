@@ -37,6 +37,28 @@ from .refraction import TroposphericDelay
 NO_TEMPERATURE = -300 * u.deg_C  # used as default parameter, akin to None
 
 
+def itrs_delays(target, locations, time):
+    """"""
+    azel = target.azel(time, locations)
+    # Shorthand to select actual antennas and reference location from combined list
+    ants, ref = slice(-1), -1
+    # Elevations of antennas proper, shape (A, prod(T))
+    elevations = azel.alt[ants]
+    # Discard distance from reference location (as well as any differentials),
+    # so that we have a unit vector towards the target. We have to do this at AltAz
+    # level (and not ITRS) to handle offsets on targets within the Solar System.
+    direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
+    target_dir_azel = azel[ref].realize_frame(direction_repr)
+    # Obtain XYZ target direction as seen from reference location => shape (prod(T),)
+    target_dir_xyz = target_dir_azel.transform_to(ITRS(obstime=time[ref])).cartesian
+    locations_xyz = locations.itrs.cartesian
+    # Antenna XYZ positions relative to reference location => shape (A, prod(T))
+    relative_locations = locations_xyz[ants] - locations_xyz[ref]
+    # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
+    geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
+    return geometric_delays, elevations
+
+
 class DelayCorrection:
     """Calculate delay corrections for a set of correlator inputs / antennas.
 
@@ -234,36 +256,16 @@ class DelayCorrection:
         time = time.take(time_idx)
         locations = self._locations.take(location_idx)
         # Obtain (az, el) pointings per location and timestamp => shape (A + 1, prod(T))
-        if not offset:
-            azel = target.azel(time, locations)
-        else:
+        if offset:
             coord_system = offset.get('coord_system', 'azel')
-            if coord_system == 'radec':
-                ra, dec = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
-                # XXX This target is vectorised (contrary to popular belief) by having an
-                # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
-                # It is probably better to support this explicitly somehow.
-                offset_target = Target.from_radec(ra, dec)
-                azel = offset_target.azel(time, locations)
-            else:
-                az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
-                azel = AltAz(az=az * u.rad, alt=el * u.rad, obstime=time, location=locations)
-        # Shorthand to select actual antennas and reference location from combined list
-        ants, ref = slice(-1), -1
-        # Elevations of antennas proper, shape (A, prod(T))
-        elevations = azel.alt[ants]
-        # Discard distance from reference location (as well as any differentials),
-        # so that we have a unit vector towards the target. We have to do this at AltAz
-        # level (and not ITRS) to handle offsets on targets within the Solar System.
-        direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
-        target_dir_azel = azel[ref].realize_frame(direction_repr)
-        # Obtain XYZ target direction as seen from reference location => shape (prod(T),)
-        target_dir_xyz = target_dir_azel.transform_to(ITRS(obstime=time[ref])).cartesian
-        locations_xyz = locations.itrs.cartesian
-        # Antenna XYZ positions relative to reference location => shape (A, prod(T))
-        relative_locations = locations_xyz[ants] - locations_xyz[ref]
-        # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
-        geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
+            lon, lat = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+            # XXX This target is vectorised (contrary to popular belief) by having an
+            # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
+            # It is probably better to support this explicitly somehow.
+            offset_target = Target.from_radec if coord_system == 'radec' else Target.from_azel
+            target = offset_target(lon, lat)
+        ants = slice(-1)
+        geometric_delays, elevations = itrs_delays(target, locations, time)
         # Split up delay model parameters into constituent parts (unit = seconds)
         fixed_delays = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
