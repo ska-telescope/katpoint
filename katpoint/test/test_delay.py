@@ -236,10 +236,10 @@ def test_tropospheric_delay():
     "times,ant_models,geom_atol,tropo_atol",
     [
         (1605680300.0 + np.linspace(0, 50000, 6),  # minimum elevation is 15 degrees
-         {'m063': '-3419.5 -1840.4 16.3 0 0 1'}, 6 * u.ps, 0.4 * u.ps),
+         {'m063': '-3419.5 -1840.4 16.3 0 0 1'}, 0.4 * u.ps, 0.4 * u.ps),
         # Check tropospheric delays at 5 degrees elevation. The main difference is the
         # TroposphericDelay location which is m063 for Calc and refant for katpoint.
-        (1605668400.0, {'m063': '-3419.5 -1840.4 16.3'}, 0.6 * u.ps, 5 * u.ps),
+        (1605668400.0, {'m063': '-3419.5 -1840.4 16.3'}, 0.15 * u.ps, 5 * u.ps),
         # Let the two antennas be the same, and the tropospheric results are much closer
         (1605668400.0, {'ref': ''}, 1e-8 * u.ps, 0.4 * u.ps),
         # Use antennas and times from the katpoint_vs_calc study
