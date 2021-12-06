@@ -24,18 +24,37 @@ import json
 import numpy as np
 import astropy.units as u
 import astropy.constants as const
-from astropy.coordinates import (Angle, ITRS, UnitSphericalRepresentation,
+from astropy.coordinates import (Angle, ITRS, GCRS, UnitSphericalRepresentation,
                                  get_body_barycentric, get_body_barycentric_posvel)
 
 from .delay_model import DelayModel
 from .antenna import Antenna
-from .conversion import ecef_to_enu
+from .conversion import ecef_to_enu, azel_to_enu
 from .target import Target
 from .timestamp import Timestamp
 from .refraction import TroposphericDelay
 
 
 NO_TEMPERATURE = -300 * u.deg_C  # used as default parameter, akin to None
+
+
+def _enu_delays(target, locations, time, enu_offset):
+    """Calculate geometric delays between `locations` towards `target` at `time`.
+
+    This is based on dot products between (az, el) directions and ENU baselines.
+    """
+    # Shorthand to select actual antennas and reference location from combined list
+    ants, ref = slice(-1), -1
+    azel = target.azel(time, locations)
+    az = azel.az.rad
+    el = azel.alt.rad
+    # Elevations of antennas proper, shape (A, prod(T))
+    elevations = azel.alt[ants]
+    # Obtain target direction as seen from reference location => shape (3, prod(T))
+    target_dir = np.array(azel_to_enu(az[ref], el[ref]))
+    # Geometric delays per antenna => shape (A, prod(T))
+    geometric_delays = enu_offset @ -target_dir
+    return geometric_delays, elevations
 
 
 def _itrs_delays(target, locations, time):
@@ -61,6 +80,33 @@ def _itrs_delays(target, locations, time):
     relative_locations = locations_xyz[ants] - locations_xyz[ref]
     # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
     geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
+    return geometric_delays, elevations
+
+
+def _gcrs_delays(target, locations, time):
+    """Calculate geometric delays between `locations` towards `target` at `time`.
+
+    This is based on dot products between (az, el) directions and topocentric
+    GCRS baselines.
+    """
+    # Shorthand to select actual antennas and reference location from combined list
+    ants, ref = slice(-1), -1
+    azel = target.azel(time, locations)
+    # Elevations of antennas proper, shape (A, prod(T))
+    elevations = azel.alt[ants]
+    # Discard distance from reference location (as well as any differentials),
+    # so that we have a unit vector towards the target. We have to do this at AltAz
+    # level (and not ITRS) to handle offsets on targets within the Solar System.
+    direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
+    target_dir_azel = azel[ref].realize_frame(direction_repr)
+    x, w = locations.get_gcrs_posvel(time)
+    gcrs_ref = GCRS(obstime=time[ref], obsgeoloc=x[ref], obsgeovel=w[ref])
+    # Obtain GCRS target direction as seen from reference location => shape (prod(T),)
+    target_dir_gcrs = target_dir_azel.transform_to(gcrs_ref).cartesian
+    # Antenna XYZ positions relative to reference location => shape (A, prod(T))
+    relative_locations = x[ants] - x[ref]
+    # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
+    geometric_delays = - relative_locations.dot(target_dir_gcrs) / const.c
     return geometric_delays, elevations
 
 
@@ -98,6 +144,7 @@ def _vlbi_delays(target, locations, time):
     t1 = time[ref]
     x1 = x[ref]
     x2 = x[ants]
+    w1 = w[ref]
     w2 = w[ants]
     # GCRS baseline vector at the time of arrival t1
     b = x2 - x1
@@ -106,6 +153,8 @@ def _vlbi_delays(target, locations, time):
     # Barycentric radius vector of the i'th receiver [step 1]
     X1 = XE + x1   # (11.6)
     X2 = XE + x2   # (11.6)
+    V1 = VE + w1
+    V2 = VE + w2
     # Unit vector from the *reference location* to the source
     # in the absence of gravitational or aberrational bending.
     # This is a proxy for the barycenter that hopefully supports
@@ -147,7 +196,7 @@ def _vlbi_delays(target, locations, time):
     kbc_scale = 1 - (2 * U + 0.5 * VE.norm() ** 2 + VE.dot(w2)) / c2
     vbc2_scale = 1 + K.dot(VE) / (2 * c)
     vac_delays = T_grav - K.dot(b) / c * kbc_scale - VE.dot(b) / c2 * vbc2_scale
-    vac_delays /= 1 + K.dot(VE + w2) / c
+    vac_delays /= 1 + K.dot(V2) / c
     # XXX Skip the geometric part of the tropospheric propagation delay (11.11)
     # since this needs tropospheric estimate (tiny for connected arrays anyway)
     return vac_delays, elevations[ants]
@@ -358,11 +407,12 @@ class DelayCorrection:
             # It is probably better to support this explicitly somehow.
             offset_target = Target.from_radec if coord_system == 'radec' else Target.from_azel
             target = offset_target(lon, lat)
-        ants = slice(-1)
-        geometric_delays, elevations = _vlbi_delays(target, locations, time)
         # Split up delay model parameters into constituent parts (unit = seconds)
+        enu_offset = self._params[:, :3]  # shape (A, 3)
         fixed_delays = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
+        ants = slice(-1)
+        geometric_delays, elevations = _enu_delays(target, locations, time, enu_offset)
         # Combine all delays per antenna (geometric, NIAO, troposphere) => shape (A, prod(T))
         ant_delays = geometric_delays - niao * np.cos(elevations)
         if self._tropospheric_delay:
