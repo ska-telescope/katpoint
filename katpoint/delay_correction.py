@@ -399,21 +399,35 @@ class DelayCorrection:
         time = time.take(time_idx)
         locations = self._locations.take(location_idx)
         # Obtain (az, el) pointings per location and timestamp => shape (A + 1, prod(T))
-        if offset:
+        if not offset:
+            azel = target.azel(time, locations)
+            az = azel.az.rad
+            el = azel.alt.rad
+        else:
             coord_system = offset.get('coord_system', 'azel')
-            lon, lat = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
-            # XXX This target is vectorised (contrary to popular belief) by having an
-            # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
-            # It is probably better to support this explicitly somehow.
-            offset_target = Target.from_radec if coord_system == 'radec' else Target.from_azel
-            target = offset_target(lon, lat)
+            if coord_system == 'radec':
+                ra, dec = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+                # XXX This target is vectorised (contrary to popular belief) by having an
+                # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
+                # It is probably better to support this explicitly somehow.
+                offset_target = Target.from_radec(ra, dec)
+                azel = offset_target.azel(time, locations)
+                az = azel.az.rad
+                el = azel.alt.rad
+            else:
+                az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+        # Shorthand to select actual antennas and reference location from combined list
+        ants, ref = slice(-1), -1
+        # Elevations of antennas proper, shape (A, prod(T))
+        elevations = el[ants] * u.rad
+        # Obtain target direction as seen from reference location => shape (3, prod(T))
+        target_dir = np.array(azel_to_enu(az[ref], el[ref]))
         # Split up delay model parameters into constituent parts (unit = seconds)
         enu_offset = self._params[:, :3]  # shape (A, 3)
         fixed_delays = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
-        ants = slice(-1)
-        geometric_delays, elevations = _enu_delays(target, locations, time, enu_offset)
         # Combine all delays per antenna (geometric, NIAO, troposphere) => shape (A, prod(T))
+        geometric_delays = enu_offset @ -target_dir
         ant_delays = geometric_delays - niao * np.cos(elevations)
         if self._tropospheric_delay:
             if temperature is NO_TEMPERATURE and np.any(relative_humidity > 0):
