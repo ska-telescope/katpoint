@@ -29,7 +29,7 @@ from astropy.coordinates import (Angle, ITRS, GCRS, UnitSphericalRepresentation,
 
 from .delay_model import DelayModel
 from .antenna import Antenna
-from .conversion import ecef_to_enu, azel_to_enu
+from .conversion import azel_to_enu, ecef_to_enu
 from .target import Target
 from .timestamp import Timestamp
 from .refraction import TroposphericDelay
