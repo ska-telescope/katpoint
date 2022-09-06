@@ -20,13 +20,13 @@
 
 import json
 from io import StringIO
-from distutils.version import LooseVersion
 
 import pytest
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import Angle
 from astropy import __version__ as astropy_version
+from packaging.version import Version
 
 import katpoint
 
@@ -284,6 +284,7 @@ def test_against_calc(times, ant_models, geom_atol, tropo_atol):
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
               '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054, '
               '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282')
+astropy_version = Version(astropy_version)
 
 
 @pytest.mark.parametrize("description", ['azel, 10, -10', 'radec, 20, -20',
@@ -305,7 +306,7 @@ def test_astropy_broadcasting(description):
     # XXX Astropy < 4.3 has AltAz errors on nearby objects (see astropy/astropy#10994).
     # Since delays are based on (az, el), `delay` is actually out by 20 ps on the Moon
     # and 80 ps on the GPS satellite, and the radec offset delay is correct...
-    tol = 0.0001 * u.ps if LooseVersion(astropy_version) >= '4.3' else 100 * u.ps
+    tol = 0.0001 * u.ps if astropy_version >= Version('4.3') else 100 * u.ps
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=tol)
     offset = dict(x=0.0, y=0.0, projection_type='STG', coord_system='azel')
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)

@@ -61,4 +61,5 @@ setup(name="katpoint",
           "pytest",
           "pytest-cov",
           "skyfield",
+          "packaging",
       ])
