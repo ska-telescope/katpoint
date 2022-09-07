@@ -9,23 +9,23 @@ before_script:
   - python3 -m pip install -r gitlab-ci-requirements.txt
 
 stages:
-  - linting
+  - lint
   - test
   - docs
   - build
   - publish
   - deploy
 
-linting:
+lint:
+  stage: lint
   tags:
     - k8srunner
-  stage: linting
   script:
     - tox -e lint
-  when: always
   artifacts:
     paths:
-      - ./build
+      - build/
+    when: always
 
 test:
   stage: test
@@ -35,12 +35,15 @@ test:
     - tox -e py38
   artifacts:
     paths:
-      - ./build
+      - build/
+    reports:
+      junit: build/reports/unit-tests.xml
+    when: always
 
 docs:
+  stage: docs
   tags:
     - k8srunner
-  stage: docs
   before_script:
     - echo "error" > .docs_status
     - python3 -m pip install -r gitlab-ci-requirements.txt
@@ -77,6 +80,6 @@ pages:
 
 include:
   - project: 'ska-telescope/templates-repository'
-    file: 'gitlab-ci/includes/python.gitlab-ci.yml'
+    file: 'gitlab-ci/includes/build_wheel.yml'
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/finaliser.gitlab-ci.yml'
