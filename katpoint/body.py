@@ -397,7 +397,7 @@ class EarthSatelliteBody(Body):
             # The TLE is considered valid until the satellite period changes by more
             # than 1%, but never for more than 100 days either side of the epoch.
             # The mean motion is revs/day while decay is (revs/day)/day.
-            stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100)
+            stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100) * u.day
             epoch_start = _time_to_edb(epoch - stable_days)                              # startok
             epoch_end = _time_to_edb(epoch + stable_days)                                # endok
             valid_range = f'|{epoch_start}|{epoch_end}'

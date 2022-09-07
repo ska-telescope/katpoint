@@ -132,7 +132,7 @@ def test_numerical_timestamp():
     assert (t2 - t) << u.second == 1 * u.day
     assert t / 2.0 == t * 0.5
     assert 1.0 + t == t + 1.0
-    assert abs((t - 1.0 * u.day).time - (t1 - 1)) < atol
+    assert abs((t - 1.0 * u.day).time - (t1 - 1.0 * u.day)) < atol
     try:
         assert hash(t) == hash(t + 0.0), 'Timestamp hashes not equal'
     except TypeError:
