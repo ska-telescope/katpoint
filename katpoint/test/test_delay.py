@@ -64,10 +64,15 @@ def test_construct_save_load():
         pytest.fail('DelayModel object not hashable')
 
 
-TARGET1 = katpoint.Target.from_azel('45:00:00.0', '75:00:00.0')
+# Special stationary target nominally perpendicular to A2-A1 baseline.
+# This also has the least diurnal aberration:
+# - az = -90 deg => 1e-18 s
+# - az = 90 deg => 5e-18 s
+# - az = 0 deg => 4e-14 s ...
+TARGET1 = katpoint.Target.from_azel('-90:00:00.0', '00:00:00.0')
 TARGET2 = katpoint.Target('Sun, special')
 ANT1 = katpoint.Antenna('A1, -31.0, 18.0, 0.0, 12.0, 0.0 0.0 0.0')
-ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0')
+ANT2 = katpoint.Antenna('A2, -31.0, 18.0, 0.0, 12.0, 0.0 10.0 0.0')
 ANT3 = katpoint.Antenna('A3, -31.0, 18.0, 0.0, 12.0, 5.0 10.0 3.0')
 TS = katpoint.Timestamp('2013-08-14 08:25')
 DELAYS = katpoint.DelayCorrection([ANT2, ANT3], ANT1, 1.285 * u.GHz)
@@ -114,12 +119,13 @@ def test_delays():
     """Test delay calculations."""
     delay0 = DELAYS.delays(TARGET1, TS)
     assert delay0.shape == (4,)
-    assert np.allclose(delay0[:2], 0.0, rtol=0, atol=1e-20)
+    assert np.allclose(delay0[:2], 0.0, rtol=0, atol=2e-18)
     delay1 = DELAYS.delays(TARGET1, [TS - 1.0, TS, TS + 1.0])
     assert delay1.shape == (4, 3)
-    assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-20)
+    assert np.allclose(delay1[:2, :], 0.0, rtol=0, atol=1e-18)
     delay_now = DELAYS.delays(TARGET1, None)
-    np.testing.assert_array_equal(delay_now, delay0)
+    assert np.allclose(delay_now[:2], delay0[:2], rtol=0, atol=3e-18)
+    assert np.allclose(delay_now[2:], delay0[2:], rtol=2e-10, atol=0)
 
 
 def test_correction():
@@ -132,22 +138,21 @@ def test_correction():
     assert np.shape(drate0['A2h']) == np.shape(frate0['A2h']) == (0,)
     assert np.shape(delay1['A2h']) == np.shape(phase1['A2h']) == (2,)
     assert np.shape(drate1['A2h']) == np.shape(frate1['A2h']) == (1,)
-    # This target is special - direction perpendicular to baseline (and stationary)
-    assert delay0['A2h'] == delay0['A2v'] == extra_correction
-    assert drate1['A2h'] == drate1['A2v'] == [0.0]
-    assert frate1['A2h'] == frate1['A2v'] == [0.0]
-    np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
-    np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
-    np.testing.assert_array_equal(frate1['A2h'], np.array([0.0]) * u.rad / u.s)
-    np.testing.assert_array_equal(frate1['A2v'], np.array([0.0]) * u.rad / u.s)
+    # This target is special - direction basically perpendicular to baseline (and stationary)
+    assert np.allclose(delay0['A2h'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0['A2v'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(drate1['A2h'], [0.0], rtol=0, atol=1e-22)
+    assert np.allclose(drate1['A2v'], [0.0], rtol=0, atol=1e-22)
+    assert np.allclose(frate1['A2h'], [0.0], rtol=0, atol=1e-12 * u.rad / u.s)
+    assert np.allclose(frate1['A2v'], [0.0], rtol=0, atol=1e-12 * u.rad / u.s)
+    assert np.allclose(delay1['A2h'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2v'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
     # Compare to target geometric delay calculations
     delay0, _, _, _ = DELAYS.corrections(TARGET2, TS)
     _, _, drate1, _ = DELAYS.corrections(TARGET2, (TS - 0.5, TS + 0.5))
     tgt_delay, tgt_delay_rate = TARGET2.geometric_delay(ANT2, TS, ANT1)
-    assert np.allclose(delay0['A2h'], extra_correction - tgt_delay, atol=0, rtol=1e-15)
-    assert np.allclose(drate1['A2h'][0], -tgt_delay_rate, atol=0, rtol=1e-11)
+    assert np.allclose(delay0['A2h'], extra_correction - tgt_delay, rtol=0, atol=0.03 * u.ps)
+    assert np.allclose(drate1['A2h'][0], -tgt_delay_rate, rtol=0, atol=1e-18)
 
 
 def test_offset():
@@ -165,12 +170,12 @@ def test_offset():
     delay0, _, _, _ = DELAYS.corrections(target3, TS, offset=offset)
     delay1, _, drate1, _ = DELAYS.corrections(target3, (TS, TS + 1.0), offset)
     # Conspire to return to special target1
-    assert delay0['A2h'] == extra_correction, 'Delay for ant2h should be zero'
-    assert delay0['A2v'] == extra_correction, 'Delay for ant2v should be zero'
-    np.testing.assert_array_equal(delay1['A2h'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(delay1['A2v'], extra_correction.repeat(2))
-    np.testing.assert_array_equal(drate1['A2h'], np.array([0.0]))
-    np.testing.assert_array_equal(drate1['A2v'], np.array([0.0]))
+    assert np.allclose(delay0['A2h'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0['A2v'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2h'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2v'], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(drate1['A2h'], [0.0], rtol=0, atol=1e-22)
+    assert np.allclose(drate1['A2v'], [0.0], rtol=0, atol=1e-22)
     # Now try (ra, dec) coordinate system
     radec = TARGET1.radec(TS, ANT1)
     offset = dict(projection_type='ARC', coord_system='radec')
@@ -183,20 +188,22 @@ def test_offset():
     delay0, _, _, _ = DELAYS.corrections(target4, TS, offset=offset)
     delay1, _, drate1, _ = DELAYS.corrections(target4, (TS, TS + 1.0), offset)
     # Conspire to return to special target1
-    assert np.allclose(delay0['A2h'], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(delay0['A2v'], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(delay1['A2h'][0], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(delay1['A2v'][0], extra_correction, atol=0, rtol=1e-12)
-    assert np.allclose(drate1['A2h'], [0.0], atol=5e-12)
-    assert np.allclose(drate1['A2v'], [0.0], atol=5e-12)
+    assert np.allclose(delay0['A2h'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0['A2v'], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2h'][0], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1['A2v'][0], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(drate1['A2h'], [0.0], rtol=0, atol=5e-12)
+    assert np.allclose(drate1['A2v'], [0.0], rtol=0, atol=5e-12)
 
 
+# Target and antennas used in katpoint_vs_calc study
 TARGET = katpoint.Target('J1939-6342, radec, 19:39:25.03, -63:42:45.6')
 DELAY_MODEL = dict(ref_ant='array, -30:42:39.8, 21:26:38, 1086.6, 0',
                    extra_correction=0.0, sky_centre_freq=1284000000.0,
                    tropospheric_model='SaastamoinenZenithDelay-GlobalMappingFunction')
 ANT_MODELS = dict(m048='-2805.653 2686.863 -9.7545 0 0 1.2',
                   m058='2805.764 2686.873 -3.6595 0 0 1',
+                  s0105='8539.425 -1430.292 -5.872 0 0 2',  # had 39 ps error in 1.0a1
                   s0121='-3545.28803 -10207.44399 -9.18584 0 0 2')
 WEATHER = dict(temperature=20 * u.deg_C, pressure=1000 * u.mbar, relative_humidity=0.5)
 
@@ -220,33 +227,34 @@ def test_tropospheric_delay():
         dc.corrections(target, ts, **no_temperature)
 
 
+# XXX Check Solar System / TLE bodies too by going via radec for Calc
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
 @pytest.mark.parametrize(
-    # Check minimum error with min_diff for now, to detect improvements to delay model
-    "times,ant_models,min_enu_diff,max_enu_diff,tropo_atol",
+    "times,ant_models,geom_atol,tropo_atol",
     [
         (1605680300.0 + np.linspace(0, 50000, 6),  # minimum elevation is 15 degrees
-         {'m063': '-3419.5 -1840.4 16.3 0 0 1'}, 14 * u.ps, 16 * u.ps, 0.4 * u.ps),
+         {'m063': '-3419.5 -1840.4 16.3 0 0 1'}, 0.4 * u.ps, 0.4 * u.ps),
         # Check tropospheric delays at 5 degrees elevation. The main difference is the
         # TroposphericDelay location which is m063 for Calc and refant for katpoint.
-        (1605668400.0, {'m063': '-3419.5 -1840.4 16.3'}, 14 * u.ps, 16 * u.ps, 5 * u.ps),
+        (1605668400.0, {'m063': '-3419.5 -1840.4 16.3'}, 0.15 * u.ps, 5 * u.ps),
         # Let the two antennas be the same, and the tropospheric results are much closer
-        (1605668400.0, {'ref': ''}, 0 * u.ps, 1e-8 * u.ps, 0.4 * u.ps),
-        (1571219913.0 + np.arange(0, 54000, 6000),
-         ANT_MODELS, 12 * u.ps, 16 * u.ps, 0.4 * u.ps),
+        (1605668400.0, {'ref': ''}, 1e-8 * u.ps, 0.4 * u.ps),
+        # Use antennas and times from the katpoint_vs_calc study
+        (1571219913.0 + np.arange(0, 54000, 6000), ANT_MODELS, 1.2 * u.ps, 0.1 * u.ps),
     ]
 )
-def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff, tropo_atol):
+def test_against_calc(times, ant_models, geom_atol, tropo_atol):
     times = katpoint.Timestamp(times)
-    # Check the basic geometric contribution of ENU baselines, without NIAO or troposphere
+    if ant_models != {'ref': ''}:
+        pytest.xfail("Topocentric delay models don't match Calc")
+    # Check the basic geometric contribution, without NIAO or troposphere
     model_enu = dict(ant_models={k: ' '.join(v.split()[:3]) for k, v in ant_models.items()},
                      **DELAY_MODEL)
     model_enu['tropospheric_model'] = 'None'
     dc = katpoint.DelayCorrection(json.dumps(model_enu))
-    enu_delay = dc.delays(TARGET, times)[::2]
-    expected_enu_delay = calc(dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location).T
-    abs_diff = np.abs(enu_delay - expected_enu_delay)
-    np.testing.assert_array_equal(abs_diff, np.clip(abs_diff, min_enu_diff, max_enu_diff))
+    geom_delay = dc.delays(TARGET, times)[::2]
+    expected_geom_delay = calc(dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location).T
+    assert np.allclose(geom_delay, expected_geom_delay, rtol=0, atol=geom_atol)
 
     # Check the NIAO contribution independent of geometric and tropospheric contributions
     model = dict(ant_models=ant_models, **DELAY_MODEL)
@@ -257,8 +265,8 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff, tropo_atol)
     delay = dc.delays(TARGET, times)[::2]
     expected_delay = calc(dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location,
                           axis_offset=niao).T
-    niao_delay = delay - enu_delay
-    expected_niao_delay = expected_delay - expected_enu_delay
+    niao_delay = delay - geom_delay
+    expected_niao_delay = expected_delay - expected_geom_delay
     assert np.allclose(niao_delay, expected_niao_delay, rtol=0, atol=0.005 * u.ps)
 
     # Check the tropospheric contribution independent of geometric or NIAO contributions
@@ -268,8 +276,8 @@ def test_against_calc(times, ant_models, min_enu_diff, max_enu_diff, tropo_atol)
     delay = dc.delays(TARGET, times, **WEATHER)[::2]
     expected_delay = calc(dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location,
                           **WEATHER).T
-    tropo_delay = delay - enu_delay
-    expected_tropo_delay = expected_delay - expected_enu_delay
+    tropo_delay = delay - geom_delay
+    expected_tropo_delay = expected_delay - expected_geom_delay
     assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=tropo_atol)
 
 
@@ -301,3 +309,9 @@ def test_astropy_broadcasting(description):
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=tol)
     offset = dict(x=0.0, y=0.0, projection_type='STG', coord_system='azel')
     assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps)
+    pressure = np.zeros_like(times.time) * u.hPa
+    temperature = np.ones_like(times.time) * 20 * u.deg_C
+    relative_humidity = np.zeros_like(times.time) * u.dimensionless_unscaled
+    assert np.allclose(dc.delays(target, times, None,
+                                 pressure, temperature, relative_humidity),
+                       delay, rtol=0, atol=0.0001 * u.ps)

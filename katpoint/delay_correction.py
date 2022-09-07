@@ -23,7 +23,9 @@ import json
 
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import Angle
+import astropy.constants as const
+from astropy.coordinates import (Angle, ITRS, GCRS, UnitSphericalRepresentation,
+                                 get_body_barycentric, get_body_barycentric_posvel)
 
 from .delay_model import DelayModel
 from .antenna import Antenna
@@ -34,6 +36,170 @@ from .refraction import TroposphericDelay
 
 
 NO_TEMPERATURE = -300 * u.deg_C  # used as default parameter, akin to None
+
+
+def _enu_delays(target, locations, time, enu_offset):
+    """Calculate geometric delays between `locations` towards `target` at `time`.
+
+    This is based on dot products between (az, el) directions and ENU baselines.
+    """
+    # Shorthand to select actual antennas and reference location from combined list
+    ants, ref = slice(-1), -1
+    azel = target.azel(time, locations)
+    az = azel.az.rad
+    el = azel.alt.rad
+    # Elevations of antennas proper, shape (A, prod(T))
+    elevations = azel.alt[ants]
+    # Obtain target direction as seen from reference location => shape (3, prod(T))
+    target_dir = np.array(azel_to_enu(az[ref], el[ref]))
+    # Geometric delays per antenna => shape (A, prod(T))
+    geometric_delays = enu_offset @ -target_dir
+    return geometric_delays, elevations
+
+
+def _itrs_delays(target, locations, time):
+    """Calculate geometric delays between `locations` towards `target` at `time`.
+
+    This is based on dot products between (az, el) directions and ITRS (XYZ)
+    baselines.
+    """
+    # Shorthand to select actual antennas and reference location from combined list
+    ants, ref = slice(-1), -1
+    azel = target.azel(time, locations)
+    # Elevations of antennas proper, shape (A, prod(T))
+    elevations = azel.alt[ants]
+    # Discard distance from reference location (as well as any differentials),
+    # so that we have a unit vector towards the target. We have to do this at AltAz
+    # level (and not ITRS) to handle offsets on targets within the Solar System.
+    direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
+    target_dir_azel = azel[ref].realize_frame(direction_repr)
+    # Obtain XYZ target direction as seen from reference location => shape (prod(T),)
+    target_dir_xyz = target_dir_azel.transform_to(ITRS(obstime=time[ref])).cartesian
+    locations_xyz = locations.itrs.cartesian
+    # Antenna XYZ positions relative to reference location => shape (A, prod(T))
+    relative_locations = locations_xyz[ants] - locations_xyz[ref]
+    # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
+    geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
+    return geometric_delays, elevations
+
+
+def _gcrs_delays(target, locations, time):
+    """Calculate geometric delays between `locations` towards `target` at `time`.
+
+    This is based on dot products between (az, el) directions and topocentric
+    GCRS baselines.
+    """
+    # Shorthand to select actual antennas and reference location from combined list
+    ants, ref = slice(-1), -1
+    azel = target.azel(time, locations)
+    # Elevations of antennas proper, shape (A, prod(T))
+    elevations = azel.alt[ants]
+    # Discard distance from reference location (as well as any differentials),
+    # so that we have a unit vector towards the target. We have to do this at AltAz
+    # level (and not ITRS) to handle offsets on targets within the Solar System.
+    direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
+    target_dir_azel = azel[ref].realize_frame(direction_repr)
+    x, w = locations.get_gcrs_posvel(time)
+    gcrs_ref = GCRS(obstime=time[ref], obsgeoloc=x[ref], obsgeovel=w[ref])
+    # Obtain GCRS target direction as seen from reference location => shape (prod(T),)
+    target_dir_gcrs = target_dir_azel.transform_to(gcrs_ref).cartesian
+    # Antenna XYZ positions relative to reference location => shape (A, prod(T))
+    relative_locations = x[ants] - x[ref]
+    # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
+    geometric_delays = - relative_locations.dot(target_dir_gcrs) / const.c
+    return geometric_delays, elevations
+
+
+# Standard gravitational parameters for main Solar System bodies, taken from
+# Astropy constants and https://en.wikipedia.org/wiki/Standard_gravitational_parameter
+_GM_UNIT = const.GM_earth.unit
+_GM = {
+    'sun': const.GM_sun,
+    'mercury': 2.2032e13 * _GM_UNIT,
+    'venus': 3.24859e14 * _GM_UNIT,
+    'earth': const.GM_earth,
+    'moon': 4.9048695e12 * _GM_UNIT,
+    'mars': 4.282837e13 * _GM_UNIT,
+    'jupiter': const.GM_jup,
+    'saturn': 3.7931187e16 * _GM_UNIT,
+    'uranus': 5.793939e15 * _GM_UNIT,
+    'neptune': 6.836529e15 * _GM_UNIT,
+}
+
+
+def _vlbi_delays(target, locations, time):
+    """Calculate geometric delays between `locations` towards `target` at `time`.
+
+    This implements the VLBI "consensus" model described in Chapter 11 of
+    IERS Technical Note no. 36. It uses BCRS direction vectors dotted with GCRS
+    baselines. "Station 1" refers to the reference (last) location, while
+    "station 2" represents all the other locations, processed in vectorised form.
+    The comments cite the relevant equations from Section 11.1.4 in TN36 and the
+    steps in the summary of that section.
+    """
+    # Shorthand to select actual antennas and reference location from combined list
+    ants, ref = slice(-1), -1
+    # GCRS radius vector and velocity of the i'th receiver at the time of arrival t1
+    x, w = locations.get_gcrs_posvel(time)
+    t1 = time[ref]
+    x1 = x[ref]
+    x2 = x[ants]
+    w1 = w[ref]
+    w2 = w[ants]
+    # GCRS baseline vector at the time of arrival t1
+    b = x2 - x1
+    # Barycentric radius vector and velocity of the geocenter
+    XE, VE = get_body_barycentric_posvel('earth', t1)
+    # Barycentric radius vector of the i'th receiver [step 1]
+    X1 = XE + x1   # (11.6)
+    X2 = XE + x2   # (11.6)
+    V1 = VE + w1
+    V2 = VE + w2
+    # Unit vector from the *reference location* to the source
+    # in the absence of gravitational or aberrational bending.
+    # This is a proxy for the barycenter that hopefully supports
+    # nearby sources like planets and satellites too.
+    K = target.radec(t1, locations[ref]).cartesian
+    # We need elevations later for tropospheric and NIAO delays
+    elevations = target.azel(time, locations).alt
+    # Convenient factors of the speed of light
+    c = const.c
+    c2 = c ** 2
+    c3 = c ** 3
+    # Gravitational / relativistic delay due to the Earth [step 4]
+    grav_scale = 2 * _GM['earth'] / c3
+    T_grav = grav_scale * np.log((x1.norm() + K.dot(x1)) /   # (11.2)
+                                 (x2.norm() + K.dot(x2)))
+    # Gravitational / relativistic delays due to other bodies in Solar System
+    # XXX It's probably overkill to include all planets
+    for gravitating_body in ('sun', 'jupiter', 'moon', 'venus', 'mars',
+                             'mercury', 'saturn', 'uranus', 'neptune'):
+        # Account for motion of gravitating body during propagation time via simple iteration
+        # Barycentric radius vector of the J'th gravitating body
+        XJ = get_body_barycentric(gravitating_body, t1)
+        time_tweak = K.dot(XJ - X1) / c
+        t1J = t1 - np.clip(time_tweak, 0, np.inf)   # (11.3)
+        XJ = get_body_barycentric(gravitating_body, t1J)
+        # Vectors from the J'th gravitating body to the various receivers [step 2]
+        R1J = X1 - XJ   # (11.4)
+        # Account for motion of station 2 during propagation time between station 1 and station 2
+        R2J = X2 - K.dot(b) * VE / c - XJ   # (11.5)
+        # Gravitational / relativistic delay due to J'th gravitating body [steps 3 and 5]
+        grav_scale = 2 * _GM[gravitating_body] / c3
+        T_grav += grav_scale * np.log((R1J.norm() + K.dot(R1J)) /   # (11.1)
+                                      (R2J.norm() + K.dot(R2J)))   # (11.7)
+        if gravitating_body == 'sun':
+            # Use the opportunity to calculate gravitational potential at the geocenter,
+            # neglecting the effects of the Earth’s mass (only solar potential needed).
+            U = _GM[gravitating_body] / (XE - XJ).norm()
+    # Geocentric vacuum delays [step 6] (11.9)
+    kbc_scale = 1 - (2 * U + 0.5 * VE.norm() ** 2 + VE.dot(w2)) / c2
+    vbc2_scale = 1 + K.dot(VE) / (2 * c)
+    vac_delays = T_grav - K.dot(b) / c * kbc_scale - VE.dot(b) / c2 * vbc2_scale
+    vac_delays /= 1 + K.dot(V2) / c
+    # XXX Skip the geometric part of the tropospheric propagation delay (11.11)
+    # since this needs tropospheric estimate (tiny for connected arrays anyway)
+    return vac_delays, elevations[ants]
 
 
 class DelayCorrection:
@@ -250,26 +416,28 @@ class DelayCorrection:
                 el = azel.alt.rad
             else:
                 az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+        # Shorthand to select actual antennas and reference location from combined list
+        ants, ref = slice(-1), -1
         # Elevations of antennas proper, shape (A, prod(T))
-        elevations = el[:-1] * u.rad
+        elevations = el[ants] * u.rad
         # Obtain target direction as seen from reference location => shape (3, prod(T))
-        target_dir = np.array(azel_to_enu(az[-1], el[-1]))
+        target_dir = np.array(azel_to_enu(az[ref], el[ref]))
         # Split up delay model parameters into constituent parts (unit = seconds)
         enu_offset = self._params[:, :3]  # shape (A, 3)
-        fixed_path_length = self._params[:, 3:5]  # shape (A, 2)
+        fixed_delays = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
         # Combine all delays per antenna (geometric, NIAO, troposphere) => shape (A, prod(T))
-        ant_delays = enu_offset @ -target_dir
-        ant_delays -= niao * np.cos(elevations)
+        geometric_delays = enu_offset @ -target_dir
+        ant_delays = geometric_delays - niao * np.cos(elevations)
         if self._tropospheric_delay:
-            if temperature == NO_TEMPERATURE and relative_humidity > 0:
+            if temperature is NO_TEMPERATURE and np.any(relative_humidity > 0):
                 raise ValueError(f'The relative humidity is set to {relative_humidity} '
                                  'but the temperature has not been specified')
             ant_delays += self._tropospheric_delay(pressure, temperature, relative_humidity,
-                                                   elevations, time[:-1])
+                                                   elevations, time[ants])
         # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
         input_delays = np.stack([ant_delays, ant_delays], axis=1)
-        input_delays += fixed_path_length[..., np.newaxis]
+        input_delays += fixed_delays[..., np.newaxis]
         # Collapse input dimensions and restore time dimensions => shape (2 * A,) + T
         return input_delays.reshape((-1,) + T)
 

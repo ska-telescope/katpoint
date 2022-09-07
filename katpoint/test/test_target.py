@@ -588,7 +588,9 @@ def test_great_conjunction():
     assert np.allclose(j.separation(s), 0.486585894 * u.deg, atol=1 * u.mas)
     assert np.allclose(j.separation(i), 0.213263690 * u.deg, atol=1 * u.mas)
     assert np.allclose(i.separation(s), 0.275048635 * u.deg, atol=1 * u.mas)
-    assert np.allclose(m.separation(i), 3.262286567 * u.deg, atol=1 * u.mas)
+    # The Moon model improved in Astropy 5.0
+    tol = 1 * u.mas if LooseVersion(astropy_version) >= '5.0' else 300 * u.mas
+    assert np.allclose(m.separation(i), 3.262362502 * u.deg, atol=tol)
 
 
 def test_improved_azel():
