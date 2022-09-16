@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2020, National Research Foundation (SARAO)
+# Copyright (c) 2009-2022, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -20,13 +20,13 @@
 
 import pickle
 from contextlib import contextmanager
-from distutils.version import LooseVersion
 
 import numpy as np
 import pytest
 import astropy.units as u
 from astropy.coordinates import Angle
 from astropy import __version__ as astropy_version
+from packaging.version import Version
 
 import katpoint
 from katpoint.test.helper import check_separation
@@ -566,6 +566,7 @@ def test_earth_location():
 ISS = katpoint.Target('ISS (ZARYA), tle,'
                       '1 25544U 98067A   20351.71912775  .00000900  00000-0  24328-4 0  9992,'
                       '2 25544  51.6442 165.2978 0001589 133.0028 320.9621 15.49190988260311')
+astropy_version = Version(astropy_version)
 
 
 def test_great_conjunction():
@@ -589,7 +590,7 @@ def test_great_conjunction():
     assert np.allclose(j.separation(i), 0.213263690 * u.deg, atol=1 * u.mas)
     assert np.allclose(i.separation(s), 0.275048635 * u.deg, atol=1 * u.mas)
     # The Moon model improved in Astropy 5.0
-    tol = 1 * u.mas if LooseVersion(astropy_version) >= '5.0' else 300 * u.mas
+    tol = 1 * u.mas if astropy_version >= Version('5.0') else 300 * u.mas
     assert np.allclose(m.separation(i), 3.262362502 * u.deg, atol=tol)
 
 
@@ -600,5 +601,5 @@ def test_improved_azel():
     pentax = katpoint.Antenna('Jellore Lookout NSW, -34.462653, 150.427971, 864')
     azel = ISS.azel(timestamp, pentax)
     # Check against Astropy 4.3 and relax tolerance for older versions
-    tol = 1 * u.mas if LooseVersion(astropy_version) >= '4.3' else 4 * u.arcmin
+    tol = 1 * u.mas if astropy_version >= Version('4.3') else 4 * u.arcmin
     check_separation(azel, '137.91640267d', '83.42037043d', tol=tol)

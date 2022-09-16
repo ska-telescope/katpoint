@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2020, National Research Foundation (SARAO)
+# Copyright (c) 2009-2022, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -397,7 +397,7 @@ class EarthSatelliteBody(Body):
             # The TLE is considered valid until the satellite period changes by more
             # than 1%, but never for more than 100 days either side of the epoch.
             # The mean motion is revs/day while decay is (revs/day)/day.
-            stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100)
+            stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100) * u.day
             epoch_start = _time_to_edb(epoch - stable_days)                              # startok
             epoch_end = _time_to_edb(epoch + stable_days)                                # endok
             valid_range = f'|{epoch_start}|{epoch_end}'

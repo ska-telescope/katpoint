@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2020, National Research Foundation (SARAO)
+# Copyright (c) 2009-2022, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -25,6 +25,10 @@ import pytest
 import numpy as np
 import astropy.units as u
 from astropy.time import Time, TimeDelta
+try:
+    from astropy.time import TimeDeltaMissingUnitWarning
+except ImportError:
+    TimeDeltaMissingUnitWarning = None
 
 import katpoint
 
@@ -132,7 +136,7 @@ def test_numerical_timestamp():
     assert (t2 - t) << u.second == 1 * u.day
     assert t / 2.0 == t * 0.5
     assert 1.0 + t == t + 1.0
-    assert abs((t - 1.0 * u.day).time - (t1 - 1)) < atol
+    assert abs((t - 1.0 * u.day).time - (t1 - 1.0 * u.day)) < atol
     try:
         assert hash(t) == hash(t + 0.0), 'Timestamp hashes not equal'
     except TypeError:
@@ -164,7 +168,14 @@ def test_operators():
     assert approx_equal(1 + t, t0 + 1)
     with pytest.raises(TypeError):  # why does Quantity not return NotImplemented here?
         assert approx_equal(1 * u.second + t, t0 + 1)
-    assert approx_equal(TimeDelta(1.0, format='sec', scale='tai') + t, t0 + 1)
+    with warnings.catch_warnings():
+        # Ignore any TimeDeltaMissingUnitWarning here, since this is triggered
+        # in passing by TimeDelta.__add__(time_delta, t) on the way to
+        # NotImplemented, which eventually results in the desired call
+        # Timestamp.__radd__(t, time_delta).
+        # XXX Reconsider this workaround once we depend on Astropy >= 6.0
+        warnings.simplefilter('ignore', TimeDeltaMissingUnitWarning)
+        assert approx_equal(TimeDelta(1.0, format='sec', scale='tai') + t, t0 + 1)
     # Timestamp + Timestamp
     with pytest.raises(ValueError):
         print(t + t)
@@ -180,7 +191,13 @@ def test_operators():
     assert t - katpoint.Timestamp(t0) == 0.0
     assert t - t.time == 0.0
     assert t0 - t == 0.0  # float t0 is a Unix timestamp here...
-    assert t.time - t == 0.0
+    with warnings.catch_warnings():
+        # Ignore any TimeDeltaMissingUnitWarning here, since this is triggered
+        # in passing by Time.__sub__(t.time, t) on the way to NotImplemented, which
+        # eventually results in the desired call Timestamp.__rsub__(t, t.time).
+        # XXX Reconsider this workaround once we depend on Astropy >= 6.0
+        warnings.simplefilter('ignore', TimeDeltaMissingUnitWarning)
+        assert t.time - t == 0.0
     # Timestamp += interval
     t += 1
     assert approx_equal(t, t0 + 1)

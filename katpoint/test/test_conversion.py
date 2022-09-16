@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2020, National Research Foundation (SARAO)
+# Copyright (c) 2009-2022, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -34,7 +34,6 @@ from .helper import assert_angles_almost_equal
                                               ('10.0', 10),
                                               ((10 * u.deg).to_value(u.rad), pytest.approx(10)),
                                               ('10d00m00s', 10),
-                                              ((10, 0, 0), 10),
                                               ('10h00m00s', pytest.approx(150))])
 def test_angle_from_degrees(angle, angle_deg):
     assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg == angle_deg
@@ -45,7 +44,6 @@ def test_angle_from_degrees(angle, angle_deg):
                                                ('150.0', pytest.approx(10)),
                                                ((150 * u.deg).to_value(u.rad), pytest.approx(10)),
                                                ('10h00m00s', 10),
-                                               ((10, 0, 0), 10),
                                                ('10d00m00s', pytest.approx(10 / 15))])
 def test_angle_from_hours(angle, angle_hour):
     assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour

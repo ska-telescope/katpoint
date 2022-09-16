@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2020, National Research Foundation (SARAO)
+# Copyright (c) 2009-2022, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -514,7 +514,7 @@ class Catalogue:
             mean_motion = target.body.satellite.no_kozai * u.rad / u.minute
             orbital_period = 1 * u.cycle / mean_motion
             epoch_age = Time.now() - target.body.epoch
-            direction = 'past' if epoch_age > 0 else 'future'
+            direction = 'past' if epoch_age > 0 * u.day else 'future'
             epoch_age = abs(epoch_age)
             # Near-earth models should be good for about a week (conservative estimate)
             if orbital_period < 225 * u.minute and epoch_age > 7 * u.day:

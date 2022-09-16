@@ -1,6 +1,12 @@
 History
 =======
 
+1.0a2 (2022-09-16)
+------------------
+* Use Astropy units for baselines, UVW, flux density, Catalogue (!24)
+* Fix unit tests based on the Moon for Astropy 5.0 (!27)
+* Upgrade SKAO CI pipeline, remove deprecations, fix warnings (!26, !28)
+
 1.0a1 (2021-04-14)
 ------------------
 * A mammoth rewrite to use Astropy 4.1+ and sgp4 instead of PyEphem (!11, !21)

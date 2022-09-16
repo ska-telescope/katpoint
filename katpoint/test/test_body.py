@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2020, National Research Foundation (SARAO)
+# Copyright (c) 2009-2022, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -23,14 +23,13 @@ pyephem package.
 
 # pylint: disable=missing-function-docstring
 
-from distutils.version import LooseVersion
-
 import pytest
 import astropy.units as u
 from astropy.time import Time
-from astropy import __version__ as astropy_version
 from astropy.coordinates import (SkyCoord, ICRS, AltAz, EarthLocation, Angle,
                                  Galactic, Longitude, Latitude)
+from astropy import __version__ as astropy_version
+from packaging.version import Version
 
 from katpoint.body import (Body, FixedBody, GalacticBody, SolarSystemBody,
                            EarthSatelliteBody, StationaryBody)
@@ -65,7 +64,7 @@ TLE_EL = '-54:06:29.1898d'  # Astropy 4.3
 # 3.      -54:06:34.5473   Astropy 4.0.1 + PyOrbital for TEME
 # 4.      -54:05:58.2      PyEphem 3.7.7.0
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
-
+astropy_version = Version(astropy_version)
 
 # Most reference coordinate values below are based on Astropy 4.3 with astropy/astropy#10994
 # (topocentric CIRS). This PR improved (az, el) for nearby objects, and their tolerances are
@@ -105,7 +104,7 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astro
     """Test `body.compute()` for the two ends of the coordinate chain."""
     obstime = Time(date_str)
     is_moon = body.default_name == 'Moon'
-    accurate = LooseVersion(astropy_version) >= min_astropy_ver
+    accurate = astropy_version >= Version(min_astropy_ver)
     # Go to the bottom of the coordinate chain: (az, el)
     altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
     check_separation(altaz, az_str, el_str, 1 * u.mas if accurate else tol)

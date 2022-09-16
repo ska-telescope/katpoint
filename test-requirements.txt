@@ -4,7 +4,7 @@ coverage                # via pytest-cov
 importlib-metadata      # via pytest
 jplephem==2.14          # via skyfield
 more-itertools          # via pytest
-packaging               # via pytest
+packaging
 pluggy                  # via pytest
 py                      # via pytest
 pyparsing               # via packaging

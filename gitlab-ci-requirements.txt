@@ -3,6 +3,7 @@ docutils
 markupsafe
 katversion  # Required for the correct tagging of the python wheel(s)
 numpy
+packaging
 pipdeptree
 pygments
 pylint
