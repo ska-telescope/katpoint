@@ -292,14 +292,14 @@ def test_sphere_to_plane_special():
         ('SSN', (0.0, -1.0, 0.0, np.cos(1.0)), [0.0, -PI/2]),
     ]
 )
-def test_plane_to_sphere(projection, plane, sphere, decimal=12):
+def test_plane_to_sphere(projection, plane, sphere):
     """Test specific cases (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     ae = np.array(plane_to_sphere(*plane))
-    assert_angles_almost_equal(ae, sphere, decimal=decimal)
+    assert_angles_almost_equal(ae, sphere, decimal=12)
 
 
-def plane_to_sphere_invalid(projection, plane, clipped, decimal):
+def plane_to_sphere_invalid(projection, plane, clipped):
     """Test points outside allowed domain in plane (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     with OutOfRange.set_treatment('raise'):
@@ -308,7 +308,7 @@ def plane_to_sphere_invalid(projection, plane, clipped, decimal):
     with OutOfRange.set_treatment('nan'):
         np.testing.assert_array_equal(plane_to_sphere(*plane), [np.nan, np.nan])
     with OutOfRange.set_treatment('clip'):
-        test_plane_to_sphere(projection, plane, clipped, decimal)
+        test_plane_to_sphere(projection, plane, clipped)
 
 
 @pytest.mark.parametrize("projection, offset_p",
@@ -317,20 +317,20 @@ def plane_to_sphere_invalid(projection, plane, clipped, decimal):
 def test_plane_to_sphere_outside_domain(projection, offset_p):
     """Test points outside allowed domain in plane (plane -> sphere)."""
     # Bad el0 > 90 degrees
-    plane_to_sphere_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, PI/2], 12)
+    plane_to_sphere_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, PI/2])
     if projection == 'ARC':
-        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI, 0.0], 12)
-        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [PI, 0.0], 12)
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [PI, 0.0])
     elif not np.isnan(offset_p):
         # Bad (x, y) vector length > 1.0
-        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI/2, 0.0], 12)
-        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [0.0, PI/2], 12)
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI/2, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [0.0, PI/2])
     if projection == 'SSN':
         # Bad x coordinate > cos(el0)
-        plane_to_sphere_invalid(projection, (0.0, PI/2, 1.0, 0.0), [-PI/2, 0.0], 12)
-        plane_to_sphere_invalid(projection, (0.0, PI/2, -1.0, 0.0), [PI/2, 0.0], 12)
+        plane_to_sphere_invalid(projection, (0.0, PI/2, 1.0, 0.0), [-PI/2, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, PI/2, -1.0, 0.0), [PI/2, 0.0])
         # Bad y coordinate -> den < 0
-        plane_to_sphere_invalid(projection, (0.0, PI/2, 0.0, -1.0), [0.0, PI/2], 12)
+        plane_to_sphere_invalid(projection, (0.0, PI/2, 0.0, -1.0), [0.0, PI/2])
 
 
 def sphere_to_plane_to_sphere(projection, reference, sphere, plane):
