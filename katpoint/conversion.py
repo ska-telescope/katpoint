@@ -33,7 +33,8 @@ def to_angle(s, sexagesimal_unit=u.deg):
 
       - A number is in radians.
       - A decimal string ('123.4') is in degrees.
-      - A sexagesimal string ('12:34:56.7' or '12 34 56') has `sexagesimal_unit`.
+      - A sexagesimal string ('12:34:56.7' or '12 34 56.7')
+        has `sexagesimal_unit`, which defaults to degrees.
 
     Parameters
     ----------
