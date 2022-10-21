@@ -306,9 +306,9 @@ def sphere_to_plane_invalid(projection, sphere, clipped, decimal):
 def test_sphere_to_plane_outside_domain(projection, clip_x, clip_y, decimal):
     """Test points outside allowed domain on sphere (sphere -> plane)."""
     sphere_to_plane_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, -clip_y], decimal)
+    sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI), [0.0, +clip_y], decimal)
     if projection != 'ARC':
         sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0), [clip_x, 0.0], decimal)
-    sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI), [0.0, +clip_y], decimal)
 
 
 def test_sphere_to_plane_special():
