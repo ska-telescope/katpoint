@@ -70,7 +70,14 @@ class Target:
     *xephem*).
 
     For *azel*, *radec* and *gal* targets, the two location fields contain the
-    relevant longitude and latitude coordinates, respectively.
+    relevant longitude and latitude coordinates, respectively. The following
+    angle string formats are supported::
+
+      - Decimal, always in degrees (e.g. '12.5')
+      - Sexagesimal, in hours for right ascension and degrees for the rest,
+        with a colon or space separator (e.g. '12:30:00' or '12 30')
+      - Decimal or sexagesimal with explicit unit suffix 'd' or 'h',
+        e.g. '12.5h' (hours, not degrees!) or '12:30d'
 
     The *special* body type has no location fields. The *special* target name
     is typically one of the major solar system objects supported by Astropy's
@@ -391,8 +398,8 @@ class Target:
         Parameters
         ----------
         az, el : :class:`~astropy.coordinates.Angle` or equivalent, string or float
-        Azimuth and elevation, as anything accepted by `Angle`, in 'D:M:S' or
-        decimal degree string format, or as a float in radians
+        Azimuth and elevation, as anything accepted by `Angle`, a sexagesimal or
+        decimal string in degrees, or as a float in radians
 
         Returns
         -------
@@ -408,11 +415,11 @@ class Target:
         Parameters
         ----------
         ra : :class:`~astropy.coordinates.Angle` or equivalent, string or float
-            Right ascension, as anything accepted by `Angle`, in 'H:M:S' or
-            decimal degree string format, or as a float in radians
+            Right ascension, as anything accepted by `Angle`, a sexagesimal
+            string in hours, a decimal string in degrees, or as a float in radians
         dec : :class:`~astropy.coordinates.Angle` or equivalent, string or float
-            Declination, as anything accepted by `Angle`, in 'D:M:S' or decimal
-            degree string format, or as a float in radians
+            Declination, as anything accepted by `Angle`, a sexagesimal or
+            decimal string in degrees, or as a float in radians
 
         Returns
         -------

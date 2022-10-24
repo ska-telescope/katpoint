@@ -31,8 +31,11 @@ from .helper import assert_angles_almost_equal
 
 @pytest.mark.parametrize("angle, angle_deg", [('10:00:00', 10),
                                               ('10:45:00', 10.75),
+                                              ('10 45 00', 10.75),
                                               ('10.0', 10),
                                               ((10 * u.deg).to_value(u.rad), pytest.approx(10)),
+                                              (10 * u.deg, 10),
+                                              (Angle('10d'), 10),
                                               ('10d00m00s', 10),
                                               ('10h00m00s', pytest.approx(150))])
 def test_angle_from_degrees(angle, angle_deg):
@@ -41,8 +44,11 @@ def test_angle_from_degrees(angle, angle_deg):
 
 @pytest.mark.parametrize("angle, angle_hour", [('10:00:00', 10),
                                                ('10:45:00', 10.75),
+                                               ('10 45 00', 10.75),
                                                ('150.0', pytest.approx(10)),
                                                ((150 * u.deg).to_value(u.rad), pytest.approx(10)),
+                                               (10 * u.hourangle, 10),
+                                               (Angle('10h'), 10),
                                                ('10h00m00s', 10),
                                                ('10d00m00s', pytest.approx(10 / 15))])
 def test_angle_from_hours(angle, angle_hour):
@@ -106,9 +112,8 @@ def test_angle_to_string_errors(angle, kwargs):
                                     dict(decimal=True),
                                     dict(unit=u.hour),
                                     dict(unit=u.hour, decimal=True)])
-def test_angle_to_string_round_trip(kwargs):
-    rs = np.random.RandomState(46)  # pylint: disable=no-member
-    angle1 = Angle(360 * rs.rand(1000) * u.deg)
+def test_angle_to_string_round_trip(random, kwargs, N=1000):
+    angle1 = Angle(360 * random.rand(N) * u.deg)
     string1 = katpoint.conversion.angle_to_string(angle1, **kwargs)
     angle2 = katpoint.conversion.to_angle(string1)
     # The smallest angle we care about is a micron held at a distance of the Earth's diameter
@@ -119,18 +124,16 @@ def test_angle_to_string_round_trip(kwargs):
     np.testing.assert_array_equal(string2, string1)
 
 
-@pytest.fixture(name='random_geoid')
-def fixture_random_geoid():
-    N = 1000
-    lat = 0.999 * np.pi * (np.random.rand(N) - 0.5)
-    lon = 2.0 * np.pi * np.random.rand(N)
-    alt = 1000.0 * np.random.randn(N)
+def random_geoid(random, N):
+    lat = 0.999 * np.pi * (random.rand(N) - 0.5)
+    lon = 2.0 * np.pi * random.rand(N)
+    alt = 1000.0 * random.randn(N)
     return lat, lon, alt
 
 
-def test_lla_to_ecef(random_geoid):
+def test_lla_to_ecef(random, N=1000):
     """Closure tests for LLA to ECEF conversion and vice versa."""
-    lat, lon, alt = random_geoid
+    lat, lon, alt = random_geoid(random, N)
     x, y, z = katpoint.lla_to_ecef(lat, lon, alt)
     new_lat, new_lon, new_alt = katpoint.ecef_to_lla(x, y, z)
     new_x, new_y, new_z = katpoint.lla_to_ecef(new_lat, new_lon, new_alt)
@@ -147,9 +150,9 @@ def test_lla_to_ecef(random_geoid):
     assert_angles_almost_equal(new_alt2, alt, decimal=6)
 
 
-def test_ecef_to_enu(random_geoid):
+def test_ecef_to_enu(random, N=1000):
     """Closure tests for ECEF to ENU conversion and vice versa."""
-    lat, lon, alt = random_geoid
+    lat, lon, alt = random_geoid(random, N)
     x, y, z = katpoint.lla_to_ecef(lat, lon, alt)
     east, north, up = katpoint.ecef_to_enu(lat[0], lon[0], alt[0], x, y, z)
     new_x, new_y, new_z = katpoint.enu_to_ecef(lat[0], lon[0], alt[0], east, north, up)
@@ -158,17 +161,15 @@ def test_ecef_to_enu(random_geoid):
     np.testing.assert_almost_equal(new_z, z, decimal=8)
 
 
-@pytest.fixture(name='random_sphere')
-def fixture_random_sphere():
-    N = 1000
-    az = Angle(2.0 * np.pi * np.random.rand(N), unit=u.rad)
-    el = Angle(0.999 * np.pi * (np.random.rand(N) - 0.5), unit=u.rad)
+def random_sphere(random, N):
+    az = Angle(2.0 * np.pi * random.rand(N), unit=u.rad)
+    el = Angle(0.999 * np.pi * (random.rand(N) - 0.5), unit=u.rad)
     return az, el
 
 
-def test_azel_to_enu(random_sphere):
+def test_azel_to_enu(random, N=1000):
     """Closure tests for (az, el) to ENU conversion and vice versa."""
-    az, el = random_sphere
+    az, el = random_sphere(random, N)
     east, north, up = katpoint.azel_to_enu(az.rad, el.rad)
     new_az, new_el = katpoint.enu_to_azel(east, north, up)
     assert_angles_almost_equal(new_az, az.rad, decimal=15)

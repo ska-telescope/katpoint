@@ -24,7 +24,12 @@ def assert_angles_almost_equal(x, y, **kwargs):
     """Check that two angles / arrays are almost equal (modulo 2 pi)."""
     def primary_angle(x):
         return x - np.round(x / (2.0 * np.pi)) * 2.0 * np.pi
-    np.testing.assert_almost_equal(primary_angle(x - y), np.zeros(np.shape(x)), **kwargs)
+    x = np.asarray(x)
+    y = np.asarray(y)
+    np.testing.assert_array_equal(0 * x, 0 * y,
+                                  'Array shapes and/or NaN patterns differ')
+    d = primary_angle(np.nan_to_num(x - y))
+    np.testing.assert_almost_equal(d, np.zeros(np.shape(x)), **kwargs)
 
 
 def check_separation(actual, lon, lat, tol):

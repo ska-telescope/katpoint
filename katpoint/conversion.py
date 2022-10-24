@@ -33,16 +33,15 @@ def to_angle(s, sexagesimal_unit=u.deg):
 
       - A number is in radians.
       - A decimal string ('123.4') is in degrees.
-      - A sexagesimal string ('12:34:56.7') or tuple has `sexagesimal_unit`.
-
-    In addition, bytes are decoded to ASCII strings to normalize user inputs.
+      - A sexagesimal string ('12:34:56.7' or '12 34 56.7')
+        has `sexagesimal_unit`, which defaults to degrees.
 
     Parameters
     ----------
-    s : :class:`~astropy.coordinates.Angle` or equivalent, string, float, tuple
-        Anything accepted by `Angle` and also unitless strings, numbers, tuples
+    s : :class:`~astropy.coordinates.Angle` or equivalent, string, float
+        Anything accepted by `Angle` and also unitless strings and numbers
     sexagesimal_unit : :class:`~astropy.units.UnitBase` or str, optional
-        The unit applied to sexagesimal strings and tuples
+        The unit applied to sexagesimal strings
 
     Returns
     -------
@@ -56,10 +55,17 @@ def to_angle(s, sexagesimal_unit=u.deg):
         if isinstance(s, bytes):
             raise TypeError(f'Raw bytes {s} not supported: '
                             'first decode to string (or add unit)') from None
-        # We now have a number, string or tuple without a unit
-        if isinstance(s, str) and ':' in s or isinstance(s, tuple):
+        # We now have a number or a string without a unit
+        try:
+            # Check if it's just a single number
+            float(s)
+        except ValueError:
+            # If not, we assume it's a sexagesimal string that can be parsed by Astropy
             return Angle(s, unit=sexagesimal_unit)
-        elif isinstance(s, str):
+        except TypeError:
+            # Postpone dealing with things like NumPy ndarrays
+            pass
+        if isinstance(s, str):
             return Angle(s, unit=u.deg)
         else:
             # XXX Maybe deprecate this in future and only deal with strings here

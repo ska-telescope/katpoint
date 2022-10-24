@@ -32,7 +32,7 @@ test:
   tags:
     - k8srunner
   script:
-    - tox -e py38
+    - tox -e py310
   artifacts:
     paths:
       - build/

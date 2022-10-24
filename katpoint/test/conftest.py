@@ -18,6 +18,6 @@ import pytest
 import numpy as np
 
 
-@pytest.fixture(autouse=True)
-def fix_random_seed():
-    np.random.seed(42)
+@pytest.fixture(name='random')
+def fixture_random():
+    return np.random.RandomState(42)

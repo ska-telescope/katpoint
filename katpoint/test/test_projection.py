@@ -16,11 +16,20 @@
 
 """Tests for the projection module."""
 
+import threading
+
 import numpy as np
 from numpy import pi as PI   # Unorthodox but shortens those parametrization lines a lot
 import pytest
 
 import katpoint
+from katpoint.projection import (
+    OutOfRangeError,
+    out_of_range_context,
+    treat_out_of_range_values,
+    set_out_of_range_treatment,
+    get_out_of_range_treatment,
+)
 
 from .helper import assert_angles_almost_equal
 
@@ -31,81 +40,171 @@ except ImportError:
     HAS_AIPS = False
 
 
-def random_sphere(N, include_poles=False):
+@pytest.fixture(name='restore_treatment')
+def fixture_restore_treatment():
+    """Backup existing OutOfRange treatment and restore afterwards."""
+    old_treatment = get_out_of_range_treatment()
+    yield old_treatment
+    set_out_of_range_treatment(old_treatment)
+
+
+def test_treatment_setup(restore_treatment):
+    """Check that we can set out-of-range treatment appropriately."""
+    set_out_of_range_treatment('raise')
+    assert get_out_of_range_treatment() == 'raise'
+    set_out_of_range_treatment('nan')
+    assert get_out_of_range_treatment() == 'nan'
+    set_out_of_range_treatment('clip')
+    assert get_out_of_range_treatment() == 'clip'
+    with pytest.raises(ValueError):
+        set_out_of_range_treatment('bad treatment')
+    with out_of_range_context('raise'):
+        assert get_out_of_range_treatment() == 'raise'
+    assert get_out_of_range_treatment() == 'clip'
+
+
+def test_out_of_range_handling_scalar(restore_treatment):
+    """Test out-of-range handling for a scalar value."""
+    x = 2
+    y = treat_out_of_range_values(x, 'Should not happen', lower=0, upper=5)
+    np.testing.assert_array_equal(y, x)
+    with out_of_range_context('raise'):
+        with pytest.raises(OutOfRangeError):
+            y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
+    with out_of_range_context('nan'):
+        y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
+        np.testing.assert_array_equal(y, np.nan)
+    with out_of_range_context('clip'):
+        y = treat_out_of_range_values(x, 'Out of range', upper=1.1)
+        np.testing.assert_array_equal(y, 1.1)
+
+
+def test_out_of_range_handling_array(restore_treatment):
+    """Test out-of-range handling for an array of values."""
+    x = [1, 2, 3, 4]
+    y = treat_out_of_range_values(x, 'Should not happen', lower=0, upper=5)
+    np.testing.assert_array_equal(y, x)
+    with out_of_range_context('raise'):
+        with pytest.raises(OutOfRangeError):
+            y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
+    with out_of_range_context('nan'):
+        y = treat_out_of_range_values(x, 'Out of range', lower=2.1)
+        np.testing.assert_array_equal(y, [np.nan, np.nan, 3.0, 4.0])
+    with out_of_range_context('clip'):
+        y = treat_out_of_range_values(x, 'Out of range', upper=1.1)
+        np.testing.assert_array_equal(y, [1.0, 1.1, 1.1, 1.1])
+
+
+@pytest.mark.parametrize('x, scalar', [(2.0, True), (np.array(2.0), False)])
+def test_scalar_vs_0d(x, scalar, restore_treatment):
+    with out_of_range_context('clip'):
+        y = treat_out_of_range_values(x, 'Out of range', upper=1.1)
+        assert np.isscalar(y) is scalar
+
+
+@pytest.mark.parametrize('treatment', ['raise', 'nan', 'clip'])
+def test_clipping_of_minor_outliers(treatment, restore_treatment):
+    x = 1.0 + np.finfo(float).eps
+    with out_of_range_context(treatment):
+        y = treat_out_of_range_values(x, 'Should not trigger false alarm', upper=1.0)
+        assert y == 1.0
+
+
+def test_out_of_range_initialisation_in_new_thread():
+    def my_thread():
+        try:
+            result.append(treat_out_of_range_values(2.0, 'Should raise', upper=1.0))
+        except Exception as exc:
+            result.append(exc)
+
+    result = []
+    thread = threading.Thread(target=my_thread)
+    with out_of_range_context('nan'):
+        # Make sure the thread code runs inside our out_of_range_context
+        thread.start()
+        thread.join()
+    assert isinstance(result[0], OutOfRangeError)
+
+
+def random_sphere(random, N, include_poles=False):
     """Generate `N` random points on a 3D sphere in (longitude, latitude) form."""
-    az = PI * (2.0 * np.random.rand(N) - 1.0)
-    el = PI * (np.random.rand(N) - 0.5)
+    az = PI * (2.0 * random.rand(N) - 1.0)
+    el = PI * (random.rand(N) - 0.5)
     if not include_poles:
         # Keep away from poles (leave them as corner cases)
         el *= 0.999
     return az, el
 
 
-def random_disk(N, radius_warp, max_theta):
+def random_disk(random, N, radius_warp, max_theta):
     """Generate `N` random points on a 2D circular disk in (x, y) form."""
-    theta = max_theta * np.random.rand(N)
-    phi = 2 * PI * np.random.rand(N)
+    theta = max_theta * random.rand(N)
+    phi = 2 * PI * random.rand(N)
     r = radius_warp(theta)
     return r * np.cos(phi), r * np.sin(phi)
 
 
-def generate_data_sin(N):
+def generate_data_sin(random, N):
     """Generate test data for orthographic (SIN) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # (x, y) points within unit circle
-    x, y = random_disk(N, np.sin, max_theta=PI/2)
+    x, y = random_disk(random, N, np.sin, max_theta=PI/2)
     return az0, el0, x, y
 
 
-def generate_data_tan(N):
+def generate_data_tan(random, N):
     """Generate test data for gnomonic (TAN) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # Perform inverse TAN mapping to spread out points on plane
     # Stay away from edge of hemisphere
-    x, y = random_disk(N, np.tan, max_theta=PI/2 - 0.01)
+    x, y = random_disk(random, N, np.tan, max_theta=PI/2 - 0.01)
     return az0, el0, x, y
 
 
-def generate_data_arc(N):
+def generate_data_arc(random, N):
     """Generate test data for zenithal equidistant (ARC) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # (x, y) points within circle of radius pi
     # Stay away from edge of circle
-    x, y = random_disk(N, lambda theta: theta, max_theta=PI - 0.01)
+    x, y = random_disk(random, N, lambda theta: theta, max_theta=PI - 0.01)
     return az0, el0, x, y
 
 
-def generate_data_stg(N):
+def generate_data_stg(random, N):
     """Generate test data for stereographic (STG) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # Perform inverse STG mapping to spread out points on plane
     # Stay well away from point of projection
-    x, y = random_disk(N, lambda theta: 2.0 * np.sin(theta) / (1.0 + np.cos(theta)),
-                       max_theta=0.8 * PI)
+    x, y = random_disk(
+        random,
+        N,
+        lambda theta: 2.0 * np.sin(theta) / (1.0 + np.cos(theta)),
+        max_theta=0.8 * PI
+    )
     return az0, el0, x, y
 
 
-def generate_data_car(N):
+def generate_data_car(random, N):
     """Generate test data for plate carree (CAR) projection."""
     # Unrestricted (az0, el0) points on sphere
-    az0, el0 = random_sphere(N, include_poles=True)
+    az0, el0 = random_sphere(random, N, include_poles=True)
     # Unrestricted (x, y) points on corresponding plane
-    x, y = random_sphere(N, include_poles=True)
+    x, y = random_sphere(random, N, include_poles=True)
     return az0, el0, x, y
 
 
-def generate_data_ssn(N):
+def generate_data_ssn(random, N):
     """Generate test data for swapped orthographic (SSN) projection."""
-    az0, el0 = random_sphere(N)
+    az0, el0 = random_sphere(random, N)
     # (x, y) points within complicated SSN domain - clipped unit circle
     cos_el0 = np.cos(el0)
     # The x coordinate is bounded by +- cos(el0)
-    x = (2.0 * np.random.rand(N) - 1.0) * cos_el0
+    x = (2.0 * random.rand(N) - 1.0) * cos_el0
     # The y coordinate ranges between two (semi-)circles centred on origin:
     # the unit circle on one side and circle of radius cos(el0) on other side
     y_offset = -np.sqrt(cos_el0 ** 2 - x ** 2)
     y_range = -y_offset + np.sqrt(1.0 - x ** 2)
-    y = (y_range * np.random.rand(N) + y_offset) * np.sign(el0)
+    y = (y_range * random.rand(N) + y_offset) * np.sign(el0)
     return az0, el0, x, y
 
 
@@ -119,11 +218,11 @@ generate_data = {'SIN': generate_data_sin, 'TAN': generate_data_tan,
 @pytest.mark.parametrize('projection, decimal',
                          [('SIN', 10), ('TAN', 8), ('ARC', 8),
                           ('STG', 9), ('CAR', 12), ('SSN', 10)])
-def test_random_closure(projection, decimal, N=100):
+def test_random_closure(random, projection, decimal, N=100):
     """Do random projections and check closure."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    az0, el0, x, y = generate_data[projection](N)
+    az0, el0, x, y = generate_data[projection](random, N)
     az, el = plane_to_sphere(az0, el0, x, y)
     xx, yy = sphere_to_plane(az0, el0, az, el)
     aa, ee = plane_to_sphere(az0, el0, xx, yy)
@@ -138,11 +237,11 @@ def test_random_closure(projection, decimal, N=100):
 @pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
 @pytest.mark.parametrize('projection, aips_code, decimal',
                          [('SIN', 2, 9), ('TAN', 3, 10), ('ARC', 4, 8), ('STG', 6, 9)])
-def test_aips_compatibility(projection, aips_code, decimal, N=100):
+def test_aips_compatibility(random, projection, aips_code, decimal, N=100):
     """Compare with original AIPS routine (if available)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    az0, el0, x, y = generate_data[projection](N)
+    az0, el0, x, y = generate_data[projection](random, N)
     if projection == 'TAN':
         # AIPS TAN only deprojects (x, y) coordinates within unit circle
         r = x * x + y * y
@@ -175,26 +274,41 @@ def test_aips_compatibility(projection, aips_code, decimal, N=100):
         ('SSN', (0.0, PI/2, -PI/2, 0.0), [0.0, 1.0]),
     ]
 )
-def test_sphere_to_plane(projection, sphere, plane):
+def test_sphere_to_plane(projection, sphere, plane, decimal=12):
     """Test specific cases (sphere -> plane)."""
     sphere_to_plane = katpoint.sphere_to_plane[projection]
     xy = np.array(sphere_to_plane(*sphere))
-    np.testing.assert_almost_equal(xy, plane, decimal=12)
+    np.testing.assert_almost_equal(xy, plane, decimal)
 
 
-@pytest.mark.parametrize("projection, sphere", [('ARC', (0.0, 0.0, 0.0, PI))])
-def test_sphere_to_plane_invalid(projection, sphere):
+def sphere_to_plane_invalid(projection, sphere, clipped, decimal):
     """Test points outside allowed domain on sphere (sphere -> plane)."""
     sphere_to_plane = katpoint.sphere_to_plane[projection]
-    with pytest.raises(ValueError):
-        sphere_to_plane(*sphere)
+    with out_of_range_context('raise'):
+        with pytest.raises(OutOfRangeError):
+            sphere_to_plane(*sphere)
+    with out_of_range_context('nan'):
+        np.testing.assert_array_equal(sphere_to_plane(*sphere), [np.nan, np.nan])
+    with out_of_range_context('clip'):
+        test_sphere_to_plane(projection, sphere, clipped, decimal)
 
 
-@pytest.mark.parametrize("projection", ['SIN', 'TAN', 'STG', 'SSN'])
-def test_sphere_to_plane_outside_domain(projection):
+@pytest.mark.parametrize(
+    "projection, clip_x, clip_y, decimal",
+    [
+        ('SIN', -1.0, 1.0, 12),
+        ('TAN', -1e6, 1e6, 4),
+        ('ARC', np.nan, PI/2, 12),
+        ('STG', -894.42495493, 2.0, 8),
+        ('SSN', -1.0, -1.0, 12)
+    ]
+)
+def test_sphere_to_plane_outside_domain(projection, clip_x, clip_y, decimal):
     """Test points outside allowed domain on sphere (sphere -> plane)."""
-    test_sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0))
-    test_sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI))
+    sphere_to_plane_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, -clip_y], decimal)
+    sphere_to_plane_invalid(projection, (0.0, 0.0, 0.0, PI), [0.0, +clip_y], decimal)
+    if projection != 'ARC':
+        sphere_to_plane_invalid(projection, (0.0, 0.0, PI, 0.0), [clip_x, 0.0], decimal)
 
 
 def test_sphere_to_plane_special():
@@ -228,18 +342,38 @@ def test_plane_to_sphere(projection, plane, sphere):
     assert_angles_almost_equal(ae, sphere, decimal=12)
 
 
-def plane_to_sphere_invalid(projection, plane):
+def plane_to_sphere_invalid(projection, plane, clipped):
     """Test points outside allowed domain in plane (plane -> sphere)."""
     plane_to_sphere = katpoint.plane_to_sphere[projection]
-    with pytest.raises(ValueError):
-        plane_to_sphere(*plane)
+    with out_of_range_context('raise'):
+        with pytest.raises(OutOfRangeError):
+            plane_to_sphere(*plane)
+    with out_of_range_context('nan'):
+        np.testing.assert_array_equal(plane_to_sphere(*plane), [np.nan, np.nan])
+    with out_of_range_context('clip'):
+        test_plane_to_sphere(projection, plane, clipped)
 
 
-@pytest.mark.parametrize("projection, offset_p", [('SIN', 2.0), ('ARC', 4.0), ('SSN', 2.0)])
+@pytest.mark.parametrize("projection, offset_p",
+                         [('SIN', 2.0), ('TAN', np.nan), ('ARC', 4.0),
+                          ('STG', np.nan), ('SSN', -2.0)])
 def test_plane_to_sphere_outside_domain(projection, offset_p):
     """Test points outside allowed domain in plane (plane -> sphere)."""
-    plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0))
-    plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p))
+    # Bad el0 > 90 degrees
+    plane_to_sphere_invalid(projection, (0.0, PI, 0.0, 0.0), [0.0, PI/2])
+    if projection == 'ARC':
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [PI, 0.0])
+    elif not np.isnan(offset_p):
+        # Bad (x, y) vector length > 1.0
+        plane_to_sphere_invalid(projection, (0.0, 0.0, offset_p, 0.0), [PI/2, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, 0.0, 0.0, offset_p), [0.0, PI/2])
+    if projection == 'SSN':
+        # Bad x coordinate > cos(el0)
+        plane_to_sphere_invalid(projection, (0.0, PI/2, 1.0, 0.0), [-PI/2, 0.0])
+        plane_to_sphere_invalid(projection, (0.0, PI/2, -1.0, 0.0), [PI/2, 0.0])
+        # Bad y coordinate -> den < 0
+        plane_to_sphere_invalid(projection, (0.0, PI/2, 0.0, -1.0), [0.0, PI/2])
 
 
 def sphere_to_plane_to_sphere(projection, reference, sphere, plane):
@@ -289,10 +423,10 @@ def plane_to_sphere_original_ssn(target_az, target_el, ll, mm):
     return scan_az, scan_el
 
 
-def test_vs_original_ssn(decimal=10, N=100):
+def test_vs_original_ssn(random, decimal=10, N=100):
     """SSN projection: compare against Mattieu's original version."""
     plane_to_sphere = katpoint.plane_to_sphere['SSN']
-    az0, el0, x, y = generate_data['SSN'](N)
+    az0, el0, x, y = generate_data['SSN'](random, N)
     az, el = plane_to_sphere(az0, el0, x, y)
     ll, mm = sphere_to_plane_original_ssn(az0, el0, az, el)
     aa, ee = plane_to_sphere_original_ssn(az0, el0, ll, mm)
