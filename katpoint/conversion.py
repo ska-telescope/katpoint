@@ -88,9 +88,13 @@ def angle_to_string(angle, show_unit=True, **kwargs):
     decimal) has a suffix indicating the unit ('d' for degree or 'h' for hour).
     This allows Astropy Angles to be constructed directly from it without the
     need for :func:`to_angle`. This suffix can be suppressed when generating
-    strings for display purposes. Extra keyword arguments are passed on to
-    :meth:`~astropy.coordinates.Angle.to_string` to control the appearance of
-    the string to some extent.
+    strings for display purposes.
+
+    Extra keyword arguments are passed on to :meth:`~astropy.coordinates.Angle.to_string`
+    to control the appearance of the string to some extent, but there are
+    restrictions. The only supported units are degree, hour and hourangle.
+    The sexagesimal separator is fixed to ':' but ignored when a decimal
+    representation is selected instead (unlike in Astropy >= 5.0).
 
     Parameters
     ----------
@@ -116,7 +120,11 @@ def angle_to_string(angle, show_unit=True, **kwargs):
         raise ValueError(f'The angle unit should be degree, hour or hourangle, not {unit}')
     sep = kwargs.setdefault('sep', ':')
     decimal = kwargs.get('decimal', False)
-    if not decimal and sep != ':':
+    # Ignore sexagesimal separator when using a decimal representation,
+    # instead of crashing on Astropy >= 5.0.
+    if decimal:
+        del kwargs['sep']
+    elif sep != ':':
         raise ValueError(f"The sexagesimal separator should be ':', not '{sep}'")
     precision = kwargs.get('precision')
     if precision is None:
