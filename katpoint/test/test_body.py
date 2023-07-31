@@ -53,16 +53,18 @@ TLE_NAME = 'GPS BIIA-21 (PRN 09)'
 TLE_LINE1 = '1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057'
 TLE_LINE2 = '2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282'
 TLE_TS = '2019-09-23 07:45:36.000'
-TLE_AZ = '280:32:29.6594d'  # Astropy 4.3
-# 1.      280:32:28.6175   Skyfield 1.37 (3.7" error)
-# 2.      280:32:28.1892   Astropy 4.1 (4.1" error)
-# 3.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (5.3" error)
-# 4.      280:32:07.2      PyEphem 3.7.7.0 (33.7" error)
-TLE_EL = '-54:06:29.1898d'  # Astropy 4.3
-# 1.      -54:06:32.8635   Skyfield 1.37
-# 2.      -54:06:33.1950   Astropy 4.1
-# 3.      -54:06:34.5473   Astropy 4.0.1 + PyOrbital for TEME
-# 4.      -54:05:58.2      PyEphem 3.7.7.0
+TLE_AZ = '280:32:29.6594d'  # Astropy 5.3
+# 1.      280:32:29.6594   Astropy 4.3 (0.0003" error)
+# 2.      280:32:28.6175   Skyfield 1.46 (3.7" error)
+# 3.      280:32:28.1892   Astropy 4.1 (4.1" error)
+# 4.      280:32:29.675    Astropy 4.0.1 + PyOrbital for TEME (5.3" error)
+# 5.      280:32:07.2      PyEphem 3.7.7.0 (33.7" error)
+TLE_EL = '-54:06:29.1901d'  # Astropy 5.3
+# 1.      -54:06:29.1898   Astropy 4.3
+# 2.      -54:06:32.8635   Skyfield 1.46
+# 3.      -54:06:33.1950   Astropy 4.1
+# 4.      -54:06:34.5473   Astropy 4.0.1 + PyOrbital for TEME
+# 5.      -54:05:58.2      PyEphem 3.7.7.0
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 astropy_version = Version(astropy_version)
 
@@ -70,30 +72,33 @@ astropy_version = Version(astropy_version)
 # (topocentric CIRS). This PR improved (az, el) for nearby objects, and their tolerances are
 # adjusted so that the tests still pass on Astropy 4.1. One exception is the reference
 # coordinates for the Moon, which is based on the more accurate Moon model in Astropy 5.0.
+# The azel reference values are updated to that of Astropy 5.3, which has a more accurate
+# IERS_B table based on ITRF2020 which is rotated by about 1 mas relative to earlier versions.
+# The accuracy is capped to 0.00005" since we specify azel arcsec to 4 decimal places.
 @pytest.mark.parametrize(
     "body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver",
     [
         (_get_fixed_body('10:10:40.123', '40:20:50.567'), '2020-01-01 00:00:00.000',
-         '10:10:40.123h', '40:20:50.567d', '326:05:57.5409d', '51:21:20.0118d', 1 * u.mas, '4.3'),
+         '10:10:40.123h', '40:20:50.567d', '326:05:57.5414d', '51:21:20.0122d', 1 * u.mas, '5.3'),
         # 10:10:40.12h     40:20:50.6d      326:05:54.8d      51:21:18.5d  (PyEphem)
         # Adjust time by UT1-UTC=-0.177:    326:05:57.1d      51:21:19.9  (PyEphem)
         (_get_fixed_body('10:10:40.123', '40:20:50.567', 0 * u.m), '2020-01-01 00:00:00.000',
-         '18:43:01.1355h', '-23:04:13.1204d', '111:27:59.773d', '-13:52:32.0914d', 60 * u.mas, '4.3'),
+         '18:43:01.1355h', '-23:04:13.1204d', '111:27:59.7729d', '-13:52:32.0920d', 60 * u.mas, '5.3'),
         # A distance of 0 m takes us to the barycentre, so way different (ra, dec); cf. Sun below
         (SolarSystemBody('Mars'), '2020-01-01 00:00:00.000',
-         '15:43:47.3413h', '-19:23:08.1338d', '118:10:05.112d', '27:23:12.8455d', 1 * u.mas, '4.3'),
+         '15:43:47.3413h', '-19:23:08.1338d', '118:10:05.1118d', '27:23:12.8449d', 1 * u.mas, '5.3'),
         # 15:43:47.22       -19:23:07.0        118:10:06.1d       27:23:13.3d  (PyEphem)
         (SolarSystemBody('Moon'), '2020-01-01 10:00:00.000',
-         '23:35:44.1441h', '-8:32:55.3779d', '127:15:16.5845d', '60:05:10.4223d', 320 * u.mas, '5.0'),
+         '23:35:44.1441h', '-8:32:55.3779d', '127:15:16.5836d', '60:05:10.4217d', 320 * u.mas, '5.3'),
         # 23:34:17.02       -8:16:33.4        127:15:23.6d       60:05:13.7d  (PyEphem)
         # The Moon radec differs by quite a bit (16') because PyEphem's astrometric radec is
         # geocentric while katpoint's version is topocentric (FWIW, Skyfield has both).
         # Katpoint's geocentric astrometric radec is 23:34:17.5082, -8:16:28.6389.
         (SolarSystemBody('Sun'), '2020-01-01 10:00:00.000',
-         '18:44:13.362h', '-23:02:54.8156d', '234:53:19.4761d', '31:38:11.4251d', 160 * u.mas, '4.3'),
+         '18:44:13.362h', '-23:02:54.8156d', '234:53:19.4757d', '31:38:11.4257d', 160 * u.mas, '5.3'),
         # 18:44:13.84       -23:02:51.2        234:53:20.8d       31:38:09.4d  (PyEphem)
         (EarthSatelliteBody.from_tle(TLE_LINE1, TLE_LINE2), TLE_TS,
-         '3:32:58.1741h', '-2:04:30.0658d', TLE_AZ, TLE_EL, 4200 * u.mas, '4.3'),
+         '3:32:58.1741h', '-2:04:30.0658d', TLE_AZ, TLE_EL, 4200 * u.mas, '5.3'),
         # 3:33:00.26       -2:04:32.2  (PyEphem)
         (StationaryBody('127:15:17.1418', '60:05:10.5475'), '2020-01-01 10:00:00.000',
          '23:35:44.1259h', '-8:32:55.5217d', '127:15:17.1418d', '60:05:10.5475d', 1 * u.mas, '4.3'),
