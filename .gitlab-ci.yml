@@ -6,6 +6,8 @@ image: $SKA_K8S_TOOLS_DEPLOY_IMAGE
 # before_script is used to define the command that should be run before all jobs, including deploy jobs, but after the restoration of artifacts.
 # This can be an array or a multi-line string.
 before_script:
+  - apt-get -y update
+  - apt-get install -y gfortran --no-install-recommends
   - python3 -m pip install -r gitlab-ci-requirements.txt
 
 stages:
