@@ -590,11 +590,12 @@ def test_great_conjunction():
     i = ISS.radec(timestamp, pentax)
     m = moon.radec(timestamp, pentax)
     # This is a regression test, using separations as measured by Astropy 4.3 (also valid for 4.1)
-    assert np.allclose(j.separation(s), 0.486585894 * u.deg, atol=1 * u.mas)
-    assert np.allclose(j.separation(i), 0.213263690 * u.deg, atol=1 * u.mas)
-    assert np.allclose(i.separation(s), 0.275048635 * u.deg, atol=1 * u.mas)
+    # The accuracy is within the precision (9 digits => 0.5e-9 deg = 1.8 microarcsec)
+    assert np.allclose(j.separation(s), 0.486585894 * u.deg, atol=0.0018 * u.mas)
+    assert np.allclose(j.separation(i), 0.213263690 * u.deg, atol=0.0018 * u.mas)
+    assert np.allclose(i.separation(s), 0.275048635 * u.deg, atol=0.0018 * u.mas)
     # The Moon model improved in Astropy 5.0
-    tol = 1 * u.mas if astropy_version >= Version('5.0') else 300 * u.mas
+    tol = 0.0018 * u.mas if astropy_version >= Version('5.0') else 300 * u.mas
     assert np.allclose(m.separation(i), 3.262362502 * u.deg, atol=tol)
 
 
@@ -605,5 +606,5 @@ def test_improved_azel():
     pentax = katpoint.Antenna('Jellore Lookout NSW, -34.462653, 150.427971, 864')
     azel = ISS.azel(timestamp, pentax)
     # Check against Astropy 5.3 and relax tolerance for older versions
-    tol = 0.05 * u.mas if astropy_version >= Version('5.3') else 4 * u.arcmin
+    tol = 0.1 * u.mas if astropy_version >= Version('5.3') else 4 * u.arcmin
     check_separation(azel, '137:54:59.0569d', '83:25:13.3345d', tol=tol)

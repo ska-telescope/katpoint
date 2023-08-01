@@ -38,12 +38,13 @@ def _lon_lat_str(coord):
     lookup = {v: k for k, v in coord.representation_component_names.items()}
     lon = getattr(coord, lookup['lon'])
     lat = getattr(coord, lookup['lat'])
-    return '({}{}, {}{})'.format(
-        lon.to_string(sep=':', precision=4),
-        'd' if lon.unit is u.deg else 'h',
-        lat.to_string(sep=':', precision=4),
-        'd' if lat.unit is u.deg else 'h',
-    )
+    kwargs = dict(sep=':', pad=True)
+    if lookup['lon'] == 'ra':
+        lon_str = lon.to_string(unit=u.hourangle, precision=5, **kwargs) + 'h'
+    else:
+        lon_str = lon.to_string(unit=u.deg, precision=4, **kwargs) + 'd'
+    lat_str = lat.to_string(unit=u.deg, precision=4, **kwargs) + 'd'
+    return f'({lon_str}, {lat_str})'
 
 
 def check_separation(actual, lon, lat, tol):
