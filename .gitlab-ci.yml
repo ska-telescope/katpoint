@@ -47,6 +47,8 @@ docs:
   tags:
     - k8srunner
   before_script:
+    - apt-get -y update
+    - apt-get install -y gfortran --no-install-recommends
     - echo "error" > .docs_status
     - python3 -m pip install -r gitlab-ci-requirements.txt
     - python3 -m pip install anybadge
