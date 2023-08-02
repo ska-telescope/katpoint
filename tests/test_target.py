@@ -29,7 +29,8 @@ from astropy import __version__ as astropy_version
 from packaging.version import Version
 
 import katpoint
-from katpoint.test.helper import check_separation
+
+from .helper import check_separation
 
 
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '

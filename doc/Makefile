@@ -5,7 +5,7 @@
 # from the environment for the first two.
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
-SOURCEDIR     = .
+SOURCEDIR     = src
 BUILDDIR      = _build
 
 # Put it first so that "make" without argument is like "make help".
@@ -13,7 +13,7 @@ help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 apidoc:
-	sphinx-apidoc -f -o . ../katpoint ../katpoint/test/*.py
+	sphinx-apidoc -f -o . ../src/katpoint ../tests/*.py
 
 .PHONY: help apidoc Makefile
 
