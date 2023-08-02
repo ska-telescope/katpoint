@@ -24,7 +24,6 @@ from astropy.coordinates import EarthLocation, AltAz, ICRS
 
 import katpoint
 from katpoint.refraction import SaastamoinenZenithDelay, GlobalMappingFunction, TroposphericDelay
-from katpoint.test.helper import assert_angles_almost_equal
 
 try:
     from almacalc.lowlevel import sastd, sastw, gmf11
@@ -33,6 +32,8 @@ except ImportError:
     HAS_ALMACALC = False
 else:
     HAS_ALMACALC = True
+
+from .helper import assert_angles_almost_equal
 
 
 def test_refraction_basic():

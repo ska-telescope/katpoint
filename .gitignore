@@ -16,7 +16,7 @@ __pycache__
 pip-log.txt
 
 # Unit test / coverage reports
-.coverage
+.coverage*
 .tox
 htmlcov
 coverage.xml
@@ -37,5 +37,5 @@ docs/apidocs
 .DS_Store
 
 # Downloaded AIPS source files
-katpoint/test/aips_projection/*.F
-katpoint/test/aips_projection/*.INC
+tests/aips_projection/*.F
+tests/aips_projection/*.INC

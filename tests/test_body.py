@@ -33,7 +33,6 @@ from packaging.version import Version
 
 from katpoint.body import (Body, FixedBody, GalacticBody, SolarSystemBody,
                            EarthSatelliteBody, StationaryBody)
-from katpoint.test.helper import check_separation
 
 try:
     from skyfield.api import load, EarthSatellite, Topos
@@ -41,6 +40,8 @@ except ImportError:
     HAS_SKYFIELD = False
 else:
     HAS_SKYFIELD = True
+
+from .helper import check_separation
 
 
 def _get_fixed_body(ra_str, dec_str, distance=None):

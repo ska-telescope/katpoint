@@ -13,7 +13,7 @@ help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 apidoc:
-	sphinx-apidoc -f -o . ../katpoint ../katpoint/test/*.py
+	sphinx-apidoc -f -o . ../src/katpoint ../tests/*.py
 
 .PHONY: help apidoc Makefile
 
