@@ -1,0 +1,41 @@
+[tool.poetry]
+name = "katpoint"
+# The real version is provided by the poetry-dynamic-versioning plugin based on git tags
+# This is a fake placeholder version to keep the rest of poetry happy
+version = "0.0.0"
+description = "Karoo Array Telescope pointing coordinate library"
+authors = ["Ludwig Schwardt <ludwig@ska.ac.za>"]
+license = "Modified BSD"
+repository = "https://gitlab.com/ska-telescope/katpoint"
+documentation = "https://developer.skao.int/projects/katpoint/en/latest/"
+
+[[tool.poetry.source]]
+name = "ska"
+url = "https://artefact.skao.int/repository/pypi-internal/simple"
+
+[tool.poetry.dependencies]
+# MeerKAT CAM still uses Python 3.6.9 provided by Ubuntu 18.04 LTS
+python = "^3.6.2"
+astropy = ">=4.1"
+numpy = "^1.13"
+sgp4 = "^2.7"
+
+[tool.poetry.dev-dependencies]
+# These are the last versions that can still run on Python 3.6
+black = "^22.1.0"
+build = "^0.7.0"
+flake8 = "^4.0.1"
+isort = "^5.10.1"
+pylint = "^2.12.2"
+pylint-junit = "^0.3.2"
+pytest = "^7.0.1"
+pytest-cov = "^3.0.0"
+sphinx = ">=1.6,<7"
+sphinx-rtd-theme = "^1.2.2"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
