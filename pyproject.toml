@@ -5,9 +5,20 @@ name = "katpoint"
 version = "0.0.0"
 description = "Karoo Array Telescope pointing coordinate library"
 authors = ["Ludwig Schwardt <ludwig@ska.ac.za>"]
-license = "Modified BSD"
+license = "BSD-3-Clause"
 repository = "https://gitlab.com/ska-telescope/katpoint"
 documentation = "https://developer.skao.int/projects/katpoint/en/latest/"
+keywords = ["meerkat", "ska"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Astronomy"
+]
+include = [
+    { path = "tests", format = "sdist" }
+]
 
 [[tool.poetry.source]]
 name = "ska"
