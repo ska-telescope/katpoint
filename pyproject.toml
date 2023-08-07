@@ -26,7 +26,7 @@ url = "https://artefact.skao.int/repository/pypi-internal/simple"
 
 [tool.poetry.dependencies]
 # MeerKAT CAM still uses Python 3.6.9 provided by Ubuntu 18.04 LTS
-python = "^3.6.2"
+python = "^3.8"
 astropy = ">=4.1"
 numpy = "^1.13"
 sgp4 = "^2.7"
@@ -41,6 +41,8 @@ pylint = "^2.12.2"
 pylint-junit = "^0.3.2"
 pytest = "^7.0.1"
 pytest-cov = "^3.0.0"
+sphinx = ">=1.6,<7"
+sphinx-rtd-theme = "^1.2.2"
 
 [tool.poetry-dynamic-versioning]
 enable = true
