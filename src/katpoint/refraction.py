@@ -80,19 +80,21 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     """
     p = (0.458675e1, 0.322009e0, 0.103452e-1, 0.274777e-3, 0.157115e-5)
     cvt = 1.33289
-    a = 40.
+    a = 40.0
     b = 2.7
-    c = 4.
+    c = 4.0
     d = 42.5
     e = 0.4
     f = 2.64
     g = 0.57295787e-4
 
     # Compute SN (surface refractivity) (via dewpoint and water vapor partial pressure? [LS])
-    rhumi = (100. - humidity_percent) * 0.9
-    dewpt = temperature_C - rhumi * (0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3)
-    pp = p[0] + p[1] * dewpt + p[2] * dewpt ** 2 + p[3] * dewpt ** 3 + p[4] * dewpt ** 4
-    temperature_K = temperature_C + 273.
+    rhumi = (100.0 - humidity_percent) * 0.9
+    dewpt = temperature_C - rhumi * (
+        0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
+    )
+    pp = p[0] + p[1] * dewpt + p[2] * dewpt**2 + p[3] * dewpt**3 + p[4] * dewpt**4
+    temperature_K = temperature_C + 273.0
     # This looks like Smith & Weintraub (1953) or Crane (1976) [LS]
     sn = 77.6 * (pressure_hPa + (4810.0 * cvt * pp) / temperature_K) / temperature_K
 
@@ -100,7 +102,7 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     el_deg = np.clip(np.degrees(el), 1.0, 90.0)
     aphi = a / ((el_deg + b) ** c)
     dele = -d / ((el_deg + e) ** f)
-    zenith_angle = np.radians(90. - el_deg)
+    zenith_angle = np.radians(90.0 - el_deg)
     bphi = g * (np.tan(zenith_angle) + dele)
     # Threw out an (el < 0.01) check here, which will never succeed because el is clipped to be above 1.0 [LS]
 
@@ -127,13 +129,15 @@ class RefractionCorrection:
         If the specified refraction model is unknown
     """
 
-    def __init__(self, model='VLBI Field System'):
-        self.models = {'VLBI Field System': refraction_offset_vlbi}
+    def __init__(self, model="VLBI Field System"):
+        self.models = {"VLBI Field System": refraction_offset_vlbi}
         try:
             self.offset = self.models[model]
         except KeyError:
-            raise ValueError(f"Unknown refraction correction model '{model}' - "
-                             f"should be one of {self.models.keys()}") from None
+            raise ValueError(
+                f"Unknown refraction correction model '{model}' - "
+                f"should be one of {self.models.keys()}"
+            ) from None
         self.model = model
 
     def __repr__(self):
@@ -197,10 +201,12 @@ class RefractionCorrection:
         # Maximum difference between input elevation and refraction-corrected version of final output elevation
         tolerance = np.radians(0.01 / 3600)
         # Assume offset from corrected el is similar to offset from uncorrected el -> get lower bound on desired el
-        close_offset = self.offset(refracted_el, temperature_C, pressure_hPa, humidity_percent)
+        close_offset = self.offset(
+            refracted_el, temperature_C, pressure_hPa, humidity_percent
+        )
         lower = refracted_el - 4 * np.abs(close_offset)
         # We know that corrected el > uncorrected el (mostly) -> this becomes upper bound on desired el
-        upper = refracted_el + np.radians(1. / 3600.)
+        upper = refracted_el + np.radians(1.0 / 3600.0)
         # Do binary search for desired el within this range (but cap iterations in case of a mishap)
         # This assumes that refraction-corrected elevation is monotone function of uncorrected elevation
         for iteration in range(40):
@@ -211,9 +217,12 @@ class RefractionCorrection:
             lower = np.where(test_el < refracted_el, el, lower)
             upper = np.where(test_el > refracted_el, el, upper)
         else:
-            logger.warning('Reverse refraction correction did not converge in '
-                           '%d iterations - elevation differs by at most %f arcsecs',
-                           iteration + 1, np.degrees(np.abs(test_el - refracted_el).max()) * 3600.)
+            logger.warning(
+                "Reverse refraction correction did not converge in "
+                "%d iterations - elevation differs by at most %f arcsecs",
+                iteration + 1,
+                np.degrees(np.abs(test_el - refracted_el).max()) * 3600.0,
+            )
         return el if el.ndim else el.item()
 
 
@@ -260,8 +269,9 @@ class SaastamoinenZenithDelay:
     def __init__(self, location):
         # Reduce local gravity to the value at the centroid of the atmospheric column,
         # which depends on the location of the observer
-        self._gravity_correction = (1. - 0.00266 * np.cos(2 * location.lat)
-                                    - 0.00028 / u.km * location.height)
+        self._gravity_correction = (
+            1.0 - 0.00266 * np.cos(2 * location.lat) - 0.00028 / u.km * location.height
+        )
 
     @u.quantity_input
     def hydrostatic(self, pressure: u.hPa) -> u.s:
@@ -280,7 +290,9 @@ class SaastamoinenZenithDelay:
         return _EXCESS_PATH_PER_PRESSURE * pressure / self._gravity_correction / const.c
 
     @u.quantity_input(equivalencies=u.temperature())
-    def wet(self, temperature: u.deg_C, relative_humidity: u.dimensionless_unscaled) -> u.s:
+    def wet(
+        self, temperature: u.deg_C, relative_humidity: u.dimensionless_unscaled
+    ) -> u.s:
         """Zenith delay due to "wet" (non-hydrostatic) component of atmosphere.
 
         Parameters
@@ -303,111 +315,471 @@ class SaastamoinenZenithDelay:
         # saturation_pressure_hPa = 10 ** (7.5 * temperature_C / (temperature_C + 237.3) + 0.7858)
         saturation_pressure = 6.11 * np.exp(17.269 * temp_C / (temp_C + 237.3)) * u.hPa
         partial_pressure = relative_humidity * saturation_pressure
-        excess_path_per_pressure = _EXCESS_PATH_PER_PRESSURE * (1255. / temp_K + 0.05)
+        excess_path_per_pressure = _EXCESS_PATH_PER_PRESSURE * (1255.0 / temp_K + 0.05)
         return excess_path_per_pressure * partial_pressure / const.c
 
 
-_ZENITH_DELAY = {'SaastamoinenZenithDelay': SaastamoinenZenithDelay}
+_ZENITH_DELAY = {"SaastamoinenZenithDelay": SaastamoinenZenithDelay}
 
-_GMF_H_MEAN_COEFS = np.array([
-    +1.2517e+02, +8.503e-01, +6.936e-02, -6.760e+00, +1.771e-01,  # ah_mean
-    +1.130e-02, +5.963e-01, +1.808e-02, +2.801e-03, -1.414e-03,
-    -1.212e+00, +9.300e-02, +3.683e-03, +1.095e-03, +4.671e-05,
-    +3.959e-01, -3.867e-02, +5.413e-03, -5.289e-04, +3.229e-04,
-    +2.067e-05, +3.000e-01, +2.031e-02, +5.900e-03, +4.573e-04,
-    -7.619e-05, +2.327e-06, +3.845e-06, +1.182e-01, +1.158e-02,
-    +5.445e-03, +6.219e-05, +4.204e-06, -2.093e-06, +1.540e-07,
-    -4.280e-08, -4.751e-01, -3.490e-02, +1.758e-03, +4.019e-04,
-    -2.799e-06, -1.287e-06, +5.468e-07, +7.580e-08, -6.300e-09,
-    -1.160e-01, +8.301e-03, +8.771e-04, +9.955e-05, -1.718e-06,
-    -2.012e-06, +1.170e-08, +1.790e-08, -1.300e-09, +1.000e-10,
-    +0.000e+00, +0.000e+00, +3.249e-02, +0.000e+00, +3.324e-02,  # bh_mean
-    +1.850e-02, +0.000e+00, -1.115e-01, +2.519e-02, +4.923e-03,
-    +0.000e+00, +2.737e-02, +1.595e-02, -7.332e-04, +1.933e-04,
-    +0.000e+00, -4.796e-02, +6.381e-03, -1.599e-04, -3.685e-04,
-    +1.815e-05, +0.000e+00, +7.033e-02, +2.426e-03, -1.111e-03,
-    -1.357e-04, -7.828e-06, +2.547e-06, +0.000e+00, +5.779e-03,
-    +3.133e-03, -5.312e-04, -2.028e-05, +2.323e-07, -9.100e-08,
-    -1.650e-08, +0.000e+00, +3.688e-02, -8.638e-04, -8.514e-05,
-    -2.828e-05, +5.403e-07, +4.390e-07, +1.350e-08, +1.800e-09,
-    +0.000e+00, -2.736e-02, -2.977e-04, +8.113e-05, +2.329e-07,
-    +8.451e-07, +4.490e-08, -8.100e-09, -1.500e-09, +2.000e-10,
-])
+_GMF_H_MEAN_COEFS = np.array(
+    [
+        +1.2517e02,
+        +8.503e-01,
+        +6.936e-02,
+        -6.760e00,
+        +1.771e-01,  # ah_mean
+        +1.130e-02,
+        +5.963e-01,
+        +1.808e-02,
+        +2.801e-03,
+        -1.414e-03,
+        -1.212e00,
+        +9.300e-02,
+        +3.683e-03,
+        +1.095e-03,
+        +4.671e-05,
+        +3.959e-01,
+        -3.867e-02,
+        +5.413e-03,
+        -5.289e-04,
+        +3.229e-04,
+        +2.067e-05,
+        +3.000e-01,
+        +2.031e-02,
+        +5.900e-03,
+        +4.573e-04,
+        -7.619e-05,
+        +2.327e-06,
+        +3.845e-06,
+        +1.182e-01,
+        +1.158e-02,
+        +5.445e-03,
+        +6.219e-05,
+        +4.204e-06,
+        -2.093e-06,
+        +1.540e-07,
+        -4.280e-08,
+        -4.751e-01,
+        -3.490e-02,
+        +1.758e-03,
+        +4.019e-04,
+        -2.799e-06,
+        -1.287e-06,
+        +5.468e-07,
+        +7.580e-08,
+        -6.300e-09,
+        -1.160e-01,
+        +8.301e-03,
+        +8.771e-04,
+        +9.955e-05,
+        -1.718e-06,
+        -2.012e-06,
+        +1.170e-08,
+        +1.790e-08,
+        -1.300e-09,
+        +1.000e-10,
+        +0.000e00,
+        +0.000e00,
+        +3.249e-02,
+        +0.000e00,
+        +3.324e-02,  # bh_mean
+        +1.850e-02,
+        +0.000e00,
+        -1.115e-01,
+        +2.519e-02,
+        +4.923e-03,
+        +0.000e00,
+        +2.737e-02,
+        +1.595e-02,
+        -7.332e-04,
+        +1.933e-04,
+        +0.000e00,
+        -4.796e-02,
+        +6.381e-03,
+        -1.599e-04,
+        -3.685e-04,
+        +1.815e-05,
+        +0.000e00,
+        +7.033e-02,
+        +2.426e-03,
+        -1.111e-03,
+        -1.357e-04,
+        -7.828e-06,
+        +2.547e-06,
+        +0.000e00,
+        +5.779e-03,
+        +3.133e-03,
+        -5.312e-04,
+        -2.028e-05,
+        +2.323e-07,
+        -9.100e-08,
+        -1.650e-08,
+        +0.000e00,
+        +3.688e-02,
+        -8.638e-04,
+        -8.514e-05,
+        -2.828e-05,
+        +5.403e-07,
+        +4.390e-07,
+        +1.350e-08,
+        +1.800e-09,
+        +0.000e00,
+        -2.736e-02,
+        -2.977e-04,
+        +8.113e-05,
+        +2.329e-07,
+        +8.451e-07,
+        +4.490e-08,
+        -8.100e-09,
+        -1.500e-09,
+        +2.000e-10,
+    ]
+)
 
-_GMF_H_AMPLITUDE_COEFS = np.array([
-    -2.738e-01, -2.837e+00, +1.298e-02, -3.588e-01, +2.413e-02,  # ah_amp
-    +3.427e-02, -7.624e-01, +7.272e-02, +2.160e-02, -3.385e-03,
-    +4.424e-01, +3.722e-02, +2.195e-02, -1.503e-03, +2.426e-04,
-    +3.013e-01, +5.762e-02, +1.019e-02, -4.476e-04, +6.790e-05,
-    +3.227e-05, +3.123e-01, -3.535e-02, +4.840e-03, +3.025e-06,
-    -4.363e-05, +2.854e-07, -1.286e-06, -6.725e-01, -3.730e-02,
-    +8.964e-04, +1.399e-04, -3.990e-06, +7.431e-06, -2.796e-07,
-    -1.601e-07, +4.068e-02, -1.352e-02, +7.282e-04, +9.594e-05,
-    +2.070e-06, -9.620e-08, -2.742e-07, -6.370e-08, -6.300e-09,
-    +8.625e-02, -5.971e-03, +4.705e-04, +2.335e-05, +4.226e-06,
-    +2.475e-07, -8.850e-08, -3.600e-08, -2.900e-09, +0.000e+00,
-    +0.000e+00, +0.000e+00, -1.136e-01, +0.000e+00, -1.868e-01,  # bh_amp
-    -1.399e-02, +0.000e+00, -1.043e-01, +1.175e-02, -2.240e-03,
-    +0.000e+00, -3.222e-02, +1.333e-02, -2.647e-03, -2.316e-05,
-    +0.000e+00, +5.339e-02, +1.107e-02, -3.116e-03, -1.079e-04,
-    -1.299e-05, +0.000e+00, +4.861e-03, +8.891e-03, -6.448e-04,
-    -1.279e-05, +6.358e-06, -1.417e-07, +0.000e+00, +3.041e-02,
-    +1.150e-03, -8.743e-04, -2.781e-05, +6.367e-07, -1.140e-08,
-    -4.200e-08, +0.000e+00, -2.982e-02, -3.000e-03, +1.394e-05,
-    -3.290e-05, -1.705e-07, +7.440e-08, +2.720e-08, -6.600e-09,
-    +0.000e+00, +1.236e-02, -9.981e-04, -3.792e-05, -1.355e-05,
-    +1.162e-06, -1.789e-07, +1.470e-08, -2.400e-09, -4.000e-10,
-])
+_GMF_H_AMPLITUDE_COEFS = np.array(
+    [
+        -2.738e-01,
+        -2.837e00,
+        +1.298e-02,
+        -3.588e-01,
+        +2.413e-02,  # ah_amp
+        +3.427e-02,
+        -7.624e-01,
+        +7.272e-02,
+        +2.160e-02,
+        -3.385e-03,
+        +4.424e-01,
+        +3.722e-02,
+        +2.195e-02,
+        -1.503e-03,
+        +2.426e-04,
+        +3.013e-01,
+        +5.762e-02,
+        +1.019e-02,
+        -4.476e-04,
+        +6.790e-05,
+        +3.227e-05,
+        +3.123e-01,
+        -3.535e-02,
+        +4.840e-03,
+        +3.025e-06,
+        -4.363e-05,
+        +2.854e-07,
+        -1.286e-06,
+        -6.725e-01,
+        -3.730e-02,
+        +8.964e-04,
+        +1.399e-04,
+        -3.990e-06,
+        +7.431e-06,
+        -2.796e-07,
+        -1.601e-07,
+        +4.068e-02,
+        -1.352e-02,
+        +7.282e-04,
+        +9.594e-05,
+        +2.070e-06,
+        -9.620e-08,
+        -2.742e-07,
+        -6.370e-08,
+        -6.300e-09,
+        +8.625e-02,
+        -5.971e-03,
+        +4.705e-04,
+        +2.335e-05,
+        +4.226e-06,
+        +2.475e-07,
+        -8.850e-08,
+        -3.600e-08,
+        -2.900e-09,
+        +0.000e00,
+        +0.000e00,
+        +0.000e00,
+        -1.136e-01,
+        +0.000e00,
+        -1.868e-01,  # bh_amp
+        -1.399e-02,
+        +0.000e00,
+        -1.043e-01,
+        +1.175e-02,
+        -2.240e-03,
+        +0.000e00,
+        -3.222e-02,
+        +1.333e-02,
+        -2.647e-03,
+        -2.316e-05,
+        +0.000e00,
+        +5.339e-02,
+        +1.107e-02,
+        -3.116e-03,
+        -1.079e-04,
+        -1.299e-05,
+        +0.000e00,
+        +4.861e-03,
+        +8.891e-03,
+        -6.448e-04,
+        -1.279e-05,
+        +6.358e-06,
+        -1.417e-07,
+        +0.000e00,
+        +3.041e-02,
+        +1.150e-03,
+        -8.743e-04,
+        -2.781e-05,
+        +6.367e-07,
+        -1.140e-08,
+        -4.200e-08,
+        +0.000e00,
+        -2.982e-02,
+        -3.000e-03,
+        +1.394e-05,
+        -3.290e-05,
+        -1.705e-07,
+        +7.440e-08,
+        +2.720e-08,
+        -6.600e-09,
+        +0.000e00,
+        +1.236e-02,
+        -9.981e-04,
+        -3.792e-05,
+        -1.355e-05,
+        +1.162e-06,
+        -1.789e-07,
+        +1.470e-08,
+        -2.400e-09,
+        -4.000e-10,
+    ]
+)
 
-_GMF_W_MEAN_COEFS = np.array([
-    +5.640e+01, +1.555e+00, -1.011e+00, -3.975e+00, +3.171e-02,  # aw_mean
-    +1.065e-01, +6.175e-01, +1.376e-01, +4.229e-02, +3.028e-03,
-    +1.688e+00, -1.692e-01, +5.478e-02, +2.473e-02, +6.059e-04,
-    +2.278e+00, +6.614e-03, -3.505e-04, -6.697e-03, +8.402e-04,
-    +7.033e-04, -3.236e+00, +2.184e-01, -4.611e-02, -1.613e-02,
-    -1.604e-03, +5.420e-05, +7.922e-05, -2.711e-01, -4.406e-01,
-    -3.376e-02, -2.801e-03, -4.090e-04, -2.056e-05, +6.894e-06,
-    +2.317e-06, +1.941e+00, -2.562e-01, +1.598e-02, +5.449e-03,
-    +3.544e-04, +1.148e-05, +7.503e-06, -5.667e-07, -3.660e-08,
-    +8.683e-01, -5.931e-02, -1.864e-03, -1.277e-04, +2.029e-04,
-    +1.269e-05, +1.629e-06, +9.660e-08, -1.015e-07, -5.000e-10,
-    +0.000e+00, +0.000e+00, +2.592e-01, +0.000e+00, +2.974e-02,  # bw_mean
-    -5.471e-01, +0.000e+00, -5.926e-01, -1.030e-01, -1.567e-02,
-    +0.000e+00, +1.710e-01, +9.025e-02, +2.689e-02, +2.243e-03,
-    +0.000e+00, +3.439e-01, +2.402e-02, +5.410e-03, +1.601e-03,
-    +9.669e-05, +0.000e+00, +9.502e-02, -3.063e-02, -1.055e-03,
-    -1.067e-04, -1.130e-04, +2.124e-05, +0.000e+00, -3.129e-01,
-    +8.463e-03, +2.253e-04, +7.413e-05, -9.376e-05, -1.606e-06,
-    +2.060e-06, +0.000e+00, +2.739e-01, +1.167e-03, -2.246e-05,
-    -1.287e-04, -2.438e-05, -7.561e-07, +1.158e-06, +4.950e-08,
-    +0.000e+00, -1.344e-01, +5.342e-03, +3.775e-04, -6.756e-05,
-    -1.686e-06, -1.184e-06, +2.768e-07, +2.730e-08, +5.700e-09,
-])
+_GMF_W_MEAN_COEFS = np.array(
+    [
+        +5.640e01,
+        +1.555e00,
+        -1.011e00,
+        -3.975e00,
+        +3.171e-02,  # aw_mean
+        +1.065e-01,
+        +6.175e-01,
+        +1.376e-01,
+        +4.229e-02,
+        +3.028e-03,
+        +1.688e00,
+        -1.692e-01,
+        +5.478e-02,
+        +2.473e-02,
+        +6.059e-04,
+        +2.278e00,
+        +6.614e-03,
+        -3.505e-04,
+        -6.697e-03,
+        +8.402e-04,
+        +7.033e-04,
+        -3.236e00,
+        +2.184e-01,
+        -4.611e-02,
+        -1.613e-02,
+        -1.604e-03,
+        +5.420e-05,
+        +7.922e-05,
+        -2.711e-01,
+        -4.406e-01,
+        -3.376e-02,
+        -2.801e-03,
+        -4.090e-04,
+        -2.056e-05,
+        +6.894e-06,
+        +2.317e-06,
+        +1.941e00,
+        -2.562e-01,
+        +1.598e-02,
+        +5.449e-03,
+        +3.544e-04,
+        +1.148e-05,
+        +7.503e-06,
+        -5.667e-07,
+        -3.660e-08,
+        +8.683e-01,
+        -5.931e-02,
+        -1.864e-03,
+        -1.277e-04,
+        +2.029e-04,
+        +1.269e-05,
+        +1.629e-06,
+        +9.660e-08,
+        -1.015e-07,
+        -5.000e-10,
+        +0.000e00,
+        +0.000e00,
+        +2.592e-01,
+        +0.000e00,
+        +2.974e-02,  # bw_mean
+        -5.471e-01,
+        +0.000e00,
+        -5.926e-01,
+        -1.030e-01,
+        -1.567e-02,
+        +0.000e00,
+        +1.710e-01,
+        +9.025e-02,
+        +2.689e-02,
+        +2.243e-03,
+        +0.000e00,
+        +3.439e-01,
+        +2.402e-02,
+        +5.410e-03,
+        +1.601e-03,
+        +9.669e-05,
+        +0.000e00,
+        +9.502e-02,
+        -3.063e-02,
+        -1.055e-03,
+        -1.067e-04,
+        -1.130e-04,
+        +2.124e-05,
+        +0.000e00,
+        -3.129e-01,
+        +8.463e-03,
+        +2.253e-04,
+        +7.413e-05,
+        -9.376e-05,
+        -1.606e-06,
+        +2.060e-06,
+        +0.000e00,
+        +2.739e-01,
+        +1.167e-03,
+        -2.246e-05,
+        -1.287e-04,
+        -2.438e-05,
+        -7.561e-07,
+        +1.158e-06,
+        +4.950e-08,
+        +0.000e00,
+        -1.344e-01,
+        +5.342e-03,
+        +3.775e-04,
+        -6.756e-05,
+        -1.686e-06,
+        -1.184e-06,
+        +2.768e-07,
+        +2.730e-08,
+        +5.700e-09,
+    ]
+)
 
-_GMF_W_AMPLITUDE_COEFS = np.array([
-    +1.023e-01, -2.695e+00, +3.417e-01, -1.405e-01, +3.175e-01,  # aw_amp
-    +2.116e-01, +3.536e+00, -1.505e-01, -1.660e-02, +2.967e-02,
-    +3.819e-01, -1.695e-01, -7.444e-02, +7.409e-03, -6.262e-03,
-    -1.836e+00, -1.759e-02, -6.256e-02, -2.371e-03, +7.947e-04,
-    +1.501e-04, -8.603e-01, -1.360e-01, -3.629e-02, -3.706e-03,
-    -2.976e-04, +1.857e-05, +3.021e-05, +2.248e+00, -1.178e-01,
-    +1.255e-02, +1.134e-03, -2.161e-04, -5.817e-06, +8.836e-07,
-    -1.769e-07, +7.313e-01, -1.188e-01, +1.145e-02, +1.011e-03,
-    +1.083e-04, +2.570e-06, -2.140e-06, -5.710e-08, +2.000e-08,
-    -1.632e+00, -6.948e-03, -3.893e-03, +8.592e-04, +7.577e-05,
-    +4.539e-06, -3.852e-07, -2.213e-07, -1.370e-08, +5.800e-09,
-    +0.000e+00, +0.000e+00, -8.865e-02, +0.000e+00, -4.309e-01,  # bw_amp
-    +6.340e-02, +0.000e+00, +1.162e-01, +6.176e-02, -4.234e-03,
-    +0.000e+00, +2.530e-01, +4.017e-02, -6.204e-03, +4.977e-03,
-    +0.000e+00, -1.737e-01, -5.638e-03, +1.488e-04, +4.857e-04,
-    -1.809e-04, +0.000e+00, -1.514e-01, -1.685e-02, +5.333e-03,
-    -7.611e-05, +2.394e-05, +8.195e-06, +0.000e+00, +9.326e-02,
-    -1.275e-02, -3.071e-04, +5.374e-05, -3.391e-05, -7.436e-06,
-    +6.747e-07, +0.000e+00, -8.637e-02, -3.807e-03, -6.833e-04,
-    -3.861e-05, -2.268e-05, +1.454e-06, +3.860e-07, -1.068e-07,
-    +0.000e+00, -2.658e-02, -1.947e-03, +7.131e-04, -3.506e-05,
-    +1.885e-07, +5.792e-07, +3.990e-08, +2.000e-08, -5.700e-09,
-])
+_GMF_W_AMPLITUDE_COEFS = np.array(
+    [
+        +1.023e-01,
+        -2.695e00,
+        +3.417e-01,
+        -1.405e-01,
+        +3.175e-01,  # aw_amp
+        +2.116e-01,
+        +3.536e00,
+        -1.505e-01,
+        -1.660e-02,
+        +2.967e-02,
+        +3.819e-01,
+        -1.695e-01,
+        -7.444e-02,
+        +7.409e-03,
+        -6.262e-03,
+        -1.836e00,
+        -1.759e-02,
+        -6.256e-02,
+        -2.371e-03,
+        +7.947e-04,
+        +1.501e-04,
+        -8.603e-01,
+        -1.360e-01,
+        -3.629e-02,
+        -3.706e-03,
+        -2.976e-04,
+        +1.857e-05,
+        +3.021e-05,
+        +2.248e00,
+        -1.178e-01,
+        +1.255e-02,
+        +1.134e-03,
+        -2.161e-04,
+        -5.817e-06,
+        +8.836e-07,
+        -1.769e-07,
+        +7.313e-01,
+        -1.188e-01,
+        +1.145e-02,
+        +1.011e-03,
+        +1.083e-04,
+        +2.570e-06,
+        -2.140e-06,
+        -5.710e-08,
+        +2.000e-08,
+        -1.632e00,
+        -6.948e-03,
+        -3.893e-03,
+        +8.592e-04,
+        +7.577e-05,
+        +4.539e-06,
+        -3.852e-07,
+        -2.213e-07,
+        -1.370e-08,
+        +5.800e-09,
+        +0.000e00,
+        +0.000e00,
+        -8.865e-02,
+        +0.000e00,
+        -4.309e-01,  # bw_amp
+        +6.340e-02,
+        +0.000e00,
+        +1.162e-01,
+        +6.176e-02,
+        -4.234e-03,
+        +0.000e00,
+        +2.530e-01,
+        +4.017e-02,
+        -6.204e-03,
+        +4.977e-03,
+        +0.000e00,
+        -1.737e-01,
+        -5.638e-03,
+        +1.488e-04,
+        +4.857e-04,
+        -1.809e-04,
+        +0.000e00,
+        -1.514e-01,
+        -1.685e-02,
+        +5.333e-03,
+        -7.611e-05,
+        +2.394e-05,
+        +8.195e-06,
+        +0.000e00,
+        +9.326e-02,
+        -1.275e-02,
+        -3.071e-04,
+        +5.374e-05,
+        -3.391e-05,
+        -7.436e-06,
+        +6.747e-07,
+        +0.000e00,
+        -8.637e-02,
+        -3.807e-03,
+        -6.833e-04,
+        -3.861e-05,
+        -2.268e-05,
+        +1.454e-06,
+        +3.860e-07,
+        -1.068e-07,
+        +0.000e00,
+        -2.658e-02,
+        -1.947e-03,
+        +7.131e-04,
+        -3.506e-05,
+        +1.885e-07,
+        +5.792e-07,
+        +3.990e-08,
+        +2.000e-08,
+        -5.700e-09,
+    ]
+)
 
 
 def _associated_legendre_polynomials(n, m, x):
@@ -445,15 +817,21 @@ def _associated_legendre_polynomials(n, m, x):
     """
     # Sequence of factorials from 0..2n + 1
     fact = np.ones(2 * n + 2)
-    fact[2:] = np.cumprod(np.arange(2., len(fact)))
+    fact[2:] = np.cumprod(np.arange(2.0, len(fact)))
     P = np.zeros((n + 1, m + 1))
     for i in range(n + 1):
         for j in range(min(i, m) + 1):
             ir = (i - j) // 2
             s = 0
             for k in range(ir + 1):
-                s += ((-1)**k * fact[2*i - 2*k] / fact[k] / fact[i - k]
-                      / fact[i - j - 2*k] * x**(i - j - 2*k))
+                s += (
+                    (-1) ** k
+                    * fact[2 * i - 2 * k]
+                    / fact[k]
+                    / fact[i - k]
+                    / fact[i - j - 2 * k]
+                    * x ** (i - j - 2 * k)
+                )
             P[i, j] = 1.0 / 2**i * np.sqrt((1 - x**2) ** j) * s
     return P
 
@@ -462,7 +840,7 @@ def _continued_fraction(elevation, a, b, c):
     """Marini-style continued fraction evaluated at given elevation angle."""
     # Express formula in terms of zenith angle z to match notation in references
     cos_z = np.sin(elevation)
-    topcon = (1.0 + a / (1.0 + b / (1.0 + c)))
+    topcon = 1.0 + a / (1.0 + b / (1.0 + c))
     return topcon / (cos_z + a / (cos_z + b / (cos_z + c)))
 
 
@@ -563,8 +941,9 @@ class GlobalMappingFunction:
         c = c0 + ((season + 1) * c11 / 2 + c10) * (1 - np.cos(latitude))
         gmf = _continued_fraction(elevation, a, b, c)
         # Niell's hydrostatic height correction (<0.05% for 1 km altitude)
-        correction = (1. / np.sin(elevation)
-                      - _continued_fraction(elevation, a=2.53e-5, b=5.49e-3, c=1.14e-3))
+        correction = 1.0 / np.sin(elevation) - _continued_fraction(
+            elevation, a=2.53e-5, b=5.49e-3, c=1.14e-3
+        )
         return gmf + correction / u.km * height
 
     @u.quantity_input
@@ -592,7 +971,7 @@ class GlobalMappingFunction:
         return _continued_fraction(elevation, a, b, c)
 
 
-_MAPPING_FUNCTION = {'GlobalMappingFunction': GlobalMappingFunction}
+_MAPPING_FUNCTION = {"GlobalMappingFunction": GlobalMappingFunction}
 
 
 class TroposphericDelay:
@@ -615,27 +994,37 @@ class TroposphericDelay:
         implemented so far)
     """
 
-    def __init__(self, location, model_id='SaastamoinenZenithDelay-GlobalMappingFunction'):
+    def __init__(
+        self, location, model_id="SaastamoinenZenithDelay-GlobalMappingFunction"
+    ):
         # These will effectively be read-only attributes because setattr is disabled
-        super().__setattr__('location', location)
-        super().__setattr__('model_id', model_id)
+        super().__setattr__("location", location)
+        super().__setattr__("model_id", model_id)
         # Parse model identifier string
-        model_parts = model_id.split('-')
+        model_parts = model_id.split("-")
         if len(model_parts) == 2:
-            model_parts.append('total')
+            model_parts.append("total")
         if len(model_parts) != 3:
-            raise ValueError(f"Format for tropospheric delay model ID is '<zenith delay>-"
-                             f"<mapping function>[-<hydrostatic/wet>]', not {model_id:!r}")
+            raise ValueError(
+                f"Format for tropospheric delay model ID is '<zenith delay>-"
+                f"<mapping function>[-<hydrostatic/wet>]', not {model_id:!r}"
+            )
 
         def get(mapping, key, name):
             try:
                 return mapping[key]
             except KeyError as err:
-                raise ValueError(f"Tropospheric delay model {model_id!r} has unknown {name} "
-                                 f"{key!r}, available ones are {list(mapping.keys())}") from err
+                raise ValueError(
+                    f"Tropospheric delay model {model_id!r} has unknown {name} "
+                    f"{key!r}, available ones are {list(mapping.keys())}"
+                ) from err
 
-        zenith_delay = get(_ZENITH_DELAY, model_parts[0], 'zenith delay function')(location)
-        mapping_function = get(_MAPPING_FUNCTION, model_parts[1], 'mapping function')(location)
+        zenith_delay = get(_ZENITH_DELAY, model_parts[0], "zenith delay function")(
+            location
+        )
+        mapping_function = get(_MAPPING_FUNCTION, model_parts[1], "mapping function")(
+            location
+        )
 
         def hydrostatic(p, t, h, el, ts):  # pylint: disable=unused-argument
             return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(el, ts)
@@ -646,17 +1035,22 @@ class TroposphericDelay:
         def total(p, t, h, el, ts):
             return hydrostatic(p, t, h, el, ts) + wet(p, t, h, el, ts)
 
-        model_types = {'hydrostatic': hydrostatic, 'wet': wet, 'total': total}
-        super().__setattr__('_delay', get(model_types, model_parts[2], 'type'))
+        model_types = {"hydrostatic": hydrostatic, "wet": wet, "total": total}
+        super().__setattr__("_delay", get(model_types, model_parts[2], "type"))
 
     def __setattr__(self, name, value):
         """Prevent modification of attributes (the model is read-only)."""
-        raise AttributeError('Tropospheric delay models are immutable')
+        raise AttributeError("Tropospheric delay models are immutable")
 
     @u.quantity_input(equivalencies=u.temperature())
-    def __call__(self, pressure: u.hPa, temperature: u.deg_C,
-                 relative_humidity: u.dimensionless_unscaled,
-                 elevation: u.rad, timestamp) -> u.s:
+    def __call__(
+        self,
+        pressure: u.hPa,
+        temperature: u.deg_C,
+        relative_humidity: u.dimensionless_unscaled,
+        elevation: u.rad,
+        timestamp,
+    ) -> u.s:
         """Propagation delay due to neutral gas in the troposphere and stratosphere.
 
         Parameters
@@ -677,5 +1071,10 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
-        return self._delay(pressure, temperature, relative_humidity,  # pylint: disable=no-member
-                           elevation, timestamp)
+        return self._delay(
+            pressure,
+            temperature,
+            relative_humidity,  # pylint: disable=no-member
+            elevation,
+            timestamp,
+        )

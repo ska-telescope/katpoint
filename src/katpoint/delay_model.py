@@ -55,12 +55,40 @@ class DelayModel(Model):
     def __init__(self, model=None):
         # Instantiate the relevant model parameters and register with base class
         params = []
-        params.append(Parameter('POS_E', 'm', 'antenna position: offset East of reference position'))
-        params.append(Parameter('POS_N', 'm', 'antenna position: offset North of reference position'))
-        params.append(Parameter('POS_U', 'm', 'antenna position: offset above reference position'))
-        params.append(Parameter('FIX_H', 'm', 'fixed additional path length for H feed due to electronics / cables'))
-        params.append(Parameter('FIX_V', 'm', 'fixed additional path length for V feed due to electronics / cables'))
-        params.append(Parameter('NIAO', 'm', 'non-intersecting axis offset - distance between az and el axes'))
+        params.append(
+            Parameter(
+                "POS_E", "m", "antenna position: offset East of reference position"
+            )
+        )
+        params.append(
+            Parameter(
+                "POS_N", "m", "antenna position: offset North of reference position"
+            )
+        )
+        params.append(
+            Parameter("POS_U", "m", "antenna position: offset above reference position")
+        )
+        params.append(
+            Parameter(
+                "FIX_H",
+                "m",
+                "fixed additional path length for H feed due to electronics / cables",
+            )
+        )
+        params.append(
+            Parameter(
+                "FIX_V",
+                "m",
+                "fixed additional path length for V feed due to electronics / cables",
+            )
+        )
+        params.append(
+            Parameter(
+                "NIAO",
+                "m",
+                "non-intersecting axis offset - distance between az and el axes",
+            )
+        )
         Model.__init__(self, params)
         self.set(model)
         # The EM wave velocity associated with each parameter

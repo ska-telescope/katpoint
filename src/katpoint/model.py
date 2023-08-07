@@ -55,8 +55,16 @@ class Parameter:
     value_str
     """
 
-    def __init__(self, name, units, doc, from_str=float, to_str=str,
-                 value=None, default_value=0.0):
+    def __init__(
+        self,
+        name,
+        units,
+        doc,
+        from_str=float,
+        to_str=str,
+        value=None,
+        default_value=0.0,
+    ):
         self.name = name
         self.units = units
         self.__doc__ = doc
@@ -133,9 +141,16 @@ class Model:
         name_len = max(len(p.name) for p in self)
         value_len = max(len(p.value_str) for p in self.params.values())
         units_len = max(len(p.units) for p in self.params.values())
-        return [(p.name.ljust(name_len), p.value_str.ljust(value_len),
-                 p.units.ljust(units_len), p.__doc__)
-                for p in self.params.values() if p]
+        return [
+            (
+                p.name.ljust(name_len),
+                p.value_str.ljust(value_len),
+                p.units.ljust(units_len),
+                p.__doc__,
+            )
+            for p in self.params.values()
+            if p
+        ]
 
     def __repr__(self):
         """Short human-friendly string representation of model object."""
@@ -150,13 +165,16 @@ class Model:
         summary = f"{class_name} has {len(self)} parameters with {num_active} active (non-default)"
         if num_active == 0:
             return summary
-        param_strs = '\n'.join('{} = {} {} ({})'.format(*ps) for ps in self.param_strs())
-        return f'{summary}:\n{param_strs}'
+        param_strs = "\n".join(
+            "{} = {} {} ({})".format(*ps) for ps in self.param_strs()
+        )
+        return f"{summary}:\n{param_strs}"
 
     def __eq__(self, other):
         """Equality comparison operator (parameter values only)."""
-        return self.description == \
-            (other.description if isinstance(other, self.__class__) else other)
+        return self.description == (
+            other.description if isinstance(other, self.__class__) else other
+        )
 
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
@@ -193,14 +211,17 @@ class Model:
         """Compact but complete string representation ('tostring')."""
         active = np.nonzero([bool(p) for p in self])[0]
         last_active = active[-1] if len(active) > 0 else -1
-        return ' '.join([p.value_str for p in self][:last_active + 1])
+        return " ".join([p.value_str for p in self][: last_active + 1])
 
     def fromstring(self, description):
         """Load model from description string (parameters only)."""
         self.header = {}
         # Split string either on commas or whitespace, for good measure
-        param_vals = [p.strip() for p in description.split(',')] \
-            if ',' in description else description.split()
+        param_vals = (
+            [p.strip() for p in description.split(",")]
+            if "," in description
+            else description.split()
+        )
         params = list(self)
         min_len = min(len(params), len(param_vals))
         for param, param_val in zip(params[:min_len], param_vals[:min_len]):
@@ -217,12 +238,12 @@ class Model:
             File-like object with write() method representing config file
         """
         cfg = configparser.ConfigParser()
-        cfg.add_section('header')
+        cfg.add_section("header")
         for key, val in self.header.items():
-            cfg.set('header', key, str(val))
-        cfg.add_section('params')
+            cfg.set("header", key, str(val))
+        cfg.add_section("params")
         for param_str in self.param_strs():
-            cfg.set('params', param_str[0], '{} ; {} ({})'.format(*param_str[1:]))
+            cfg.set("params", param_str[0], "{} ; {} ({})".format(*param_str[1:]))
         cfg.write(file_like)
 
     def fromfile(self, file_like):
@@ -234,21 +255,21 @@ class Model:
             File-like object with readline() method representing config file
         """
         defaults = {p.name: p._to_str(p.default_value) for p in self}
-        cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(';', '#'))
+        cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(";", "#"))
         try:
             cfg.read_file(file_like)
-            if cfg.sections() != ['header', 'params']:
-                raise configparser.Error('Expected sections not found in model file')
+            if cfg.sections() != ["header", "params"]:
+                raise configparser.Error("Expected sections not found in model file")
         except configparser.Error as exc:
-            filename = getattr(file_like, 'name', '')
-            input_descr = f'file {filename!r}' if filename else 'file-like object'
-            msg = f'Could not construct {self.__class__.__name__} from {input_descr}'
+            filename = getattr(file_like, "name", "")
+            input_descr = f"file {filename!r}" if filename else "file-like object"
+            msg = f"Could not construct {self.__class__.__name__} from {input_descr}"
             raise BadModelFile(msg) from exc
-        self.header = dict(cfg.items('header'))
+        self.header = dict(cfg.items("header"))
         for param in defaults:
             self.header.pop(param.lower())
         for param in self:
-            param.value_str = cfg.get('params', param.name)
+            param.value_str = cfg.get("params", param.name)
 
     def set(self, model=None):
         """Load parameter values from the appropriate source.
@@ -265,16 +286,17 @@ class Model:
         """
         if isinstance(model, Model):
             if not isinstance(model, type(self)):
-                raise BadModelFile('Cannot construct a %r from a %r' %
-                                   (self.__class__.__name__,
-                                    model.__class__.__name__))
+                raise BadModelFile(
+                    "Cannot construct a %r from a %r"
+                    % (self.__class__.__name__, model.__class__.__name__)
+                )
             self.fromlist(model.values())
             self.header = dict(model.header)
         elif isinstance(model, str):
             self.fromstring(model)
         else:
             array = np.atleast_1d(model)
-            if array.dtype.kind in 'iuf' and array.ndim == 1:
+            if array.dtype.kind in "iuf" and array.ndim == 1:
                 self.fromlist(model)
             elif model is not None:
                 self.fromfile(model)

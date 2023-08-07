@@ -57,24 +57,26 @@ class Body:
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        return 'Unknown'
+        return "Unknown"
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        return 'unknown'
+        return "unknown"
 
     def __repr__(self):
         """Short human-friendly string representation of target object."""
-        class_name = 'katpoint.body.' + self.__class__.__name__
-        return f'<{class_name} {self.default_name!r} at {id(self):#x}>'
+        class_name = "katpoint.body." + self.__class__.__name__
+        return f"<{class_name} {self.default_name!r} at {id(self):#x}>"
 
     @staticmethod
     def _check_location(frame):
         """Check that we have a location for computing AltAz coordinates."""
         if isinstance(frame, AltAz) and frame.location is None:
-            raise ValueError('Body needs a location to calculate (az, el) coordinates - '
-                             'did you specify an Antenna?')
+            raise ValueError(
+                "Body needs a location to calculate (az, el) coordinates - "
+                "did you specify an Antenna?"
+            )
 
     @classmethod
     def from_edb(cls, line):
@@ -84,15 +86,15 @@ class Body:
         been implemented.
         """
         try:
-            edb_type = line.split(',')[1][0]
+            edb_type = line.split(",")[1][0]
         except (AttributeError, IndexError) as err:
-            raise ValueError(f'Failed parsing XEphem EDB line: {line}') from err
-        if edb_type == 'f':
+            raise ValueError(f"Failed parsing XEphem EDB line: {line}") from err
+        if edb_type == "f":
             return FixedBody.from_edb(line)
-        elif edb_type == 'E':
+        elif edb_type == "E":
             return EarthSatelliteBody.from_edb(line)
         else:
-            raise ValueError(f'Unsupported XEphem EDB line: {line}')
+            raise ValueError(f"Unsupported XEphem EDB line: {line}")
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Compute the coordinates of the body in the requested frame.
@@ -131,13 +133,15 @@ def _to_celestial_sphere(coord, obstime, location=None):
     """Turn `coord` into GCRS direction vector relative to `location` at `obstime`."""
     # Use `location`, `coord.location` or the centre of the Earth (i.e. geocentric GCRS)
     if location is None:
-        location = getattr(coord, 'location', None)
+        location = getattr(coord, "location", None)
     if location is None:
         obsgeoloc, obsgeovel = None, None
     else:
         obsgeoloc, obsgeovel = location.get_gcrs_posvel(obstime)
     # Get to topocentric GCRS
-    gcrs = coord.transform_to(GCRS(obstime=obstime, obsgeoloc=obsgeoloc, obsgeovel=obsgeovel))
+    gcrs = coord.transform_to(
+        GCRS(obstime=obstime, obsgeoloc=obsgeoloc, obsgeovel=obsgeovel)
+    )
     # Discard distance from observer as well as any differentials (needed for EarthSatelliteBody)
     return gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation, s=None))
 
@@ -160,23 +164,23 @@ class FixedBody(Body):
         """A default name for the body derived from its coordinates or properties."""
         ra = angle_to_string(self.coord.ra, unit=u.hour, show_unit=False)
         dec = angle_to_string(self.coord.dec, unit=u.deg, show_unit=False)
-        return f'Ra: {ra} Dec: {dec}'
+        return f"Ra: {ra} Dec: {dec}"
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        return 'radec'
+        return "radec"
 
     @classmethod
     def from_edb(cls, line):
         """Construct a `FixedBody` from an XEphem database (EDB) entry."""
-        fields = line.split(',')
+        fields = line.split(",")
         # Discard proper motion for now (the part after the |)
-        ra = fields[2].split('|')[0]
-        dec = fields[3].split('|')[0]
+        ra = fields[2].split("|")[0]
+        dec = fields[3].split("|")[0]
         return cls(SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)))
 
-    def to_edb(self, name=''):
+    def to_edb(self, name=""):
         """Create an XEphem database (EDB) entry for fixed body ("f").
 
         See http://www.clearskyinstitute.com/xephem/xephem.html
@@ -184,7 +188,7 @@ class FixedBody(Body):
         icrs = self.coord.transform_to(ICRS())
         ra = angle_to_string(icrs.ra, unit=u.hour, show_unit=False)
         dec = angle_to_string(icrs.dec, unit=u.deg, show_unit=False)
-        return f'{name},f,{ra},{dec}'
+        return f"{name},f,{ra},{dec}"
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Compute the coordinates of the fixed body in the requested frame."""
@@ -194,14 +198,16 @@ class FixedBody(Body):
         if (
             obstime is not None
             and not obstime.isscalar
-            and 'obstime' not in frame.frame_attributes
+            and "obstime" not in frame.frame_attributes
         ):
             coord = self.coord.take(np.zeros_like(obstime, dtype=int))
         else:
             coord = self.coord
         # If coordinate is dimensionless, it is already on the celestial sphere
-        is_unitspherical = (isinstance(coord.data, UnitSphericalRepresentation)
-                            or coord.cartesian.x.unit == u.one)
+        is_unitspherical = (
+            isinstance(coord.data, UnitSphericalRepresentation)
+            or coord.cartesian.x.unit == u.one
+        )
         if to_celestial_sphere and not is_unitspherical:
             coord = _to_celestial_sphere(coord, obstime, location)
         return coord.transform_to(frame)
@@ -215,12 +221,12 @@ class GalacticBody(FixedBody):
         """A default name for the body derived from its coordinates or properties."""
         gal_l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
         gal_b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
-        return f'Galactic l: {gal_l} b: {gal_b}'
+        return f"Galactic l: {gal_l} b: {gal_b}"
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        return 'gal'
+        return "gal"
 
 
 class SolarSystemBody(Body):
@@ -233,9 +239,14 @@ class SolarSystemBody(Body):
     """
 
     def __init__(self, name):
-        if name.lower() not in solar_system_ephemeris.bodies:  # pylint: disable=unsupported-membership-test
-            raise ValueError("Unknown Solar System body '{}' - should be one of {}"
-                             .format(name.lower(), solar_system_ephemeris.bodies))
+        if (
+            name.lower() not in solar_system_ephemeris.bodies
+        ):  # pylint: disable=unsupported-membership-test
+            raise ValueError(
+                "Unknown Solar System body '{}' - should be one of {}".format(
+                    name.lower(), solar_system_ephemeris.bodies
+                )
+            )
         self._name = name
 
     @property
@@ -246,7 +257,7 @@ class SolarSystemBody(Body):
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        return 'special'
+        return "special"
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body for given time and location and transform to `frame`."""
@@ -260,17 +271,19 @@ class SolarSystemBody(Body):
 
 def _edb_to_time(edb_epoch):
     """Construct `Time` object from XEphem EDB epoch string."""
-    match = re.match(r'\s*(\d{1,2})/(\d+\.?\d*)/\s*(\d+)', edb_epoch, re.ASCII)
+    match = re.match(r"\s*(\d{1,2})/(\d+\.?\d*)/\s*(\d+)", edb_epoch, re.ASCII)
     if not match:
-        raise ValueError(f"Epoch string '{edb_epoch}' does not match EDB format 'MM/DD.DD+/YYYY'")
+        raise ValueError(
+            f"Epoch string '{edb_epoch}' does not match EDB format 'MM/DD.DD+/YYYY'"
+        )
     frac_day, int_day = np.modf(float(match[2]))
     # Convert fractional day to hours, minutes and fractional seconds via Astropy machinery.
     # Add arbitrary integer day to suppress ERFA warnings (will be replaced by actual day next).
-    rec = Time(59081.0, frac_day, scale='utc', format='mjd').ymdhms
-    rec['year'] = int(match[3])
-    rec['month'] = int(match[1])
-    rec['day'] = int(int_day)
-    return Time(rec, scale='utc')
+    rec = Time(59081.0, frac_day, scale="utc", format="mjd").ymdhms
+    rec["year"] = int(match[3])
+    rec["month"] = int(match[1])
+    rec["day"] = int(int_day)
+    return Time(rec, scale="utc")
 
 
 def _time_to_edb(t, high_precision=False):
@@ -278,18 +291,18 @@ def _time_to_edb(t, high_precision=False):
     # The output of this function is undefined if `t` is within a leap second
     if not high_precision:
         # The XEphem startok/endok epochs are also single-precision MJDs
-        t = Time(np.float32(t.utc.mjd), format='mjd')
+        t = Time(np.float32(t.utc.mjd), format="mjd")
     dt = t.utc.datetime
     second = dt.second + dt.microsecond / 1e6
-    minute = dt.minute + second / 60.
-    hour = dt.hour + minute / 60.
-    day = dt.day + hour / 24.
+    minute = dt.minute + second / 60.0
+    hour = dt.hour + minute / 60.0
+    day = dt.day + hour / 24.0
     if high_precision:
         # See write_E function in libastro's dbfmt.c
-        return f'{dt.month:d}/{day:.12g}/{dt.year:d}'
+        return f"{dt.month:d}/{day:.12g}/{dt.year:d}"
     else:
         # See fs_date function in libastro's formats.c
-        return f'{dt.month:2d}/{day:02.6g}/{dt.year:-4d}'
+        return f"{dt.month:2d}/{day:02.6g}/{dt.year:-4d}"
 
 
 class EarthSatelliteBody(Body):
@@ -321,18 +334,23 @@ class EarthSatelliteBody(Body):
         inclination = line2[8:16].strip()
         ra_asc_node = line2[17:25].strip()
         mean_motion = line2[52:63].strip()
-        return f'Inc: {inclination} Raan: {ra_asc_node} Rev/day: {mean_motion}'
+        return f"Inc: {inclination} Raan: {ra_asc_node} Rev/day: {mean_motion}"
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
         # The EDB format only stores essential elements so no NORAD SATCAT ID -> detect it that way
-        return 'tle' if self.satellite.satnum else 'xephem tle'
+        return "tle" if self.satellite.satnum else "xephem tle"
 
     @property
     def epoch(self):
         """The moment in time when the satellite model is true, as an Astropy `Time`."""
-        return Time(self.satellite.jdsatepoch, self.satellite.jdsatepochF, scale='utc', format='jd')
+        return Time(
+            self.satellite.jdsatepoch,
+            self.satellite.jdsatepochF,
+            scale="utc",
+            format="jd",
+        )
 
     @classmethod
     def from_tle(cls, line1, line2):
@@ -356,32 +374,43 @@ class EarthSatelliteBody(Body):
     @classmethod
     def from_edb(cls, line):
         """Build an `EarthSatelliteBody` from an XEphem database (EDB) entry."""
-        fields = line.split(',')
-        edb_epoch = _edb_to_time(fields[2].split('|')[0])
+        fields = line.split(",")
+        edb_epoch = _edb_to_time(fields[2].split("|")[0])
         # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
         # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
-        sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format='jd').jd
-        (inclination, ra_asc_node, eccentricity, arg_perigee, mean_anomaly,
-         mean_motion, orbit_decay, orbit_number, drag_coef) = tuple(float(f) for f in fields[3:])
+        sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format="jd").jd
+        (
+            inclination,
+            ra_asc_node,
+            eccentricity,
+            arg_perigee,
+            mean_anomaly,
+            mean_motion,
+            orbit_decay,
+            orbit_number,
+            drag_coef,
+        ) = tuple(float(f) for f in fields[3:])
         sat = Satrec()
         sat.sgp4init(
             WGS72,  # gravity model (TLEs are based on WGS72, therefore it is preferred to WGS84)
-            'i',           # 'a' = old AFSPC mode, 'i' = improved mode
-            0,             # satnum: Satellite number is not stored by XEphem so pick an unused one
-            sgp4_epoch,    # epoch
-            drag_coef,     # bstar
-            (orbit_decay * u.cycle / u.day ** 2).to_value(u.rad / u.minute ** 2),  # ndot
-            0.0,                                                         # nddot (not used by SGP4)
-            eccentricity,                                                # ecco
-            (arg_perigee * u.deg).to_value(u.rad),                       # argpo
-            (inclination * u.deg).to_value(u.rad),                       # inclo
-            (mean_anomaly * u.deg).to_value(u.rad),                      # mo
+            "i",  # 'a' = old AFSPC mode, 'i' = improved mode
+            0,  # satnum: Satellite number is not stored by XEphem so pick an unused one
+            sgp4_epoch,  # epoch
+            drag_coef,  # bstar
+            (orbit_decay * u.cycle / u.day**2).to_value(
+                u.rad / u.minute**2
+            ),  # ndot
+            0.0,  # nddot (not used by SGP4)
+            eccentricity,  # ecco
+            (arg_perigee * u.deg).to_value(u.rad),  # argpo
+            (inclination * u.deg).to_value(u.rad),  # inclo
+            (mean_anomaly * u.deg).to_value(u.rad),  # mo
             (mean_motion * u.cycle / u.day).to_value(u.rad / u.minute),  # no_kozai
-            (ra_asc_node * u.deg).to_value(u.rad),                       # nodeo
+            (ra_asc_node * u.deg).to_value(u.rad),  # nodeo
         )
         return cls(sat, int(orbit_number))
 
-    def to_edb(self, name=''):
+    def to_edb(self, name=""):
         """Create an XEphem database (EDB) entry for Earth satellite ("E").
 
         See http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501.
@@ -393,33 +422,37 @@ class EarthSatelliteBody(Body):
         epoch = self.epoch
         # Extract orbital elements in XEphem units, and mostly single-precision.
         # The trailing comments are corresponding XEphem variable names.
-        inclination = np.float32((sat.inclo * u.rad).to_value(u.deg))                    # inc
-        ra_asc_node = np.float32((sat.nodeo * u.rad).to_value(u.deg))                    # raan
-        eccentricity = np.float32(sat.ecco)                                              # e
-        arg_perigee = np.float32((sat.argpo * u.rad).to_value(u.deg))                    # ap
-        mean_anomaly = np.float32((sat.mo * u.rad).to_value(u.deg))                      # M
+        inclination = np.float32((sat.inclo * u.rad).to_value(u.deg))  # inc
+        ra_asc_node = np.float32((sat.nodeo * u.rad).to_value(u.deg))  # raan
+        eccentricity = np.float32(sat.ecco)  # e
+        arg_perigee = np.float32((sat.argpo * u.rad).to_value(u.deg))  # ap
+        mean_anomaly = np.float32((sat.mo * u.rad).to_value(u.deg))  # M
         # The mean motion uses double precision due to "sensitive differencing operation"
-        mean_motion = (sat.no_kozai * u.rad / u.minute).to_value(u.cycle / u.day)        # n
-        orbit_decay = (sat.ndot * u.rad / u.minute ** 2).to_value(u.cycle / u.day ** 2)  # decay
+        mean_motion = (sat.no_kozai * u.rad / u.minute).to_value(u.cycle / u.day)  # n
+        orbit_decay = (sat.ndot * u.rad / u.minute**2).to_value(
+            u.cycle / u.day**2
+        )  # decay
         orbit_decay = np.float32(orbit_decay)
         # XXX Satrec object only accepts revnum via twoline2rv but EDB needs it, so add a backdoor
-        orbit_number = sat.revnum if sat.revnum else self.orbit_number                   # orbit
-        drag_coef = np.float32(sat.bstar)                                                # drag
-        epoch_str = _time_to_edb(epoch, high_precision=True)                             # epoch
+        orbit_number = sat.revnum if sat.revnum else self.orbit_number  # orbit
+        drag_coef = np.float32(sat.bstar)  # drag
+        epoch_str = _time_to_edb(epoch, high_precision=True)  # epoch
         if abs(orbit_decay) > 0:
             # The TLE is considered valid until the satellite period changes by more
             # than 1%, but never for more than 100 days either side of the epoch.
             # The mean motion is revs/day while decay is (revs/day)/day.
             stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100) * u.day
-            epoch_start = _time_to_edb(epoch - stable_days)                              # startok
-            epoch_end = _time_to_edb(epoch + stable_days)                                # endok
-            valid_range = f'|{epoch_start}|{epoch_end}'
+            epoch_start = _time_to_edb(epoch - stable_days)  # startok
+            epoch_end = _time_to_edb(epoch + stable_days)  # endok
+            valid_range = f"|{epoch_start}|{epoch_end}"
         else:
-            valid_range = ''
-        return (f'{name},E,{epoch_str}{valid_range},{inclination:.8g},'
-                f'{ra_asc_node:.8g},{eccentricity:.8g},{arg_perigee:.8g},'
-                f'{mean_anomaly:.8g},{mean_motion:.12g},{orbit_decay:.8g},'
-                f'{orbit_number:d},{drag_coef:.8g}')
+            valid_range = ""
+        return (
+            f"{name},E,{epoch_str}{valid_range},{inclination:.8g},"
+            f"{ra_asc_node:.8g},{eccentricity:.8g},{arg_perigee:.8g},"
+            f"{mean_anomaly:.8g},{mean_motion:.12g},{orbit_decay:.8g},"
+            f"{orbit_number:d},{drag_coef:.8g}"
+        )
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body at the given time and transform to `frame`."""
@@ -428,7 +461,9 @@ class EarthSatelliteBody(Body):
         if obstime.shape == ():
             e, r, v = self.satellite.sgp4(obstime.jd1, obstime.jd2)
         else:
-            e, r, v = self.satellite.sgp4_array(obstime.jd1.ravel(), obstime.jd2.ravel())
+            e, r, v = self.satellite.sgp4_array(
+                obstime.jd1.ravel(), obstime.jd2.ravel()
+            )
             e = e.reshape(obstime.shape)
             r = r.T.reshape((3,) + obstime.shape)
             v = v.T.reshape((3,) + obstime.shape)
@@ -462,12 +497,12 @@ class StationaryBody(Body):
         """A default name for the body derived from its coordinates or properties."""
         az = angle_to_string(self.coord.az, unit=u.deg, show_unit=False)
         el = angle_to_string(self.coord.alt, unit=u.deg, show_unit=False)
-        return f'Az: {az} El: {el}'
+        return f"Az: {az} El: {el}"
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        return 'azel'
+        return "azel"
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Transform (az, el) at given location and time to requested `frame`."""
@@ -482,8 +517,10 @@ class StationaryBody(Body):
             return altaz
         else:
             if location is None:
-                raise ValueError('StationaryBody needs a location to calculate coordinates - '
-                                 'did you specify an Antenna?')
+                raise ValueError(
+                    "StationaryBody needs a location to calculate coordinates - "
+                    "did you specify an Antenna?"
+                )
             return altaz.transform_to(frame)
 
 
@@ -501,9 +538,9 @@ class NullBody(FixedBody):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        return 'Nothing'
+        return "Nothing"
 
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        return 'special'
+        return "special"

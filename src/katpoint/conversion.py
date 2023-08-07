@@ -53,8 +53,9 @@ def to_angle(s, sexagesimal_unit=u.deg):
     except u.UnitsError:
         # Bytes is a sequence of ints that will inadvertently end up as radians, so crash instead
         if isinstance(s, bytes):
-            raise TypeError(f'Raw bytes {s} not supported: '
-                            'first decode to string (or add unit)') from None
+            raise TypeError(
+                f"Raw bytes {s} not supported: " "first decode to string (or add unit)"
+            ) from None
         # We now have a number or a string without a unit
         try:
             # Check if it's just a single number
@@ -74,8 +75,8 @@ def to_angle(s, sexagesimal_unit=u.deg):
 
 def strip_zeros(str_or_array_of_str):
     """Remove trailing zeros and unnecessary decimal points from numerical strings."""
-    s = np.char.rstrip(str_or_array_of_str, '0')
-    s = np.char.rstrip(s, '.')
+    s = np.char.rstrip(str_or_array_of_str, "0")
+    s = np.char.rstrip(s, ".")
     return s if s.ndim else s.item()
 
 
@@ -115,31 +116,34 @@ def angle_to_string(angle, show_unit=True, **kwargs):
     ValueError
         If angle / kwargs unit is not supported, or separator is not ':'
     """
-    unit = kwargs.setdefault('unit', angle.unit)
+    unit = kwargs.setdefault("unit", angle.unit)
     if unit not in (u.deg, u.hour, u.hourangle):
-        raise ValueError(f'The angle unit should be degree, hour or hourangle, not {unit}')
-    sep = kwargs.setdefault('sep', ':')
-    decimal = kwargs.get('decimal', False)
+        raise ValueError(
+            f"The angle unit should be degree, hour or hourangle, not {unit}"
+        )
+    sep = kwargs.setdefault("sep", ":")
+    decimal = kwargs.get("decimal", False)
     # Ignore sexagesimal separator when using a decimal representation,
     # instead of crashing on Astropy >= 5.0.
     if decimal:
-        del kwargs['sep']
-    elif sep != ':':
+        del kwargs["sep"]
+    elif sep != ":":
         raise ValueError(f"The sexagesimal separator should be ':', not '{sep}'")
-    precision = kwargs.get('precision')
+    precision = kwargs.get("precision")
     if precision is None:
         # Sufficient precision to discern 1 micron at 13000 km
         precision = 12 if decimal else 8
         # Hour angle needs a bit more precision
         if unit != u.deg:
             precision += 1
-        kwargs['precision'] = precision
+        kwargs["precision"] = precision
     number = strip_zeros(angle.to_string(**kwargs))
     if not show_unit:
         return number
-    suffix = 'd' if unit == u.deg else 'h'
+    suffix = "d" if unit == u.deg else "h"
     s = np.char.add(number, suffix)
     return s if s.ndim else s.item()
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Geodetic coordinate transformations
@@ -176,11 +180,11 @@ def lla_to_ecef(lat_rad, lon_rad, alt_m):
        June, 2004.
     """
     # WGS84 Defining Parameters
-    a = 6378137.0                           # semi-major axis of Earth in m
-    f = 1.0 / 298.257223563                 # flattening of Earth
+    a = 6378137.0  # semi-major axis of Earth in m
+    f = 1.0 / 298.257223563  # flattening of Earth
 
     # WGS84 derived geometric constants
-    e2 = 2 * f - f ** 2                     # first eccentricity squared
+    e2 = 2 * f - f**2  # first eccentricity squared
 
     # intermediate calculation
     # (normal, or prime vertical radius of curvature)
@@ -227,28 +231,31 @@ def ecef_to_lla(x_m, y_m, z_m):
     .. [geo] Wikipedia entry, "Geodetic system", 2009.
     """
     # WGS84 Defining Parameters
-    a = 6378137.0                           # semi-major axis of Earth in m
-    f = 1.0 / 298.257223563                 # flattening of Earth
+    a = 6378137.0  # semi-major axis of Earth in m
+    f = 1.0 / 298.257223563  # flattening of Earth
 
     # WGS84 derived geometric constants
-    b = a * (1.0 - f)                       # semi-minor axis in m
-    e2 = 2 * f - f ** 2                     # first eccentricity squared
-    ep2 = f * (2.0 - f) / (1.0 - f) ** 2    # second eccentricity squared
+    b = a * (1.0 - f)  # semi-minor axis in m
+    e2 = 2 * f - f**2  # first eccentricity squared
+    ep2 = f * (2.0 - f) / (1.0 - f) ** 2  # second eccentricity squared
 
     # Define squared terms for convenience
-    a2, b2 = a ** 2, b ** 2
-    x2, y2, z2 = x_m ** 2, y_m ** 2, z_m ** 2
+    a2, b2 = a**2, b**2
+    x2, y2, z2 = x_m**2, y_m**2, z_m**2
 
     r = np.sqrt(x2 + y2)
     E2 = a2 - b2
     F = 54.0 * b2 * z2
-    G = r ** 2 + (1 - e2) * z2 - e2 * E2
-    C = (e2 ** 2 * F * r ** 2) / (G ** 3)
-    S = (1.0 + C + np.sqrt(C ** 2 + 2 * C)) ** (1. / 3.)
-    P = F / (3.0 * (S + 1.0 / S + 1.0) ** 2 * G ** 2)
-    Q = np.sqrt(1.0 + 2.0 * e2 ** 2 * P)
-    r0 = - P * e2 * r / (1.0 + Q) + \
-        np.sqrt(0.5 * a2 * (1.0 + 1.0 / Q) - P * (1 - e2) * z2 / (Q * (1.0 + Q)) - 0.5 * P * r ** 2)
+    G = r**2 + (1 - e2) * z2 - e2 * E2
+    C = (e2**2 * F * r**2) / (G**3)
+    S = (1.0 + C + np.sqrt(C**2 + 2 * C)) ** (1.0 / 3.0)
+    P = F / (3.0 * (S + 1.0 / S + 1.0) ** 2 * G**2)
+    Q = np.sqrt(1.0 + 2.0 * e2**2 * P)
+    r0 = -P * e2 * r / (1.0 + Q) + np.sqrt(
+        0.5 * a2 * (1.0 + 1.0 / Q)
+        - P * (1 - e2) * z2 / (Q * (1.0 + Q))
+        - 0.5 * P * r**2
+    )
     U = np.sqrt((r - e2 * r0) ** 2 + z2)
     V = np.sqrt((r - e2 * r0) ** 2 + (1.0 - e2) * z2)
     z0 = (b2 * z_m) / (a * V)
@@ -287,16 +294,18 @@ def ecef_to_lla2(x_m, y_m, z_m):
     different ranges.
     """
     # WGS84 ellipsoid constants
-    a = 6378137.0                    # semi-major axis of Earth in m
-    e = 8.1819190842622e-2           # eccentricity of Earth
+    a = 6378137.0  # semi-major axis of Earth in m
+    e = 8.1819190842622e-2  # eccentricity of Earth
 
     b = np.sqrt(a**2 * (1.0 - e**2))
     ep = np.sqrt((a**2 - b**2) / b**2)
     p = np.sqrt(x_m**2 + y_m**2)
     th = np.arctan2(a * z_m, b * p)
     lon_rad = np.arctan2(y_m, x_m)
-    lat_rad = np.arctan2((z_m + ep**2 * b * np.sin(th)**3), (p - e**2 * a * np.cos(th)**3))
-    N = a / np.sqrt(1.0 - e**2 * np.sin(lat_rad)**2)
+    lat_rad = np.arctan2(
+        (z_m + ep**2 * b * np.sin(th) ** 3), (p - e**2 * a * np.cos(th) ** 3)
+    )
+    N = a / np.sqrt(1.0 - e**2 * np.sin(lat_rad) ** 2)
     alt_m = p / np.cos(lat_rad) - N
 
     # Return lon_rad in range [0, 2*pi)
@@ -342,9 +351,9 @@ def enu_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m, e_m, n_m, u_m):
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
     sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
-    x_m = ref_x_m - sin_lon*e_m - sin_lat*cos_lon*n_m + cos_lat*cos_lon*u_m
-    y_m = ref_y_m + cos_lon*e_m - sin_lat*sin_lon*n_m + cos_lat*sin_lon*u_m
-    z_m = ref_z_m + cos_lat*n_m + sin_lat*u_m
+    x_m = ref_x_m - sin_lon * e_m - sin_lat * cos_lon * n_m + cos_lat * cos_lon * u_m
+    y_m = ref_y_m + cos_lon * e_m - sin_lat * sin_lon * n_m + cos_lat * sin_lon * u_m
+    z_m = ref_z_m + cos_lat * n_m + sin_lat * u_m
 
     return x_m, y_m, z_m
 
@@ -377,11 +386,20 @@ def ecef_to_enu(ref_lat_rad, ref_lon_rad, ref_alt_m, x_m, y_m, z_m):
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
     sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
-    e_m = -sin_lon*delta_x_m + cos_lon*delta_y_m
-    n_m = -sin_lat*cos_lon*delta_x_m - sin_lat*sin_lon*delta_y_m + cos_lat*delta_z_m
-    u_m = cos_lat*cos_lon*delta_x_m + cos_lat*sin_lon*delta_y_m + sin_lat*delta_z_m
+    e_m = -sin_lon * delta_x_m + cos_lon * delta_y_m
+    n_m = (
+        -sin_lat * cos_lon * delta_x_m
+        - sin_lat * sin_lon * delta_y_m
+        + cos_lat * delta_z_m
+    )
+    u_m = (
+        cos_lat * cos_lon * delta_x_m
+        + cos_lat * sin_lon * delta_y_m
+        + sin_lat * delta_z_m
+    )
 
     return e_m, n_m, u_m
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Spherical coordinate transformations
@@ -451,9 +469,11 @@ def hadec_to_enu(ha_rad, dec_rad, lat_rad):
     sin_ha, cos_ha = np.sin(ha_rad), np.cos(ha_rad)
     sin_dec, cos_dec = np.sin(dec_rad), np.cos(dec_rad)
     sin_lat, cos_lat = np.sin(lat_rad), np.cos(lat_rad)
-    return (-cos_dec * sin_ha,
-            cos_lat * sin_dec - sin_lat * cos_dec * cos_ha,
-            sin_lat * sin_dec + cos_lat * cos_dec * cos_ha)
+    return (
+        -cos_dec * sin_ha,
+        cos_lat * sin_dec - sin_lat * cos_dec * cos_ha,
+        sin_lat * sin_dec + cos_lat * cos_dec * cos_ha,
+    )
 
 
 def enu_to_xyz(east, north, up, lat_rad):
@@ -486,6 +506,4 @@ def enu_to_xyz(east, north, up, lat_rad):
        Astronomy," 2nd ed., Wiley-VCH, 2004, pp. 86-89.
     """
     sin_lat, cos_lat = np.sin(lat_rad), np.cos(lat_rad)
-    return (-sin_lat * north + cos_lat * up,
-            east,
-            cos_lat * north + sin_lat * up)
+    return (-sin_lat * north + cos_lat * up, east, cos_lat * north + sin_lat * up)

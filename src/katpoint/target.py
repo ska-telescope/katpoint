@@ -152,10 +152,24 @@ class Target:
         If description string has the wrong format
     """
 
-    def __init__(self, target, name=_DEFAULT, user_tags=_DEFAULT, aliases=_DEFAULT,
-                 flux_model=_DEFAULT, antenna=_DEFAULT, flux_frequency=_DEFAULT):
-        default = SimpleNamespace(name='', user_tags=[], aliases=(), flux_model=None,
-                                  antenna=None, flux_frequency=None)
+    def __init__(
+        self,
+        target,
+        name=_DEFAULT,
+        user_tags=_DEFAULT,
+        aliases=_DEFAULT,
+        flux_model=_DEFAULT,
+        antenna=_DEFAULT,
+        flux_frequency=_DEFAULT,
+    ):
+        default = SimpleNamespace(
+            name="",
+            user_tags=[],
+            aliases=(),
+            flux_model=None,
+            antenna=None,
+            flux_frequency=None,
+        )
         if isinstance(target, str):
             # Create a temporary Target object to serve up default parameters instead
             target = Target.from_description(target)
@@ -165,8 +179,10 @@ class Target:
             default = target
             target = default.body
         if not isinstance(target, Body):
-            raise TypeError('Expected a Body, Target, SkyCoord or str input to Target, '
-                            f'not {target.__class__.__name__}')
+            raise TypeError(
+                "Expected a Body, Target, SkyCoord or str input to Target, "
+                f"not {target.__class__.__name__}"
+            )
 
         self.body = target
         self._name = default.name if name is _DEFAULT else name
@@ -177,7 +193,9 @@ class Target:
         self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
         self.antenna = default.antenna if antenna is _DEFAULT else antenna
         self._flux_frequency = None
-        self.flux_frequency = default.flux_frequency if flux_frequency is _DEFAULT else flux_frequency
+        self.flux_frequency = (
+            default.flux_frequency if flux_frequency is _DEFAULT else flux_frequency
+        )
 
     def __str__(self):
         """Complete string representation of target object, sufficient to reconstruct it."""
@@ -185,7 +203,11 @@ class Target:
 
     def __repr__(self):
         """Short human-friendly string representation of target object."""
-        sub_type = f' ({self.tags[1]})' if self.body_type == 'xephem' and len(self.tags) > 1 else ''
+        sub_type = (
+            f" ({self.tags[1]})"
+            if self.body_type == "xephem" and len(self.tags) > 1
+            else ""
+        )
         return f"<katpoint.Target '{self.name}' body={self.body_type + sub_type} at {id(self):#x}>"
 
     def __reduce__(self):
@@ -194,11 +216,15 @@ class Target:
 
     def __eq__(self, other):
         """Equality comparison operator."""
-        return self.description == (other.description if isinstance(other, Target) else other)
+        return self.description == (
+            other.description if isinstance(other, Target) else other
+        )
 
     def __lt__(self, other):
         """Less-than comparison operator (needed for sorting and np.unique)."""
-        return self.description < (other.description if isinstance(other, Target) else other)
+        return self.description < (
+            other.description if isinstance(other, Target) else other
+        )
 
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
@@ -243,34 +269,43 @@ class Target:
     @property
     def description(self):
         """Complete string representation of target object, sufficient to reconstruct it."""
-        names = ' | '.join(self.names)
-        tags = ' '.join(self.tags)
+        names = " | ".join(self.names)
+        tags = " ".join(self.tags)
         fluxinfo = self.flux_model.description if self.flux_model is not None else None
-        no_name = (self.body_type != 'special' and names == self.body.default_name
-                   or self.body_type == 'xephem')
+        no_name = (
+            self.body_type != "special"
+            and names == self.body.default_name
+            or self.body_type == "xephem"
+        )
         fields = [tags] if no_name else [names, tags]
 
-        if self.body_type == 'azel':
-            fields += [angle_to_string(self.body.coord.az, unit=u.deg),
-                       angle_to_string(self.body.coord.alt, unit=u.deg)]
-        elif self.body_type == 'radec':
-            fields += [angle_to_string(self.body.coord.ra, unit=u.hour),
-                       angle_to_string(self.body.coord.dec, unit=u.deg)]
-        elif self.body_type == 'gal':
+        if self.body_type == "azel":
+            fields += [
+                angle_to_string(self.body.coord.az, unit=u.deg),
+                angle_to_string(self.body.coord.alt, unit=u.deg),
+            ]
+        elif self.body_type == "radec":
+            fields += [
+                angle_to_string(self.body.coord.ra, unit=u.hour),
+                angle_to_string(self.body.coord.dec, unit=u.deg),
+            ]
+        elif self.body_type == "gal":
             gal = self.body.coord.galactic
-            fields += [angle_to_string(gal.l, unit=u.deg, decimal=True),
-                       angle_to_string(gal.b, unit=u.deg, decimal=True)]
-        elif self.body_type == 'tle':
+            fields += [
+                angle_to_string(gal.l, unit=u.deg, decimal=True),
+                angle_to_string(gal.b, unit=u.deg, decimal=True),
+            ]
+        elif self.body_type == "tle":
             fields += self.body.to_tle()
-        elif self.body_type == 'xephem':
+        elif self.body_type == "xephem":
             # Push the names back into EDB string (or remove them entirely if the Body default)
-            edb_names = '' if names == self.body.default_name else names
+            edb_names = "" if names == self.body.default_name else names
             # Replace commas in xephem string with tildes to avoid clashes with main structure
-            fields += [self.body.to_edb(edb_names).replace(',', '~')]
+            fields += [self.body.to_edb(edb_names).replace(",", "~")]
 
         if fluxinfo:
             fields += [fluxinfo]
-        return ', '.join(fields)
+        return ", ".join(fields)
 
     @classmethod
     def from_description(cls, description):
@@ -296,31 +331,34 @@ class Target:
         """
         prefix = f"Target description '{description}'"
         try:
-            description.encode('ascii')
+            description.encode("ascii")
         except UnicodeError as err:
             raise NonAsciiError(f"{prefix} contains non-ASCII characters") from err
-        fields = [s.strip() for s in description.split(',')]
+        fields = [s.strip() for s in description.split(",")]
         if len(fields) < 2:
             raise ValueError(f"{prefix} must have at least two fields")
         # Check if first name starts with body type tag, while the next field does not
         # This indicates a missing names field -> add an empty name list in front
-        body_types = ['azel', 'radec', 'gal', 'special', 'tle', 'xephem']
-        def tags_in(field): return any([field.startswith(s) for s in body_types])
+        body_types = ["azel", "radec", "gal", "special", "tle", "xephem"]
+
+        def tags_in(field):
+            return any([field.startswith(s) for s in body_types])
+
         if tags_in(fields[0]) and not tags_in(fields[1]):
-            fields.insert(0, '')
+            fields.insert(0, "")
         # Extract preferred name from name list (starred or first entry), and make the rest aliases
         name_field = fields.pop(0)
-        names = [s.strip() for s in name_field.split('|')]
+        names = [s.strip() for s in name_field.split("|")]
         if len(names) == 0:
-            preferred_name, aliases = '', []
+            preferred_name, aliases = "", []
         else:
             try:
-                ind = [name.startswith('*') for name in names].index(True)
-                preferred_name, aliases = names[ind][1:], names[:ind] + names[ind + 1:]
+                ind = [name.startswith("*") for name in names].index(True)
+                preferred_name, aliases = names[ind][1:], names[:ind] + names[ind + 1 :]
             except ValueError:
                 preferred_name, aliases = names[0], names[1:]
         tag_field = fields.pop(0)
-        tags = [s.strip() for s in tag_field.split(' ')]
+        tags = [s.strip() for s in tag_field.split(" ")]
         if not tags:
             raise ValueError(f"{prefix} needs at least one tag (body type)")
         body_type = tags.pop(0).lower()
@@ -329,62 +367,75 @@ class Target:
             fields.pop()
 
         # Create appropriate Body based on body type
-        if body_type == 'azel':
+        if body_type == "azel":
             if len(fields) < 2:
-                raise ValueError(f"{prefix} contains *azel* body with no (az, el) coordinates")
+                raise ValueError(
+                    f"{prefix} contains *azel* body with no (az, el) coordinates"
+                )
             az = fields.pop(0)
             el = fields.pop(0)
             body = StationaryBody(az, el)
 
-        elif body_type == 'radec':
+        elif body_type == "radec":
             if len(fields) < 2:
-                raise ValueError(f"{prefix} contains *radec* body with no (ra, dec) coordinates")
+                raise ValueError(
+                    f"{prefix} contains *radec* body with no (ra, dec) coordinates"
+                )
             ra = to_angle(fields.pop(0), sexagesimal_unit=u.hour)
             dec = to_angle(fields.pop(0))
             # Extract epoch info from tags
-            if ('B1900' in tags) or ('b1900' in tags):
-                frame = FK4(equinox=Time(1900.0, format='byear'))
-            elif ('B1950' in tags) or ('b1950' in tags):
-                frame = FK4(equinox=Time(1950.0, format='byear'))
+            if ("B1900" in tags) or ("b1900" in tags):
+                frame = FK4(equinox=Time(1900.0, format="byear"))
+            elif ("B1950" in tags) or ("b1950" in tags):
+                frame = FK4(equinox=Time(1950.0, format="byear"))
             else:
                 frame = ICRS
             body = FixedBody(SkyCoord(ra=ra, dec=dec, frame=frame))
 
-        elif body_type == 'gal':
+        elif body_type == "gal":
             if len(fields) < 2:
-                raise ValueError(f"{prefix} contains *gal* body with no (l, b) coordinates")
+                raise ValueError(
+                    f"{prefix} contains *gal* body with no (l, b) coordinates"
+                )
             gal_l = to_angle(fields.pop(0))
             gal_b = to_angle(fields.pop(0))
             body = GalacticBody(SkyCoord(l=gal_l, b=gal_b, frame=Galactic))
 
-        elif body_type == 'tle':
+        elif body_type == "tle":
             if len(fields) < 2:
-                raise ValueError(f"{prefix} contains *tle* body without "
-                                 "the expected two comma-separated lines")
+                raise ValueError(
+                    f"{prefix} contains *tle* body without "
+                    "the expected two comma-separated lines"
+                )
             line1 = fields.pop(0)
             line2 = fields.pop(0)
             try:
                 body = EarthSatelliteBody.from_tle(line1, line2)
             except ValueError as err:
-                raise ValueError(f"{prefix} contains malformed *tle* body: {err}") from err
+                raise ValueError(
+                    f"{prefix} contains malformed *tle* body: {err}"
+                ) from err
 
-        elif body_type == 'special':
+        elif body_type == "special":
             try:
-                if preferred_name.capitalize() != 'Nothing':
+                if preferred_name.capitalize() != "Nothing":
                     body = SolarSystemBody(preferred_name)
                 else:
                     body = NullBody()
             except ValueError as err:
-                raise ValueError(f"{prefix} contains unknown "
-                                 f"*special* body '{preferred_name}'") from err
+                raise ValueError(
+                    f"{prefix} contains unknown " f"*special* body '{preferred_name}'"
+                ) from err
 
-        elif body_type == 'xephem':
+        elif body_type == "xephem":
             if len(fields) < 1:
-                raise ValueError(f"Target description '{description}' contains *xephem* body "
-                                 "without EDB string")
-            edb_string = fields.pop(0).replace('~', ',')
-            edb_name_field, comma, edb_coord_fields = edb_string.partition(',')
-            edb_names = [name.strip() for name in edb_name_field.split('|')]
+                raise ValueError(
+                    f"Target description '{description}' contains *xephem* body "
+                    "without EDB string"
+                )
+            edb_string = fields.pop(0).replace("~", ",")
+            edb_name_field, comma, edb_coord_fields = edb_string.partition(",")
+            edb_names = [name.strip() for name in edb_name_field.split("|")]
             if not preferred_name:
                 preferred_name = edb_names[0]
             for edb_name in edb_names:
@@ -393,13 +444,15 @@ class Target:
             try:
                 body = Body.from_edb(comma + edb_coord_fields)
             except ValueError as err:
-                raise ValueError(f"{prefix} contains malformed *xephem* body: {err}") from err
+                raise ValueError(
+                    f"{prefix} contains malformed *xephem* body: {err}"
+                ) from err
 
         else:
             raise ValueError(f"{prefix} contains unknown body type '{body_type}'")
 
         # Extract flux model if it is available
-        if fields and fields[0].strip(' ()'):
+        if fields and fields[0].strip(" ()"):
             flux_model = FluxDensityModel.from_description(fields[0])
         else:
             flux_model = None
@@ -520,7 +573,7 @@ class Target:
         if antenna is None:
             antenna = self.antenna
         if antenna is None:
-            raise ValueError('Antenna object needed to calculate target position')
+            raise ValueError("Antenna object needed to calculate target position")
         return Antenna(antenna)
 
     def azel(self, timestamp=None, antenna=None):
@@ -577,7 +630,9 @@ class Target:
         time, location = self._astropy_funnel(timestamp, antenna)
         # XXX This is a bit of mess... Consider going to TETE
         # for the traditional geocentric apparent place or remove entirely
-        return self.body.compute(CIRS(obstime=time), time, location, to_celestial_sphere=True)
+        return self.body.compute(
+            CIRS(obstime=time), time, location, to_celestial_sphere=True
+        )
 
     def astrometric_radec(self, timestamp=None, antenna=None):
         """Calculate target's astrometric (ra, dec) coordinates as seen from antenna at time(s).
@@ -684,7 +739,9 @@ class Target:
         radec = self.apparent_radec(time, location)
         ha = antenna.local_sidereal_time(time) - radec.ra
         y = np.sin(ha)
-        x = np.tan(location.lat.rad) * np.cos(radec.dec) - np.sin(radec.dec) * np.cos(ha)
+        x = np.tan(location.lat.rad) * np.cos(radec.dec) - np.sin(radec.dec) * np.cos(
+            ha
+        )
         return Angle(np.arctan2(y, x))
 
     def geometric_delay(self, antenna2, timestamp=None, antenna=None):
@@ -741,7 +798,7 @@ class Target:
         targetdirs = np.array(azel_to_enu(azel.az.rad, azel.alt.rad))
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
-        delays = -np.einsum('j,j...', baseline.xyz, targetdirs) / const.c
+        delays = -np.einsum("j,j...", baseline.xyz, targetdirs) / const.c
         delay_rate = (delays[..., 2] - delays[..., 0]) / (offset[2] - offset[0]).to(u.s)
         return delays[..., 1], delay_rate
 
@@ -774,7 +831,7 @@ class Target:
         time, location = self._astropy_funnel(timestamp, antenna)
         # Check that antenna is valid to avoid more cryptic error messages in .azel and .radec
         self._valid_antenna(antenna)
-        if not time.isscalar and self.body_type != 'radec':
+        if not time.isscalar and self.body_type != "radec":
             # Some calculations depend on ra/dec in a way that won't easily
             # vectorise.
             bases = [self.uvw_basis(t, antenna) for t in time.ravel()]
@@ -921,7 +978,9 @@ class Target:
         if frequency is None:
             frequency = self._flux_frequency
         if frequency is None:
-            raise ValueError('Please specify frequency at which to measure flux density')
+            raise ValueError(
+                "Please specify frequency at which to measure flux density"
+            )
         if self.flux_model is None:
             # Target has no specified flux density
             return np.full(np.shape(frequency), np.nan) * u.Jy
@@ -960,7 +1019,9 @@ class Target:
         if frequency is None:
             frequency = self._flux_frequency
         if frequency is None:
-            raise ValueError('Please specify frequency at which to measure flux density')
+            raise ValueError(
+                "Please specify frequency at which to measure flux density"
+            )
         if self.flux_model is None:
             return np.full(np.shape(frequency) + (4,), np.nan) * u.Jy
         return self.flux_model.flux_density_stokes(frequency)
@@ -994,7 +1055,15 @@ class Target:
         other_azel = other_target.azel(time, location)
         return this_azel.separation(other_azel)
 
-    def sphere_to_plane(self, az, el, timestamp=None, antenna=None, projection_type='ARC', coord_system='azel'):
+    def sphere_to_plane(
+        self,
+        az,
+        el,
+        timestamp=None,
+        antenna=None,
+        projection_type="ARC",
+        coord_system="azel",
+    ):
         """Project spherical coordinates to plane with target position as reference.
 
         This is a convenience function that projects spherical coordinates to a
@@ -1025,16 +1094,28 @@ class Target:
         y : float or array
             Elevation-like coordinate(s) on plane, in radians
         """
-        if coord_system == 'radec':
+        if coord_system == "radec":
             # The target (ra, dec) coordinates will serve as reference point on the sphere
             ref_radec = self.radec(timestamp, antenna)
-            return sphere_to_plane[projection_type](ref_radec.ra.rad, ref_radec.dec.rad, az, el)
+            return sphere_to_plane[projection_type](
+                ref_radec.ra.rad, ref_radec.dec.rad, az, el
+            )
         else:
             # The target (az, el) coordinates will serve as reference point on the sphere
             ref_azel = self.azel(timestamp, antenna)
-            return sphere_to_plane[projection_type](ref_azel.az.rad, ref_azel.alt.rad, az, el)
+            return sphere_to_plane[projection_type](
+                ref_azel.az.rad, ref_azel.alt.rad, az, el
+            )
 
-    def plane_to_sphere(self, x, y, timestamp=None, antenna=None, projection_type='ARC', coord_system='azel'):
+    def plane_to_sphere(
+        self,
+        x,
+        y,
+        timestamp=None,
+        antenna=None,
+        projection_type="ARC",
+        coord_system="azel",
+    ):
         """Deproject plane coordinates to sphere with target position as reference.
 
         This is a convenience function that deprojects plane coordinates to a
@@ -1065,25 +1146,35 @@ class Target:
         el : float or array
             Elevation or declination, in radians
         """
-        if coord_system == 'radec':
+        if coord_system == "radec":
             # The target (ra, dec) coordinates will serve as reference point on the sphere
             ref_radec = self.radec(timestamp, antenna)
-            return plane_to_sphere[projection_type](ref_radec.ra.rad, ref_radec.dec.rad, x, y)
+            return plane_to_sphere[projection_type](
+                ref_radec.ra.rad, ref_radec.dec.rad, x, y
+            )
         else:
             # The target (az, el) coordinates will serve as reference point on the sphere
             ref_azel = self.azel(timestamp, antenna)
-            return plane_to_sphere[projection_type](ref_azel.az.rad, ref_azel.alt.rad, x, y)
+            return plane_to_sphere[projection_type](
+                ref_azel.az.rad, ref_azel.alt.rad, x, y
+            )
 
 
 def construct_azel_target(az, el):
     """Create unnamed stationary target (*azel* body type) **DEPRECATED**."""
-    warnings.warn('This function is deprecated and will be removed - '
-                  'use Target.from_azel(az, el) instead', FutureWarning)
+    warnings.warn(
+        "This function is deprecated and will be removed - "
+        "use Target.from_azel(az, el) instead",
+        FutureWarning,
+    )
     return Target.from_azel(az, el)
 
 
 def construct_radec_target(ra, dec):
     """Create unnamed fixed target (*radec* body type) **DEPRECATED**."""
-    warnings.warn('This function is deprecated and will be removed - '
-                  'use Target.from_radec(ra, dec) instead', FutureWarning)
+    warnings.warn(
+        "This function is deprecated and will be removed - "
+        "use Target.from_radec(ra, dec) instead",
+        FutureWarning,
+    )
     return Target.from_radec(ra, dec)

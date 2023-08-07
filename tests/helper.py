@@ -23,12 +23,15 @@ from astropy.coordinates import UnitSphericalRepresentation
 
 def assert_angles_almost_equal(x, y, **kwargs):
     """Check that two angles / arrays are almost equal (modulo 2 pi)."""
+
     def primary_angle(x):
         return x - np.round(x / (2.0 * np.pi)) * 2.0 * np.pi
+
     x = np.asarray(x)
     y = np.asarray(y)
-    np.testing.assert_array_equal(0 * x, 0 * y,
-                                  'Array shapes and/or NaN patterns differ')
+    np.testing.assert_array_equal(
+        0 * x, 0 * y, "Array shapes and/or NaN patterns differ"
+    )
     d = primary_angle(np.nan_to_num(x - y))
     np.testing.assert_almost_equal(d, np.zeros(np.shape(x)), **kwargs)
 
@@ -36,15 +39,15 @@ def assert_angles_almost_equal(x, y, **kwargs):
 def _lon_lat_str(coord):
     """Print coordinates in the format they are specified in unit tests."""
     lookup = {v: k for k, v in coord.representation_component_names.items()}
-    lon = getattr(coord, lookup['lon'])
-    lat = getattr(coord, lookup['lat'])
-    kwargs = dict(sep=':', pad=True)
-    if lookup['lon'] == 'ra':
-        lon_str = lon.to_string(unit=u.hourangle, precision=5, **kwargs) + 'h'
+    lon = getattr(coord, lookup["lon"])
+    lat = getattr(coord, lookup["lat"])
+    kwargs = dict(sep=":", pad=True)
+    if lookup["lon"] == "ra":
+        lon_str = lon.to_string(unit=u.hourangle, precision=5, **kwargs) + "h"
     else:
-        lon_str = lon.to_string(unit=u.deg, precision=4, **kwargs) + 'd'
-    lat_str = lat.to_string(unit=u.deg, precision=4, **kwargs) + 'd'
-    return f'({lon_str}, {lat_str})'
+        lon_str = lon.to_string(unit=u.deg, precision=4, **kwargs) + "d"
+    lat_str = lat.to_string(unit=u.deg, precision=4, **kwargs) + "d"
+    return f"({lon_str}, {lat_str})"
 
 
 def check_separation(actual, lon, lat, tol):

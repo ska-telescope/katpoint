@@ -72,9 +72,12 @@ logger = _logging.getLogger(__name__)
 logger.addHandler(_no_config_handler)
 
 # Document the public API in __all__ / __dir__ by discarding modules and private variables
-__all__ = [n for n, o in globals().items()
-           if not isinstance(o, _ModuleType) and not n.startswith('_')]
-__all__ += ['__version__']
+__all__ = [
+    n
+    for n, o in globals().items()
+    if not isinstance(o, _ModuleType) and not n.startswith("_")
+]
+__all__ += ["__version__"]
 
 
 def __dir__():
@@ -88,7 +91,8 @@ try:
     import katversion as _katversion
 except ImportError:
     import time as _time
-    __version__ = "0.0+unknown.{}".format(_time.strftime('%Y%m%d%H%M'))
+
+    __version__ = "0.0+unknown.{}".format(_time.strftime("%Y%m%d%H%M"))
 else:
     __version__ = _katversion.get_version(__path__[0])
 # END VERSION CHECK
