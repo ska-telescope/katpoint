@@ -54,7 +54,8 @@ def to_angle(s, sexagesimal_unit=u.deg):
         # Bytes is a sequence of ints that will inadvertently end up as radians, so crash instead
         if isinstance(s, bytes):
             raise TypeError(
-                f"Raw bytes {s} not supported: " "first decode to string (or add unit)"
+                f"Raw bytes {s} not supported: "
+                "first decode to string (or add unit)"
             ) from None
         # We now have a number or a string without a unit
         try:
@@ -128,7 +129,9 @@ def angle_to_string(angle, show_unit=True, **kwargs):
     if decimal:
         del kwargs["sep"]
     elif sep != ":":
-        raise ValueError(f"The sexagesimal separator should be ':', not '{sep}'")
+        raise ValueError(
+            f"The sexagesimal separator should be ':', not '{sep}'"
+        )
     precision = kwargs.get("precision")
     if precision is None:
         # Sufficient precision to discern 1 micron at 13000 km
@@ -303,7 +306,8 @@ def ecef_to_lla2(x_m, y_m, z_m):
     th = np.arctan2(a * z_m, b * p)
     lon_rad = np.arctan2(y_m, x_m)
     lat_rad = np.arctan2(
-        (z_m + ep**2 * b * np.sin(th) ** 3), (p - e**2 * a * np.cos(th) ** 3)
+        (z_m + ep**2 * b * np.sin(th) ** 3),
+        (p - e**2 * a * np.cos(th) ** 3),
     )
     N = a / np.sqrt(1.0 - e**2 * np.sin(lat_rad) ** 2)
     alt_m = p / np.cos(lat_rad) - N
@@ -347,12 +351,24 @@ def enu_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m, e_m, n_m, u_m):
         X, Y, Z coordinates, in metres
     """
     # ECEF coordinates of reference point
-    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m)
+    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(
+        ref_lat_rad, ref_lon_rad, ref_alt_m
+    )
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
     sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
-    x_m = ref_x_m - sin_lon * e_m - sin_lat * cos_lon * n_m + cos_lat * cos_lon * u_m
-    y_m = ref_y_m + cos_lon * e_m - sin_lat * sin_lon * n_m + cos_lat * sin_lon * u_m
+    x_m = (
+        ref_x_m
+        - sin_lon * e_m
+        - sin_lat * cos_lon * n_m
+        + cos_lat * cos_lon * u_m
+    )
+    y_m = (
+        ref_y_m
+        + cos_lon * e_m
+        - sin_lat * sin_lon * n_m
+        + cos_lat * sin_lon * u_m
+    )
     z_m = ref_z_m + cos_lat * n_m + sin_lat * u_m
 
     return x_m, y_m, z_m
@@ -381,8 +397,14 @@ def ecef_to_enu(ref_lat_rad, ref_lon_rad, ref_alt_m, x_m, y_m, z_m):
         East, North, Up coordinates, in metres
     """
     # ECEF coordinates of reference point
-    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(ref_lat_rad, ref_lon_rad, ref_alt_m)
-    delta_x_m, delta_y_m, delta_z_m = x_m - ref_x_m, y_m - ref_y_m, z_m - ref_z_m
+    ref_x_m, ref_y_m, ref_z_m = lla_to_ecef(
+        ref_lat_rad, ref_lon_rad, ref_alt_m
+    )
+    delta_x_m, delta_y_m, delta_z_m = (
+        x_m - ref_x_m,
+        y_m - ref_y_m,
+        z_m - ref_z_m,
+    )
     sin_lat, cos_lat = np.sin(ref_lat_rad), np.cos(ref_lat_rad)
     sin_lon, cos_lon = np.sin(ref_lon_rad), np.cos(ref_lon_rad)
 
@@ -506,4 +528,8 @@ def enu_to_xyz(east, north, up, lat_rad):
        Astronomy," 2nd ed., Wiley-VCH, 2004, pp. 86-89.
     """
     sin_lat, cos_lat = np.sin(lat_rad), np.cos(lat_rad)
-    return (-sin_lat * north + cos_lat * up, east, cos_lat * north + sin_lat * up)
+    return (
+        -sin_lat * north + cos_lat * up,
+        east,
+        cos_lat * north + sin_lat * up,
+    )

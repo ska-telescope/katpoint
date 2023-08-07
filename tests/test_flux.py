@@ -42,12 +42,16 @@ def test_unit_model():
     """Test unit flux model, as well as comparisons and hashes."""
     unit_model = katpoint.FluxDensityModel(100 * u.MHz, 200 * u.MHz, [0.0])
     unit_model2 = katpoint.FluxDensityModel(100 * u.MHz, 200 * u.MHz, [])
-    assert unit_model.flux_density(110 * u.MHz) == 1.0 * u.Jy, "Flux calculation wrong"
+    assert (
+        unit_model.flux_density(110 * u.MHz) == 1.0 * u.Jy
+    ), "Flux calculation wrong"
     # At least one coefficient is always shown
     assert unit_model.description == "(100.0 200.0 0.0)"
     assert unit_model == unit_model2, "Flux models not equal"
     try:
-        assert hash(unit_model) == hash(unit_model2), "Flux model hashes not equal"
+        assert hash(unit_model) == hash(
+            unit_model2
+        ), "Flux model hashes not equal"
     except TypeError:
         pytest.fail("FluxDensityModel object not hashable")
 
@@ -69,7 +73,9 @@ def test_too_few_params():
     """Test flux model with too few parameters."""
     with pytest.raises(katpoint.FluxError):
         katpoint.FluxDensityModel.from_description("(1.0)")
-    too_few_params = katpoint.FluxDensityModel.from_description("(1.0 2.0 2.0)")
+    too_few_params = katpoint.FluxDensityModel.from_description(
+        "(1.0 2.0 2.0)"
+    )
     assert (
         too_few_params.flux_density(1.5 * u.MHz) == 100.0 * u.Jy
     ), "Flux calculation for too few params wrong"
@@ -132,7 +138,12 @@ def test_flux_density_stokes():
     )
     np.testing.assert_array_equal(
         NO_FLUX_TARGET.flux_density_stokes([1.5, 1.5] * u.MHz),
-        np.array([[np.nan, np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan, np.nan]])
+        np.array(
+            [
+                [np.nan, np.nan, np.nan, np.nan],
+                [np.nan, np.nan, np.nan, np.nan],
+            ]
+        )
         * u.Jy,
         "Empty flux model leads to wrong empty flux shape",
     )

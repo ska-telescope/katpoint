@@ -88,7 +88,9 @@ class Body:
         try:
             edb_type = line.split(",")[1][0]
         except (AttributeError, IndexError) as err:
-            raise ValueError(f"Failed parsing XEphem EDB line: {line}") from err
+            raise ValueError(
+                f"Failed parsing XEphem EDB line: {line}"
+            ) from err
         if edb_type == "f":
             return FixedBody.from_edb(line)
         elif edb_type == "E":
@@ -96,7 +98,9 @@ class Body:
         else:
             raise ValueError(f"Unsupported XEphem EDB line: {line}")
 
-    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
+    def compute(
+        self, frame, obstime, location=None, to_celestial_sphere=False
+    ):
         """Compute the coordinates of the body in the requested frame.
 
         Parameters
@@ -143,7 +147,9 @@ def _to_celestial_sphere(coord, obstime, location=None):
         GCRS(obstime=obstime, obsgeoloc=obsgeoloc, obsgeovel=obsgeovel)
     )
     # Discard distance from observer as well as any differentials (needed for EarthSatelliteBody)
-    return gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation, s=None))
+    return gcrs.realize_frame(
+        gcrs.represent_as(UnitSphericalRepresentation, s=None)
+    )
 
 
 class FixedBody(Body):
@@ -178,7 +184,9 @@ class FixedBody(Body):
         # Discard proper motion for now (the part after the |)
         ra = fields[2].split("|")[0]
         dec = fields[3].split("|")[0]
-        return cls(SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg)))
+        return cls(
+            SkyCoord(ra=Angle(ra, unit=u.hour), dec=Angle(dec, unit=u.deg))
+        )
 
     def to_edb(self, name=""):
         """Create an XEphem database (EDB) entry for fixed body ("f").
@@ -190,7 +198,9 @@ class FixedBody(Body):
         dec = angle_to_string(icrs.dec, unit=u.deg, show_unit=False)
         return f"{name},f,{ra},{dec}"
 
-    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
+    def compute(
+        self, frame, obstime, location=None, to_celestial_sphere=False
+    ):
         """Compute the coordinates of the fixed body in the requested frame."""
         Body._check_location(frame)
         # If obstime is array-valued and not contained in the output frame, the transform
@@ -219,8 +229,12 @@ class GalacticBody(FixedBody):
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        gal_l = angle_to_string(self.coord.l, unit=u.deg, decimal=True, show_unit=False)
-        gal_b = angle_to_string(self.coord.b, unit=u.deg, decimal=True, show_unit=False)
+        gal_l = angle_to_string(
+            self.coord.l, unit=u.deg, decimal=True, show_unit=False
+        )
+        gal_b = angle_to_string(
+            self.coord.b, unit=u.deg, decimal=True, show_unit=False
+        )
         return f"Galactic l: {gal_l} b: {gal_b}"
 
     @property
@@ -259,13 +273,17 @@ class SolarSystemBody(Body):
         """The type of body, as a string tag."""
         return "special"
 
-    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
+    def compute(
+        self, frame, obstime, location=None, to_celestial_sphere=False
+    ):
         """Determine position of body for given time and location and transform to `frame`."""
         Body._check_location(frame)
         gcrs = get_body(self._name, obstime, location)
         if to_celestial_sphere:
             # Discard distance from observer
-            gcrs = gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation))
+            gcrs = gcrs.realize_frame(
+                gcrs.represent_as(UnitSphericalRepresentation)
+            )
         return gcrs.transform_to(frame)
 
 
@@ -378,7 +396,9 @@ class EarthSatelliteBody(Body):
         edb_epoch = _edb_to_time(fields[2].split("|")[0])
         # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
         # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
-        sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format="jd").jd
+        sgp4_epoch = Time(
+            edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format="jd"
+        ).jd
         (
             inclination,
             ra_asc_node,
@@ -405,7 +425,9 @@ class EarthSatelliteBody(Body):
             (arg_perigee * u.deg).to_value(u.rad),  # argpo
             (inclination * u.deg).to_value(u.rad),  # inclo
             (mean_anomaly * u.deg).to_value(u.rad),  # mo
-            (mean_motion * u.cycle / u.day).to_value(u.rad / u.minute),  # no_kozai
+            (mean_motion * u.cycle / u.day).to_value(
+                u.rad / u.minute
+            ),  # no_kozai
             (ra_asc_node * u.deg).to_value(u.rad),  # nodeo
         )
         return cls(sat, int(orbit_number))
@@ -428,7 +450,9 @@ class EarthSatelliteBody(Body):
         arg_perigee = np.float32((sat.argpo * u.rad).to_value(u.deg))  # ap
         mean_anomaly = np.float32((sat.mo * u.rad).to_value(u.deg))  # M
         # The mean motion uses double precision due to "sensitive differencing operation"
-        mean_motion = (sat.no_kozai * u.rad / u.minute).to_value(u.cycle / u.day)  # n
+        mean_motion = (sat.no_kozai * u.rad / u.minute).to_value(
+            u.cycle / u.day
+        )  # n
         orbit_decay = (sat.ndot * u.rad / u.minute**2).to_value(
             u.cycle / u.day**2
         )  # decay
@@ -441,7 +465,9 @@ class EarthSatelliteBody(Body):
             # The TLE is considered valid until the satellite period changes by more
             # than 1%, but never for more than 100 days either side of the epoch.
             # The mean motion is revs/day while decay is (revs/day)/day.
-            stable_days = np.minimum(0.01 * mean_motion / abs(orbit_decay), 100) * u.day
+            stable_days = (
+                np.minimum(0.01 * mean_motion / abs(orbit_decay), 100) * u.day
+            )
             epoch_start = _time_to_edb(epoch - stable_days)  # startok
             epoch_end = _time_to_edb(epoch + stable_days)  # endok
             valid_range = f"|{epoch_start}|{epoch_end}"
@@ -454,7 +480,9 @@ class EarthSatelliteBody(Body):
             f"{orbit_number:d},{drag_coef:.8g}"
         )
 
-    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
+    def compute(
+        self, frame, obstime, location=None, to_celestial_sphere=False
+    ):
         """Determine position of body at the given time and transform to `frame`."""
         Body._check_location(frame)
         # Propagate the satellite according to SGP4 model (use array version if possible)
@@ -504,7 +532,9 @@ class StationaryBody(Body):
         """The type of body, as a string tag."""
         return "azel"
 
-    def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
+    def compute(
+        self, frame, obstime, location=None, to_celestial_sphere=False
+    ):
         """Transform (az, el) at given location and time to requested `frame`."""
         # Ignore `to_celestial_sphere` setting since we are already on the celestial sphere :-)
         # Ensure that coordinates have same shape as obstime (broadcasting fails)

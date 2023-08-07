@@ -45,7 +45,12 @@ from .model import BadModelFile, Model, Parameter
 from .pointing import PointingModel
 from .projection import plane_to_sphere, sphere_to_plane
 from .refraction import RefractionCorrection
-from .target import NonAsciiError, Target, construct_azel_target, construct_radec_target
+from .target import (
+    NonAsciiError,
+    Target,
+    construct_azel_target,
+    construct_radec_target,
+)
 from .timestamp import Timestamp
 
 

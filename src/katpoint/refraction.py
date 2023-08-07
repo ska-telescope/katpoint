@@ -93,10 +93,20 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     dewpt = temperature_C - rhumi * (
         0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
     )
-    pp = p[0] + p[1] * dewpt + p[2] * dewpt**2 + p[3] * dewpt**3 + p[4] * dewpt**4
+    pp = (
+        p[0]
+        + p[1] * dewpt
+        + p[2] * dewpt**2
+        + p[3] * dewpt**3
+        + p[4] * dewpt**4
+    )
     temperature_K = temperature_C + 273.0
     # This looks like Smith & Weintraub (1953) or Crane (1976) [LS]
-    sn = 77.6 * (pressure_hPa + (4810.0 * cvt * pp) / temperature_K) / temperature_K
+    sn = (
+        77.6
+        * (pressure_hPa + (4810.0 * cvt * pp) / temperature_K)
+        / temperature_K
+    )
 
     # Compute refraction at elevation (clipped at 1 degree to avoid cot(el) blow-up at horizon)
     el_deg = np.clip(np.degrees(el), 1.0, 90.0)
@@ -146,7 +156,9 @@ class RefractionCorrection:
 
     def __eq__(self, other):
         """Equality comparison operator."""
-        return isinstance(other, RefractionCorrection) and (self.model == other.model)
+        return isinstance(other, RefractionCorrection) and (
+            self.model == other.model
+        )
 
     def __hash__(self):
         """Base hash on underlying model name, just like equality operator."""
@@ -174,9 +186,13 @@ class RefractionCorrection:
         refracted_el : float or array
             Elevation angle(s), corrected for refraction, in radians
         """
-        return el + self.offset(el, temperature_C, pressure_hPa, humidity_percent)
+        return el + self.offset(
+            el, temperature_C, pressure_hPa, humidity_percent
+        )
 
-    def reverse(self, refracted_el, temperature_C, pressure_hPa, humidity_percent):
+    def reverse(
+        self, refracted_el, temperature_C, pressure_hPa, humidity_percent
+    ):
         """Remove refraction correction from elevation angle.
 
         This undoes a refraction correction that resulted in the given elevation
@@ -211,7 +227,9 @@ class RefractionCorrection:
         # This assumes that refraction-corrected elevation is monotone function of uncorrected elevation
         for iteration in range(40):
             el = 0.5 * (lower + upper)
-            test_el = self.apply(el, temperature_C, pressure_hPa, humidity_percent)
+            test_el = self.apply(
+                el, temperature_C, pressure_hPa, humidity_percent
+            )
             if np.all(np.abs(test_el - refracted_el) < tolerance):
                 break
             lower = np.where(test_el < refracted_el, el, lower)
@@ -270,7 +288,9 @@ class SaastamoinenZenithDelay:
         # Reduce local gravity to the value at the centroid of the atmospheric column,
         # which depends on the location of the observer
         self._gravity_correction = (
-            1.0 - 0.00266 * np.cos(2 * location.lat) - 0.00028 / u.km * location.height
+            1.0
+            - 0.00266 * np.cos(2 * location.lat)
+            - 0.00028 / u.km * location.height
         )
 
     @u.quantity_input
@@ -287,7 +307,12 @@ class SaastamoinenZenithDelay:
         delay : :class:`~astropy.units.Quantity`
             Zenith delay due to hydrostatic component
         """
-        return _EXCESS_PATH_PER_PRESSURE * pressure / self._gravity_correction / const.c
+        return (
+            _EXCESS_PATH_PER_PRESSURE
+            * pressure
+            / self._gravity_correction
+            / const.c
+        )
 
     @u.quantity_input(equivalencies=u.temperature())
     def wet(
@@ -313,9 +338,13 @@ class SaastamoinenZenithDelay:
         # This resembles the version of the August-Roche-Magnus formula in Murray (1967).
         # The Tetens (1930) version, which serves as the reference, is
         # saturation_pressure_hPa = 10 ** (7.5 * temperature_C / (temperature_C + 237.3) + 0.7858)
-        saturation_pressure = 6.11 * np.exp(17.269 * temp_C / (temp_C + 237.3)) * u.hPa
+        saturation_pressure = (
+            6.11 * np.exp(17.269 * temp_C / (temp_C + 237.3)) * u.hPa
+        )
         partial_pressure = relative_humidity * saturation_pressure
-        excess_path_per_pressure = _EXCESS_PATH_PER_PRESSURE * (1255.0 / temp_K + 0.05)
+        excess_path_per_pressure = _EXCESS_PATH_PER_PRESSURE * (
+            1255.0 / temp_K + 0.05
+        )
         return excess_path_per_pressure * partial_pressure / const.c
 
 
@@ -905,7 +934,9 @@ class GlobalMappingFunction:
         self._spherical_harmonic_basis = 1e-5 * np.r_[aP[tril], bP[tril]]
 
     @u.quantity_input
-    def hydrostatic(self, elevation: u.rad, timestamp) -> u.dimensionless_unscaled:
+    def hydrostatic(
+        self, elevation: u.rad, timestamp
+    ) -> u.dimensionless_unscaled:
         """Mapping function for "dry" (hydrostatic) component of the atmosphere.
 
         Parameters
@@ -995,7 +1026,9 @@ class TroposphericDelay:
     """
 
     def __init__(
-        self, location, model_id="SaastamoinenZenithDelay-GlobalMappingFunction"
+        self,
+        location,
+        model_id="SaastamoinenZenithDelay-GlobalMappingFunction",
     ):
         # These will effectively be read-only attributes because setattr is disabled
         super().__setattr__("location", location)
@@ -1019,15 +1052,17 @@ class TroposphericDelay:
                     f"{key!r}, available ones are {list(mapping.keys())}"
                 ) from err
 
-        zenith_delay = get(_ZENITH_DELAY, model_parts[0], "zenith delay function")(
-            location
-        )
-        mapping_function = get(_MAPPING_FUNCTION, model_parts[1], "mapping function")(
-            location
-        )
+        zenith_delay = get(
+            _ZENITH_DELAY, model_parts[0], "zenith delay function"
+        )(location)
+        mapping_function = get(
+            _MAPPING_FUNCTION, model_parts[1], "mapping function"
+        )(location)
 
         def hydrostatic(p, t, h, el, ts):  # pylint: disable=unused-argument
-            return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(el, ts)
+            return zenith_delay.hydrostatic(p) * mapping_function.hydrostatic(
+                el, ts
+            )
 
         def wet(p, t, h, el, ts):  # pylint: disable=unused-argument
             return zenith_delay.wet(t, h) * mapping_function.wet(el, ts)

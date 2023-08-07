@@ -44,7 +44,10 @@ from .helper import assert_angles_almost_equal
     ],
 )
 def test_angle_from_degrees(angle, angle_deg):
-    assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg == angle_deg
+    assert (
+        katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg
+        == angle_deg
+    )
 
 
 @pytest.mark.parametrize(
@@ -63,7 +66,8 @@ def test_angle_from_degrees(angle, angle_deg):
 )
 def test_angle_from_hours(angle, angle_hour):
     assert (
-        katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
+        katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour
+        == angle_hour
     )
 
 
@@ -111,13 +115,18 @@ def test_bytes_to_angle():
 )
 def test_angle_to_string(angle, kwargs, angle_string):
     np.testing.assert_array_equal(
-        katpoint.conversion.angle_to_string(Angle(angle), **kwargs), angle_string
+        katpoint.conversion.angle_to_string(Angle(angle), **kwargs),
+        angle_string,
     )
 
 
 @pytest.mark.parametrize(
     "angle, kwargs",
-    [("10:20:30.4d", dict(unit=u.rad)), ("10rad", dict()), ("10d", dict(sep="dms"))],
+    [
+        ("10:20:30.4d", dict(unit=u.rad)),
+        ("10rad", dict()),
+        ("10d", dict(sep="dms")),
+    ],
 )
 def test_angle_to_string_errors(angle, kwargs):
     with pytest.raises(ValueError):
@@ -126,7 +135,12 @@ def test_angle_to_string_errors(angle, kwargs):
 
 @pytest.mark.parametrize(
     "kwargs",
-    [dict(), dict(decimal=True), dict(unit=u.hour), dict(unit=u.hour, decimal=True)],
+    [
+        dict(),
+        dict(decimal=True),
+        dict(unit=u.hour),
+        dict(unit=u.hour, decimal=True),
+    ],
 )
 def test_angle_to_string_round_trip(random, kwargs, N=1000):
     angle1 = Angle(360 * random.rand(N) * u.deg)
@@ -171,7 +185,9 @@ def test_ecef_to_enu(random, N=1000):
     lat, lon, alt = random_geoid(random, N)
     x, y, z = katpoint.lla_to_ecef(lat, lon, alt)
     east, north, up = katpoint.ecef_to_enu(lat[0], lon[0], alt[0], x, y, z)
-    new_x, new_y, new_z = katpoint.enu_to_ecef(lat[0], lon[0], alt[0], east, north, up)
+    new_x, new_y, new_z = katpoint.enu_to_ecef(
+        lat[0], lon[0], alt[0], east, north, up
+    )
     np.testing.assert_almost_equal(new_x, x, decimal=8)
     np.testing.assert_almost_equal(new_y, y, decimal=8)
     np.testing.assert_almost_equal(new_z, z, decimal=8)

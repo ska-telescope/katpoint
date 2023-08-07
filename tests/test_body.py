@@ -65,8 +65,12 @@ def _get_fixed_body(ra_str, dec_str, distance=None):
 
 
 TLE_NAME = "GPS BIIA-21 (PRN 09)"
-TLE_LINE1 = "1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057"
-TLE_LINE2 = "2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282"
+TLE_LINE1 = (
+    "1 22700U 93042A   19266.32333151  .00000012  00000-0  10000-3 0  8057"
+)
+TLE_LINE2 = (
+    "2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282"
+)
 TLE_TS = "2019-09-23 07:45:36.000"
 TLE_AZ = "280:32:29.6594d"  # Astropy 5.3
 # 1.      280:32:29.6594   Astropy 4.3 (0.0003" error)
@@ -177,7 +181,9 @@ astropy_version = Version(astropy_version)
         # 23:35:44.31h       -8:32:55.3d       127:15:17.1d       60:05:10.5d  (PyEphem)
     ],
 )
-def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver):
+def test_compute(
+    body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver
+):
     """Test `body.compute()` for the two ends of the coordinate chain."""
     obstime = Time(date_str)
     is_moon = body.default_name == "Moon"
@@ -188,12 +194,17 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astro
         # separation involves the quadrature sum of two coordinate offsets.
         tol = 0.1 * u.mas
     # Go to the bottom of the coordinate chain: (az, el)
-    altaz = body.compute(AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION)
+    altaz = body.compute(
+        AltAz(obstime=obstime, location=LOCATION), obstime, LOCATION
+    )
     check_separation(altaz, az_str, el_str, tol)
     # Go to the top of the coordinate chain: astrometric (ra, dec)
     radec = body.compute(ICRS(), obstime, LOCATION, to_celestial_sphere=True)
     check_separation(
-        radec, ra_str, dec_str, 1 * u.mas if not accurate and not is_moon else tol
+        radec,
+        ra_str,
+        dec_str,
+        1 * u.mas if not accurate and not is_moon else tol,
     )
     # Check that astrometric (ra, dec) results in the same (az, el) as a double-check
     altaz2 = radec.transform_to(AltAz(obstime=obstime, location=LOCATION))
@@ -306,4 +317,6 @@ def test_fixed_edb():
     assert body.default_name
     assert body.coord.ra == Longitude("20:22:13.7h")
     assert body.coord.dec == Latitude("40:15:24d")
-    assert body.to_edb() == ",f,20:22:13.7,40:15:24"  # no name or proper motion
+    assert (
+        body.to_edb() == ",f,20:22:13.7,40:15:24"
+    )  # no name or proper motion

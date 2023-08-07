@@ -57,16 +57,24 @@ class DelayModel(Model):
         params = []
         params.append(
             Parameter(
-                "POS_E", "m", "antenna position: offset East of reference position"
+                "POS_E",
+                "m",
+                "antenna position: offset East of reference position",
             )
         )
         params.append(
             Parameter(
-                "POS_N", "m", "antenna position: offset North of reference position"
+                "POS_N",
+                "m",
+                "antenna position: offset North of reference position",
             )
         )
         params.append(
-            Parameter("POS_U", "m", "antenna position: offset above reference position")
+            Parameter(
+                "POS_U",
+                "m",
+                "antenna position: offset above reference position",
+            )
         )
         params.append(
             Parameter(
@@ -92,7 +100,9 @@ class DelayModel(Model):
         Model.__init__(self, params)
         self.set(model)
         # The EM wave velocity associated with each parameter
-        self._speeds = np.array([LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED])
+        self._speeds = np.array(
+            [LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED]
+        )
 
     @property
     def delay_params(self):
