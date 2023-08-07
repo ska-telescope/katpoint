@@ -18,6 +18,6 @@ import numpy as np
 import pytest
 
 
-@pytest.fixture(name='random')
+@pytest.fixture(name="random")
 def fixture_random():
     return np.random.RandomState(42)

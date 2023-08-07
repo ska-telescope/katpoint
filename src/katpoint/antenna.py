@@ -135,10 +135,18 @@ class Antenna:
         If description string has wrong format or parameters are incorrect
     """
 
-    def __init__(self, antenna, name=_DEFAULT, diameter=_DEFAULT, delay_model=_DEFAULT,
-                 pointing_model=_DEFAULT, beamwidth=_DEFAULT):
-        default = SimpleNamespace(name='', diameter=0.0, delay_model=None,
-                                  pointing_model=None, beamwidth=1.22)
+    def __init__(
+        self,
+        antenna,
+        name=_DEFAULT,
+        diameter=_DEFAULT,
+        delay_model=_DEFAULT,
+        pointing_model=_DEFAULT,
+        beamwidth=_DEFAULT,
+    ):
+        default = SimpleNamespace(
+            name="", diameter=0.0, delay_model=None, pointing_model=None, beamwidth=1.22
+        )
         if isinstance(antenna, str):
             # Create a temporary Antenna object to serve up default parameters instead
             antenna = Antenna.from_description(antenna)
@@ -149,10 +157,12 @@ class Antenna:
         name = default.name if name is _DEFAULT else name
         diameter = default.diameter if diameter is _DEFAULT else diameter
         delay_model = default.delay_model if delay_model is _DEFAULT else delay_model
-        pointing_model = default.pointing_model if pointing_model is _DEFAULT else pointing_model
+        pointing_model = (
+            default.pointing_model if pointing_model is _DEFAULT else pointing_model
+        )
         beamwidth = default.beamwidth if beamwidth is _DEFAULT else beamwidth
 
-        if ',' in name:
+        if "," in name:
             raise ValueError(f"Antenna name '{name}' may not contain commas")
         self.name = name
         self.diameter = diameter << u.m
@@ -171,7 +181,7 @@ class Antenna:
 
     def __repr__(self):
         """Short human-friendly string representation of antenna object."""
-        return f'<katpoint.Antenna {self.name!r} diam={self.diameter} at {id(self):#x}>'
+        return f"<katpoint.Antenna {self.name!r} diam={self.diameter} at {id(self):#x}>"
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -179,11 +189,15 @@ class Antenna:
 
     def __eq__(self, other):
         """Equality comparison operator."""
-        return self.description == (other.description if isinstance(other, Antenna) else other)
+        return self.description == (
+            other.description if isinstance(other, Antenna) else other
+        )
 
     def __lt__(self, other):
         """Less-than comparison operator (needed for sorting and np.unique)."""
-        return self.description < (other.description if isinstance(other, Antenna) else other)
+        return self.description < (
+            other.description if isinstance(other, Antenna) else other
+        )
 
     def __hash__(self):
         """Base hash on description string, just like equality operator."""
@@ -192,20 +206,20 @@ class Antenna:
     @property
     def ref_position_wgs84(self):
         """WGS84 reference position (latitude and longitude in radians, and altitude in metres)"""
-        lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
+        lon, lat, height = self.ref_location.to_geodetic(ellipsoid="WGS84")
         return (lat.rad, lon.rad, height.to_value(u.m))
 
     @property
     def position_wgs84(self):
         """WGS84 position (latitude and longitude in radians, and altitude in metres)."""
-        lon, lat, height = self.location.to_geodetic(ellipsoid='WGS84')
+        lon, lat, height = self.location.to_geodetic(ellipsoid="WGS84")
         return (lat.rad, lon.rad, height.to_value(u.m))
 
     @property
     def position_enu(self):
         """East-North-Up offset from WGS84 reference position, in metres."""
         dm = self.delay_model
-        return (dm['POS_E'], dm['POS_N'], dm['POS_U'])
+        return (dm["POS_E"], dm["POS_N"], dm["POS_U"])
 
     @property
     def position_ecef(self):
@@ -218,35 +232,40 @@ class Antenna:
         # These fields are used to build up the antenna description string
         fields = [self.name]
         # Store `EarthLocation` as WGS84 coordinates
-        lon, lat, height = self.ref_location.to_geodetic(ellipsoid='WGS84')
-        fields += [angle_to_string(lat), angle_to_string(lon)]  # these are already in degrees
+        lon, lat, height = self.ref_location.to_geodetic(ellipsoid="WGS84")
+        fields += [
+            angle_to_string(lat),
+            angle_to_string(lon),
+        ]  # these are already in degrees
         # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        fields += [strip_zeros('{:.6f}'.format(height.to_value(u.m)))]
-        fields += [strip_zeros('{:.6f}'.format(self.diameter.to_value(u.m)))]
+        fields += [strip_zeros("{:.6f}".format(height.to_value(u.m)))]
+        fields += [strip_zeros("{:.6f}".format(self.diameter.to_value(u.m)))]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
         fields += [str(self.beamwidth)]
-        return ', '.join(fields)
+        return ", ".join(fields)
 
     @classmethod
     def from_description(cls, description):
         """Construct antenna object from description string."""
         errmsg_prefix = f"Antenna description string '{description}' "
         if not description:
-            raise ValueError(errmsg_prefix + 'is empty')
+            raise ValueError(errmsg_prefix + "is empty")
         try:
-            description.encode('ascii')
+            description.encode("ascii")
         except UnicodeError as err:
-            raise ValueError(errmsg_prefix + 'contains non-ASCII characters') from err
+            raise ValueError(errmsg_prefix + "contains non-ASCII characters") from err
         # Split description string on commas
-        fields = [s.strip() for s in description.split(',')]
+        fields = [s.strip() for s in description.split(",")]
         # Extract required fields
         if len(fields) < 4:
-            raise ValueError(errmsg_prefix + 'has fewer than four fields')
+            raise ValueError(errmsg_prefix + "has fewer than four fields")
         name, latitude, longitude, altitude = fields[:4]
         # Construct Earth location from WGS84 coordinates
-        location = EarthLocation(lat=to_angle(latitude), lon=to_angle(longitude), height=altitude)
+        location = EarthLocation(
+            lat=to_angle(latitude), lon=to_angle(longitude), height=altitude
+        )
         return cls(location, name, *fields[4:8])
 
     def baseline_toward(self, antenna2):
@@ -271,7 +290,9 @@ class Antenna:
         if np.array_equal(self.position_wgs84, antenna2.ref_position_wgs84):
             enu = antenna2.position_enu
         else:
-            enu = ecef_to_enu(*self.position_wgs84, *lla_to_ecef(*antenna2.position_wgs84))
+            enu = ecef_to_enu(
+                *self.position_wgs84, *lla_to_ecef(*antenna2.position_wgs84)
+            )
         return CartesianRepresentation(*enu, unit=u.m)
 
     def local_sidereal_time(self, timestamp=None):
@@ -291,9 +312,9 @@ class Antenna:
             Local apparent sidereal time(s)
         """
         time = Timestamp(timestamp).time
-        return time.sidereal_time('apparent', longitude=self.location.lon)
+        return time.sidereal_time("apparent", longitude=self.location.lon)
 
-    def array_reference_antenna(self, name='array'):
+    def array_reference_antenna(self, name="array"):
         """Synthetic antenna at the delay model reference position of this antenna.
 
         This is mainly useful as the reference `antenna` for

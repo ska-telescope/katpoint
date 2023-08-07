@@ -56,40 +56,88 @@ class PointingModel(Model):
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
         def pm_angle_to_string(a):
-            return angle_to_string(to_angle(a), unit=units.deg) if a != 0 else '0'
+            return angle_to_string(to_angle(a), unit=units.deg) if a != 0 else "0"
 
         def angle_param(name, doc):
             """Create angle-valued parameter."""
-            return Parameter(name, 'deg', doc, from_str=to_angle, to_str=pm_angle_to_string)
+            return Parameter(
+                name, "deg", doc, from_str=to_angle, to_str=pm_angle_to_string
+            )
 
         def scale_param(name, doc):
             """Create scale-valued parameter."""
-            return Parameter(name, '', doc, to_str=lambda s: (f'{s:.9g}') if s else '0')
+            return Parameter(name, "", doc, to_str=lambda s: (f"{s:.9g}") if s else "0")
 
         # Instantiate the relevant model parameters and register with base class
         params = []
-        params.append(angle_param('P1', 'az offset = encoder bias - tilt around [tpoint -IA]'))
-        params.append(angle_param('P2', 'az gravitational sag, should be 0.0'))
-        params.append(angle_param('P3', 'left-right axis skew = non-perpendicularity of az/el axes [tpoint -NPAE]'))
-        params.append(angle_param('P4', 'az box offset / collimation error = RF-axis misalignment [tpoint CA]'))
-        params.append(angle_param('P5', 'tilt out = az ring tilted towards north [tpoint AN]'))
-        params.append(angle_param('P6', 'tilt over = az ring tilted towards east [tpoint -AW]'))
-        params.append(angle_param('P7', 'el offset = encoder bias - forward axis skew - el box offset [tpoint IE]'))
-        params.append(angle_param('P8', 'gravity sag / Hooke law flexure / el centering error [tpoint ECEC/-TF]'))
-        params.append(scale_param('P9', 'el excess scale factor [tpoint PEE1]'))
-        params.append(angle_param('P10', 'ad hoc cos(el) term in delta_el, redundant with P8'))
-        params.append(angle_param('P11', 'asymmetric sag / el centering error [tpoint ECES]'))
-        params.append(scale_param('P12', 'az excess scale factor [tpoint -PAA1]'))
-        params.append(angle_param('P13', 'az centering error [tpoint ACEC]'))
-        params.append(angle_param('P14', 'az centering error [tpoint -ACES]'))
-        params.append(angle_param('P15', 'elevation nod twice per az revolution [tpoint HECA2]'))
-        params.append(angle_param('P16', 'elevation nod twice per az revolution [tpoint -HESA2]'))
-        params.append(angle_param('P17', 'az encoder tilt [tpoint -HACA2]'))
-        params.append(angle_param('P18', 'az encoder tilt [tpoint HASA2]'))
-        params.append(angle_param('P19', 'high-order distortions in el encoder scale [tpoint HECE8]'))
-        params.append(angle_param('P20', 'high-order distortions in el encoder scale [tpoint HESE8]'))
-        params.append(angle_param('P21', 'elevation nod once per az revolution [tpoint -HECA]'))
-        params.append(angle_param('P22', 'elevation nod once per az revolution [tpoint HESA]'))
+        params.append(
+            angle_param("P1", "az offset = encoder bias - tilt around [tpoint -IA]")
+        )
+        params.append(angle_param("P2", "az gravitational sag, should be 0.0"))
+        params.append(
+            angle_param(
+                "P3",
+                "left-right axis skew = non-perpendicularity of az/el axes [tpoint -NPAE]",
+            )
+        )
+        params.append(
+            angle_param(
+                "P4",
+                "az box offset / collimation error = RF-axis misalignment [tpoint CA]",
+            )
+        )
+        params.append(
+            angle_param("P5", "tilt out = az ring tilted towards north [tpoint AN]")
+        )
+        params.append(
+            angle_param("P6", "tilt over = az ring tilted towards east [tpoint -AW]")
+        )
+        params.append(
+            angle_param(
+                "P7",
+                "el offset = encoder bias - forward axis skew - el box offset [tpoint IE]",
+            )
+        )
+        params.append(
+            angle_param(
+                "P8",
+                "gravity sag / Hooke law flexure / el centering error [tpoint ECEC/-TF]",
+            )
+        )
+        params.append(scale_param("P9", "el excess scale factor [tpoint PEE1]"))
+        params.append(
+            angle_param("P10", "ad hoc cos(el) term in delta_el, redundant with P8")
+        )
+        params.append(
+            angle_param("P11", "asymmetric sag / el centering error [tpoint ECES]")
+        )
+        params.append(scale_param("P12", "az excess scale factor [tpoint -PAA1]"))
+        params.append(angle_param("P13", "az centering error [tpoint ACEC]"))
+        params.append(angle_param("P14", "az centering error [tpoint -ACES]"))
+        params.append(
+            angle_param("P15", "elevation nod twice per az revolution [tpoint HECA2]")
+        )
+        params.append(
+            angle_param("P16", "elevation nod twice per az revolution [tpoint -HESA2]")
+        )
+        params.append(angle_param("P17", "az encoder tilt [tpoint -HACA2]"))
+        params.append(angle_param("P18", "az encoder tilt [tpoint HASA2]"))
+        params.append(
+            angle_param(
+                "P19", "high-order distortions in el encoder scale [tpoint HECE8]"
+            )
+        )
+        params.append(
+            angle_param(
+                "P20", "high-order distortions in el encoder scale [tpoint HESE8]"
+            )
+        )
+        params.append(
+            angle_param("P21", "elevation nod once per az revolution [tpoint -HECA]")
+        )
+        params.append(
+            angle_param("P22", "elevation nod once per az revolution [tpoint HESA]")
+        )
         Model.__init__(self, params)
         self.set(model)
 
@@ -133,23 +181,75 @@ class PointingModel(Model):
         """
         # Unpack parameters to make the code correspond to the maths
         # P2 and P10 are not used because they are identically zero for alt-az mounts
-        P1, _, P3, P4, P5, P6, P7, P8, \
-            P9, _, P11, P12, P13, P14, P15, \
-            P16, P17, P18, P19, P20, P21, P22 = self.values()
+        (
+            P1,
+            _,
+            P3,
+            P4,
+            P5,
+            P6,
+            P7,
+            P8,
+            P9,
+            _,
+            P11,
+            P12,
+            P13,
+            P14,
+            P15,
+            P16,
+            P17,
+            P18,
+            P19,
+            P20,
+            P21,
+            P22,
+        ) = self.values()
         # Compute each trig term only once and store it
-        sin_az, cos_az, sin_2az, cos_2az = np.sin(az), np.cos(az), np.sin(2 * az), np.cos(2 * az)
-        sin_el, cos_el, sin_8el, cos_8el = np.sin(el), np.cos(el), np.sin(8 * el), np.cos(8 * el)
+        sin_az, cos_az, sin_2az, cos_2az = (
+            np.sin(az),
+            np.cos(az),
+            np.sin(2 * az),
+            np.cos(2 * az),
+        )
+        sin_el, cos_el, sin_8el, cos_8el = (
+            np.sin(el),
+            np.cos(el),
+            np.sin(8 * el),
+            np.cos(8 * el),
+        )
         # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
-        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6. / 60.), 1.0)
+        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6.0 / 60.0), 1.0)
         tan_el = sin_el * sec_el
 
         # Obtain pointing correction using full VLBI model for alt-az mount (no P2 or P10 allowed!)
-        delta_az = (P1 + P3*tan_el - P4*sec_el + P5*sin_az*tan_el - P6*cos_az*tan_el
-                    + P12*az + P13*cos_az + P14*sin_az + P17*cos_2az + P18*sin_2az)
-        delta_el = (P5*cos_az + P6*sin_az + P7 + P8*cos_el
-                    + P9*el + P11*sin_el + P15*cos_2az + P16*sin_2az
-                    + P19*cos_8el + P20*sin_8el + P21*cos_az + P22*sin_az)
+        delta_az = (
+            P1
+            + P3 * tan_el
+            - P4 * sec_el
+            + P5 * sin_az * tan_el
+            - P6 * cos_az * tan_el
+            + P12 * az
+            + P13 * cos_az
+            + P14 * sin_az
+            + P17 * cos_2az
+            + P18 * sin_2az
+        )
+        delta_el = (
+            P5 * cos_az
+            + P6 * sin_az
+            + P7
+            + P8 * cos_el
+            + P9 * el
+            + P11 * sin_el
+            + P15 * cos_2az
+            + P16 * sin_2az
+            + P19 * cos_8el
+            + P20 * sin_8el
+            + P21 * cos_az
+            + P22 * sin_az
+        )
 
         return delta_az, delta_el
 
@@ -194,22 +294,77 @@ class PointingModel(Model):
         # Unpack parameters to make the code correspond to the maths
         # P1 and P7 are not used because they are constant terms with zero partial derivatives
         # P2 and P10 are not used because they are identically zero for alt-az mounts
-        _, _, P3, P4, P5, P6, _, P8, \
-            P9, _, P11, P12, P13, P14, P15, \
-            P16, P17, P18, P19, P20, P21, P22 = self.values()
+        (
+            _,
+            _,
+            P3,
+            P4,
+            P5,
+            P6,
+            _,
+            P8,
+            P9,
+            _,
+            P11,
+            P12,
+            P13,
+            P14,
+            P15,
+            P16,
+            P17,
+            P18,
+            P19,
+            P20,
+            P21,
+            P22,
+        ) = self.values()
         # Compute each trig term only once and store it
-        sin_az, cos_az, sin_2az, cos_2az = np.sin(az), np.cos(az), np.sin(2 * az), np.cos(2 * az)
-        sin_el, cos_el, sin_8el, cos_8el = np.sin(el), np.cos(el), np.sin(8 * el), np.cos(8 * el)
+        sin_az, cos_az, sin_2az, cos_2az = (
+            np.sin(az),
+            np.cos(az),
+            np.sin(2 * az),
+            np.cos(2 * az),
+        )
+        sin_el, cos_el, sin_8el, cos_8el = (
+            np.sin(el),
+            np.cos(el),
+            np.sin(8 * el),
+            np.cos(8 * el),
+        )
         # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
-        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6. / 60.), 1.0)
+        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6.0 / 60.0), 1.0)
         tan_el = sin_el * sec_el
 
-        d_corraz_d_az = (1.0 + P5*cos_az*tan_el + P6*sin_az*tan_el
-                         + P12 - P13*sin_az + P14*cos_az - P17*2*sin_2az + P18*2*cos_2az)
-        d_corraz_d_el = sec_el * (P3*sec_el - P4*tan_el + P5*sin_az*sec_el - P6*cos_az*sec_el)
-        d_correl_d_az = -P5*sin_az + P6*cos_az - P15*2*sin_2az + P16*2*cos_2az - P21*sin_az + P22*cos_az
-        d_correl_d_el = 1.0 - P8*sin_el + P9 + P11*cos_el - P19*8*sin_8el + P20*8*cos_8el
+        d_corraz_d_az = (
+            1.0
+            + P5 * cos_az * tan_el
+            + P6 * sin_az * tan_el
+            + P12
+            - P13 * sin_az
+            + P14 * cos_az
+            - P17 * 2 * sin_2az
+            + P18 * 2 * cos_2az
+        )
+        d_corraz_d_el = sec_el * (
+            P3 * sec_el - P4 * tan_el + P5 * sin_az * sec_el - P6 * cos_az * sec_el
+        )
+        d_correl_d_az = (
+            -P5 * sin_az
+            + P6 * cos_az
+            - P15 * 2 * sin_2az
+            + P16 * 2 * cos_2az
+            - P21 * sin_az
+            + P22 * cos_az
+        )
+        d_correl_d_el = (
+            1.0
+            - P8 * sin_el
+            + P9
+            + P11 * cos_el
+            - P19 * 8 * sin_8el
+            + P20 * 8 * cos_8el
+        )
 
         return d_corraz_d_az, d_corraz_d_el, d_correl_d_az, d_correl_d_el
 
@@ -236,14 +391,14 @@ class PointingModel(Model):
         # Maximum difference between input az/el and pointing-corrected version of final output az/el
         tolerance = np.radians(0.01 / 3600)
         # Initial guess of uncorrected az/el is the corrected az/el minus fixed offsets
-        az, el = pointed_az - self['P1'], pointed_el - self['P7']
+        az, el = pointed_az - self["P1"], pointed_el - self["P7"]
         # Solve F(az, el) = apply(az, el) - (pointed_az, pointed_el) = 0 via Newton's method, should converge quickly
         for iteration in range(30):
             # Set up linear system J dx = -F (or A x = b), where J is Jacobian matrix of apply()
             a11, a12, a21, a22 = self._jacobian(az, el)
             test_az, test_el = self.apply(az, el)
             b1, b2 = pointed_az - test_az, pointed_el - test_el
-            sky_error = np.sqrt((np.cos(el) * b1) ** 2 + b2 ** 2)
+            sky_error = np.sqrt((np.cos(el) * b1) ** 2 + b2**2)
             if np.all(sky_error < tolerance):
                 break
             # Newton step: Solve linear system via crappy Cramer rule... 3 reasons why this is OK:
@@ -254,14 +409,30 @@ class PointingModel(Model):
             az = az + (a22 * b1 - a12 * b2) / det_J
             el = el + (a11 * b2 - a21 * b1) / det_J
         else:
-            max_error, max_az, max_el = np.vstack((sky_error, pointed_az, pointed_el))[:, np.argmax(sky_error)]
-            logger.warning('Reverse pointing correction did not converge in %d iterations - '
-                           'maximum error is %f arcsecs at (az, el) = (%f, %f) radians',
-                           iteration + 1, np.degrees(max_error) * 3600., max_az, max_el)
+            max_error, max_az, max_el = np.vstack((sky_error, pointed_az, pointed_el))[
+                :, np.argmax(sky_error)
+            ]
+            logger.warning(
+                "Reverse pointing correction did not converge in %d iterations - "
+                "maximum error is %f arcsecs at (az, el) = (%f, %f) radians",
+                iteration + 1,
+                np.degrees(max_error) * 3600.0,
+                max_az,
+                max_el,
+            )
         return az, el
 
-    def fit(self, az, el, delta_az, delta_el, sigma_daz=None, sigma_del=None,
-            enabled_params=None, keep_disabled_params=False):
+    def fit(
+        self,
+        az,
+        el,
+        delta_az,
+        delta_el,
+        sigma_daz=None,
+        sigma_del=None,
+        enabled_params=None,
+        keep_disabled_params=False,
+    ):
         """Fit pointing model parameters to observed offsets.
 
         This fits the pointing model to a sequence of observed (az, el) offsets.
@@ -325,16 +496,30 @@ class PointingModel(Model):
         if sigma_del is None:
             sigma_del = np.ones(np.shape(el))
         # Ensure all inputs are numpy arrays of the same shape
-        az, el, delta_az, delta_el = np.asarray(az), np.asarray(el), np.asarray(delta_az), np.asarray(delta_el)
+        az, el, delta_az, delta_el = (
+            np.asarray(az),
+            np.asarray(el),
+            np.asarray(delta_az),
+            np.asarray(delta_el),
+        )
         sigma_daz, sigma_del = np.asarray(sigma_daz), np.asarray(sigma_del)
-        assert az.shape == el.shape == delta_az.shape == delta_el.shape == sigma_daz.shape == sigma_del.shape, \
-            'Input parameters should all have the same shape'
+        assert (
+            az.shape
+            == el.shape
+            == delta_az.shape
+            == delta_el.shape
+            == sigma_daz.shape
+            == sigma_del.shape
+        ), "Input parameters should all have the same shape"
 
         if not keep_disabled_params:
             # Blank out the existing model but warn that this behaviour is deprecated
             self.set()
-            warnings.warn('Pointing model parameters that are not being fitted will be kept in '
-                          'future and not zeroed - zero the model beforehand instead', FutureWarning)
+            warnings.warn(
+                "Pointing model parameters that are not being fitted will be kept in "
+                "future and not zeroed - zero the model beforehand instead",
+                FutureWarning,
+            )
         param_vector = np.array(self.values())
         sigma_params = np.zeros(len(self))
         # Subtract the existing model from data (both enabled and disabled parameters)
@@ -352,10 +537,14 @@ class PointingModel(Model):
         enabled_params = set(enabled_params)
         # Remove troublesome parameters if enabled
         if 2 in enabled_params:
-            logger.warning('Pointing model parameter P2 is meaningless for alt-az mount - disabled P2')
+            logger.warning(
+                "Pointing model parameter P2 is meaningless for alt-az mount - disabled P2"
+            )
             enabled_params.remove(2)
         if 10 in enabled_params:
-            logger.warning('Pointing model parameter P10 is redundant for alt-az mount (same as P8) - disabled P10')
+            logger.warning(
+                "Pointing model parameter P10 is redundant for alt-az mount (same as P8) - disabled P10"
+            )
             enabled_params.remove(10)
         enabled_params = np.array(list(enabled_params))
         # If no parameters are enabled, the existing model is returned
@@ -377,13 +566,17 @@ class PointingModel(Model):
             basis_az, basis_el = unit_model.offset(az, el)
             A[:, m] = np.hstack((basis_az * cos_el / sigma_daz, basis_el / sigma_del))
         # Measurement vector, containing weighted observed offsets
-        b = np.hstack((residual_delta_az * cos_el / sigma_daz, residual_delta_el / sigma_del))
+        b = np.hstack(
+            (residual_delta_az * cos_el / sigma_daz, residual_delta_el / sigma_del)
+        )
         # Solve linear least-squares problem using SVD (see NRinC, 2nd ed, Eq. 15.4.17)
         U, s, Vt = np.linalg.svd(A, full_matrices=False)
         # We solved on the residual (az, el) offsets, so add the solution to existing parameters
         param_vector[enabled_params - 1] += Vt.T.dot(U.T.dot(b) / s)
         self.fromlist(param_vector)
         # Also obtain standard errors of parameters (see NRinC, 2nd ed, Eq. 15.4.19)
-        sigma_params[enabled_params - 1] = np.sqrt(np.sum((Vt.T / s[np.newaxis, :]) ** 2, axis=1))
-#        logger.info('Fit pointing model using %dx%d design matrix with condition number %.2f', N, M, s[0] / s[-1])
+        sigma_params[enabled_params - 1] = np.sqrt(
+            np.sum((Vt.T / s[np.newaxis, :]) ** 2, axis=1)
+        )
+        #        logger.info('Fit pointing model using %dx%d design matrix with condition number %.2f', N, M, s[0] / s[-1])
         return param_vector, sigma_params

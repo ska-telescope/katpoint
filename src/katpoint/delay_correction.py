@@ -84,7 +84,7 @@ def _itrs_delays(target, locations, time):
     # Antenna XYZ positions relative to reference location => shape (A, prod(T))
     relative_locations = locations_xyz[ants] - locations_xyz[ref]
     # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
-    geometric_delays = - relative_locations.dot(target_dir_xyz) / const.c
+    geometric_delays = -relative_locations.dot(target_dir_xyz) / const.c
     return geometric_delays, elevations
 
 
@@ -111,7 +111,7 @@ def _gcrs_delays(target, locations, time):
     # Antenna XYZ positions relative to reference location => shape (A, prod(T))
     relative_locations = x[ants] - x[ref]
     # The dot product is along the 3 XYZ coordinates (this assumes plane waves)
-    geometric_delays = - relative_locations.dot(target_dir_gcrs) / const.c
+    geometric_delays = -relative_locations.dot(target_dir_gcrs) / const.c
     return geometric_delays, elevations
 
 
@@ -119,16 +119,16 @@ def _gcrs_delays(target, locations, time):
 # Astropy constants and https://en.wikipedia.org/wiki/Standard_gravitational_parameter
 _GM_UNIT = const.GM_earth.unit
 _GM = {
-    'sun': const.GM_sun,
-    'mercury': 2.2032e13 * _GM_UNIT,
-    'venus': 3.24859e14 * _GM_UNIT,
-    'earth': const.GM_earth,
-    'moon': 4.9048695e12 * _GM_UNIT,
-    'mars': 4.282837e13 * _GM_UNIT,
-    'jupiter': const.GM_jup,
-    'saturn': 3.7931187e16 * _GM_UNIT,
-    'uranus': 5.793939e15 * _GM_UNIT,
-    'neptune': 6.836529e15 * _GM_UNIT,
+    "sun": const.GM_sun,
+    "mercury": 2.2032e13 * _GM_UNIT,
+    "venus": 3.24859e14 * _GM_UNIT,
+    "earth": const.GM_earth,
+    "moon": 4.9048695e12 * _GM_UNIT,
+    "mars": 4.282837e13 * _GM_UNIT,
+    "jupiter": const.GM_jup,
+    "saturn": 3.7931187e16 * _GM_UNIT,
+    "uranus": 5.793939e15 * _GM_UNIT,
+    "neptune": 6.836529e15 * _GM_UNIT,
 }
 
 
@@ -154,10 +154,10 @@ def _vlbi_delays(target, locations, time):
     # GCRS baseline vector at the time of arrival t1
     b = x2 - x1
     # Barycentric radius vector and velocity of the geocenter
-    XE, VE = get_body_barycentric_posvel('earth', t1)
+    XE, VE = get_body_barycentric_posvel("earth", t1)
     # Barycentric radius vector of the i'th receiver [step 1]
-    X1 = XE + x1   # (11.6)
-    X2 = XE + x2   # (11.6)
+    X1 = XE + x1  # (11.6)
+    X2 = XE + x2  # (11.6)
     V1 = VE + w1
     V2 = VE + w2
     # Unit vector from the *reference location* to the source
@@ -169,31 +169,42 @@ def _vlbi_delays(target, locations, time):
     elevations = target.azel(time, locations).alt
     # Convenient factors of the speed of light
     c = const.c
-    c2 = c ** 2
-    c3 = c ** 3
+    c2 = c**2
+    c3 = c**3
     # Gravitational / relativistic delay due to the Earth [step 4]
-    grav_scale = 2 * _GM['earth'] / c3
-    T_grav = grav_scale * np.log((x1.norm() + K.dot(x1)) /   # (11.2)
-                                 (x2.norm() + K.dot(x2)))
+    grav_scale = 2 * _GM["earth"] / c3
+    T_grav = grav_scale * np.log(
+        (x1.norm() + K.dot(x1)) / (x2.norm() + K.dot(x2))  # (11.2)
+    )
     # Gravitational / relativistic delays due to other bodies in Solar System
     # XXX It's probably overkill to include all planets
-    for gravitating_body in ('sun', 'jupiter', 'moon', 'venus', 'mars',
-                             'mercury', 'saturn', 'uranus', 'neptune'):
+    for gravitating_body in (
+        "sun",
+        "jupiter",
+        "moon",
+        "venus",
+        "mars",
+        "mercury",
+        "saturn",
+        "uranus",
+        "neptune",
+    ):
         # Account for motion of gravitating body during propagation time via simple iteration
         # Barycentric radius vector of the J'th gravitating body
         XJ = get_body_barycentric(gravitating_body, t1)
         time_tweak = K.dot(XJ - X1) / c
-        t1J = t1 - np.clip(time_tweak, 0, np.inf)   # (11.3)
+        t1J = t1 - np.clip(time_tweak, 0, np.inf)  # (11.3)
         XJ = get_body_barycentric(gravitating_body, t1J)
         # Vectors from the J'th gravitating body to the various receivers [step 2]
-        R1J = X1 - XJ   # (11.4)
+        R1J = X1 - XJ  # (11.4)
         # Account for motion of station 2 during propagation time between station 1 and station 2
-        R2J = X2 - K.dot(b) * VE / c - XJ   # (11.5)
+        R2J = X2 - K.dot(b) * VE / c - XJ  # (11.5)
         # Gravitational / relativistic delay due to J'th gravitating body [steps 3 and 5]
         grav_scale = 2 * _GM[gravitating_body] / c3
-        T_grav += grav_scale * np.log((R1J.norm() + K.dot(R1J)) /   # (11.1)
-                                      (R2J.norm() + K.dot(R2J)))   # (11.7)
-        if gravitating_body == 'sun':
+        T_grav += grav_scale * np.log(
+            (R1J.norm() + K.dot(R1J)) / (R2J.norm() + K.dot(R2J))  # (11.1)
+        )  # (11.7)
+        if gravitating_body == "sun":
             # Use the opportunity to calculate gravitational potential at the geocenter,
             # neglecting the effects of the Earth’s mass (only solar potential needed).
             U = _GM[gravitating_body] / (XE - XJ).norm()
@@ -250,28 +261,36 @@ class DelayCorrection:
     """
 
     @u.quantity_input(equivalencies=u.spectral())
-    def __init__(self, ants, ref_ant=None, sky_centre_freq: u.Hz = 0.0 * u.Hz,
-                 extra_correction: u.s = None, tropospheric_model='None'):
+    def __init__(
+        self,
+        ants,
+        ref_ant=None,
+        sky_centre_freq: u.Hz = 0.0 * u.Hz,
+        extra_correction: u.s = None,
+        tropospheric_model="None",
+    ):
         # Unpack JSON-encoded description string
         if isinstance(ants, str):
             try:
                 descr = json.loads(ants)
             except ValueError as err:
-                raise ValueError("Trying to construct DelayCorrection with an "
-                                 f"invalid description string {ants!r}") from err
-            ref_ant = Antenna(descr['ref_ant'])
-            sky_centre_freq = descr['sky_centre_freq'] * u.Hz
+                raise ValueError(
+                    "Trying to construct DelayCorrection with an "
+                    f"invalid description string {ants!r}"
+                ) from err
+            ref_ant = Antenna(descr["ref_ant"])
+            sky_centre_freq = descr["sky_centre_freq"] * u.Hz
             try:
-                extra_correction = descr['extra_correction'] * u.s
+                extra_correction = descr["extra_correction"] * u.s
             except KeyError:
                 # Also try the older name of this attribute to remain backwards compatible
                 try:
-                    extra_correction = descr['extra_delay'] * u.s
+                    extra_correction = descr["extra_delay"] * u.s
                 except KeyError:
                     raise KeyError("no 'extra_correction' or 'extra_delay'") from None
-            tropospheric_model = descr.get('tropospheric_model', 'None')
+            tropospheric_model = descr.get("tropospheric_model", "None")
             ant_models = {}
-            for ant_name, ant_model_str in descr['ant_models'].items():
+            for ant_name, ant_model_str in descr["ant_models"].items():
                 ant_model = DelayModel()
                 ant_model.fromstring(ant_model_str)
                 ant_models[ant_name] = ant_model
@@ -286,37 +305,47 @@ class DelayCorrection:
                 if ref_ant.position_wgs84 != ant.ref_position_wgs84:
                     # Remap antenna ENU offset to the common reference position
                     enu = ecef_to_enu(*ref_ant.position_wgs84, *ant.position_ecef)
-                    model['POS_E'] = enu[0]
-                    model['POS_N'] = enu[1]
-                    model['POS_U'] = enu[2]
+                    model["POS_E"] = enu[0]
+                    model["POS_N"] = enu[1]
+                    model["POS_U"] = enu[2]
                 ant_models[ant.name] = model
 
         # Delay model parameters in units of seconds are combined in array of shape (A, 6)
-        self._params = np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
+        self._params = (
+            np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
+        )
         # With no antennas, let params still have correct shape
         self._params.shape = (-1, len(DelayModel()))
-        if tropospheric_model in ('None', None):
+        if tropospheric_model in ("None", None):
             self._tropospheric_delay = None
         else:
             # XXX There should ideally be a TroposphericDelay object per actual antenna
-            self._tropospheric_delay = TroposphericDelay(ref_ant.location, tropospheric_model)
+            self._tropospheric_delay = TroposphericDelay(
+                ref_ant.location, tropospheric_model
+            )
 
         # Now calculate and store public attributes
         self.ant_models = ant_models
         self.ref_ant = ref_ant
         self.sky_centre_freq = sky_centre_freq
         # Add a 1% safety margin to guarantee positive delay corrections
-        self.extra_correction = 1.01 * self.max_delay \
-            if extra_correction is None else extra_correction
-        self.inputs = [ant + pol for ant in ant_models for pol in 'hv']
-        self._locations = np.stack([Antenna(ref_ant, delay_model=dm).location
-                                    for dm in ant_models.values()] + [ref_ant.location])
+        self.extra_correction = (
+            1.01 * self.max_delay if extra_correction is None else extra_correction
+        )
+        self.inputs = [ant + pol for ant in ant_models for pol in "hv"]
+        self._locations = np.stack(
+            [Antenna(ref_ant, delay_model=dm).location for dm in ant_models.values()]
+            + [ref_ant.location]
+        )
 
     @property
     def tropospheric_model(self):
         """Unique identifier of tropospheric model, or 'None' for no correction."""
-        return (self._tropospheric_delay.model_id  # pylint: disable=no-member
-                if self._tropospheric_delay else 'None')
+        return (
+            self._tropospheric_delay.model_id  # pylint: disable=no-member
+            if self._tropospheric_delay
+            else "None"
+        )
 
     @property
     def ant_locations(self):
@@ -343,12 +372,15 @@ class DelayCorrection:
     @property
     def description(self):
         """Complete string representation of object that allows reconstruction."""
-        descr = {'ref_ant': self.ref_ant.description,
-                 'sky_centre_freq': self.sky_centre_freq.to_value(u.Hz),
-                 'extra_correction': self.extra_correction.to_value(u.s),
-                 'tropospheric_model': self.tropospheric_model,
-                 'ant_models': {ant: model.description
-                                for ant, model in self.ant_models.items()}}
+        descr = {
+            "ref_ant": self.ref_ant.description,
+            "sky_centre_freq": self.sky_centre_freq.to_value(u.Hz),
+            "extra_correction": self.extra_correction.to_value(u.s),
+            "tropospheric_model": self.tropospheric_model,
+            "ant_models": {
+                ant: model.description for ant, model in self.ant_models.items()
+            },
+        }
         return json.dumps(descr, sort_keys=True)
 
     _DELAY_PARAMETERS_DOCSTRING = """
@@ -372,9 +404,15 @@ class DelayCorrection:
         """.strip()
 
     @u.quantity_input(equivalencies=u.temperature())
-    def delays(self, target, timestamp, offset=None,
-               pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = NO_TEMPERATURE,
-               relative_humidity: u.dimensionless_unscaled = 0) -> u.s:
+    def delays(
+        self,
+        target,
+        timestamp,
+        offset=None,
+        pressure: u.hPa = 0 * u.hPa,
+        temperature: u.deg_C = NO_TEMPERATURE,
+        relative_humidity: u.dimensionless_unscaled = 0,
+    ) -> u.s:
         """Calculate delays for all timestamps and inputs for a given target.
 
         These delays include all geometric effects (also non-intersecting axis
@@ -400,7 +438,9 @@ class DelayCorrection:
         # Manually broadcast both time and location to shape (A + 1, prod(T))
         # XXX Astropy 4.2 has proper broadcasting support (at least for obstime)
         time = time.ravel()
-        time_idx, location_idx = np.meshgrid(range(len(time)), range(len(self._locations)))
+        time_idx, location_idx = np.meshgrid(
+            range(len(time)), range(len(self._locations))
+        )
         time = time.take(time_idx)
         locations = self._locations.take(location_idx)
         # Obtain (az, el) pointings per location and timestamp => shape (A + 1, prod(T))
@@ -409,9 +449,11 @@ class DelayCorrection:
             az = azel.az.rad
             el = azel.alt.rad
         else:
-            coord_system = offset.get('coord_system', 'azel')
-            if coord_system == 'radec':
-                ra, dec = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+            coord_system = offset.get("coord_system", "azel")
+            if coord_system == "radec":
+                ra, dec = target.plane_to_sphere(
+                    timestamp=time, antenna=locations, **offset
+                )
                 # XXX This target is vectorised (contrary to popular belief) by having an
                 # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
                 # It is probably better to support this explicitly somehow.
@@ -420,7 +462,9 @@ class DelayCorrection:
                 az = azel.az.rad
                 el = azel.alt.rad
             else:
-                az, el = target.plane_to_sphere(timestamp=time, antenna=locations, **offset)
+                az, el = target.plane_to_sphere(
+                    timestamp=time, antenna=locations, **offset
+                )
         # Shorthand to select actual antennas and reference location from combined list
         ants, ref = slice(-1), -1
         # Elevations of antennas proper, shape (A, prod(T))
@@ -436,10 +480,13 @@ class DelayCorrection:
         ant_delays = geometric_delays - niao * np.cos(elevations)
         if self._tropospheric_delay:
             if temperature is NO_TEMPERATURE and np.any(relative_humidity > 0):
-                raise ValueError(f'The relative humidity is set to {relative_humidity} '
-                                 'but the temperature has not been specified')
-            ant_delays += self._tropospheric_delay(pressure, temperature, relative_humidity,
-                                                   elevations, time[ants])
+                raise ValueError(
+                    f"The relative humidity is set to {relative_humidity} "
+                    "but the temperature has not been specified"
+                )
+            ant_delays += self._tropospheric_delay(
+                pressure, temperature, relative_humidity, elevations, time[ants]
+            )
         # Expand delays per antenna to delays per input => shape (A, 2, prod(T))
         input_delays = np.stack([ant_delays, ant_delays], axis=1)
         input_delays += fixed_delays[..., np.newaxis]
@@ -447,9 +494,15 @@ class DelayCorrection:
         return input_delays.reshape((-1,) + T)
 
     @u.quantity_input(equivalencies=u.temperature())
-    def corrections(self, target, timestamp=None, offset=None,
-                    pressure: u.hPa = 0 * u.hPa, temperature: u.deg_C = NO_TEMPERATURE,
-                    relative_humidity: u.dimensionless_unscaled = 0):
+    def corrections(
+        self,
+        target,
+        timestamp=None,
+        offset=None,
+        pressure: u.hPa = 0 * u.hPa,
+        temperature: u.deg_C = NO_TEMPERATURE,
+        relative_humidity: u.dimensionless_unscaled = 0,
+    ):
         """Delay and phase corrections for a given target and timestamp(s).
 
         Calculate delay and phase corrections for the direction towards
@@ -487,11 +540,13 @@ class DelayCorrection:
         # XXX Astropy 4.2 supports np.atleast_1d(time)
         if time.isscalar:
             time = time[np.newaxis]
-        delays = self.delays(target, time, offset, pressure, temperature, relative_humidity)
+        delays = self.delays(
+            target, time, offset, pressure, temperature, relative_humidity
+        )
         delay_corrections = self.extra_correction - delays
         # The phase term is (-2 pi freq delay) so the correction is (+2 pi freq delay)
         turns = (self.sky_centre_freq * delays).decompose()
-        phase_corrections = Angle(2. * np.pi * u.rad) * turns
+        phase_corrections = Angle(2.0 * np.pi * u.rad) * turns
         delta_time = (time[1:] - time[:-1]).to(u.s)
         delta_delay_corrections = delay_corrections[:, 1:] - delay_corrections[:, :-1]
         delay_rate_corrections = delta_delay_corrections / delta_time
@@ -506,4 +561,6 @@ class DelayCorrection:
         )
 
     delays.__doc__ = delays.__doc__.format(Parameters=_DELAY_PARAMETERS_DOCSTRING)
-    corrections.__doc__ = corrections.__doc__.format(Parameters=_DELAY_PARAMETERS_DOCSTRING)
+    corrections.__doc__ = corrections.__doc__.format(
+        Parameters=_DELAY_PARAMETERS_DOCSTRING
+    )

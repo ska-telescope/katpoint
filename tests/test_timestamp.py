@@ -35,68 +35,71 @@ import katpoint
 
 
 @pytest.mark.parametrize(
-    'init_value, string',
+    "init_value, string",
     [
-        (1248186982.3980861, '2009-07-21 14:36:22.398'),
-        (Time('2009-07-21 02:52:12.34'), '2009-07-21 02:52:12.340'),
-        (0, '1970-01-01 00:00:00.000'),
-        (-10, '1969-12-31 23:59:50.000'),
-        ('2009-07-21 02:52:12.034', '2009-07-21 02:52:12.034'),
-        ('2009-07-21 02:52:12.000', '2009-07-21 02:52:12.000'),
-        ('2009-07-21 02:52:12', '2009-07-21 02:52:12.000'),
-        ('2009-07-21 02:52', '2009-07-21 02:52:00.000'),
-        ('2009-07-21', '2009-07-21 00:00:00.000'),
-        ('2009/07/21 02:52:12.034', '2009-07-21 02:52:12.034'),
-        ('2009/07/21 02:52:12.000', '2009-07-21 02:52:12.000'),
-        ('2009/07/21 02:52:12', '2009-07-21 02:52:12.000'),
-        ('2009/07/21 02:52', '2009-07-21 02:52:00.000'),
-        (b'2009/07/21', '2009-07-21 00:00:00.000'),
-        (b'2020-07-17 12:40:12', '2020-07-17 12:40:12.000'),
-    ]
+        (1248186982.3980861, "2009-07-21 14:36:22.398"),
+        (Time("2009-07-21 02:52:12.34"), "2009-07-21 02:52:12.340"),
+        (0, "1970-01-01 00:00:00.000"),
+        (-10, "1969-12-31 23:59:50.000"),
+        ("2009-07-21 02:52:12.034", "2009-07-21 02:52:12.034"),
+        ("2009-07-21 02:52:12.000", "2009-07-21 02:52:12.000"),
+        ("2009-07-21 02:52:12", "2009-07-21 02:52:12.000"),
+        ("2009-07-21 02:52", "2009-07-21 02:52:00.000"),
+        ("2009-07-21", "2009-07-21 00:00:00.000"),
+        ("2009/07/21 02:52:12.034", "2009-07-21 02:52:12.034"),
+        ("2009/07/21 02:52:12.000", "2009-07-21 02:52:12.000"),
+        ("2009/07/21 02:52:12", "2009-07-21 02:52:12.000"),
+        ("2009/07/21 02:52", "2009-07-21 02:52:00.000"),
+        (b"2009/07/21", "2009-07-21 00:00:00.000"),
+        (b"2020-07-17 12:40:12", "2020-07-17 12:40:12.000"),
+    ],
 )
 def test_construct_valid_timestamp(init_value, string):
     t = katpoint.Timestamp(init_value)
-    assert str(t) == string, (
-        "Timestamp string ('{}') differs from expected one ('{}')".format(str(t), string))
+    assert (
+        str(t) == string
+    ), "Timestamp string ('{}') differs from expected one ('{}')".format(str(t), string)
     # Exercise local() code path too
     print(t.local())
 
 
 @pytest.mark.parametrize(
-    'init_value',
+    "init_value",
     [
-        'gielie',
-        '03 Mar 2003',
+        "gielie",
+        "03 Mar 2003",
         2j,  # An unsupported NumPy dtype
-        '2020-07-28T18:18:18.000',  # ISO 8601 with a 'T' is invalid
-        '2020-07-28 18:18:18.000+02:00',  # Time zones are not accepted
-        TimeDelta(1.0, format='sec', scale='tai'),  # A TimeDelta is the wrong kind of Time
-    ]
+        "2020-07-28T18:18:18.000",  # ISO 8601 with a 'T' is invalid
+        "2020-07-28 18:18:18.000+02:00",  # Time zones are not accepted
+        TimeDelta(
+            1.0, format="sec", scale="tai"
+        ),  # A TimeDelta is the wrong kind of Time
+    ],
 )
 def test_construct_invalid_timestamp(init_value):
     with pytest.raises(ValueError):
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', np.ComplexWarning)
+            warnings.simplefilter("ignore", np.ComplexWarning)
             katpoint.Timestamp(init_value)
 
 
 def test_string_representations():
     t = katpoint.Timestamp(1234567890.01234)
-    assert t.to_string() == '2009-02-13 23:31:30.012'
-    assert str(t) == '2009-02-13 23:31:30.012'
-    assert repr(t) == 'Timestamp(1234567890.01234)'
+    assert t.to_string() == "2009-02-13 23:31:30.012"
+    assert str(t) == "2009-02-13 23:31:30.012"
+    assert repr(t) == "Timestamp(1234567890.01234)"
     # XXX We could mock time.localtime to control the output of Timestamp.local()
     assert len(t.local().split()) == 3
-    assert t.local().split()[1].endswith('30.012')
+    assert t.local().split()[1].endswith("30.012")
     # Change the output precision
     t.time.precision = 5
-    assert str(t) == '2009-02-13 23:31:30.01234'
-    assert t.local().split()[1].endswith('30.01234')
+    assert str(t) == "2009-02-13 23:31:30.01234"
+    assert t.local().split()[1].endswith("30.01234")
 
 
 def test_current_timestamp():
     t0 = Time.now()
-    with patch.object(Time, 'now', return_value=t0):
+    with patch.object(Time, "now", return_value=t0):
         assert katpoint.Timestamp() == t0
 
 
@@ -120,12 +123,12 @@ def test_numerical_timestamp():
     assert t > t - 1.0
     assert t < t + 1.0
     # This only works for scalars...
-    assert t == eval('katpoint.' + repr(t))
+    assert t == eval("katpoint." + repr(t))
     assert float(t) == t0
 
     # XXX Reimplement Astropy 4.2's Time.isclose for now to avoid depending on Python 3.7
     atol = 2 * np.finfo(float).eps * u.day
-    t1 = Time('2009-07-21 02:52:12.34')
+    t1 = Time("2009-07-21 02:52:12.34")
     t = katpoint.Timestamp(t1)
     t += 2.0
     t -= 2.0
@@ -139,9 +142,9 @@ def test_numerical_timestamp():
     assert 1.0 + t == t + 1.0
     assert abs((t - 1.0 * u.day).time - (t1 - 1.0 * u.day)) < atol
     try:
-        assert hash(t) == hash(t + 0.0), 'Timestamp hashes not equal'
+        assert hash(t) == hash(t + 0.0), "Timestamp hashes not equal"
     except TypeError:
-        pytest.fail('Timestamp object not hashable')
+        pytest.fail("Timestamp object not hashable")
 
 
 def test_operators():
@@ -161,10 +164,11 @@ def test_operators():
     # Check various additions and subtractions
     def approx_equal(x, y, **kwargs):
         return x.secs == pytest.approx(y, **kwargs)
+
     # Timestamp + interval
     assert approx_equal(t + 1, t0 + 1)
     assert approx_equal(t + 1 * u.second, t0 + 1)
-    assert approx_equal(t + TimeDelta(1.0, format='sec', scale='tai'), t0 + 1)
+    assert approx_equal(t + TimeDelta(1.0, format="sec", scale="tai"), t0 + 1)
     # interval + Timestamp
     assert approx_equal(1 + t, t0 + 1)
     with pytest.raises(TypeError):  # why does Quantity not return NotImplemented here?
@@ -175,8 +179,8 @@ def test_operators():
         # NotImplemented, which eventually results in the desired call
         # Timestamp.__radd__(t, time_delta).
         # XXX Reconsider this workaround once we depend on Astropy >= 6.0
-        warnings.simplefilter('ignore', TimeDeltaMissingUnitWarning)
-        assert approx_equal(TimeDelta(1.0, format='sec', scale='tai') + t, t0 + 1)
+        warnings.simplefilter("ignore", TimeDeltaMissingUnitWarning)
+        assert approx_equal(TimeDelta(1.0, format="sec", scale="tai") + t, t0 + 1)
     # Timestamp + Timestamp
     with pytest.raises(ValueError):
         print(t + t)
@@ -185,7 +189,7 @@ def test_operators():
     # Timestamp - interval
     assert approx_equal(t - 1, t0 - 1)
     assert approx_equal(t - 1 * u.second, t0 - 1)
-    assert approx_equal(t - TimeDelta(1.0, format='sec', scale='tai'), t0 - 1)
+    assert approx_equal(t - TimeDelta(1.0, format="sec", scale="tai"), t0 - 1)
     # This differs from PyEphem-based katpoint: leap seconds!
     assert approx_equal(t - t0, 26.0, rel=1e-5)  # float t0 is an interval here...
     # Timestamp - Timestamp
@@ -197,14 +201,14 @@ def test_operators():
         # in passing by Time.__sub__(t.time, t) on the way to NotImplemented, which
         # eventually results in the desired call Timestamp.__rsub__(t, t.time).
         # XXX Reconsider this workaround once we depend on Astropy >= 6.0
-        warnings.simplefilter('ignore', TimeDeltaMissingUnitWarning)
+        warnings.simplefilter("ignore", TimeDeltaMissingUnitWarning)
         assert t.time - t == 0.0
     # Timestamp += interval
     t += 1
     assert approx_equal(t, t0 + 1)
     t += 1 * u.second
     assert approx_equal(t, t0 + 2)
-    t += TimeDelta(1.0, format='sec', scale='tai')
+    t += TimeDelta(1.0, format="sec", scale="tai")
     assert approx_equal(t, t0 + 3)
     # Timestamp += Timestamp
     with pytest.raises(ValueError):
@@ -216,7 +220,7 @@ def test_operators():
     assert approx_equal(t, t0 + 2)
     t -= 1 * u.second
     assert approx_equal(t, t0 + 1)
-    t -= TimeDelta(1.0, format='sec', scale='tai')
+    t -= TimeDelta(1.0, format="sec", scale="tai")
     assert approx_equal(t, t0)
     # Timestamp -= Timestamp
     with pytest.raises(ValueError):
@@ -233,10 +237,15 @@ def test_array_timestamps():
     np.testing.assert_array_equal(t != 1234567890.0, [False, True])
     t2 = katpoint.Timestamp(1234567890.0)
     t_array_1d = t2 + np.arange(3)
-    np.testing.assert_array_equal(t_array_1d.to_string(), ['2009-02-13 23:31:30.000',
-                                                           '2009-02-13 23:31:31.000',
-                                                           '2009-02-13 23:31:32.000'])
-    assert repr(t_array_1d) == 'Timestamp([1234567890.000 ... 1234567892.000])'
+    np.testing.assert_array_equal(
+        t_array_1d.to_string(),
+        [
+            "2009-02-13 23:31:30.000",
+            "2009-02-13 23:31:31.000",
+            "2009-02-13 23:31:32.000",
+        ],
+    )
+    assert repr(t_array_1d) == "Timestamp([1234567890.000 ... 1234567892.000])"
     assert t_array_1d.local().shape == (3,)
     # Construct from sequence or array of strings or `Time`s or `Timestamp`s
     t0 = katpoint.Timestamp(t.time[0])
@@ -257,8 +266,8 @@ def test_array_timestamps():
     np.testing.assert_array_equal(t_array_2d.secs, array_2d)
 
 
-@pytest.mark.parametrize('mjd', [59000.0, (59000.0, 59001.0)])
+@pytest.mark.parametrize("mjd", [59000.0, (59000.0, 59001.0)])
 def test_mjd_timestamp(mjd):
-    t = Time(mjd, format='mjd')
+    t = Time(mjd, format="mjd")
     t2 = katpoint.Timestamp(t)
     assert np.all(t2.to_mjd() == mjd)

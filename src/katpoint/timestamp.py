@@ -24,7 +24,7 @@ from astropy.time import Time, TimeDelta
 
 def delta_seconds(x):
     """Construct a `TimeDelta` in TAI seconds."""
-    return TimeDelta(x, format='sec', scale='tai')
+    return TimeDelta(x, format="sec", scale="tai")
 
 
 class Timestamp:
@@ -97,7 +97,7 @@ class Timestamp:
         elif isinstance(timestamp, Timestamp):
             self.time = timestamp.time.replicate()
         elif isinstance(timestamp, TimeDelta):
-            raise ValueError(f'Cannot construct Timestamp from TimeDelta {timestamp}')
+            raise ValueError(f"Cannot construct Timestamp from TimeDelta {timestamp}")
         elif isinstance(timestamp, Time):
             self.time = timestamp.replicate()
         else:
@@ -107,17 +107,17 @@ class Timestamp:
             if val.size > 0 and isinstance(val.flat[0], Timestamp):
                 val = np.vectorize(lambda ts: ts.time)(val)
             time_format = None
-            if val.dtype.kind == 'U':
+            if val.dtype.kind == "U":
                 # Convert default PyEphem timestamp strings to ISO strings
-                val = np.char.replace(np.char.strip(val), '/', '-')
-                time_format = 'iso'
-            elif val.dtype.kind == 'S':
-                val = np.char.replace(np.char.strip(val), b'/', b'-')
-                time_format = 'iso'
-            elif val.dtype.kind in 'iuf':
+                val = np.char.replace(np.char.strip(val), "/", "-")
+                time_format = "iso"
+            elif val.dtype.kind == "S":
+                val = np.char.replace(np.char.strip(val), b"/", b"-")
+                time_format = "iso"
+            elif val.dtype.kind in "iuf":
                 # Consider any number to be a Unix timestamp
-                time_format = 'unix'
-            self.time = Time(val, format=time_format, scale='utc', precision=3)
+                time_format = "unix"
+            self.time = Time(val, format=time_format, scale="utc", precision=3)
 
     @property
     def secs(self):
@@ -128,9 +128,9 @@ class Timestamp:
         """Short machine-friendly string representation of timestamp object."""
         # We need a custom formatter because suppress=True only works on values < 1e8
         # and today's Unix timestamps are bigger than that
-        formatter = f'{{:.{self.time.precision:d}f}}'.format
-        with np.printoptions(threshold=2, edgeitems=1, formatter={'float': formatter}):
-            return f'Timestamp({self.secs})'
+        formatter = f"{{:.{self.time.precision:d}f}}".format
+        with np.printoptions(threshold=2, edgeitems=1, formatter={"float": formatter}):
+            return f"Timestamp({self.secs})"
 
     def __str__(self):
         """Verbose human-friendly string representation of timestamp object."""
@@ -213,7 +213,9 @@ class Timestamp:
         try:
             return float(self.secs)
         except TypeError as err:
-            raise TypeError('Float conversion only supported for scalar Timestamps') from err
+            raise TypeError(
+                "Float conversion only supported for scalar Timestamps"
+            ) from err
 
     def __hash__(self):
         """Base hash on internal timestamp, just like equality operator."""
@@ -225,9 +227,11 @@ class Timestamp:
         frac_secs, int_secs = np.modf(np.round(self.secs, decimals=prec))
 
         def local_time_string(f, i):
-            format_string = '%Y-%m-%d %H:%M:%S.{:0{width}.0f} %Z'.format(
-                f * 10 ** prec, width=prec)
+            format_string = "%Y-%m-%d %H:%M:%S.{:0{width}.0f} %Z".format(
+                f * 10**prec, width=prec
+            )
             return time.strftime(format_string, time.localtime(i))
+
         local_str = np.vectorize(local_time_string)(frac_secs, int_secs)
         return local_str if local_str.ndim else local_str.item()
 

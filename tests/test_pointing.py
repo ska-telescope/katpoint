@@ -26,7 +26,7 @@ import katpoint
 from .helper import assert_angles_almost_equal
 
 
-@pytest.fixture(name='pointing_grid')
+@pytest.fixture(name="pointing_grid")
 def fixture_pointing_grid():
     """Generate a grid of (az, el) values in natural antenna coordinates."""
     az_range = np.radians(np.arange(-185.0, 275.0, 5.0))
@@ -37,11 +37,11 @@ def fixture_pointing_grid():
     return az, el
 
 
-@pytest.fixture(name='params')
+@pytest.fixture(name="params")
 def fixture_params(random):
     """Generate random parameters for a pointing model."""
     # Generate random parameter values with this spread
-    param_stdev = np.radians(20. / 60.)
+    param_stdev = np.radians(20.0 / 60.0)
     num_params = len(katpoint.PointingModel())
     params = param_stdev * random.randn(num_params)
     return params
@@ -50,27 +50,29 @@ def fixture_params(random):
 def test_pointing_model_load_save(params):
     """Test construction / load / save of pointing model."""
     pm = katpoint.PointingModel(params)
-    print(f'{pm!r} {pm}')
+    print(f"{pm!r} {pm}")
     pm2 = katpoint.PointingModel(params[:-1])
-    assert pm2.values()[-1] == 0.0, 'Unspecified pointing model params not zeroed'
+    assert pm2.values()[-1] == 0.0, "Unspecified pointing model params not zeroed"
     pm3 = katpoint.PointingModel(np.r_[params, 1.0])
-    assert pm3.values()[-1] == params[-1], (
-        'Superfluous pointing model params not handled correctly')
+    assert (
+        pm3.values()[-1] == params[-1]
+    ), "Superfluous pointing model params not handled correctly"
     pm4 = katpoint.PointingModel(pm.description)
-    assert pm4.description == pm.description, (
-        'Saving pointing model to string and loading it again failed')
-    assert pm4 == pm, 'Pointing models should be equal'
-    assert pm2 != pm, 'Pointing models should be inequal'
+    assert (
+        pm4.description == pm.description
+    ), "Saving pointing model to string and loading it again failed"
+    assert pm4 == pm, "Pointing models should be equal"
+    assert pm2 != pm, "Pointing models should be inequal"
     # np.testing.assert_almost_equal(pm4.values(), pm.values(), decimal=6)
-    for (v4, v) in zip(pm4.values(), pm.values()):
+    for v4, v in zip(pm4.values(), pm.values()):
         if isinstance(v4, float):
             np.testing.assert_almost_equal(v4, v, decimal=6)
         else:
             np.testing.assert_almost_equal(v4.rad, v, decimal=6)
     try:
-        assert hash(pm4) == hash(pm), 'Pointing model hashes not equal'
+        assert hash(pm4) == hash(pm), "Pointing model hashes not equal"
     except TypeError:
-        pytest.fail('PointingModel object not hashable')
+        pytest.fail("PointingModel object not hashable")
 
 
 def test_pointing_closure(params, pointing_grid):
@@ -80,10 +82,12 @@ def test_pointing_closure(params, pointing_grid):
     grid_az, grid_el = pointing_grid
     pointed_az, pointed_el = pm.apply(grid_az, grid_el)
     az, el = pm.reverse(pointed_az, pointed_el)
-    assert_angles_almost_equal(az, grid_az, decimal=6,
-                               err_msg=f'Azimuth closure error for params={params}')
-    assert_angles_almost_equal(el, grid_el, decimal=7,
-                               err_msg=f'Elevation closure error for params={params}')
+    assert_angles_almost_equal(
+        az, grid_az, decimal=6, err_msg=f"Azimuth closure error for params={params}"
+    )
+    assert_angles_almost_equal(
+        el, grid_el, decimal=7, err_msg=f"Elevation closure error for params={params}"
+    )
 
 
 def test_pointing_fit(params, pointing_grid):
@@ -97,42 +101,68 @@ def test_pointing_fit(params, pointing_grid):
     all_params = (np.arange(len(pm)) + 1).tolist()
 
     # Don't fit anything, but keep existing model
-    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el,
-                              enabled_params=[],
-                              keep_disabled_params=True)
+    fitted_params, _ = pm.fit(
+        grid_az,
+        grid_el,
+        delta_az,
+        delta_el,
+        enabled_params=[],
+        keep_disabled_params=True,
+    )
     np.testing.assert_equal(fitted_params, params)
     # Don't fit anything, and zero the model (deprecated)
     with pytest.warns(FutureWarning):
-        fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el,
-                                  enabled_params=[])
+        fitted_params, _ = pm.fit(
+            grid_az, grid_el, delta_az, delta_el, enabled_params=[]
+        )
     np.testing.assert_equal(fitted_params, np.zeros(len(pm)))
     # Clear model explicitly and fit all parameters
     pm.set()
-    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el,
-                              enabled_params=all_params,
-                              keep_disabled_params=True)
+    fitted_params, _ = pm.fit(
+        grid_az,
+        grid_el,
+        delta_az,
+        delta_el,
+        enabled_params=all_params,
+        keep_disabled_params=True,
+    )
     np.testing.assert_almost_equal(fitted_params, params, decimal=9)
     np.testing.assert_equal(fitted_params, pm.values())
     # Don't clear model and refit all parameters - same result
-    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az, delta_el,
-                              enabled_params=all_params,
-                              keep_disabled_params=True)
+    fitted_params, _ = pm.fit(
+        grid_az,
+        grid_el,
+        delta_az,
+        delta_el,
+        enabled_params=all_params,
+        keep_disabled_params=True,
+    )
     np.testing.assert_almost_equal(fitted_params, params, decimal=9)
 
     # Fit some different parameters and keep the rest
     pm = katpoint.PointingModel(params.copy())
-    fitted_params, _ = pm.fit(grid_az, grid_el, delta_az + 0.001, delta_el,
-                              enabled_params=[1, 2, 3],
-                              keep_disabled_params=True)
+    fitted_params, _ = pm.fit(
+        grid_az,
+        grid_el,
+        delta_az + 0.001,
+        delta_el,
+        enabled_params=[1, 2, 3],
+        keep_disabled_params=True,
+    )
     with pytest.raises(AssertionError):
         np.testing.assert_equal(fitted_params[:3], params[:3])  # not equal
     np.testing.assert_equal(fitted_params[3:], params[3:])
     # Fit some different parameters and zero the rest
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        fitted_params, _ = pm.fit(grid_az, grid_el, delta_az + 0.001, delta_el,
-                                  enabled_params=[1, 2, 3],
-                                  keep_disabled_params=False)
+        fitted_params, _ = pm.fit(
+            grid_az,
+            grid_el,
+            delta_az + 0.001,
+            delta_el,
+            enabled_params=[1, 2, 3],
+            keep_disabled_params=False,
+        )
     with pytest.raises(AssertionError):
         np.testing.assert_equal(fitted_params[:3], params[:3])  # not equal
     np.testing.assert_equal(fitted_params[3:], np.zeros(len(pm) - 3))

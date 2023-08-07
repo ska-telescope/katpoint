@@ -30,12 +30,23 @@ from .timestamp import Timestamp
 
 logger = logging.getLogger(__name__)
 
-specials = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune']
+specials = [
+    "Sun",
+    "Moon",
+    "Mercury",
+    "Venus",
+    "Mars",
+    "Jupiter",
+    "Saturn",
+    "Uranus",
+    "Neptune",
+]
 
 
 def _normalised(name):
     """Normalise string to make name lookup more robust."""
-    return name.strip().lower().replace(' ', '').replace('_', '')
+    return name.strip().lower().replace(" ", "").replace("_", "")
+
 
 # --------------------------------------------------------------------------------------------------
 # --- CLASS :  Catalogue
@@ -297,24 +308,41 @@ class Catalogue:
     """
 
     @u.quantity_input(equivalencies=u.spectral())
-    def __init__(self, targets=None, tags=None, add_specials=None, add_stars=None,
-                 antenna=None, flux_frequency: u.Hz = None):
+    def __init__(
+        self,
+        targets=None,
+        tags=None,
+        add_specials=None,
+        add_stars=None,
+        antenna=None,
+        flux_frequency: u.Hz = None,
+    ):
         self.lookup = defaultdict(list)
         self.targets = []
         self._antenna = antenna
         self._flux_frequency = flux_frequency
         if add_specials is not None:
             if add_specials:
-                raise ValueError('The add_specials parameter is not supported anymore - '
-                                 'please add the targets manually')
-            warnings.warn('The add_specials parameter is now permanently False '
-                          'and will be removed', FutureWarning)
+                raise ValueError(
+                    "The add_specials parameter is not supported anymore - "
+                    "please add the targets manually"
+                )
+            warnings.warn(
+                "The add_specials parameter is now permanently False "
+                "and will be removed",
+                FutureWarning,
+            )
         if add_stars is not None:
             if add_stars:
-                raise ValueError('The add_stars parameter is not supported anymore - '
-                                 'please add the stars manually (see scripts/ephem_stars.edb)')
-            warnings.warn('The add_specials parameter is now permanently False '
-                          'and will be removed', FutureWarning)
+                raise ValueError(
+                    "The add_stars parameter is not supported anymore - "
+                    "please add the stars manually (see scripts/ephem_stars.edb)"
+                )
+            warnings.warn(
+                "The add_specials parameter is now permanently False "
+                "and will be removed",
+                FutureWarning,
+            )
         if targets is None:
             targets = []
         self.add(targets, tags)
@@ -344,7 +372,7 @@ class Catalogue:
 
     def __str__(self):
         """Target description strings making up the catalogue, joined by newlines."""
-        return '\n'.join([str(target) for target in self.targets]) + '\n'
+        return "\n".join([str(target) for target in self.targets]) + "\n"
 
     def __repr__(self):
         """Short human-friendly string representation of catalogue object."""
@@ -441,29 +469,40 @@ class Catalogue:
             if isinstance(target, str):
                 # Ignore strings starting with a hash (assumed to be comments)
                 # or only containing whitespace
-                if (len(target.strip()) == 0) or (target[0] == '#'):
+                if (len(target.strip()) == 0) or (target[0] == "#"):
                     continue
                 target = Target(target)
             if not isinstance(target, Target):
-                raise ValueError('List of targets should either contain '
-                                 'Target objects or description strings')
+                raise ValueError(
+                    "List of targets should either contain "
+                    "Target objects or description strings"
+                )
             # Add tags first since they affect target identity / description
             target.add_tags(tags)
             if target in self:
-                logger.warning("Skipped '%s' [%s] (already in catalogue)",
-                               target.name, target.tags[0])
+                logger.warning(
+                    "Skipped '%s' [%s] (already in catalogue)",
+                    target.name,
+                    target.tags[0],
+                )
                 continue
             existing_names = [name for name in target.names if name in self]
             if existing_names:
-                logger.warning("Found different targets with same name(s) "
-                               "'%s' in catalogue", ', '.join(existing_names))
+                logger.warning(
+                    "Found different targets with same name(s) " "'%s' in catalogue",
+                    ", ".join(existing_names),
+                )
             target.antenna = self.antenna
             target.flux_frequency = self.flux_frequency
             self.targets.append(target)
             for name in target.names:
                 self.lookup[_normalised(name)].append(target)
-            logger.debug("Added '%s' [%s] (and %d aliases)",
-                         target.name, target.tags[0], len(target.aliases))
+            logger.debug(
+                "Added '%s' [%s] (and %d aliases)",
+                target.name,
+                target.tags[0],
+                len(target.aliases),
+            )
 
     def add_tle(self, lines, tags=None):
         r"""Add NORAD Two-Line Element (TLE) targets to catalogue.
@@ -493,15 +532,17 @@ class Catalogue:
         """
         targets, tle = [], []
         for line in lines:
-            if (line[0] == '#') or (len(line.strip()) == 0):
+            if (line[0] == "#") or (len(line.strip()) == 0):
                 continue
             tle += [line]
             if len(tle) == 3:
                 name, line1, line2 = [raw_line.strip() for raw_line in tle]
-                targets.append(Target(f'{name}, tle, {line1}, {line2}'))
+                targets.append(Target(f"{name}, tle, {line1}, {line2}"))
                 tle = []
         if len(tle) > 0:
-            logger.warning('Did not receive a multiple of three lines when constructing TLEs')
+            logger.warning(
+                "Did not receive a multiple of three lines when constructing TLEs"
+            )
 
         # Check TLE epochs and warn if some are too far in past or future,
         # which would make TLE inaccurate right now
@@ -514,25 +555,33 @@ class Catalogue:
             mean_motion = target.body.satellite.no_kozai * u.rad / u.minute
             orbital_period = 1 * u.cycle / mean_motion
             epoch_age = Time.now() - target.body.epoch
-            direction = 'past' if epoch_age > 0 * u.day else 'future'
+            direction = "past" if epoch_age > 0 * u.day else "future"
             epoch_age = abs(epoch_age)
             # Near-earth models should be good for about a week (conservative estimate)
             if orbital_period < 225 * u.minute and epoch_age > 7 * u.day:
                 num_outdated += 1
                 if epoch_age > max_epoch_age:
-                    worst = (f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
-                             f"days in the {direction}, should be <= 7 for near-Earth model")
+                    worst = (
+                        f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
+                        f"days in the {direction}, should be <= 7 for near-Earth model"
+                    )
                     max_epoch_age = epoch_age
             # Deep-space models are more accurate (three weeks for a conservative estimate)
             if orbital_period >= 225 * u.minute and epoch_age > 21 * u.day:
                 num_outdated += 1
                 if epoch_age > max_epoch_age:
-                    worst = (f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
-                             f"days in the {direction}, should be <= 21 for deep-space model")
+                    worst = (
+                        f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
+                        f"days in the {direction}, should be <= 21 for deep-space model"
+                    )
                     max_epoch_age = epoch_age
         if num_outdated > 0:
-            logger.warning('%d of %d TLE set(s) are outdated, probably making them inaccurate '
-                           'for use right now', num_outdated, len(targets))
+            logger.warning(
+                "%d of %d TLE set(s) are outdated, probably making them inaccurate "
+                "for use right now",
+                num_outdated,
+                len(targets),
+            )
             logger.warning(worst)
         self.add(targets, tags)
 
@@ -563,9 +612,9 @@ class Catalogue:
         """
         targets = []
         for line in lines:
-            if (line[0] == '#') or (len(line.strip()) == 0):
+            if (line[0] == "#") or (len(line.strip()) == 0):
                 continue
-            targets.append('xephem,' + line.replace(',', '~'))
+            targets.append("xephem," + line.replace(",", "~"))
         self.add(targets, tags)
 
     def remove(self, name):
@@ -596,7 +645,7 @@ class Catalogue:
         filename : string
             Name of file to write catalogue to (overwriting existing contents)
         """
-        open(filename, 'w').writelines([t.description + '\n' for t in self.targets])
+        open(filename, "w").writelines([t.description + "\n" for t in self.targets])
 
     def closest_to(self, target, timestamp=None, antenna=None):
         """Determine target in catalogue that is closest to given target.
@@ -626,7 +675,9 @@ class Catalogue:
         # Use the given target's default antenna unless it has none
         if antenna is None and target.antenna is None:
             antenna = self.antenna
-        dist = np.stack([target.separation(tgt, timestamp, antenna) for tgt in self.targets])
+        dist = np.stack(
+            [target.separation(tgt, timestamp, antenna) for tgt in self.targets]
+        )
         closest = dist.argmin()
         return self.targets[closest], dist[closest]
 
@@ -668,9 +719,18 @@ class Catalogue:
         """.strip()
 
     @u.quantity_input(equivalencies=u.spectral())
-    def iterfilter(self, tags=None, flux_limit: u.Jy = None, flux_frequency: u.Hz = None,
-                   az_limit: u.deg = None, el_limit: u.deg = None, dist_limit: u.deg = None,
-                   proximity_targets=None, timestamp=None, antenna=None):
+    def iterfilter(
+        self,
+        tags=None,
+        flux_limit: u.Jy = None,
+        flux_frequency: u.Hz = None,
+        az_limit: u.deg = None,
+        el_limit: u.deg = None,
+        dist_limit: u.deg = None,
+        proximity_targets=None,
+        timestamp=None,
+        antenna=None,
+    ):
         """Generator function which returns targets satisfying various criteria.
 
         This returns a (generator-)iterator which returns targets satisfying
@@ -718,12 +778,18 @@ class Catalogue:
         if tag_filter:
             if isinstance(tags, str):
                 tags = tags.split()
-            desired_tags = {tag for tag in tags if tag[0] != '~'}
-            undesired_tags = {tag[1:] for tag in tags if tag[0] == '~'}
+            desired_tags = {tag for tag in tags if tag[0] != "~"}
+            undesired_tags = {tag[1:] for tag in tags if tag[0] == "~"}
             if desired_tags:
-                targets = [target for target in targets if set(target.tags) & desired_tags]
+                targets = [
+                    target for target in targets if set(target.tags) & desired_tags
+                ]
             if undesired_tags:
-                targets = [target for target in targets if not set(target.tags) & undesired_tags]
+                targets = [
+                    target
+                    for target in targets
+                    if not set(target.tags) & undesired_tags
+                ]
 
         if flux_filter:
             if flux_limit.isscalar:
@@ -731,10 +797,15 @@ class Catalogue:
             try:
                 flux_lower, flux_upper = flux_limit
             except ValueError as err:
-                raise ValueError('Flux limit should have the form <lower> or [<lower>, <upper>], '
-                                 f'not {flux_limit}') from err
-            targets = [target for target in targets
-                       if flux_lower <= target.flux_density(flux_frequency) < flux_upper]
+                raise ValueError(
+                    "Flux limit should have the form <lower> or [<lower>, <upper>], "
+                    f"not {flux_limit}"
+                ) from err
+            targets = [
+                target
+                for target in targets
+                if flux_lower <= target.flux_density(flux_frequency) < flux_upper
+            ]
 
         # Now prepare for dynamic criteria (azimuth, elevation, proximity)
         # which depend on potentially changing timestamp
@@ -743,26 +814,34 @@ class Catalogue:
                 # Wrap negative azimuth values to the expected range of 0-360 degrees
                 az_left, az_right = Longitude(az_limit)
             except TypeError as err:
-                raise ValueError('Azimuth limit should have the form [<left>, <right>], '
-                                 f'not {az_limit}') from err
+                raise ValueError(
+                    "Azimuth limit should have the form [<left>, <right>], "
+                    f"not {az_limit}"
+                ) from err
         if elevation_filter:
             if el_limit.isscalar:
                 el_limit = el_limit, None  # scalar becomes lower limit
             try:
                 el_lower, el_upper = el_limit
             except ValueError as err:
-                raise ValueError('Elevation limit should have the form <lower> '
-                                 f'or [<lower>, <upper>], not {el_limit}') from err
+                raise ValueError(
+                    "Elevation limit should have the form <lower> "
+                    f"or [<lower>, <upper>], not {el_limit}"
+                ) from err
         if proximity_filter:
             if proximity_targets is None:
-                raise ValueError('Please specify proximity target(s) for proximity filter')
+                raise ValueError(
+                    "Please specify proximity target(s) for proximity filter"
+                )
             if dist_limit.isscalar:
                 dist_limit = dist_limit, None  # scalar becomes lower limit
             try:
                 dist_lower, dist_upper = dist_limit
             except ValueError as err:
-                raise ValueError('Distance limit should have the form <lower> '
-                                 f'or [<lower>, <upper>], not {dist_limit}') from err
+                raise ValueError(
+                    "Distance limit should have the form <lower> "
+                    f"or [<lower>, <upper>], not {dist_limit}"
+                ) from err
             if isinstance(proximity_targets, Target):
                 proximity_targets = [proximity_targets]
 
@@ -770,23 +849,33 @@ class Catalogue:
         while targets:
             latest_timestamp = timestamp
             # Obtain current time if no timestamp is supplied - this will differ for each iteration
-            if (azimuth_filter or elevation_filter or proximity_filter) and latest_timestamp is None:
+            if (
+                azimuth_filter or elevation_filter or proximity_filter
+            ) and latest_timestamp is None:
                 latest_timestamp = Timestamp()
             # Iterate over targets until one is found that satisfies dynamic criteria
             for n, target in enumerate(targets):
                 if azimuth_filter or elevation_filter:
                     azel = target.azel(latest_timestamp, antenna)
                 if azimuth_filter:
-                    if az_left <= az_right and not azel.az.is_within_bounds(az_left, az_right):
+                    if az_left <= az_right and not azel.az.is_within_bounds(
+                        az_left, az_right
+                    ):
                         continue
-                    if az_left > az_right and azel.az.is_within_bounds(az_right, az_left):
+                    if az_left > az_right and azel.az.is_within_bounds(
+                        az_right, az_left
+                    ):
                         continue
                 if elevation_filter:
                     if not azel.alt.is_within_bounds(el_lower, el_upper):
                         continue
                 if proximity_filter:
-                    dist = np.stack([target.separation(prox_target, latest_timestamp, antenna)
-                                     for prox_target in proximity_targets])
+                    dist = np.stack(
+                        [
+                            target.separation(prox_target, latest_timestamp, antenna)
+                            for prox_target in proximity_targets
+                        ]
+                    )
                     if not dist.is_within_bounds(dist_lower, dist_upper):
                         continue
                 # Break if target is found - popping the target inside the for-loop is a bad idea!
@@ -799,9 +888,18 @@ class Catalogue:
             yield targets.pop(found_one)
 
     @u.quantity_input(equivalencies=u.spectral())
-    def filter(self, tags=None, flux_limit: u.Jy = None, flux_frequency: u.Hz = None,
-               az_limit: u.deg = None, el_limit: u.deg = None, dist_limit: u.deg = None,
-               proximity_targets=None, timestamp=None, antenna=None):
+    def filter(
+        self,
+        tags=None,
+        flux_limit: u.Jy = None,
+        flux_frequency: u.Hz = None,
+        az_limit: u.deg = None,
+        el_limit: u.deg = None,
+        dist_limit: u.deg = None,
+        proximity_targets=None,
+        timestamp=None,
+        antenna=None,
+    ):
         """Filter catalogue on various criteria.
 
         This returns a new catalogue containing the subset of targets that
@@ -838,13 +936,33 @@ class Catalogue:
         """
         # Ensure that iterfilter operates on a single unique timestamp
         timestamp = Timestamp(timestamp)
-        return Catalogue(list(self.iterfilter(tags, flux_limit, flux_frequency,
-                                              az_limit, el_limit, dist_limit,
-                                              proximity_targets, timestamp, antenna)),
-                         antenna=self.antenna, flux_frequency=self.flux_frequency)
+        return Catalogue(
+            list(
+                self.iterfilter(
+                    tags,
+                    flux_limit,
+                    flux_frequency,
+                    az_limit,
+                    el_limit,
+                    dist_limit,
+                    proximity_targets,
+                    timestamp,
+                    antenna,
+                )
+            ),
+            antenna=self.antenna,
+            flux_frequency=self.flux_frequency,
+        )
 
     @u.quantity_input(equivalencies=u.spectral())
-    def sort(self, key='name', ascending=True, flux_frequency: u.Hz = None, timestamp=None, antenna=None):
+    def sort(
+        self,
+        key="name",
+        ascending=True,
+        flux_frequency: u.Hz = None,
+        timestamp=None,
+        antenna=None,
+    ):
         """Sort targets in catalogue.
 
         This returns a new catalogue with the target list sorted according to
@@ -874,30 +992,34 @@ class Catalogue:
             If some required parameters are missing or key is unknown
         """
         # Set up values that will be sorted
-        if key == 'name':
+        if key == "name":
             values = [target.name for target in self.targets]
-        elif key == 'ra':
+        elif key == "ra":
             values = [target.radec(timestamp, antenna).ra for target in self.targets]
-        elif key == 'dec':
+        elif key == "dec":
             values = [target.radec(timestamp, antenna).dec for target in self.targets]
-        elif key == 'az':
+        elif key == "az":
             values = [target.azel(timestamp, antenna).az for target in self.targets]
-        elif key == 'el':
+        elif key == "el":
             values = [target.azel(timestamp, antenna).alt for target in self.targets]
-        elif key == 'flux':
+        elif key == "flux":
             values = [target.flux_density(flux_frequency) for target in self.targets]
         else:
-            raise ValueError('Unknown key to sort on')
+            raise ValueError("Unknown key to sort on")
         # Sort targets indirectly, either in ascending or descending order
         index = np.stack(values).argsort()
         if ascending:
             self.targets = np.array(self.targets, dtype=object)[index].tolist()
         else:
-            self.targets = np.array(self.targets, dtype=object)[np.flipud(index)].tolist()
+            self.targets = np.array(self.targets, dtype=object)[
+                np.flipud(index)
+            ].tolist()
         return self
 
     @u.quantity_input(equivalencies=u.spectral())
-    def visibility_list(self, timestamp=None, antenna=None, flux_frequency: u.Hz = None, antenna2=None):
+    def visibility_list(
+        self, timestamp=None, antenna=None, flux_frequency: u.Hz = None, antenna2=None
+    ):
         r"""Print out list of targets in catalogue, sorted by decreasing elevation.
 
         This prints out the name, azimuth and elevation of each target in the
@@ -930,25 +1052,36 @@ class Catalogue:
         if antenna is None:
             antenna = self.antenna
         if antenna is None:
-            raise ValueError('Antenna object needed to calculate target position')
+            raise ValueError("Antenna object needed to calculate target position")
         title = f"Targets visible from antenna '{antenna.name}' at {timestamp.local()}"
         if flux_frequency is None:
             flux_frequency = self.flux_frequency
         if flux_frequency is not None:
-            title += f', with flux density (Jy) evaluated at {flux_frequency:g}'
+            title += f", with flux density (Jy) evaluated at {flux_frequency:g}"
         if antenna2 is not None:
             title += f" and fringe period (s) toward antenna '{antenna2.name}' at same frequency"
         print(title)
         print()
-        print('Target                        Azimuth    Elevation <    Flux Fringe period')
-        print('------                        -------    --------- -    ---- -------------')
-        azels = [target.azel(timestamp + (-30.0, 0.0, 30.0), antenna) for target in self.targets]
+        print(
+            "Target                        Azimuth    Elevation <    Flux Fringe period"
+        )
+        print(
+            "------                        -------    --------- -    ---- -------------"
+        )
+        azels = [
+            target.azel(timestamp + (-30.0, 0.0, 30.0), antenna)
+            for target in self.targets
+        ]
         elevations = np.stack([azel[1].alt for azel in azels])
         for index in np.argsort(elevations)[::-1]:
             target = self.targets[index]
             azel = azels[index][1]
             delta_el = azels[index][2].alt - azels[index][0].alt
-            el_code = '-' if (np.abs(delta_el) < 1 * u.arcmin) else ('/' if delta_el > 0 else '\\')
+            el_code = (
+                "-"
+                if (np.abs(delta_el) < 1 * u.arcmin)
+                else ("/" if delta_el > 0 else "\\")
+            )
             # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
             if flux_frequency is None:
                 flux = np.nan
@@ -957,22 +1090,26 @@ class Catalogue:
             if antenna2 is not None and flux_frequency is not None:
                 _, delay_rate = target.geometric_delay(antenna2, timestamp, antenna)
                 if delay_rate != 0:
-                    fringe_period = 1. / (delay_rate * flux_frequency.to_value(u.Hz))
+                    fringe_period = 1.0 / (delay_rate * flux_frequency.to_value(u.Hz))
                 else:
                     fringe_period = np.inf
             else:
                 fringe_period = None
             if above_horizon and azel.alt < 0.0:
                 # Draw horizon line
-                print('--------------------------------------------------------------------------')
+                print(
+                    "--------------------------------------------------------------------------"
+                )
                 above_horizon = False
-            az = azel.az.wrap_at(180 * u.deg).to_string(sep=':', precision=1)
-            el = azel.alt.to_string(sep=':', precision=1)
-            line = '%-24s %12s %12s %c' % (target.name, az, el, el_code)
-            line = line + f' {flux:7.1f}' if not np.isnan(flux) else line + '        '
+            az = azel.az.wrap_at(180 * u.deg).to_string(sep=":", precision=1)
+            el = azel.alt.to_string(sep=":", precision=1)
+            line = "%-24s %12s %12s %c" % (target.name, az, el, el_code)
+            line = line + f" {flux:7.1f}" if not np.isnan(flux) else line + "        "
             if fringe_period is not None:
-                line += f'    {fringe_period:10.2f}'
+                line += f"    {fringe_period:10.2f}"
             print(line)
 
-    iterfilter.__doc__ = iterfilter.__doc__.format(Parameters=_FILTER_PARAMETERS_DOCSTRING)
+    iterfilter.__doc__ = iterfilter.__doc__.format(
+        Parameters=_FILTER_PARAMETERS_DOCSTRING
+    )
     filter.__doc__ = filter.__doc__.format(Parameters=_FILTER_PARAMETERS_DOCSTRING)

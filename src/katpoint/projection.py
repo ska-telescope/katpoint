@@ -144,7 +144,7 @@ class OutOfRangeError(ValueError):
 
 
 class _OutOfRangeCvar(threading.local):
-    treatment = 'raise'
+    treatment = "raise"
 
 
 _out_of_range_cvar = _OutOfRangeCvar()
@@ -174,10 +174,13 @@ def set_out_of_range_treatment(treatment):
     ValueError
         If `treatment` is not a recognised option
     """
-    valid_treatments = {'raise', 'nan', 'clip'}
+    valid_treatments = {"raise", "nan", "clip"}
     if treatment not in valid_treatments:
-        raise ValueError("Unknown out-of-range treatment '{}', must be one of {}"
-                         .format(treatment, valid_treatments))
+        raise ValueError(
+            "Unknown out-of-range treatment '{}', must be one of {}".format(
+                treatment, valid_treatments
+            )
+        )
     previous_treatment = _out_of_range_cvar.treatment
     _out_of_range_cvar.treatment = treatment
     return previous_treatment
@@ -256,14 +259,17 @@ def treat_out_of_range_values(x, err_msg, lower=None, upper=None):
     # Cast output array to float so that we may assign NaNs to it if needed
     clipped_x = np.asarray(np.clip(x, lower, upper), dtype=float)
     treatment = get_out_of_range_treatment()
-    if treatment != 'clip':
+    if treatment != "clip":
         # Suppress false alarms due to rounding errors -> only flag substantial outliers
-        out_of_range = ~np.isclose(x, clipped_x, rtol=0., atol=4. * np.finfo(float).eps)
-        if treatment == 'raise' and np.any(out_of_range):
+        out_of_range = ~np.isclose(
+            x, clipped_x, rtol=0.0, atol=4.0 * np.finfo(float).eps
+        )
+        if treatment == "raise" and np.any(out_of_range):
             raise OutOfRangeError(err_msg)
-        elif treatment == 'nan':
+        elif treatment == "nan":
             clipped_x[out_of_range] = np.nan
     return clipped_x.item() if np.isscalar(x) else clipped_x
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Common
@@ -336,7 +342,7 @@ def sphere_to_ortho(az0, el0, az, el, min_cos_theta=None):
         Angular separation of target and reference points, expressed as cosine
     """
     # Ensure that elevation angles are in valid range if they are finite numbers
-    check = 'Elevation angle outside range of +- pi/2 radians'
+    check = "Elevation angle outside range of +- pi/2 radians"
     el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     el = treat_out_of_range_values(el, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin_el, cos_el, sin_el0, cos_el0 = np.sin(el), np.cos(el), np.sin(el0), np.cos(el0)
@@ -353,14 +359,17 @@ def sphere_to_ortho(az0, el0, az, el, min_cos_theta=None):
     ortho_x = cos_el * sin_daz
     ortho_y = sin_el * cos_el0 - cos_el * sin_el0 * cos_daz
     if min_cos_theta is not None:
-        check = ('Target point more than {} pi radians away from '
-                 'reference point'.format(np.arccos(min_cos_theta) / np.pi))
+        check = (
+            "Target point more than {} pi radians away from "
+            "reference point".format(np.arccos(min_cos_theta) / np.pi)
+        )
         cos_theta = treat_out_of_range_values(cos_theta, check, lower=min_cos_theta)
         # Adjust radius of (x, y) to be commensurate with potentially clipped cos(theta),
         # and also propagate any NaNs in cos(theta) to (x, y) to complete out-of-range treatment
         sin_theta = np.sqrt(1.0 - cos_theta * cos_theta)
         ortho_x, ortho_y = safe_scale(ortho_x, ortho_y, new_radius=sin_theta)
     return ortho_x, ortho_y, cos_theta
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Orthographic projection (SIN)
@@ -465,10 +474,10 @@ def plane_to_sphere_sin(az0, el0, x, y):
     This implements the original SIN projection as in AIPS, not the generalised
     'slant orthographic' projection as in WCSLIB.
     """
-    check = 'Elevation angle outside range of +- pi/2 radians'
+    check = "Elevation angle outside range of +- pi/2 radians"
     el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin2_theta = x * x + y * y
-    check = 'Length of (x, y) vector bigger than 1.0'
+    check = "Length of (x, y) vector bigger than 1.0"
     sin2_theta = treat_out_of_range_values(sin2_theta, check, upper=1.0)
     cos_theta = np.sqrt(1.0 - sin2_theta)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
@@ -478,6 +487,7 @@ def plane_to_sphere_sin(az0, el0, x, y):
     cos_el_cos_daz = cos_el0 * cos_theta - sin_el0 * y
     az = az0 + np.arctan2(x, cos_el_cos_daz)
     return az, el
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Gnomonic projection (TAN)
@@ -557,7 +567,7 @@ def plane_to_sphere_tan(az0, el0, x, y):
     OutOfRangeError
         If elevation `el0` is out of range and out-of-range treatment is 'raise'
     """
-    check = 'Elevation angle outside range of +- pi/2 radians'
+    check = "Elevation angle outside range of +- pi/2 radians"
     el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
     # This term is cos(el) * cos(daz) / cos(theta)
@@ -565,6 +575,7 @@ def plane_to_sphere_tan(az0, el0, x, y):
     az = az0 + np.arctan2(x, den)
     el = np.arctan(np.cos(az - az0) * (sin_el0 + y * cos_el0) / den)
     return az, el
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Zenithal equidistant projection (ARC)
@@ -645,10 +656,10 @@ def plane_to_sphere_arc(az0, el0, x, y):
         If elevation `el0` is out of range or the radius of (x, y) > pi,
         and out-of-range treatment is 'raise'
     """
-    check = 'Elevation angle outside range of +- pi/2 radians'
+    check = "Elevation angle outside range of +- pi/2 radians"
     el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     theta = np.hypot(x, y)
-    check = 'Length of (x, y) vector bigger than pi'
+    check = "Length of (x, y) vector bigger than pi"
     theta = treat_out_of_range_values(theta, check, upper=np.pi)
     sin_theta, cos_theta = np.sin(theta), np.cos(theta)
     # Scale length of (x, y) vector from theta to sin(theta) in a safe way
@@ -663,6 +674,7 @@ def plane_to_sphere_arc(az0, el0, x, y):
     den = cos_theta - sin_el * sin_el0
     az = az0 + np.arctan2(num, den)
     return az, el
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Stereographic projection (STG)
@@ -704,7 +716,9 @@ def sphere_to_plane_stg(az0, el0, az, el):
         and out-of-range treatment is 'raise'
     """
     # Angular separation theta must be strictly < pi radians - pick 4.5e-3 radians less
-    ortho_x, ortho_y, cos_theta = sphere_to_ortho(az0, el0, az, el, min_cos_theta=1e-5 - 1)
+    ortho_x, ortho_y, cos_theta = sphere_to_ortho(
+        az0, el0, az, el, min_cos_theta=1e-5 - 1
+    )
     den = 1.0 + cos_theta
     # x = 2 sin(theta) sin(phi) / (1 + cos(theta))
     # y = 2 sin(theta) cos(phi) / (1 + cos(theta))
@@ -743,7 +757,7 @@ def plane_to_sphere_stg(az0, el0, x, y):
     OutOfRangeError
         If elevation `el0` is out of range and out-of-range treatment is 'raise'
     """
-    check = 'Elevation angle outside range of +- pi/2 radians'
+    check = "Elevation angle outside range of +- pi/2 radians"
     el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
     # This is the square of 2 sin(theta) / (1 + cos(theta))
@@ -762,6 +776,7 @@ def plane_to_sphere_stg(az0, el0, x, y):
     den = cos_theta - sin_el * sin_el0
     az = az0 + np.arctan2(num, den)
     return az, el
+
 
 # --------------------------------------------------------------------------------------------------
 # --- Plate carree projection (CAR)
@@ -827,6 +842,7 @@ def plane_to_sphere_car(az0, el0, x, y):
     """
     return az0 + x, el0 + y
 
+
 # --------------------------------------------------------------------------------------------------
 # --- Swapped orthographic projection (SSN)
 # --------------------------------------------------------------------------------------------------
@@ -880,7 +896,9 @@ def sphere_to_plane_ssn(az0, el0, az, el):
     This projection was originally introduced by Mattieu de Villiers for use
     in holography experiments.
     """
-    return sphere_to_plane_sin(az, el, az0, el0)  # pylint: disable=arguments-out-of-order
+    return sphere_to_plane_sin(
+        az, el, az0, el0
+    )  # pylint: disable=arguments-out-of-order
 
 
 def plane_to_sphere_ssn(az0, el0, x, y):
@@ -939,15 +957,15 @@ def plane_to_sphere_ssn(az0, el0, x, y):
     This projection was originally introduced by Mattieu de Villiers for use
     in holography experiments.
     """
-    check = 'Elevation angle outside range of +- pi/2 radians'
+    check = "Elevation angle outside range of +- pi/2 radians"
     el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin2_theta = x * x + y * y
-    check = 'Length of (x, y) vector bigger than 1.0'
+    check = "Length of (x, y) vector bigger than 1.0"
     sin2_theta = treat_out_of_range_values(sin2_theta, check, upper=1.0)
     cos_theta = np.sqrt(1.0 - sin2_theta)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
     sin_daz = -x / cos_el0
-    check = 'The x coordinate is outside range of +- cos(el0) radians'
+    check = "The x coordinate is outside range of +- cos(el0) radians"
     sin_daz = treat_out_of_range_values(sin_daz, check, lower=-1.0, upper=1.0)
     # Since delta_az = az - az0 is the azimuth angle of final (x, cos(theta), y)
     # unit vector and cos(theta) >= 0, delta_az is restricted to +-90 degrees,
@@ -958,7 +976,7 @@ def plane_to_sphere_ssn(az0, el0, x, y):
     num = sin_el0 * cos_theta - cos_el0_cos_daz * y
     den = sin_el0 * y + cos_theta * cos_el0_cos_daz
     # Ensure that cos(el) denominator term is positive to have abs(el) <= 90 degrees
-    check = 'The y coordinate causes el to be outside range of +- pi/2 radians'
+    check = "The y coordinate causes el to be outside range of +- pi/2 radians"
     den = treat_out_of_range_values(den, check, lower=0.0)
     el = np.arctan2(num, den)
     # Ensure that az is NaN when el is NaN
@@ -971,16 +989,20 @@ def plane_to_sphere_ssn(az0, el0, x, y):
 # --------------------------------------------------------------------------------------------------
 
 # Maps projection code to appropriate function
-sphere_to_plane = {'SIN': sphere_to_plane_sin,
-                   'TAN': sphere_to_plane_tan,
-                   'ARC': sphere_to_plane_arc,
-                   'STG': sphere_to_plane_stg,
-                   'CAR': sphere_to_plane_car,
-                   'SSN': sphere_to_plane_ssn}
+sphere_to_plane = {
+    "SIN": sphere_to_plane_sin,
+    "TAN": sphere_to_plane_tan,
+    "ARC": sphere_to_plane_arc,
+    "STG": sphere_to_plane_stg,
+    "CAR": sphere_to_plane_car,
+    "SSN": sphere_to_plane_ssn,
+}
 
-plane_to_sphere = {'SIN': plane_to_sphere_sin,
-                   'TAN': plane_to_sphere_tan,
-                   'ARC': plane_to_sphere_arc,
-                   'STG': plane_to_sphere_stg,
-                   'CAR': plane_to_sphere_car,
-                   'SSN': plane_to_sphere_ssn}
+plane_to_sphere = {
+    "SIN": plane_to_sphere_sin,
+    "TAN": plane_to_sphere_tan,
+    "ARC": plane_to_sphere_arc,
+    "STG": plane_to_sphere_stg,
+    "CAR": plane_to_sphere_car,
+    "SSN": plane_to_sphere_ssn,
+}
