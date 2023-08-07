@@ -19,21 +19,35 @@
 import warnings
 from types import SimpleNamespace
 
-import numpy as np
-import astropy.units as u
-from astropy.time import Time
 import astropy.constants as const
-from astropy.coordinates import (SkyCoord, Angle, ICRS, Galactic, FK4, AltAz, CIRS,
-                                 CartesianRepresentation)
+import astropy.units as u
+import numpy as np
+from astropy.coordinates import (
+    CIRS,
+    FK4,
+    ICRS,
+    AltAz,
+    Angle,
+    CartesianRepresentation,
+    Galactic,
+    SkyCoord,
+)
+from astropy.time import Time
 
-from .timestamp import Timestamp, delta_seconds
 from .antenna import Antenna
+from .body import (
+    Body,
+    EarthSatelliteBody,
+    FixedBody,
+    GalacticBody,
+    NullBody,
+    SolarSystemBody,
+    StationaryBody,
+)
+from .conversion import angle_to_string, azel_to_enu, to_angle
 from .flux import FluxDensityModel
-from .conversion import to_angle, angle_to_string, azel_to_enu
-from .projection import sphere_to_plane, sphere_to_ortho, plane_to_sphere
-from .body import (Body, FixedBody, GalacticBody, SolarSystemBody,
-                   EarthSatelliteBody, StationaryBody, NullBody)
-
+from .projection import plane_to_sphere, sphere_to_ortho, sphere_to_plane
+from .timestamp import Timestamp, delta_seconds
 
 # Singleton that identifies default target parameters
 _DEFAULT = object()

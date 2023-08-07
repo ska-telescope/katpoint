@@ -23,19 +23,33 @@ pyephem package.
 
 # pylint: disable=missing-function-docstring
 
-import pytest
 import astropy.units as u
-from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, EarthLocation, Angle,
-                                 Galactic, Longitude, Latitude)
+import pytest
 from astropy import __version__ as astropy_version
+from astropy.coordinates import (
+    ICRS,
+    AltAz,
+    Angle,
+    EarthLocation,
+    Galactic,
+    Latitude,
+    Longitude,
+    SkyCoord,
+)
+from astropy.time import Time
 from packaging.version import Version
 
-from katpoint.body import (Body, FixedBody, GalacticBody, SolarSystemBody,
-                           EarthSatelliteBody, StationaryBody)
+from katpoint.body import (
+    Body,
+    EarthSatelliteBody,
+    FixedBody,
+    GalacticBody,
+    SolarSystemBody,
+    StationaryBody,
+)
 
 try:
-    from skyfield.api import load, EarthSatellite, Topos
+    from skyfield.api import EarthSatellite, Topos, load
 except ImportError:
     HAS_SKYFIELD = False
 else:

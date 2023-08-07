@@ -21,17 +21,16 @@
 import pickle
 from contextlib import contextmanager
 
+import astropy.units as u
 import numpy as np
 import pytest
-import astropy.units as u
-from astropy.coordinates import Angle
 from astropy import __version__ as astropy_version
+from astropy.coordinates import Angle
 from packaging.version import Version
 
 import katpoint
 
 from .helper import check_separation
-
 
 TLE_TARGET = ('GPS BIIA-21 (PRN 09), tle, '
               '1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054, '

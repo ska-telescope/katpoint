@@ -18,12 +18,11 @@
 
 # pylint: disable=missing-function-docstring
 
-import pytest
-import numpy as np
 import astropy.units as u
+import numpy as np
+import pytest
 
 import katpoint
-
 
 TARGETS = [
     'xephem radec, Acamar~f|S|A4~02 58 15.7156|-53.53~-40 18 17.046|25.71~2.88~2000~0',

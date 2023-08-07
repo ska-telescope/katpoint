@@ -18,8 +18,8 @@
 
 import warnings
 
-import pytest
 import numpy as np
+import pytest
 
 import katpoint
 

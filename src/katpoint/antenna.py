@@ -24,16 +24,21 @@ and other parameters that affect pointing and delay calculations.
 import functools
 from types import SimpleNamespace
 
-import numpy as np
 import astropy.units as u
-from astropy.coordinates import EarthLocation, CartesianRepresentation
+import numpy as np
+from astropy.coordinates import CartesianRepresentation, EarthLocation
 
-from .timestamp import Timestamp
-from .conversion import (to_angle, strip_zeros, angle_to_string,
-                         enu_to_ecef, lla_to_ecef, ecef_to_enu)
-from .pointing import PointingModel
+from .conversion import (
+    angle_to_string,
+    ecef_to_enu,
+    enu_to_ecef,
+    lla_to_ecef,
+    strip_zeros,
+    to_angle,
+)
 from .delay_model import DelayModel
-
+from .pointing import PointingModel
+from .timestamp import Timestamp
 
 # Singleton that identifies default antenna parameters
 _DEFAULT = object()

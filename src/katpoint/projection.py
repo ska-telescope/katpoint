@@ -129,8 +129,8 @@ Alternatively they can be called directly::
    FITS. II," Astronomy & Astrophysics, vol. 395, pp. 1077-1122, 2002.
 """
 
-import threading
 import contextlib
+import threading
 
 import numpy as np
 

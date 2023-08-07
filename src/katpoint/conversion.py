@@ -16,8 +16,8 @@
 
 """Geodetic and spherical coordinate transformations, and angle conversions."""
 
-import numpy as np
 import astropy.units as u
+import numpy as np
 from astropy.coordinates import Angle
 
 # --------------------------------------------------------------------------------------------------

@@ -25,8 +25,8 @@ import warnings
 import numpy as np
 from astropy import units
 
-from .model import Parameter, Model
-from .conversion import to_angle, angle_to_string
+from .conversion import angle_to_string, to_angle
+from .model import Model, Parameter
 
 logger = logging.getLogger(__name__)
 

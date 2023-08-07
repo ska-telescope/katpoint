@@ -21,11 +21,11 @@
 import json
 from io import StringIO
 
-import pytest
-import numpy as np
 import astropy.units as u
-from astropy.coordinates import Angle
+import numpy as np
+import pytest
 from astropy import __version__ as astropy_version
+from astropy.coordinates import Angle
 from packaging.version import Version
 
 import katpoint

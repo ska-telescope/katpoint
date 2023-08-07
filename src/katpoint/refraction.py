@@ -22,12 +22,11 @@ in the atmosphere (mostly the troposphere and stratosphere).
 
 import logging
 
-import numpy as np
-import astropy.units as u
 import astropy.constants as const
+import astropy.units as u
+import numpy as np
 
 from .timestamp import Timestamp
-
 
 logger = logging.getLogger(__name__)
 

@@ -16,18 +16,22 @@
 
 """Tests for the refraction module."""
 
-import pytest
-import numpy as np
-import astropy.units as u
 import astropy.constants as const
-from astropy.coordinates import EarthLocation, AltAz, ICRS
+import astropy.units as u
+import numpy as np
+import pytest
+from astropy.coordinates import ICRS, AltAz, EarthLocation
 
 import katpoint
-from katpoint.refraction import SaastamoinenZenithDelay, GlobalMappingFunction, TroposphericDelay
+from katpoint.refraction import (
+    GlobalMappingFunction,
+    SaastamoinenZenithDelay,
+    TroposphericDelay,
+)
 
 try:
-    from almacalc.lowlevel import sastd, sastw, gmf11
     from almacalc.highlevel import calc
+    from almacalc.lowlevel import gmf11, sastd, sastw
 except ImportError:
     HAS_ALMACALC = False
 else:

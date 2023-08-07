@@ -21,19 +21,24 @@ This implements a class that performs delay correction for a correlator.
 
 import json
 
-import numpy as np
-import astropy.units as u
 import astropy.constants as const
-from astropy.coordinates import (Angle, ITRS, GCRS, UnitSphericalRepresentation,
-                                 get_body_barycentric, get_body_barycentric_posvel)
+import astropy.units as u
+import numpy as np
+from astropy.coordinates import (
+    GCRS,
+    ITRS,
+    Angle,
+    UnitSphericalRepresentation,
+    get_body_barycentric,
+    get_body_barycentric_posvel,
+)
 
-from .delay_model import DelayModel
 from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
+from .delay_model import DelayModel
+from .refraction import TroposphericDelay
 from .target import Target
 from .timestamp import Timestamp
-from .refraction import TroposphericDelay
-
 
 NO_TEMPERATURE = -300 * u.deg_C  # used as default parameter, akin to None
 

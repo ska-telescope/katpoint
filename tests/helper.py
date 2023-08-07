@@ -16,8 +16,8 @@
 
 """Shared pytest utilities."""
 
-import numpy as np
 import astropy.units as u
+import numpy as np
 from astropy.coordinates import UnitSphericalRepresentation
 
 
