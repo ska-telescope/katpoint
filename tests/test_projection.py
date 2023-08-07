@@ -19,22 +19,22 @@
 import threading
 
 import numpy as np
-from numpy import pi as PI   # Unorthodox but shortens those parametrization lines a lot
 import pytest
+from numpy import pi as PI  # Unorthodox but shortens those parametrization lines a lot
 
 import katpoint
 from katpoint.projection import (
     OutOfRangeError,
-    out_of_range_context,
-    treat_out_of_range_values,
-    set_out_of_range_treatment,
     get_out_of_range_treatment,
+    out_of_range_context,
+    set_out_of_range_treatment,
+    treat_out_of_range_values,
 )
 
 from .helper import assert_angles_almost_equal
 
 try:
-    from .aips_projection import newpos, dircos
+    from .aips_projection import dircos, newpos
     HAS_AIPS = True
 except ImportError:
     HAS_AIPS = False

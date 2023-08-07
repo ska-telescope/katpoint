@@ -21,10 +21,11 @@
 import warnings
 from unittest.mock import patch
 
-import pytest
-import numpy as np
 import astropy.units as u
+import numpy as np
+import pytest
 from astropy.time import Time, TimeDelta
+
 try:
     from astropy.time import TimeDeltaMissingUnitWarning
 except ImportError:

@@ -18,12 +18,12 @@
 
 # pylint: disable=missing-function-docstring
 
-import time
 import pickle
+import time
 
-import pytest
-import numpy as np
 import astropy.units as u
+import numpy as np
+import pytest
 from astropy.coordinates import EarthLocation
 
 import katpoint

@@ -20,12 +20,11 @@ This implements the basic delay model used to calculate the delay
 contribution from each antenna.
 """
 
-import numpy as np
-import astropy.units as u
 import astropy.constants as const
+import astropy.units as u
+import numpy as np
 
-from .model import Parameter, Model
-
+from .model import Model, Parameter
 
 # Speed of EM wave in fixed path (typically due to cables / clock distribution).
 # This number is not critical - only meant to convert delays to "nice" lengths.

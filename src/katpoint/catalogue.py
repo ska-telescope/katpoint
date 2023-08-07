@@ -20,10 +20,10 @@ import logging
 import warnings
 from collections import defaultdict
 
-import numpy as np
 import astropy.units as u
-from astropy.time import Time
+import numpy as np
 from astropy.coordinates import Angle, Longitude
+from astropy.time import Time
 
 from .target import Target
 from .timestamp import Timestamp

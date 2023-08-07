@@ -16,13 +16,12 @@
 
 """Tests for the flux module."""
 
-import pytest
-import numpy as np
-import astropy.units as u
 import astropy.constants as const
+import astropy.units as u
+import numpy as np
+import pytest
 
 import katpoint
-
 
 DESCRIPTION = '(1.0 2.0 2.0 0.0 0.0 0.0 0.0 0.0 2.0 0.5 0.25 -0.75)'
 FLUX_MODEL = katpoint.FluxDensityModel.from_description(DESCRIPTION)

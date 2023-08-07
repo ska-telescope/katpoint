@@ -18,17 +18,27 @@
 
 import re
 
-import numpy as np
 import astropy.units as u
+import numpy as np
+from astropy.coordinates import (
+    GCRS,
+    ICRS,
+    TEME,
+    AltAz,
+    Angle,
+    CartesianDifferential,
+    CartesianRepresentation,
+    SkyCoord,
+    UnitSphericalRepresentation,
+    get_body,
+    solar_system_ephemeris,
+)
 from astropy.time import Time
-from astropy.coordinates import (SkyCoord, ICRS, AltAz, Angle, TEME, GCRS,
-                                 solar_system_ephemeris, get_body, UnitSphericalRepresentation,
-                                 CartesianDifferential, CartesianRepresentation)
-from sgp4.api import Satrec, WGS72
-from sgp4.model import Satrec as SatrecPython
+from sgp4.api import WGS72, Satrec
 from sgp4.exporter import export_tle
+from sgp4.model import Satrec as SatrecPython
 
-from .conversion import to_angle, angle_to_string
+from .conversion import angle_to_string, to_angle
 
 
 class Body:
