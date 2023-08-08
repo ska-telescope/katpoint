@@ -142,7 +142,8 @@ def _to_celestial_sphere(coord, obstime, location=None):
     gcrs = coord.transform_to(
         GCRS(obstime=obstime, obsgeoloc=obsgeoloc, obsgeovel=obsgeovel)
     )
-    # Discard distance from observer as well as any differentials (needed for EarthSatelliteBody)
+    # Discard distance from observer as well as any differentials
+    # (needed for EarthSatelliteBody)
     return gcrs.realize_frame(gcrs.represent_as(UnitSphericalRepresentation, s=None))
 
 
@@ -193,8 +194,9 @@ class FixedBody(Body):
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Compute the coordinates of the fixed body in the requested frame."""
         Body._check_location(frame)
-        # If obstime is array-valued and not contained in the output frame, the transform
-        # will return a scalar SkyCoord. Repeat the value to match obstime shape instead.
+        # If obstime is array-valued and not contained in the output frame,
+        # the transform will return a scalar SkyCoord. Repeat the value to
+        # match obstime shape instead.
         if (
             obstime is not None
             and not obstime.isscalar
@@ -260,7 +262,7 @@ class SolarSystemBody(Body):
         return "special"
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
-        """Determine position of body for given time and location and transform to `frame`."""
+        """Determine body position for given time + location, transform to `frame`."""
         Body._check_location(frame)
         gcrs = get_body(self._name, obstime, location)
         if to_celestial_sphere:
@@ -277,8 +279,9 @@ def _edb_to_time(edb_epoch):
             f"Epoch string '{edb_epoch}' does not match EDB format 'MM/DD.DD+/YYYY'"
         )
     frac_day, int_day = np.modf(float(match[2]))
-    # Convert fractional day to hours, minutes and fractional seconds via Astropy machinery.
-    # Add arbitrary integer day to suppress ERFA warnings (will be replaced by actual day next).
+    # Convert fractional day to hours, minutes and fractional seconds
+    # via Astropy machinery. Add arbitrary integer day to suppress
+    # ERFA warnings (will be replaced by actual day next).
     rec = Time(59081.0, frac_day, scale="utc", format="mjd").ymdhms
     rec["year"] = int(match[3])
     rec["month"] = int(match[1])
@@ -319,17 +322,19 @@ class EarthSatelliteBody(Body):
 
     def __init__(self, satellite, orbit_number=0):
         self.satellite = satellite
-        # XXX We store this because C++ sgp4init doesn't take revnum and Satrec object is read-only
-        # This needs to go into the XEphem EDB string, which is still the de facto description
+        # XXX We store this because C++ sgp4init doesn't take revnum and Satrec
+        # object is read-only. This needs to go into the XEphem EDB string,
+        # which is still the de facto description.
         self.orbit_number = orbit_number
 
     @property
     def default_name(self):
         """A default name for the body derived from its coordinates or properties."""
-        # Identify the satellite with its orbit. The orbit can be approximated by 3 numbers
-        # if it is nearly circular (2 orientation angles and 1 size). We don't care about
-        # the epoch or anomaly which describe the current location along the orbit.
-        # The TLE already contains these numbers as strings in convenient units. :-)
+        # Identify the satellite with its orbit. The orbit can be approximated
+        # by 3 numbers if it is nearly circular (2 orientation angles and 1 size).
+        # We don't care about the epoch or anomaly which describe the current
+        # location along the orbit. The TLE already contains these numbers as
+        # strings in convenient units. :-)
         _, line2 = self.to_tle()
         inclination = line2[8:16].strip()
         ra_asc_node = line2[17:25].strip()
@@ -339,7 +344,8 @@ class EarthSatelliteBody(Body):
     @property
     def tag(self):
         """The type of body, as a string tag."""
-        # The EDB format only stores essential elements so no NORAD SATCAT ID -> detect it that way
+        # The EDB format only stores essential elements so no NORAD SATCAT ID
+        # -> detect it that way
         return "tle" if self.satellite.satnum else "xephem tle"
 
     @property
@@ -363,7 +369,7 @@ class EarthSatelliteBody(Body):
         """
         line1 = line1.strip()
         line2 = line2.strip()
-        # Use the Python Satrec to validate the TLE first, since the C++ one has no error checking
+        # Use Python Satrec to validate TLE first, since C++ one has no error checking
         SatrecPython.twoline2rv(line1, line2)
         return cls(Satrec.twoline2rv(line1, line2))
 
@@ -376,8 +382,9 @@ class EarthSatelliteBody(Body):
         """Build an `EarthSatelliteBody` from an XEphem database (EDB) entry."""
         fields = line.split(",")
         edb_epoch = _edb_to_time(fields[2].split("|")[0])
-        # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT (= JD 2433281.5)
-        # Be careful to preserve full 128-bit resolution to enable round-tripping of descriptions
+        # The SGP4 epoch is the number of days since 1949 December 31 00:00 UT
+        # (= JD 2433281.5). Be careful to preserve full 128-bit resolution
+        # to enable round-tripping of descriptions.
         sgp4_epoch = Time(edb_epoch.jd1 - 2433281.5, edb_epoch.jd2, format="jd").jd
         (
             inclination,
@@ -392,9 +399,9 @@ class EarthSatelliteBody(Body):
         ) = tuple(float(f) for f in fields[3:])
         sat = Satrec()
         sat.sgp4init(
-            WGS72,  # gravity model (TLEs are based on WGS72, therefore it is preferred to WGS84)
+            WGS72,  # gravity model (TLEs are based on WGS72 therefore prefer to WGS84)
             "i",  # 'a' = old AFSPC mode, 'i' = improved mode
-            0,  # satnum: Satellite number is not stored by XEphem so pick an unused one
+            0,  # satnum: Satellite number is not stored by XEphem so pick unused one
             sgp4_epoch,  # epoch
             drag_coef,  # bstar
             (orbit_decay * u.cycle / u.day**2).to_value(
@@ -427,13 +434,14 @@ class EarthSatelliteBody(Body):
         eccentricity = np.float32(sat.ecco)  # e
         arg_perigee = np.float32((sat.argpo * u.rad).to_value(u.deg))  # ap
         mean_anomaly = np.float32((sat.mo * u.rad).to_value(u.deg))  # M
-        # The mean motion uses double precision due to "sensitive differencing operation"
+        # Mean motion uses double precision due to "sensitive differencing operation"
         mean_motion = (sat.no_kozai * u.rad / u.minute).to_value(u.cycle / u.day)  # n
         orbit_decay = (sat.ndot * u.rad / u.minute**2).to_value(
             u.cycle / u.day**2
         )  # decay
         orbit_decay = np.float32(orbit_decay)
-        # XXX Satrec object only accepts revnum via twoline2rv but EDB needs it, so add a backdoor
+        # XXX Satrec object only accepts revnum via twoline2rv but EDB needs it,
+        # so add a backdoor.
         orbit_number = sat.revnum if sat.revnum else self.orbit_number  # orbit
         drag_coef = np.float32(sat.bstar)  # drag
         epoch_str = _time_to_edb(epoch, high_precision=True)  # epoch
@@ -457,7 +465,7 @@ class EarthSatelliteBody(Body):
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Determine position of body at the given time and transform to `frame`."""
         Body._check_location(frame)
-        # Propagate the satellite according to SGP4 model (use array version if possible)
+        # Propagate satellite according to SGP4 model (use array version if possible)
         if obstime.shape == ():
             e, r, v = self.satellite.sgp4(obstime.jd1, obstime.jd2)
         else:
@@ -506,7 +514,7 @@ class StationaryBody(Body):
 
     def compute(self, frame, obstime, location=None, to_celestial_sphere=False):
         """Transform (az, el) at given location and time to requested `frame`."""
-        # Ignore `to_celestial_sphere` setting since we are already on the celestial sphere :-)
+        # Ignore `to_celestial_sphere` setting since we are already on the sphere :-)
         # Ensure that coordinates have same shape as obstime (broadcasting fails)
         altaz = self.coord.take(np.zeros_like(obstime, dtype=int))
         altaz = altaz.replicate(obstime=obstime, location=location)

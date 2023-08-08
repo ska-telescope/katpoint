@@ -124,12 +124,13 @@ class Target:
         [<name list>,] gal [<user tags>], <l>, <b> [, <flux model>]
         <name list>, special [<user tags>] [, <flux model>]
         [<name list>,] tle [<user tags>], <TLE line 1>, <TLE line 2> [, <flux model>]
-        [<name list>,] xephem radec [<user tags>], <EDB string (type 'f')> [, <flux model>]
-        [<name list>,] xephem tle [<user tags>], <EDB string (type 'E')> [, <flux model>]
+        [<name list>,] xephem radec [<user tags>], <EDB string (type 'f')> [, <flux>]
+        [<name list>,] xephem tle [<user tags>], <EDB string (type 'E')> [, <flux>]
 
     Parameters
     ----------
-    target : :class:`Body`, :class:`~astropy.coordinates.SkyCoord`, str or :class:`Target`
+    target : :class:`Body`, :class:`~astropy.coordinates.SkyCoord`, str or
+        :class:`Target`
         A Body, a SkyCoord, a full description string or existing Target object.
         The parameters in the description string or existing Target can still
         be overridden by providing additional parameters after `target`.
@@ -198,7 +199,7 @@ class Target:
         )
 
     def __str__(self):
-        """Complete string representation of target object, sufficient to reconstruct it."""
+        """Complete string representation of target object."""
         return self.description
 
     def __repr__(self):
@@ -208,7 +209,10 @@ class Target:
             if self.body_type == "xephem" and len(self.tags) > 1
             else ""
         )
-        return f"<katpoint.Target '{self.name}' body={self.body_type + sub_type} at {id(self):#x}>"
+        return (
+            f"<katpoint.Target '{self.name}' body={self.body_type + sub_type} "
+            f"at {id(self):#x}>"
+        )
 
     def __reduce__(self):
         """Custom pickling routine based on description string."""
@@ -232,7 +236,7 @@ class Target:
 
     @property
     def tags(self):
-        """List of descriptive tags associated with target, starting with its body type."""
+        """List of descriptive tags associated with target, body type first."""
         return self.body.tag.split() + self.user_tags
 
     @property
@@ -268,7 +272,7 @@ class Target:
 
     @property
     def description(self):
-        """Complete string representation of target object, sufficient to reconstruct it."""
+        """Complete string representation of target object."""
         names = " | ".join(self.names)
         tags = " ".join(self.tags)
         fluxinfo = self.flux_model.description if self.flux_model is not None else None
@@ -298,9 +302,11 @@ class Target:
         elif self.body_type == "tle":
             fields += self.body.to_tle()
         elif self.body_type == "xephem":
-            # Push the names back into EDB string (or remove them entirely if the Body default)
+            # Push the names back into EDB string
+            # (or remove them entirely if the Body default)
             edb_names = "" if names == self.body.default_name else names
-            # Replace commas in xephem string with tildes to avoid clashes with main structure
+            # Replace commas in xephem string with tildes
+            # to avoid clashes with main structure.
             fields += [self.body.to_edb(edb_names).replace(",", "~")]
 
         if fluxinfo:
@@ -346,7 +352,8 @@ class Target:
 
         if tags_in(fields[0]) and not tags_in(fields[1]):
             fields.insert(0, "")
-        # Extract preferred name from name list (starred or first entry), and make the rest aliases
+        # Extract preferred name from name list (starred or first entry),
+        # and make the rest aliases.
         name_field = fields.pop(0)
         names = [s.strip() for s in name_field.split("|")]
         if len(names) == 0:
@@ -365,7 +372,8 @@ class Target:
         if not tags:
             raise ValueError(f"{prefix} needs at least one tag (body type)")
         body_type = tags.pop(0).lower()
-        # Remove empty fields starting from the end (useful when parsing CSV files with fixed number of fields)
+        # Remove empty fields starting from the end
+        # (useful when parsing CSV files with fixed number of fields)
         while fields and not fields[-1]:
             fields.pop()
 
@@ -537,7 +545,7 @@ class Target:
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Timestamp(s) in katpoint or Astropy format
         antenna : :class:`~astropy.coordinates.EarthLocation`, :class:`Antenna` or None
-            Antenna location(s) in katpoint or Astropy format (None uses default antenna)
+            Antenna location(s) in katpoint or Astropy format (None => default antenna)
 
         Returns
         -------
@@ -584,9 +592,10 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -604,7 +613,7 @@ class Target:
         return self.body.compute(altaz, time, location)
 
     def apparent_radec(self, timestamp=None, antenna=None):
-        """Calculate target's apparent (ra, dec) coordinates as seen from antenna at time(s).
+        """Calculate target's apparent (ra, dec) as seen from antenna at time(s).
 
         This calculates the *apparent topocentric position* of the target for
         the epoch-of-date in equatorial coordinates. Take note that this is
@@ -615,9 +624,10 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -638,7 +648,7 @@ class Target:
         )
 
     def astrometric_radec(self, timestamp=None, antenna=None):
-        """Calculate target's astrometric (ra, dec) coordinates as seen from antenna at time(s).
+        """Calculate target's astrometric (ra, dec) as seen from antenna at time(s).
 
         This calculates the ICRS *astrometric topocentric position* of the
         target, in equatorial coordinates. This is its star atlas position for
@@ -647,9 +657,10 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -669,7 +680,7 @@ class Target:
     radec = astrometric_radec
 
     def galactic(self, timestamp=None, antenna=None):
-        """Calculate target's galactic (l, b) coordinates as seen from antenna at time(s).
+        """Calculate target's galactic (l, b) as seen from antenna at time(s).
 
         This calculates the galactic coordinates of the target, based on the
         ICRS *astrometric topocentric* coordinates. This is its position
@@ -678,9 +689,10 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -709,9 +721,10 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna which points at target (defaults to default antenna)
 
         Returns
@@ -764,9 +777,10 @@ class Target:
         ----------
         antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`
             Second antenna of baseline pair (baseline vector points toward it)
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
 
@@ -793,8 +807,9 @@ class Target:
         antenna = self._valid_antenna(antenna)
         # Obtain baseline vector from reference antenna to second antenna
         baseline = antenna.baseline_toward(antenna2)
-        # Obtain direction vector(s) from reference antenna to target, and numerically
-        # estimate delay rate from difference across 1-second interval spanning timestamp(s)
+        # Obtain direction vector(s) from reference antenna to target,
+        # and numerically estimate delay rate from difference across
+        # 1-second interval spanning timestamp(s).
         offset = delta_seconds([-0.5, 0.0, 0.5])
         times = time[..., np.newaxis] + offset
         azel = self.azel(times, location)
@@ -816,9 +831,10 @@ class Target:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s) of shape T, defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Reference antenna of baseline pairs, which also serves as
             pointing reference (defaults to default antenna)
 
@@ -832,7 +848,8 @@ class Target:
             remaining dimension(s) to the timestamp.
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        # Check that antenna is valid to avoid more cryptic error messages in .azel and .radec
+        # Check that antenna is valid to avoid more cryptic
+        # error messages in .azel and .radec
         self._valid_antenna(antenna)
         if not time.isscalar and self.body_type != "radec":
             # Some calculations depend on ra/dec in a way that won't easily
@@ -886,19 +903,22 @@ class Target:
 
         Parameters
         ----------
-        antenna2 : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna` or sequence
+        antenna2 : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna` or sequence
             Second antenna of baseline pair (baseline vector points toward it), shape A
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s) of shape T, defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             First (reference) antenna of baseline pair, which also serves as
             pointing reference (defaults to default antenna)
 
         Returns
         -------
         uvw : :class:`~astropy.coordinates.CartesianRepresentation`, shape T + A
-            (u, v, w) coordinates of baseline as Cartesian (x, y, z), in units of length.
-            The shape is a concatenation of the `timestamp` and `antenna2` shapes.
+            (u, v, w) coordinates of baseline as Cartesian (x, y, z), in units
+            of length. The shape is a concatenation of the `timestamp` and
+            `antenna2` shapes.
 
         Notes
         -----
@@ -934,9 +954,10 @@ class Target:
             Right ascension of the other target, in radians
         dec : float or array
             Declination of the other target, in radians
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Pointing reference (defaults to default antenna)
 
         Returns
@@ -991,7 +1012,7 @@ class Target:
 
     @u.quantity_input(equivalencies=u.spectral())
     def flux_density_stokes(self, frequency: u.Hz = None) -> u.Jy:
-        """Calculate flux density for given observation frequency (or frequencies), full-Stokes.
+        """Calculate flux density for given observation frequency(-ies), full-Stokes.
 
         See :meth:`flux_density`
         This uses the stored flux density model to calculate the flux density at
@@ -1036,9 +1057,10 @@ class Target:
         ----------
         other_target : :class:`Target`
             The other target
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s) when separation is measured (defaults to now)
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna that observes both targets, from where separation is measured
             (defaults to default antenna of this target)
 
@@ -1081,9 +1103,10 @@ class Target:
             Azimuth or right ascension, in radians
         el : float or array
             Elevation or declination, in radians
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna pointing at target (defaults to default antenna)
         projection_type : {'ARC', 'SIN', 'TAN', 'STG', 'CAR', 'SSN'}, optional
             Type of spherical projection
@@ -1098,13 +1121,13 @@ class Target:
             Elevation-like coordinate(s) on plane, in radians
         """
         if coord_system == "radec":
-            # The target (ra, dec) coordinates will serve as reference point on the sphere
+            # The target (ra, dec) coordinates will serve as reference point on sphere
             ref_radec = self.radec(timestamp, antenna)
             return sphere_to_plane[projection_type](
                 ref_radec.ra.rad, ref_radec.dec.rad, az, el
             )
         else:
-            # The target (az, el) coordinates will serve as reference point on the sphere
+            # The target (az, el) coordinates will serve as reference point on sphere
             ref_azel = self.azel(timestamp, antenna)
             return sphere_to_plane[projection_type](
                 ref_azel.az.rad, ref_azel.alt.rad, az, el
@@ -1133,9 +1156,10 @@ class Target:
             Azimuth-like coordinate(s) on plane, in radians
         y : float or array
             Elevation-like coordinate(s) on plane, in radians
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or :class:`Antenna`, optional
+        antenna : :class:`~astropy.coordinates.EarthLocation` or
+            :class:`Antenna`, optional
             Antenna pointing at target (defaults to default antenna)
         projection_type : {'ARC', 'SIN', 'TAN', 'STG', 'CAR', 'SSN'}, optional
             Type of spherical projection
@@ -1150,13 +1174,13 @@ class Target:
             Elevation or declination, in radians
         """
         if coord_system == "radec":
-            # The target (ra, dec) coordinates will serve as reference point on the sphere
+            # The target (ra, dec) coordinates will serve as reference point on sphere
             ref_radec = self.radec(timestamp, antenna)
             return plane_to_sphere[projection_type](
                 ref_radec.ra.rad, ref_radec.dec.rad, x, y
             )
         else:
-            # The target (az, el) coordinates will serve as reference point on the sphere
+            # The target (az, el) coordinates will serve as reference point on sphere
             ref_azel = self.azel(timestamp, antenna)
             return plane_to_sphere[projection_type](
                 ref_azel.az.rad, ref_azel.alt.rad, x, y

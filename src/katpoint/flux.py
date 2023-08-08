@@ -93,8 +93,8 @@ class FluxDensityModel:
         # Extract up to the maximum number of coefficients from given sequence
         if len(coefs) > len(self.coefs):
             warnings.warn(
-                f"Received {len(coefs)} coefficients but only expected {len(self.coefs)} - "
-                "ignoring the rest",
+                f"Received {len(coefs)} coefficients but only expected "
+                f"{len(self.coefs)} - ignoring the rest",
                 FutureWarning,
             )
         self.coefs[: min(len(self.coefs), len(coefs))] = coefs[
@@ -113,7 +113,10 @@ class FluxDensityModel:
         param_str = ",".join(
             np.array(list("abcdefIQUV"))[self.coefs != self._DEFAULT_COEFS]
         )
-        return f"<katpoint.FluxDensityModel {freq_range} params={param_str} at {id(self):#x}>"
+        return (
+            f"<katpoint.FluxDensityModel {freq_range} params={param_str} "
+            f"at {id(self):#x}>"
+        )
 
     def __eq__(self, other):
         """Equality comparison operator (based on description string)."""
@@ -156,7 +159,8 @@ class FluxDensityModel:
         FluxError
             If `description` has the wrong format
         """
-        # Split description string on spaces and turn into numbers (discarding any parentheses)
+        # Split description string on spaces and turn into numbers
+        # (discarding any parentheses).
         prefix = f"Flux density description string '{description}'"
         try:
             flux_info = [float(num) for num in description.strip(" ()").split()]

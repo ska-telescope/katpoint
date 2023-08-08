@@ -77,7 +77,8 @@ class PointingModel(Model):
         params.append(
             angle_param(
                 "P3",
-                "left-right axis skew = non-perpendicularity of az/el axes [tpoint -NPAE]",
+                "left-right axis skew = non-perpendicularity of az/el axes "
+                "[tpoint -NPAE]",
             )
         )
         params.append(
@@ -95,13 +96,15 @@ class PointingModel(Model):
         params.append(
             angle_param(
                 "P7",
-                "el offset = encoder bias - forward axis skew - el box offset [tpoint IE]",
+                "el offset = encoder bias - forward axis skew - el box offset "
+                "[tpoint IE]",
             )
         )
         params.append(
             angle_param(
                 "P8",
-                "gravity sag / Hooke law flexure / el centering error [tpoint ECEC/-TF]",
+                "gravity sag / Hooke law flexure / el centering error "
+                "[tpoint ECEC/-TF]",
             )
         )
         params.append(scale_param("P9", "el excess scale factor [tpoint PEE1]"))
@@ -220,12 +223,14 @@ class PointingModel(Model):
             np.sin(8 * el),
             np.cos(8 * el),
         )
-        # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
+        # Avoid singularity at zenith by keeping cos(el) away from zero
+        # (this only affects az offset)
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
         sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6.0 / 60.0), 1.0)
         tan_el = sin_el * sec_el
 
-        # Obtain pointing correction using full VLBI model for alt-az mount (no P2 or P10 allowed!)
+        # Obtain pointing correction using full VLBI model for alt-az mount
+        # (no P2 or P10 allowed!)
         delta_az = (
             P1
             + P3 * tan_el
@@ -293,9 +298,9 @@ class PointingModel(Model):
         d_corraz_d_az, d_corraz_d_el, d_correl_d_az, d_correl_d_el : float or array
             Elements of Jacobian matrix (or matrices)
         """
-        # Unpack parameters to make the code correspond to the maths
-        # P1 and P7 are not used because they are constant terms with zero partial derivatives
-        # P2 and P10 are not used because they are identically zero for alt-az mounts
+        # Unpack parameters to make the code correspond to the maths. P1 and P7 are
+        # not used because they are constant terms with zero partial derivatives.
+        # P2 and P10 are not used because they are identically zero for alt-az mounts.
         (
             _,
             _,
@@ -333,7 +338,8 @@ class PointingModel(Model):
             np.sin(8 * el),
             np.cos(8 * el),
         )
-        # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
+        # Avoid singularity at zenith by keeping cos(el) away from zero
+        # (this only affects az offset)
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
         sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6.0 / 60.0), 1.0)
         tan_el = sin_el * sec_el
@@ -390,23 +396,30 @@ class PointingModel(Model):
         el : float or array
             Elevation angle(s) before pointing correction, in radians
         """
-        # Maximum difference between input az/el and pointing-corrected version of final output az/el
+        # Maximum difference between input az/el and
+        # pointing-corrected version of final output az/el
         tolerance = np.radians(0.01 / 3600)
         # Initial guess of uncorrected az/el is the corrected az/el minus fixed offsets
         az, el = pointed_az - self["P1"], pointed_el - self["P7"]
-        # Solve F(az, el) = apply(az, el) - (pointed_az, pointed_el) = 0 via Newton's method, should converge quickly
+        # Solve F(az, el) = apply(az, el) - (pointed_az, pointed_el) = 0
+        # via Newton's method, should converge quickly
         for iteration in range(30):
-            # Set up linear system J dx = -F (or A x = b), where J is Jacobian matrix of apply()
+            # Set up linear system J dx = -F (or A x = b),
+            # where J is Jacobian matrix of apply()
             a11, a12, a21, a22 = self._jacobian(az, el)
             test_az, test_el = self.apply(az, el)
             b1, b2 = pointed_az - test_az, pointed_el - test_el
             sky_error = np.sqrt((np.cos(el) * b1) ** 2 + b2**2)
             if np.all(sky_error < tolerance):
                 break
-            # Newton step: Solve linear system via crappy Cramer rule... 3 reasons why this is OK:
-            # (1) J is nearly an identity matrix, as long as model parameters are all small
-            # (2) It allows parallel solution of many 2x2 systems, one per (az, el) input
-            # (3) It's part of an iterative process, so it does not have to be perfect, just helpful
+            # Newton step: Solve linear system via crappy Cramer rule...
+            # 3 reasons why this is OK:
+            # (1) J is nearly an identity matrix,
+            #     as long as model parameters are all small
+            # (2) It allows parallel solution of many 2x2 systems,
+            #     one per (az, el) input
+            # (3) It's part of an iterative process, so it does not have
+            #     to be perfect, just helpful
             det_J = a11 * a22 - a21 * a12
             az = az + (a22 * b1 - a12 * b2) / det_J
             el = el + (a11 * b2 - a21 * b1) / det_J
@@ -540,12 +553,14 @@ class PointingModel(Model):
         # Remove troublesome parameters if enabled
         if 2 in enabled_params:
             logger.warning(
-                "Pointing model parameter P2 is meaningless for alt-az mount - disabled P2"
+                "Pointing model parameter P2 is meaningless "
+                "for alt-az mount - disabled P2"
             )
             enabled_params.remove(2)
         if 10 in enabled_params:
             logger.warning(
-                "Pointing model parameter P10 is redundant for alt-az mount (same as P8) - disabled P10"
+                "Pointing model parameter P10 is redundant "
+                "for alt-az mount (same as P8) - disabled P10"
             )
             enabled_params.remove(10)
         enabled_params = np.array(list(enabled_params))
@@ -576,12 +591,14 @@ class PointingModel(Model):
         )
         # Solve linear least-squares problem using SVD (see NRinC, 2nd ed, Eq. 15.4.17)
         U, s, Vt = np.linalg.svd(A, full_matrices=False)
-        # We solved on the residual (az, el) offsets, so add the solution to existing parameters
+        # We solved on the residual (az, el) offsets,
+        # so add the solution to existing parameters
         param_vector[enabled_params - 1] += Vt.T.dot(U.T.dot(b) / s)
         self.fromlist(param_vector)
         # Also obtain standard errors of parameters (see NRinC, 2nd ed, Eq. 15.4.19)
         sigma_params[enabled_params - 1] = np.sqrt(
             np.sum((Vt.T / s[np.newaxis, :]) ** 2, axis=1)
         )
-        #        logger.info('Fit pointing model using %dx%d design matrix with condition number %.2f', N, M, s[0] / s[-1])
+        # logger.info('Fit pointing model using %dx%d design matrix '
+        #             'with condition number %.2f', N, M, s[0] / s[-1])
         return param_vector, sigma_params

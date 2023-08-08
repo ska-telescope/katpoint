@@ -26,9 +26,15 @@ import katpoint
 
 TARGETS = [
     "xephem radec, Acamar~f|S|A4~02 58 15.7156|-53.53~-40 18 17.046|25.71~2.88~2000~0",
-    "xephem radec, Alpheratz~f|S|B9~00 08 23.1680|135.68~+29 05 26.981|-162.95~2.07~2000~0",
+    (
+        "xephem radec, "
+        "Alpheratz~f|S|B9~00 08 23.1680|135.68~+29 05 26.981|-162.95~2.07~2000~0"
+    ),
     "xephem radec, Fomalhaut~f|S|A3~22:57:38.8|329.22~-29:37:19|-164.22~1.17~2000~0",
-    "xephem radec, Miaplacidus~f|S|A2~09 13 12.2408|-157.66~-69 43 02.901|108.91~1.67~2000~0",
+    (
+        "xephem radec, "
+        "Miaplacidus~f|S|A2~09 13 12.2408|-157.66~-69 43 02.901|108.91~1.67~2000~0"
+    ),
     "xephem radec, Polaris~f|S|F7~2:31:47.1|44.22~89:15:51|-11.74~1.97~2000~0",
     "Sun, special",
     "Moon, special",

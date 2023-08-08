@@ -51,7 +51,8 @@ def to_angle(s, sexagesimal_unit=u.deg):
     try:
         return Angle(s)
     except u.UnitsError:
-        # Bytes is a sequence of ints that will inadvertently end up as radians, so crash instead
+        # Bytes is a sequence of ints that will inadvertently
+        # end up as radians, so crash instead.
         if isinstance(s, bytes):
             raise TypeError(
                 f"Raw bytes {s} not supported: " "first decode to string (or add unit)"
@@ -91,11 +92,12 @@ def angle_to_string(angle, show_unit=True, **kwargs):
     need for :func:`to_angle`. This suffix can be suppressed when generating
     strings for display purposes.
 
-    Extra keyword arguments are passed on to :meth:`~astropy.coordinates.Angle.to_string`
-    to control the appearance of the string to some extent, but there are
-    restrictions. The only supported units are degree, hour and hourangle.
-    The sexagesimal separator is fixed to ':' but ignored when a decimal
-    representation is selected instead (unlike in Astropy >= 5.0).
+    Extra keyword arguments are passed on to
+    :meth:`~astropy.coordinates.Angle.to_string` to control the appearance
+    of the string to some extent, but there are restrictions. The only supported
+    units are degree, hour and hourangle. The sexagesimal separator is fixed
+    to ':' but ignored when a decimal representation is selected instead
+    (unlike in Astropy >= 5.0).
 
     Parameters
     ----------

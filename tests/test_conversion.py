@@ -142,11 +142,12 @@ def test_angle_to_string_round_trip(random, kwargs, N=1000):
     angle1 = Angle(360 * random.rand(N) * u.deg)
     string1 = katpoint.conversion.angle_to_string(angle1, **kwargs)
     angle2 = katpoint.conversion.to_angle(string1)
-    # The smallest angle we care about is a micron held at a distance of the Earth's diameter
+    # The smallest angle we care about is a micron held at distance of Earth's diameter
     atol = (1 * u.micron) / (2 * const.R_earth) * u.rad
     assert np.allclose(angle2, angle1, rtol=0, atol=atol)
     string2 = katpoint.conversion.angle_to_string(angle2, **kwargs)
-    # The strings round-trip exactly, which is good because most Angles start life as strings
+    # The strings round-trip exactly, which is good
+    # because most Angles start life as strings.
     np.testing.assert_array_equal(string2, string1)
 
 
