@@ -155,7 +155,7 @@ def _vlbi_delays(target, locations, time):
     t1 = time[ref]
     x1 = x[ref]
     x2 = x[ants]
-    w1 = w[ref]
+    # w1 = w[ref]
     w2 = w[ants]
     # GCRS baseline vector at the time of arrival t1
     b = x2 - x1
@@ -164,7 +164,7 @@ def _vlbi_delays(target, locations, time):
     # Barycentric radius vector of the i'th receiver [step 1]
     X1 = XE + x1  # (11.6)
     X2 = XE + x2  # (11.6)
-    V1 = VE + w1
+    # V1 = VE + w1
     V2 = VE + w2
     # Unit vector from the *reference location* to the source
     # in the absence of gravitational or aberrational bending.
