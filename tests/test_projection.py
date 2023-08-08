@@ -265,7 +265,8 @@ def test_aips_compatibility(random, projection, aips_code, decimal, N=100):
         assert ierr == 0
         x_aips[n], y_aips[n], ierr = dircos(aips_code, az0[n], el0[n], az[n], el[n])
         assert ierr == 0
-    # AIPS NEWPOS STG has poor accuracy on azimuth angle (large closure errors by itself)
+    # AIPS NEWPOS STG has poor accuracy on azimuth angle
+    # (large closure errors by itself)
     if projection != "STG":
         assert_angles_almost_equal(az, az_aips, decimal=decimal)
     assert_angles_almost_equal(el, el_aips, decimal=decimal)
@@ -403,7 +404,7 @@ def sphere_to_plane_to_sphere(projection, reference, sphere, plane):
     ],
 )
 def test_sphere_to_plane_to_sphere_origin(projection, offset_s, offset_p):
-    """Test five-point cross along axes, centred on origin (sphere -> plane -> sphere)."""
+    """Test five-point cross along axes, centred on origin (sphere->plane->sphere)."""
     sphere_to_plane_to_sphere(projection, (0.0, 0.0), (0.0, 0.0), [0.0, 0.0])
     sphere_to_plane_to_sphere(
         projection, (0.0, 0.0), (+offset_s, 0.0), [+offset_p, 0.0]

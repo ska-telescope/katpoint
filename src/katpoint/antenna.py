@@ -14,7 +14,7 @@
 # limitations under the License.
 ################################################################################
 
-"""Antenna object containing sufficient information to point at a target and correct delays.
+"""Antenna object containing sufficient information to point at target, correct delays.
 
 An *antenna* is considered to be a steerable parabolic dish containing multiple
 feeds. The :class:`Antenna` object wraps the antenna's location, dish diameter
@@ -92,7 +92,7 @@ class Antenna:
        'FF1, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 18.4 -8.7 0.0'
 
      - Fully-specified antenna
-       'FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, -0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16'
+       'FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, -0:06:39.6 0, 1.16'
 
     Parameters
     ----------
@@ -176,7 +176,7 @@ class Antenna:
             self.location = EarthLocation.from_geocentric(*xyz, unit=u.m)
 
     def __str__(self):
-        """Complete string representation of antenna object, sufficient to reconstruct it."""
+        """Complete string representation of antenna object."""
         return self.description
 
     def __repr__(self):
@@ -205,13 +205,19 @@ class Antenna:
 
     @property
     def ref_position_wgs84(self):
-        """WGS84 reference position (latitude and longitude in radians, and altitude in metres)"""
+        """WGS84 reference position.
+
+        The latitude and longitude are in radians, and the altitude in metres.
+        """
         lon, lat, height = self.ref_location.to_geodetic(ellipsoid="WGS84")
         return (lat.rad, lon.rad, height.to_value(u.m))
 
     @property
     def position_wgs84(self):
-        """WGS84 position (latitude and longitude in radians, and altitude in metres)."""
+        """WGS84 position.
+
+        The latitude and longitude are in radians, and the altitude in metres.
+        """
         lon, lat, height = self.location.to_geodetic(ellipsoid="WGS84")
         return (lat.rad, lon.rad, height.to_value(u.m))
 
@@ -228,7 +234,7 @@ class Antenna:
 
     @property
     def description(self):
-        """Complete string representation of antenna object, sufficient to reconstruct it."""
+        """Complete string representation of antenna object."""
         # These fields are used to build up the antenna description string
         fields = [self.name]
         # Store `EarthLocation` as WGS84 coordinates
@@ -237,7 +243,7 @@ class Antenna:
             angle_to_string(lat),
             angle_to_string(lon),
         ]  # these are already in degrees
-        # State height to nearest micrometre (way overkill) to get rid of numerical fluff,
+        # State height to nearest micron (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
         fields += [strip_zeros("{:.6f}".format(height.to_value(u.m)))]
         fields += [strip_zeros("{:.6f}".format(self.diameter.to_value(u.m)))]
@@ -286,7 +292,8 @@ class Antenna:
             East, North, Up coordinates of baseline vector as Cartesian (x, y, z)
         """
         antenna2 = Antenna(antenna2)
-        # If this antenna is at reference position of second antenna, simply return its ENU offset
+        # If this antenna is at reference position of second antenna,
+        # simply return its ENU offset
         if np.array_equal(self.position_wgs84, antenna2.ref_position_wgs84):
             enu = antenna2.position_enu
         else:
@@ -303,7 +310,7 @@ class Antenna:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp(s), defaults to now
 
         Returns

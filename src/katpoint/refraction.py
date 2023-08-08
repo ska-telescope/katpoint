@@ -88,7 +88,8 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     f = 2.64
     g = 0.57295787e-4
 
-    # Compute SN (surface refractivity) (via dewpoint and water vapor partial pressure? [LS])
+    # Compute SN (surface refractivity)
+    # (via dewpoint and water vapor partial pressure? [LS])
     rhumi = (100.0 - humidity_percent) * 0.9
     dewpt = temperature_C - rhumi * (
         0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
@@ -98,13 +99,15 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     # This looks like Smith & Weintraub (1953) or Crane (1976) [LS]
     sn = 77.6 * (pressure_hPa + (4810.0 * cvt * pp) / temperature_K) / temperature_K
 
-    # Compute refraction at elevation (clipped at 1 degree to avoid cot(el) blow-up at horizon)
+    # Compute refraction at elevation
+    # (clipped at 1 degree to avoid cot(el) blow-up at horizon)
     el_deg = np.clip(np.degrees(el), 1.0, 90.0)
     aphi = a / ((el_deg + b) ** c)
     dele = -d / ((el_deg + e) ** f)
     zenith_angle = np.radians(90.0 - el_deg)
     bphi = g * (np.tan(zenith_angle) + dele)
-    # Threw out an (el < 0.01) check here, which will never succeed because el is clipped to be above 1.0 [LS]
+    # Threw out an (el < 0.01) check here,
+    # which will never succeed because el is clipped to be above 1.0 [LS]
 
     return np.radians(bphi * sn - aphi)
 
@@ -141,7 +144,7 @@ class RefractionCorrection:
         self.model = model
 
     def __repr__(self):
-        """Short human-friendly string representation of refraction correction object."""
+        """Short human-friendly string representation of object."""
         return f"<katpoint.RefractionCorrection model='{self.model}' at {id(self):#x}>"
 
     def __eq__(self, other):
@@ -198,17 +201,21 @@ class RefractionCorrection:
         el : float or array
             Elevation angle(s) before refraction correction, in radians
         """
-        # Maximum difference between input elevation and refraction-corrected version of final output elevation
+        # Maximum difference between input elevation and
+        # refraction-corrected version of final output elevation
         tolerance = np.radians(0.01 / 3600)
-        # Assume offset from corrected el is similar to offset from uncorrected el -> get lower bound on desired el
+        # Assume offset from corrected el is similar to offset from uncorrected el
+        # -> get lower bound on desired el
         close_offset = self.offset(
             refracted_el, temperature_C, pressure_hPa, humidity_percent
         )
         lower = refracted_el - 4 * np.abs(close_offset)
-        # We know that corrected el > uncorrected el (mostly) -> this becomes upper bound on desired el
+        # We know that corrected el > uncorrected el (mostly)
+        # -> this becomes upper bound on desired el
         upper = refracted_el + np.radians(1.0 / 3600.0)
-        # Do binary search for desired el within this range (but cap iterations in case of a mishap)
-        # This assumes that refraction-corrected elevation is monotone function of uncorrected elevation
+        # Do binary search for desired el within this range (but cap iterations
+        # in case of a mishap). This assumes that refraction-corrected elevation
+        # is monotone function of uncorrected elevation.
         for iteration in range(40):
             el = 0.5 * (lower + upper)
             test_el = self.apply(el, temperature_C, pressure_hPa, humidity_percent)
@@ -309,10 +316,11 @@ class SaastamoinenZenithDelay:
         """
         temp_C = temperature.to_value(u.deg_C, equivalencies=u.temperature())
         temp_K = temperature.to_value(u.K, equivalencies=u.temperature())
-        # Get the partial pressure of water vapour for saturated air at given temperature.
-        # This resembles the version of the August-Roche-Magnus formula in Murray (1967).
-        # The Tetens (1930) version, which serves as the reference, is
-        # saturation_pressure_hPa = 10 ** (7.5 * temperature_C / (temperature_C + 237.3) + 0.7858)
+        # Get the partial pressure of water vapour for saturated air at given
+        # temperature. This resembles the version of the August-Roche-Magnus
+        # formula in Murray (1967). The Tetens (1930) version, which serves as
+        # the reference, is saturation_pressure_hPa =
+        # 10 ** (7.5 * temperature_C / (temperature_C + 237.3) + 0.7858).
         saturation_pressure = 6.11 * np.exp(17.269 * temp_C / (temp_C + 237.3)) * u.hPa
         partial_pressure = relative_humidity * saturation_pressure
         excess_path_per_pressure = _EXCESS_PATH_PER_PRESSURE * (1255.0 / temp_K + 0.05)
@@ -897,11 +905,13 @@ class GlobalMappingFunction:
         # Given y_mn = scipy.special.sph_harm(m, n, theta, phi):
         #  - m and n have the same meaning (order and degree)
         #  - theta -> longitude, phi -> colatitude (90 degrees - latitude)
-        #  - aP / bP -> real / imag part of y_mn, without sqrt scale factor and for all m and n
+        #  - aP / bP -> real / imag part of y_mn,
+        #    without sqrt scale factor and for all m and n
         aP = P * np.cos(m_longitude)
         bP = P * np.sin(m_longitude)
         tril = np.tril_indices_from(P)
-        # Unravel matrices into basis vector of length 110, include coef scale factor of 1e-5
+        # Unravel matrices into basis vector of length 110,
+        # include coef scale factor of 1e-5.
         self._spherical_harmonic_basis = 1e-5 * np.r_[aP[tril], bP[tril]]
 
     @u.quantity_input
@@ -910,7 +920,8 @@ class GlobalMappingFunction:
 
         Parameters
         ----------
-        elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
+        elevation : :class:`~astropy.units.Quantity` or
+            :class:`~astropy.coordinates.Angle`
             Elevation angle
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
@@ -952,7 +963,8 @@ class GlobalMappingFunction:
 
         Parameters
         ----------
-        elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
+        elevation : :class:`~astropy.units.Quantity` or
+            :class:`~astropy.coordinates.Angle`
             Elevation angle
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)
@@ -1061,7 +1073,8 @@ class TroposphericDelay:
             Ambient air temperature at surface
         relative_humidity : :class:`~astropy.units.Quantity` or float or array
             Relative humidity at surface, as a fraction in range [0, 1]
-        elevation : :class:`~astropy.units.Quantity` or :class:`~astropy.coordinates.Angle`
+        elevation : :class:`~astropy.units.Quantity` or
+            :class:`~astropy.coordinates.Angle`
             Elevation angle
         timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent
             Observation time (to incorporate seasonal weather patterns)

@@ -525,9 +525,11 @@ class Catalogue:
         >>> from katpoint import Catalogue
         >>> cat = Catalogue()
         >>> cat.add_tle(open('gps-ops.txt'), tags='gps')
-        >>> lines = ['ISS DEB [TOOL BAG]\n',
-                     '1 33442U 98067BL  09195.86837279  .00241454  37518-4  34022-3 0  3424\n',
-                     '2 33442  51.6315 144.2681 0003376 120.1747 240.0135 16.05240536 37575\n']
+        >>> lines = [
+            'ISS DEB [TOOL BAG]\n',
+            '1 33442U 98067BL  09195.86837279  .00241454  37518-4  34022-3 0  3424\n',
+            '2 33442  51.6315 144.2681 0003376 120.1747 240.0135 16.05240536 37575\n'
+            ]
         >>> cat2.add_tle(lines)
         """
         targets, tle = [], []
@@ -562,17 +564,19 @@ class Catalogue:
                 num_outdated += 1
                 if epoch_age > max_epoch_age:
                     worst = (
-                        f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
-                        f"days in the {direction}, should be <= 7 for near-Earth model"
+                        f"Worst case: TLE epoch for '{target.name}' is "
+                        f"{epoch_age.jd:.0f} days in the {direction}, "
+                        "should be <= 7 for near-Earth model"
                     )
                     max_epoch_age = epoch_age
-            # Deep-space models are more accurate (three weeks for a conservative estimate)
+            # Deep-space models = more accurate (three weeks for conservative estimate)
             if orbital_period >= 225 * u.minute and epoch_age > 21 * u.day:
                 num_outdated += 1
                 if epoch_age > max_epoch_age:
                     worst = (
-                        f"Worst case: TLE epoch for '{target.name}' is {epoch_age.jd:.0f} "
-                        f"days in the {direction}, should be <= 21 for deep-space model"
+                        f"Worst case: TLE epoch for '{target.name}' is "
+                        f"{epoch_age.jd:.0f} days in the {direction}, "
+                        "should be <= 21 for deep-space model"
                     )
                     max_epoch_age = epoch_age
         if num_outdated > 0:
@@ -657,7 +661,7 @@ class Catalogue:
         ----------
         target : :class:`Target`
             Target with which catalogue targets are compared
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna`, optional
             Antenna which points at targets (defaults to default antenna)
@@ -711,7 +715,7 @@ class Catalogue:
             [lower, upper]. If None, any distance is accepted.
         proximity_targets : :class:`Target`, or sequence of :class:`Target`
             Target or list of targets used in proximity filter
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp at which to evaluate target positions (defaults to now).
             For :meth:`iterfilter` the default is the current time *at each iteration*.
         antenna : :class:`Antenna` object, optional
@@ -848,7 +852,8 @@ class Catalogue:
         # Keep checking targets while there are some in the list
         while targets:
             latest_timestamp = timestamp
-            # Obtain current time if no timestamp is supplied - this will differ for each iteration
+            # Obtain current time if no timestamp is supplied.
+            # This will differ for each iteration.
             if (
                 azimuth_filter or elevation_filter or proximity_filter
             ) and latest_timestamp is None:
@@ -878,13 +883,15 @@ class Catalogue:
                     )
                     if not dist.is_within_bounds(dist_lower, dist_upper):
                         continue
-                # Break if target is found - popping the target inside the for-loop is a bad idea!
+                # Break if target is found...
+                # Popping the target inside the for-loop is a bad idea!
                 found_one = n
                 break
             else:
                 # No targets in list satisfied dynamic criteria - iterator stops
                 return
-            # Return successful target and remove from list to ensure it is not picked again
+            # Return successful target and remove from list
+            # to ensure it is not picked again.
             yield targets.pop(found_one)
 
     @u.quantity_input(equivalencies=u.spectral())
@@ -976,7 +983,7 @@ class Catalogue:
             True if key should be sorted in ascending order
         flux_frequency : :class:`~astropy.units.Quantity`, optional
             Frequency at which to evaluate the flux density
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna` object, optional
             Antenna which points at targets (defaults to default antenna)
@@ -1036,7 +1043,7 @@ class Catalogue:
 
         Parameters
         ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equivalent, optional
+        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
             Timestamp at which to evaluate target positions (defaults to now)
         antenna : :class:`Antenna`, optional
             Antenna which points at targets (defaults to default antenna)
@@ -1059,7 +1066,10 @@ class Catalogue:
         if flux_frequency is not None:
             title += f", with flux density (Jy) evaluated at {flux_frequency:g}"
         if antenna2 is not None:
-            title += f" and fringe period (s) toward antenna '{antenna2.name}' at same frequency"
+            title += (
+                f" and fringe period (s) toward antenna "
+                f"'{antenna2.name}' at same frequency"
+            )
         print(title)
         print()
         print(
@@ -1082,7 +1092,8 @@ class Catalogue:
                 if (np.abs(delta_el) < 1 * u.arcmin)
                 else ("/" if delta_el > 0 else "\\")
             )
-            # If no flux frequency is given, do not attempt to evaluate the flux, as it will fail
+            # If no flux frequency is given, do not attempt to evaluate the flux,
+            # as it will fail.
             if flux_frequency is None:
                 flux = np.nan
             else:
@@ -1097,9 +1108,7 @@ class Catalogue:
                 fringe_period = None
             if above_horizon and azel.alt < 0.0:
                 # Draw horizon line
-                print(
-                    "--------------------------------------------------------------------------"
-                )
+                print(74 * "-")
                 above_horizon = False
             az = azel.az.wrap_at(180 * u.deg).to_string(sep=":", precision=1)
             el = azel.alt.to_string(sep=":", precision=1)

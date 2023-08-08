@@ -364,8 +364,9 @@ def sphere_to_ortho(az0, el0, az, el, min_cos_theta=None):
             "reference point".format(np.arccos(min_cos_theta) / np.pi)
         )
         cos_theta = treat_out_of_range_values(cos_theta, check, lower=min_cos_theta)
-        # Adjust radius of (x, y) to be commensurate with potentially clipped cos(theta),
-        # and also propagate any NaNs in cos(theta) to (x, y) to complete out-of-range treatment
+        # Adjust radius of (x, y) to be commensurate with potentially
+        # clipped cos(theta), and also propagate any NaNs in cos(theta)
+        # to (x, y) to complete out-of-range treatment.
         sin_theta = np.sqrt(1.0 - cos_theta * cos_theta)
         ortho_x, ortho_y = safe_scale(ortho_x, ortho_y, new_radius=sin_theta)
     return ortho_x, ortho_y, cos_theta
@@ -482,7 +483,8 @@ def plane_to_sphere_sin(az0, el0, x, y):
     cos_theta = np.sqrt(1.0 - sin2_theta)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
     sin_el = sin_el0 * cos_theta + cos_el0 * y
-    # Safeguard the arcsin - in AIPS, clipping triggered "answer undefined", but that seems too harsh
+    # Safeguard the arcsin - in AIPS, clipping triggered "answer undefined",
+    # but that seems too harsh.
     el = np.arcsin(np.clip(sin_el, -1.0, 1.0))
     cos_el_cos_daz = cos_el0 * cos_theta - sin_el0 * y
     az = az0 + np.arctan2(x, cos_el_cos_daz)
@@ -666,7 +668,8 @@ def plane_to_sphere_arc(az0, el0, x, y):
     x, y = safe_scale(x, y, new_radius=sin_theta)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
     sin_el = cos_el0 * y + sin_el0 * cos_theta
-    # Safeguard the arcsin - in AIPS, clipping triggered "answer undefined", but that seems too harsh
+    # Safeguard the arcsin - in AIPS, clipping triggered "answer undefined",
+    # but that seems too harsh.
     el = np.arcsin(np.clip(sin_el, -1.0, 1.0))
     # This term is cos(el) * cos(el0) * sin(delta_az)
     num = cos_el0 * x
@@ -765,7 +768,8 @@ def plane_to_sphere_stg(az0, el0, x, y):
     cos_theta = (4.0 - r2) / (4.0 + r2)
     scale = (1.0 + cos_theta) / 2.0
     sin_el = cos_el0 * scale * y + sin_el0 * cos_theta
-    # Safeguard the arcsin - in AIPS, clipping triggered "answer undefined", but that seems too harsh
+    # Safeguard the arcsin - in AIPS, clipping triggered "answer undefined",
+    # but that seems too harsh.
     el = np.arcsin(np.clip(sin_el, -1.0, 1.0))
     # The M-check in AIPS NEWPOS can be avoided by using arctan2 instead of arcsin.
     # This follows the same approach as in the AIPS code for ARC, and improves

@@ -71,7 +71,7 @@ _no_config_handler.addFilter(_NoConfigFilter())
 logger = _logging.getLogger(__name__)
 logger.addHandler(_no_config_handler)
 
-# Document the public API in __all__ / __dir__ by discarding modules and private variables
+# Document public API in __all__ / __dir__ by discarding modules and private variables
 __all__ = [
     n
     for n, o in globals().items()

@@ -40,7 +40,7 @@ TLE_TARGET = (
 
 
 def test_construct_target():
-    """Test various ways to construct targets, also with parameters that are overridden."""
+    """Test various ways to construct targets, also with overridden parameters."""
     t0 = katpoint.Target(
         "J1939-6342 | PKS 1934-63, radec bfcal, "
         "19:39:25.0, -63:42:45.6, (408.0 8640.0 -30.76 26.49 -7.098 0.6053)"
@@ -182,11 +182,19 @@ def test_compare_update_target():
         "Venus | Flytrap | De Milo, gal, 10, 20",
         "Venus | Flytrap | De Milo, special",
         "Venus | Flytrap | De Milo" + TLE_TARGET[TLE_TARGET.find(",") :],
-        "xephem radec, Venus|Flytrap|De Milo~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0",
-        "Venus, xephem radec, Flytrap|De Milo~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0",
         (
-            "xephem tle, Venus|Flytrap|De Milo~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
-            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0"
+            "xephem radec, "
+            "Venus|Flytrap|De Milo~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0"
+        ),
+        (
+            "Venus, xephem radec, "
+            "Flytrap|De Milo~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0"
+        ),
+        (
+            "xephem tle, Venus|Flytrap|De Milo"
+            "~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
+            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764"
+            "~1.00273159~1.53e-06~1697~0"
         ),
     ],
 )
@@ -240,7 +248,10 @@ FLUX_MODEL = katpoint.FluxDensityModel.from_description("(1000.0 2000.0 1.0 10.0
         f"gal, 10, 20, {FLUX_MODEL.description}",
         f"Sun, special, {FLUX_MODEL.description}",
         f"{TLE_TARGET}, {FLUX_MODEL.description}",
-        f"xephem, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0, {FLUX_MODEL.description}",
+        (
+            "xephem, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0, "
+            f"{FLUX_MODEL.description}"
+        ),
     ],
 )
 def test_flux_model_on_all_targets(description):
@@ -273,11 +284,19 @@ def test_flux_model_on_all_targets(description):
         "Nothing, special",
         "Moon | Luna, special solarbody",
         "xephem radec, Sadr~f|S|F8~20:22:13.7|2.43~40:15:24|-0.93~2.23~2000~0",
-        "Acamar | Theta Eridani, xephem, HIC 13847~f|S|A4~2:58:16.03~-40:18:17.1~2.906~2000~0",
-        "Kakkab, xephem, H71860 | S225128~f|S|B1~14:41:55.768~-47:23:17.51~2.304~2000~0",
         (
-            "xephem tle GEO, INTELSAT NEW DAWN~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
-            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0"
+            "Acamar | Theta Eridani, xephem, "
+            "HIC 13847~f|S|A4~2:58:16.03~-40:18:17.1~2.906~2000~0"
+        ),
+        (
+            "Kakkab, xephem, "
+            "H71860 | S225128~f|S|B1~14:41:55.768~-47:23:17.51~2.304~2000~0"
+        ),
+        (
+            "xephem tle GEO, INTELSAT NEW DAWN"
+            "~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
+            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764"
+            "~1.00273159~1.53e-06~1697~0"
         ),
         (
             "INTELSAT NEW DAWN, tle GEO, "
@@ -312,7 +331,8 @@ def test_construct_valid_target(description):
         "radec J2000, 0.3",
         "gal, 0.0",
         "Zizou, radec cal, 1.4, 30.0, (1000.0, 2000.0, 1.0, 10.0)",
-        # The old TLE format containing three newline-separated lines straight from TLE file
+        # The old TLE format containing three newline-separated lines
+        # straight from TLE file.
         (
             "tle, GPS BIIA-21 (PRN 09)    \n"
             "1 22700U 93042A   07266.32333151  .00000012  00000-0  10000-3 0  8054\n"
@@ -352,13 +372,17 @@ def test_construct_invalid_target(description):
         "gal, 300d, 0d",
         # The name lives in the EDB string instead
         (
-            "xephem tle, INTELSAT NEW DAWN | FUNKY~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
-            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0"
+            "xephem tle, INTELSAT NEW DAWN | FUNKY"
+            "~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
+            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764"
+            "~1.00273159~1.53e-06~1697~0"
         ),
         # No-name TLE
         (
-            "xephem tle, ~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
-            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764~1.00273159~1.53e-06~1697~0"
+            "xephem tle, "
+            "~E~7/16.82966206/2016| 4/7.82812/2016|10/24.8281/2016"
+            "~0.054400001~244.0062~8.9699999e-05~182.4502~200.0764"
+            "~1.00273159~1.53e-06~1697~0"
         ),
     ],
 )
@@ -404,7 +428,7 @@ TS = katpoint.Timestamp("2013-08-14 09:25")
 
 
 def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=()):
-    """Check that `func` output for ndarray of inputs is array of corresponding scalar outputs."""
+    """Check that `func` output for ndarray of inputs is array of scalar outputs."""
     array_out = func(array_in)
     # XXX Workaround for Astropy 4.2 regression (np.shape used to work, now TypeError)
     try:
@@ -417,12 +441,14 @@ def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=(
     for index_in in np.ndindex(array_in.shape):
         scalar = func(array_in[index_in])
         if sky_coord:
-            # Treat output as if it is SkyCoord with internal array, check separation instead
+            # Treat output as if it is SkyCoord with internal array,
+            # check separation instead.
             assert array_out[index_in].separation(scalar).rad == pytest.approx(
                 0.0, abs=2e-12
             )
         else:
-            # Assume that function outputs more complicated ndarrays of numbers (or equivalent)
+            # Assume that function outputs more complicated ndarrays of numbers
+            # (or equivalent)
             array_slice = np.asarray(array_out)[all_pre + index_in + all_post]
             np.testing.assert_array_equal(array_slice, np.asarray(scalar))
 
@@ -432,7 +458,7 @@ def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=(
     ["azel, 10, -10", "radec, 20, -20", "gal, 30, -30", "Sun, special", TLE_TARGET],
 )
 def test_array_valued_methods(description):
-    """Test array-valued methods, comparing output against corresponding scalar versions."""
+    """Test array-valued methods, comparing output against scalar versions."""
     offsets = np.array([[[0, 1], [4, 5]]])
     times = (katpoint.Timestamp("2020-07-30 14:02:00") + offsets).time
     assert times.shape == offsets.shape
@@ -518,7 +544,8 @@ def test_uvw_antenna_array():
 
 def test_uvw_both_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
-    # UVW array has shape (3, n_times, n_bls) - stack times along dim 1 and ants along dim 2
+    # UVW array has shape (3, n_times, n_bls)
+    # stack times along dim 1 and ants along dim 2
     desired_uvw = np.dstack([np.zeros((3, len(DELAY_TS))), UVW.T])
     assert np.allclose(uvw.xyz, desired_uvw, rtol=0, atol=10 * u.nm)
 
@@ -588,7 +615,7 @@ def test_projection():
 
 
 def _ant_vs_location(func, atol=0.0):
-    """Check that `func(ant1, ant2)` output is the same for Antennas and EarthLocations."""
+    """Check that `func(ant1, ant2)` output is same for Antennas and EarthLocations."""
     ant_output = func(ANT1, ANT2)
     location_output = func(ANT1.location, ANT2.location)
     try:
@@ -642,7 +669,8 @@ astropy_version = Version(astropy_version)
 
 def test_great_conjunction():
     """Use the Great Conjunction to test astrometric (ra, dec) for different bodies."""
-    # Recreate Jason de Freitas's observation of the ISS passing between Jupiter and Saturn, based on
+    # Recreate Jason de Freitas's observation of the ISS
+    # passing between Jupiter and Saturn, based on
     # https://petapixel.com/2020/12/22/photographer-captures-iss-passing-between-jupiter-and-saturn/
     # The altitude is above sea level instead of WGS84, but should be close enough.
     pentax = katpoint.Antenna("Jellore Lookout NSW, -34.462653, 150.427971, 864")
@@ -656,7 +684,8 @@ def test_great_conjunction():
     s = saturn.radec(timestamp, pentax)
     i = ISS.radec(timestamp, pentax)
     m = moon.radec(timestamp, pentax)
-    # This is a regression test, using separations as measured by Astropy 4.3 (also valid for 4.1)
+    # This is a regression test, using separations as measured by Astropy 4.3
+    # (also valid for 4.1)
     # The accuracy is within the precision (9 digits => 0.5e-9 deg = 1.8 microarcsec)
     assert np.allclose(j.separation(s), 0.486585894 * u.deg, atol=0.0018 * u.mas)
     assert np.allclose(j.separation(i), 0.213263690 * u.deg, atol=0.0018 * u.mas)
@@ -667,7 +696,7 @@ def test_great_conjunction():
 
 
 def test_improved_azel():
-    """Check improved (az, el) for nearby objects due to topocentric CIRS in Astropy 4.3."""
+    """Improved (az,el) for nearby objects due to topocentric CIRS in Astropy 4.3."""
     # Check a more extreme case where the ISS is close to the observer (433 km)
     timestamp = katpoint.Timestamp("2020-12-15 17:25:59")
     pentax = katpoint.Antenna("Jellore Lookout NSW, -34.462653, 150.427971, 864")

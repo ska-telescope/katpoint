@@ -68,7 +68,7 @@ def test_construct_invalid_antenna(description):
 
 
 def test_construct_antenna():
-    """Test various ways to construct antennas, also with parameters that are overridden."""
+    """Test various ways to construct antennas, also with overridden parameters."""
     a0 = katpoint.Antenna(
         "XDM, -25:53:23.0, 27:41:03.0, 1406.1086, 15.0, 1 2 3, 1 2 3, 1.14"
     )
@@ -199,7 +199,10 @@ def test_array_reference_antenna():
     [
         "FF2, -30:43:17.3d, 21:24:38.5d, 1038, 12, 86.2 25.5, , 1.22",
         "FF2, -30:43:17.34567d, 21:24:38.56723d, 1038.1086, 12, 86.2 25.5, , 1.22",
-        "FF2, -30:43:17.12345678d, 21:24:38.12345678d, 1038.123456, 12, 86.2 25.5, , 1.22",
+        (
+            "FF2, -30:43:17.12345678d, 21:24:38.12345678d, 1038.123456, "
+            "12, 86.2 25.5, , 1.22"
+        ),
         "FF2, -30:43:17.3d, 21:24:38.5d, 1038, 12, 86.123456 25.123456, , 1.22",
     ],
 )
@@ -218,7 +221,7 @@ def test_description_round_trip(description):
         EarthLocation.from_geocentric(
             5109360.13332123, 2006852.58604291, -3238948.12747888, unit=u.m
         ),
-        # Check a geodetic location based on a different ellipsoid (2 m difference from WGS84)
+        # Check location based on different ellipsoid (2 m difference from WGS84)
         EarthLocation.from_geodetic(
             "-30:42:39.8", "21:26:38.0", "1086.6", ellipsoid="WGS72"
         ),

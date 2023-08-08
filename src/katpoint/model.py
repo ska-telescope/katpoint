@@ -91,7 +91,10 @@ class Parameter:
 
     def __repr__(self):
         """Short human-friendly string representation of parameter object."""
-        return f"<katpoint.Parameter {self.name} = {self.value_str} {self.units} at {id(self):#x}>"
+        return (
+            f"<katpoint.Parameter {self.name} = {self.value_str} {self.units} "
+            f"at {id(self):#x}>"
+        )
 
 
 class BadModelFile(Exception):
@@ -156,13 +159,19 @@ class Model:
         """Short human-friendly string representation of model object."""
         class_name = self.__class__.__name__
         num_active = len([p for p in self if p])
-        return f"<katpoint.{class_name} active_params={num_active}/{len(self)} at {id(self):#x}>"
+        return (
+            f"<katpoint.{class_name} active_params={num_active}/{len(self)} "
+            f"at {id(self):#x}>"
+        )
 
     def __str__(self):
         """Verbose human-friendly string representation of model object."""
         class_name = self.__class__.__name__
         num_active = len([p for p in self if p])
-        summary = f"{class_name} has {len(self)} parameters with {num_active} active (non-default)"
+        summary = (
+            f"{class_name} has {len(self)} parameters with "
+            f"{num_active} active (non-default)"
+        )
         if num_active == 0:
             return summary
         param_strs = "\n".join(
@@ -234,7 +243,7 @@ class Model:
 
         Parameters
         ----------
-        file-like : object
+        file_like : object
             File-like object with write() method representing config file
         """
         cfg = configparser.ConfigParser()
@@ -251,8 +260,13 @@ class Model:
 
         Parameters
         ----------
-        file-like : object
+        file_like : object
             File-like object with readline() method representing config file
+
+        Raises
+        ------
+        BadModelFile
+            If `file_like` could not be read or parsed
         """
         defaults = {p.name: p._to_str(p.default_value) for p in self}
         cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(";", "#"))
@@ -283,6 +297,11 @@ class Model:
             string, interpret it as a comma-separated (or whitespace-
             separated) sequence of parameters in their string form (i.e. a
             description string). The default is an empty model.
+
+        Raises
+        ------
+        BadModelFile
+            If `model` is of incorrect type
         """
         if isinstance(model, Model):
             if not isinstance(model, type(self)):

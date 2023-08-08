@@ -142,7 +142,8 @@ def test_correction():
     assert np.shape(drate0["A2h"]) == np.shape(frate0["A2h"]) == (0,)
     assert np.shape(delay1["A2h"]) == np.shape(phase1["A2h"]) == (2,)
     assert np.shape(drate1["A2h"]) == np.shape(frate1["A2h"]) == (1,)
-    # This target is special - direction basically perpendicular to baseline (and stationary)
+    # This target is special - direction basically perpendicular to baseline
+    # (and stationary)
     assert np.allclose(delay0["A2h"], extra_correction, rtol=0, atol=1e-6 * u.ps)
     assert np.allclose(delay0["A2v"], extra_correction, rtol=0, atol=1e-6 * u.ps)
     assert np.allclose(drate1["A2h"], [0.0], rtol=0, atol=1e-22)
@@ -243,7 +244,8 @@ def test_tropospheric_delay():
     expected_delay = tropospheric_delay(elevation=elevation, timestamp=ts, **WEATHER)
     delay = dc.delays(target, ts, **WEATHER) - dc.delays(target, ts)
     assert np.allclose(delay, expected_delay, rtol=0, atol=1e-8 * u.ps)
-    # The combination of positive relative humidity and unspecified temperature is an error
+    # The combination of positive relative humidity and
+    # unspecified temperature is an error.
     no_temperature = WEATHER.copy()
     del no_temperature["temperature"]
     with pytest.raises(ValueError):
@@ -289,7 +291,8 @@ def test_against_calc(times, ant_models, geom_atol, tropo_atol):
     ).T
     assert np.allclose(geom_delay, expected_geom_delay, rtol=0, atol=geom_atol)
 
-    # Check the NIAO contribution independent of geometric and tropospheric contributions
+    # Check the NIAO contribution independent of
+    # geometric and tropospheric contributions.
     model = dict(ant_models=ant_models, **DELAY_MODEL)
     model["tropospheric_model"] = None
     dc = katpoint.DelayCorrection(json.dumps(model))

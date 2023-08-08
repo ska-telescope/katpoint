@@ -117,7 +117,8 @@ astropy_version = Version(astropy_version)
             60 * u.mas,
             "5.3",
         ),
-        # A distance of 0 m takes us to the barycentre, so way different (ra, dec); cf. Sun below
+        # A distance of 0 m takes us to the barycentre,
+        # so way different (ra, dec); cf. Sun below
         (
             SolarSystemBody("Mars"),
             "2020-01-01 00:00:00.000",
@@ -128,7 +129,8 @@ astropy_version = Version(astropy_version)
             1 * u.mas,
             "5.3",
         ),
-        # 15:43:47.22h       -19:23:07.0d       118:10:06.1d       27:23:13.3d  (PyEphem)
+        # 15:43:47.22h       -19:23:07.0d       118:10:06.1d       27:23:13.3d
+        # (PyEphem)
         (
             SolarSystemBody("Moon"),
             "2020-01-01 10:00:00.000",
@@ -140,9 +142,10 @@ astropy_version = Version(astropy_version)
             "5.3",
         ),
         # 23:34:17.02h       -8:16:33.4d       127:15:23.6d       60:05:13.7d  (PyEphem)
-        # The Moon radec differs by quite a bit (16') because PyEphem's astrometric radec is
-        # geocentric while katpoint's version is topocentric (FWIW, Skyfield has both).
-        # Katpoint's geocentric astrometric radec is 23:34:17.5082, -8:16:28.6389.
+        # The Moon radec differs by quite a bit (16') because PyEphem's
+        # astrometric radec is geocentric while katpoint's version is topocentric
+        # (FWIW, Skyfield has both). Katpoint's geocentric astrometric radec is
+        # 23:34:17.5082, -8:16:28.6389.
         (
             SolarSystemBody("Sun"),
             "2020-01-01 10:00:00.000",
@@ -153,7 +156,8 @@ astropy_version = Version(astropy_version)
             160 * u.mas,
             "5.3",
         ),
-        # 18:44:13.84h       -23:02:51.2d       234:53:20.8d       31:38:09.4d  (PyEphem)
+        # 18:44:13.84h       -23:02:51.2d       234:53:20.8d       31:38:09.4d
+        # (PyEphem)
         (
             EarthSatelliteBody.from_tle(TLE_LINE1, TLE_LINE2),
             TLE_TS,

@@ -126,7 +126,8 @@ def test_numerical_timestamp():
     assert t == eval("katpoint." + repr(t))
     assert float(t) == t0
 
-    # XXX Reimplement Astropy 4.2's Time.isclose for now to avoid depending on Python 3.7
+    # XXX Reimplement Astropy 4.2's Time.isclose for now
+    # to avoid depending on Python 3.7.
     atol = 2 * np.finfo(float).eps * u.day
     t1 = Time("2009-07-21 02:52:12.34")
     t = katpoint.Timestamp(t1)

@@ -72,7 +72,8 @@ def test_refraction_closure():
         err_msg="Elevation closure error for temp=%f, pressure=%f, humidity=%f"
         % (temp, pressure, humidity),
     )
-    # Generate random meteorological data, now one weather measurement per elevation value
+    # Generate random meteorological data,
+    # now one weather measurement per elevation value.
     temp = -10.0 + 50.0 * np.random.rand(len(el))
     pressure = 900.0 + 200.0 * np.random.rand(len(el))
     humidity = 5.0 + 90.0 * np.random.rand(len(el))
@@ -83,7 +84,10 @@ def test_refraction_closure():
         reversed_el,
         el,
         decimal=7,
-        err_msg=f"Elevation closure error for temp={temp}, pressure={pressure}, humidity={humidity}",
+        err_msg=(
+            f"Elevation closure error for temp={temp}, "
+            f"pressure={pressure}, humidity={humidity}"
+        ),
     )
 
 
@@ -165,7 +169,8 @@ _default_model = "SaastamoinenZenithDelay-GlobalMappingFunction"
         (_default_model + "-hydrostatic", 89.99 * u.deg, 0.01 * u.ps),
         (_default_model + "-hydrostatic", 30 * u.deg, 0.01 * u.ps),
         (_default_model + "-hydrostatic", 15 * u.deg, 0.01 * u.ps),
-        # The wet comparison suffers at low elevations due to slight tweaks to Python version
+        # The wet comparison suffers at low elevations
+        # due to slight tweaks to Python version.
         (_default_model + "-wet", 89.99 * u.deg, 0.02 * u.ps),
         (_default_model + "-wet", 30 * u.deg, 0.03 * u.ps),
         (_default_model + "-wet", 15 * u.deg, 0.05 * u.ps),

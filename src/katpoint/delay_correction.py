@@ -189,7 +189,8 @@ def _vlbi_delays(target, locations, time):
         "uranus",
         "neptune",
     ):
-        # Account for motion of gravitating body during propagation time via simple iteration
+        # Account for motion of gravitating body during propagation time
+        # via simple iteration.
         # Barycentric radius vector of the J'th gravitating body
         XJ = get_body_barycentric(gravitating_body, t1)
         time_tweak = K.dot(XJ - X1) / c
@@ -197,15 +198,17 @@ def _vlbi_delays(target, locations, time):
         XJ = get_body_barycentric(gravitating_body, t1J)
         # Vectors from the J'th gravitating body to the various receivers [step 2]
         R1J = X1 - XJ  # (11.4)
-        # Account for motion of station 2 during propagation time between station 1 and station 2
+        # Account for motion of station 2 during propagation time
+        # between station 1 and station 2.
         R2J = X2 - K.dot(b) * VE / c - XJ  # (11.5)
-        # Gravitational / relativistic delay due to J'th gravitating body [steps 3 and 5]
+        # Gravitational / relativistic delay due to J'th gravitating body
+        # [steps 3 and 5]
         grav_scale = 2 * _GM[gravitating_body] / c3
         T_grav += grav_scale * np.log(
             (R1J.norm() + K.dot(R1J)) / (R2J.norm() + K.dot(R2J))  # (11.1)
         )  # (11.7)
         if gravitating_body == "sun":
-            # Use the opportunity to calculate gravitational potential at the geocenter,
+            # Use opportunity to calculate gravitational potential at the geocenter,
             # neglecting the effects of the Earth’s mass (only solar potential needed).
             U = _GM[gravitating_body] / (XE - XJ).norm()
     # Geocentric vacuum delays [step 6] (11.9)
@@ -283,7 +286,7 @@ class DelayCorrection:
             try:
                 extra_correction = descr["extra_correction"] * u.s
             except KeyError:
-                # Also try the older name of this attribute to remain backwards compatible
+                # Also try older name of this attribute to remain backwards compatible
                 try:
                     extra_correction = descr["extra_delay"] * u.s
                 except KeyError:
@@ -301,7 +304,8 @@ class DelayCorrection:
             ant_models = {}
             for ant in ants:
                 model = DelayModel(ant.delay_model)
-                # If reference positions agree, keep model to avoid small rounding errors
+                # If reference positions agree, keep model
+                # to avoid small rounding errors
                 if ref_ant.position_wgs84 != ant.ref_position_wgs84:
                     # Remap antenna ENU offset to the common reference position
                     enu = ecef_to_enu(*ref_ant.position_wgs84, *ant.position_ecef)
@@ -310,7 +314,8 @@ class DelayCorrection:
                     model["POS_U"] = enu[2]
                 ant_models[ant.name] = model
 
-        # Delay model parameters in units of seconds are combined in array of shape (A, 6)
+        # Delay model parameters in units of seconds are combined
+        # in array of shape (A, 6)
         self._params = (
             np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
         )
@@ -454,9 +459,9 @@ class DelayCorrection:
                 ra, dec = target.plane_to_sphere(
                     timestamp=time, antenna=locations, **offset
                 )
-                # XXX This target is vectorised (contrary to popular belief) by having an
-                # array-valued SkyCoord inside its FixedBody, so .azel() does the right thing.
-                # It is probably better to support this explicitly somehow.
+                # XXX This target is vectorised (contrary to popular belief) by having
+                # an array-valued SkyCoord inside its FixedBody, so .azel() does the
+                # right thing. It is probably better to support this explicitly somehow.
                 offset_target = Target.from_radec(ra, dec)
                 azel = offset_target.azel(time, locations)
                 az = azel.az.rad
@@ -475,7 +480,7 @@ class DelayCorrection:
         enu_offset = self._params[:, :3]  # shape (A, 3)
         fixed_delays = self._params[:, 3:5]  # shape (A, 2)
         niao = self._params[:, 5:6]  # shape (A, 1)
-        # Combine all delays per antenna (geometric, NIAO, troposphere) => shape (A, prod(T))
+        # Combine all delays per antenna (geometric, NIAO, tropo) => shape (A, prod(T))
         geometric_delays = enu_offset @ -target_dir
         ant_delays = geometric_delays - niao * np.cos(elevations)
         if self._tropospheric_delay:
@@ -536,7 +541,8 @@ class DelayCorrection:
         """
         time = Timestamp(timestamp).time
         T = time.shape
-        # Ensure that times are at least 1-D (and delays 2-D) so that we can calculate deltas
+        # Ensure that times are at least 1-D (and delays 2-D)
+        # so that we can calculate deltas
         # XXX Astropy 4.2 supports np.atleast_1d(time)
         if time.isscalar:
             time = time[np.newaxis]
