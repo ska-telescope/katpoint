@@ -52,9 +52,7 @@ def test_pointing_model_load_save(params):
     pm = katpoint.PointingModel(params)
     print(f"{pm!r} {pm}")
     pm2 = katpoint.PointingModel(params[:-1])
-    assert (
-        pm2.values()[-1] == 0.0
-    ), "Unspecified pointing model params not zeroed"
+    assert pm2.values()[-1] == 0.0, "Unspecified pointing model params not zeroed"
     pm3 = katpoint.PointingModel(np.r_[params, 1.0])
     assert (
         pm3.values()[-1] == params[-1]

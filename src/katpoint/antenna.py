@@ -160,13 +160,9 @@ class Antenna:
 
         name = default.name if name is _DEFAULT else name
         diameter = default.diameter if diameter is _DEFAULT else diameter
-        delay_model = (
-            default.delay_model if delay_model is _DEFAULT else delay_model
-        )
+        delay_model = default.delay_model if delay_model is _DEFAULT else delay_model
         pointing_model = (
-            default.pointing_model
-            if pointing_model is _DEFAULT
-            else pointing_model
+            default.pointing_model if pointing_model is _DEFAULT else pointing_model
         )
         beamwidth = default.beamwidth if beamwidth is _DEFAULT else beamwidth
 
@@ -263,9 +259,7 @@ class Antenna:
         try:
             description.encode("ascii")
         except UnicodeError as err:
-            raise ValueError(
-                errmsg_prefix + "contains non-ASCII characters"
-            ) from err
+            raise ValueError(errmsg_prefix + "contains non-ASCII characters") from err
         # Split description string on commas
         fields = [s.strip() for s in description.split(",")]
         # Extract required fields

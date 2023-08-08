@@ -56,9 +56,7 @@ class PointingModel(Model):
     def __init__(self, model=None):
         # There are two main types of parameter: angles and scale factors
         def pm_angle_to_string(a):
-            return (
-                angle_to_string(to_angle(a), unit=units.deg) if a != 0 else "0"
-            )
+            return angle_to_string(to_angle(a), unit=units.deg) if a != 0 else "0"
 
         def angle_param(name, doc):
             """Create angle-valued parameter."""
@@ -68,16 +66,12 @@ class PointingModel(Model):
 
         def scale_param(name, doc):
             """Create scale-valued parameter."""
-            return Parameter(
-                name, "", doc, to_str=lambda s: (f"{s:.9g}") if s else "0"
-            )
+            return Parameter(name, "", doc, to_str=lambda s: (f"{s:.9g}") if s else "0")
 
         # Instantiate the relevant model parameters and register with base class
         params = []
         params.append(
-            angle_param(
-                "P1", "az offset = encoder bias - tilt around [tpoint -IA]"
-            )
+            angle_param("P1", "az offset = encoder bias - tilt around [tpoint -IA]")
         )
         params.append(angle_param("P2", "az gravitational sag, should be 0.0"))
         params.append(
@@ -93,14 +87,10 @@ class PointingModel(Model):
             )
         )
         params.append(
-            angle_param(
-                "P5", "tilt out = az ring tilted towards north [tpoint AN]"
-            )
+            angle_param("P5", "tilt out = az ring tilted towards north [tpoint AN]")
         )
         params.append(
-            angle_param(
-                "P6", "tilt over = az ring tilted towards east [tpoint -AW]"
-            )
+            angle_param("P6", "tilt over = az ring tilted towards east [tpoint -AW]")
         )
         params.append(
             angle_param(
@@ -114,33 +104,21 @@ class PointingModel(Model):
                 "gravity sag / Hooke law flexure / el centering error [tpoint ECEC/-TF]",
             )
         )
+        params.append(scale_param("P9", "el excess scale factor [tpoint PEE1]"))
         params.append(
-            scale_param("P9", "el excess scale factor [tpoint PEE1]")
+            angle_param("P10", "ad hoc cos(el) term in delta_el, redundant with P8")
         )
         params.append(
-            angle_param(
-                "P10", "ad hoc cos(el) term in delta_el, redundant with P8"
-            )
+            angle_param("P11", "asymmetric sag / el centering error [tpoint ECES]")
         )
-        params.append(
-            angle_param(
-                "P11", "asymmetric sag / el centering error [tpoint ECES]"
-            )
-        )
-        params.append(
-            scale_param("P12", "az excess scale factor [tpoint -PAA1]")
-        )
+        params.append(scale_param("P12", "az excess scale factor [tpoint -PAA1]"))
         params.append(angle_param("P13", "az centering error [tpoint ACEC]"))
         params.append(angle_param("P14", "az centering error [tpoint -ACES]"))
         params.append(
-            angle_param(
-                "P15", "elevation nod twice per az revolution [tpoint HECA2]"
-            )
+            angle_param("P15", "elevation nod twice per az revolution [tpoint HECA2]")
         )
         params.append(
-            angle_param(
-                "P16", "elevation nod twice per az revolution [tpoint -HESA2]"
-            )
+            angle_param("P16", "elevation nod twice per az revolution [tpoint -HESA2]")
         )
         params.append(angle_param("P17", "az encoder tilt [tpoint -HACA2]"))
         params.append(angle_param("P18", "az encoder tilt [tpoint HASA2]"))
@@ -157,14 +135,10 @@ class PointingModel(Model):
             )
         )
         params.append(
-            angle_param(
-                "P21", "elevation nod once per az revolution [tpoint -HECA]"
-            )
+            angle_param("P21", "elevation nod once per az revolution [tpoint -HECA]")
         )
         params.append(
-            angle_param(
-                "P22", "elevation nod once per az revolution [tpoint HESA]"
-            )
+            angle_param("P22", "elevation nod once per az revolution [tpoint HESA]")
         )
         Model.__init__(self, params)
         self.set(model)
@@ -248,9 +222,7 @@ class PointingModel(Model):
         )
         # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
-        sec_el = np.sign(cos_el) / np.clip(
-            np.abs(cos_el), np.radians(6.0 / 60.0), 1.0
-        )
+        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6.0 / 60.0), 1.0)
         tan_el = sin_el * sec_el
 
         # Obtain pointing correction using full VLBI model for alt-az mount (no P2 or P10 allowed!)
@@ -363,9 +335,7 @@ class PointingModel(Model):
         )
         # Avoid singularity at zenith by keeping cos(el) away from zero - this only affects az offset
         # Preserve the sign of cos(el), as this will allow for correct antenna plunging
-        sec_el = np.sign(cos_el) / np.clip(
-            np.abs(cos_el), np.radians(6.0 / 60.0), 1.0
-        )
+        sec_el = np.sign(cos_el) / np.clip(np.abs(cos_el), np.radians(6.0 / 60.0), 1.0)
         tan_el = sin_el * sec_el
 
         d_corraz_d_az = (
@@ -379,10 +349,7 @@ class PointingModel(Model):
             + P18 * 2 * cos_2az
         )
         d_corraz_d_el = sec_el * (
-            P3 * sec_el
-            - P4 * tan_el
-            + P5 * sin_az * sec_el
-            - P6 * cos_az * sec_el
+            P3 * sec_el - P4 * tan_el + P5 * sin_az * sec_el - P6 * cos_az * sec_el
         )
         d_correl_d_az = (
             -P5 * sin_az
@@ -444,9 +411,9 @@ class PointingModel(Model):
             az = az + (a22 * b1 - a12 * b2) / det_J
             el = el + (a11 * b2 - a21 * b1) / det_J
         else:
-            max_error, max_az, max_el = np.vstack(
-                (sky_error, pointed_az, pointed_el)
-            )[:, np.argmax(sky_error)]
+            max_error, max_az, max_el = np.vstack((sky_error, pointed_az, pointed_el))[
+                :, np.argmax(sky_error)
+            ]
             logger.warning(
                 "Reverse pointing correction did not converge in %d iterations - "
                 "maximum error is %f arcsecs at (az, el) = (%f, %f) radians",
@@ -599,9 +566,7 @@ class PointingModel(Model):
             unit_vector[param - 1] = 1.0
             unit_model = PointingModel(unit_vector)
             basis_az, basis_el = unit_model.offset(az, el)
-            A[:, m] = np.hstack(
-                (basis_az * cos_el / sigma_daz, basis_el / sigma_del)
-            )
+            A[:, m] = np.hstack((basis_az * cos_el / sigma_daz, basis_el / sigma_del))
         # Measurement vector, containing weighted observed offsets
         b = np.hstack(
             (

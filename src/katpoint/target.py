@@ -189,18 +189,12 @@ class Target:
         self.user_tags = []
         user_tags = default.user_tags if user_tags is _DEFAULT else user_tags
         self.add_tags(user_tags)
-        self._aliases = (
-            default.aliases if aliases is _DEFAULT else tuple(aliases)
-        )
-        self.flux_model = (
-            default.flux_model if flux_model is _DEFAULT else flux_model
-        )
+        self._aliases = default.aliases if aliases is _DEFAULT else tuple(aliases)
+        self.flux_model = default.flux_model if flux_model is _DEFAULT else flux_model
         self.antenna = default.antenna if antenna is _DEFAULT else antenna
         self._flux_frequency = None
         self.flux_frequency = (
-            default.flux_frequency
-            if flux_frequency is _DEFAULT
-            else flux_frequency
+            default.flux_frequency if flux_frequency is _DEFAULT else flux_frequency
         )
 
     def __str__(self):
@@ -277,11 +271,7 @@ class Target:
         """Complete string representation of target object, sufficient to reconstruct it."""
         names = " | ".join(self.names)
         tags = " ".join(self.tags)
-        fluxinfo = (
-            self.flux_model.description
-            if self.flux_model is not None
-            else None
-        )
+        fluxinfo = self.flux_model.description if self.flux_model is not None else None
         no_name = (
             self.body_type != "special"
             and names == self.body.default_name
@@ -343,9 +333,7 @@ class Target:
         try:
             description.encode("ascii")
         except UnicodeError as err:
-            raise NonAsciiError(
-                f"{prefix} contains non-ASCII characters"
-            ) from err
+            raise NonAsciiError(f"{prefix} contains non-ASCII characters") from err
         fields = [s.strip() for s in description.split(",")]
         if len(fields) < 2:
             raise ValueError(f"{prefix} must have at least two fields")
@@ -439,8 +427,7 @@ class Target:
                     body = NullBody()
             except ValueError as err:
                 raise ValueError(
-                    f"{prefix} contains unknown "
-                    f"*special* body '{preferred_name}'"
+                    f"{prefix} contains unknown " f"*special* body '{preferred_name}'"
                 ) from err
 
         elif body_type == "xephem":
@@ -455,11 +442,7 @@ class Target:
             if not preferred_name:
                 preferred_name = edb_names[0]
             for edb_name in edb_names:
-                if (
-                    edb_name
-                    and edb_name != preferred_name
-                    and edb_name not in aliases
-                ):
+                if edb_name and edb_name != preferred_name and edb_name not in aliases:
                     aliases.append(edb_name)
             try:
                 body = Body.from_edb(comma + edb_coord_fields)
@@ -469,9 +452,7 @@ class Target:
                 ) from err
 
         else:
-            raise ValueError(
-                f"{prefix} contains unknown body type '{body_type}'"
-            )
+            raise ValueError(f"{prefix} contains unknown body type '{body_type}'")
 
         # Extract flux model if it is available
         if fields and fields[0].strip(" ()"):
@@ -568,9 +549,7 @@ class Target:
         time = Timestamp(timestamp).time
         if antenna is None:
             antenna = self.antenna
-        location = (
-            antenna.location if isinstance(antenna, Antenna) else antenna
-        )
+        location = antenna.location if isinstance(antenna, Antenna) else antenna
         return time, location
 
     def _valid_antenna(self, antenna):
@@ -597,9 +576,7 @@ class Target:
         if antenna is None:
             antenna = self.antenna
         if antenna is None:
-            raise ValueError(
-                "Antenna object needed to calculate target position"
-            )
+            raise ValueError("Antenna object needed to calculate target position")
         return Antenna(antenna)
 
     def azel(self, timestamp=None, antenna=None):
@@ -686,9 +663,7 @@ class Target:
             If no antenna is specified and body type requires it for (ra, dec)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(
-            ICRS(), time, location, to_celestial_sphere=True
-        )
+        return self.body.compute(ICRS(), time, location, to_celestial_sphere=True)
 
     # The default (ra, dec) coordinates are the astrometric ones
     radec = astrometric_radec
@@ -719,9 +694,7 @@ class Target:
             If no antenna is specified and body type requires it for (l, b)
         """
         time, location = self._astropy_funnel(timestamp, antenna)
-        return self.body.compute(
-            Galactic(), time, location, to_celestial_sphere=True
-        )
+        return self.body.compute(Galactic(), time, location, to_celestial_sphere=True)
 
     def parallactic_angle(self, timestamp=None, antenna=None):
         """Calculate parallactic angle on target as seen from antenna at time(s).
@@ -769,9 +742,9 @@ class Target:
         radec = self.apparent_radec(time, location)
         ha = antenna.local_sidereal_time(time) - radec.ra
         y = np.sin(ha)
-        x = np.tan(location.lat.rad) * np.cos(radec.dec) - np.sin(
-            radec.dec
-        ) * np.cos(ha)
+        x = np.tan(location.lat.rad) * np.cos(radec.dec) - np.sin(radec.dec) * np.cos(
+            ha
+        )
         return Angle(np.arctan2(y, x))
 
     def geometric_delay(self, antenna2, timestamp=None, antenna=None):
@@ -829,9 +802,7 @@ class Target:
         # Dot product of vectors is w coordinate, and
         # delay is time taken by EM wave to traverse this
         delays = -np.einsum("j,j...", baseline.xyz, targetdirs) / const.c
-        delay_rate = (delays[..., 2] - delays[..., 0]) / (
-            offset[2] - offset[0]
-        ).to(u.s)
+        delay_rate = (delays[..., 2] - delays[..., 0]) / (offset[2] - offset[0]).to(u.s)
         return delays[..., 1], delay_rate
 
     def uvw_basis(self, timestamp=None, antenna=None):
@@ -887,15 +858,11 @@ class Target:
         else:
             radec = self.radec(time, location)
         offset_sign = -1 if radec.dec > 0 else 1
-        offset = Target.from_radec(
-            radec.ra, radec.dec + offset_sign * 0.03 * u.rad
-        )
+        offset = Target.from_radec(radec.ra, radec.dec + offset_sign * 0.03 * u.rad)
         # Get offset az-el vector at current epoch pointed to by reference antenna
         offset_azel = offset.azel(time, location)
         # enu vector pointing from reference antenna to offset point
-        towards_pole = np.array(
-            azel_to_enu(offset_azel.az.rad, offset_azel.alt.rad)
-        )
+        towards_pole = np.array(azel_to_enu(offset_azel.az.rad, offset_azel.alt.rad))
         # Obtain direction vector(s) from reference antenna to target
         azel = self.azel(time, location)
         # w axis points toward target
@@ -945,17 +912,13 @@ class Target:
         antenna = self._valid_antenna(antenna)
         # Obtain baseline vector from reference antenna to second antenna(s)
         try:
-            baseline = np.stack(
-                [antenna.baseline_toward(a2).xyz for a2 in antenna2]
-            )
+            baseline = np.stack([antenna.baseline_toward(a2).xyz for a2 in antenna2])
         except TypeError:
             baseline = antenna.baseline_toward(antenna2).xyz
         # Apply linear coordinate transformation. A single call np.dot won't
         # work for both the scalar and array case, so we explicitly specify the
         # axes to sum over.
-        return CartesianRepresentation(
-            np.tensordot(basis, baseline, ([1], [-1]))
-        )
+        return CartesianRepresentation(np.tensordot(basis, baseline, ([1], [-1])))
 
     def lmn(self, ra, dec, timestamp=None, antenna=None):
         """Calculate (l, m, n) coordinates for another target, while pointing at

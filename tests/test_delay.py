@@ -84,15 +84,9 @@ def test_construction():
     """Test construction of DelayCorrection object."""
     descr = DELAYS.description
     assert DELAYS.inputs == ["A2h", "A2v", "A3h", "A3v"]
-    assert DELAYS.ant_locations.shape == (
-        2,
-    ), "Ant_locations property has wrong size"
-    assert (
-        DELAYS.ant_locations[0] == ANT2.location
-    ), "Wrong location for first antenna"
-    assert (
-        DELAYS.ant_locations[1] == ANT3.location
-    ), "Wrong location for second antenna"
+    assert DELAYS.ant_locations.shape == (2,), "Ant_locations property has wrong size"
+    assert DELAYS.ant_locations[0] == ANT2.location, "Wrong location for first antenna"
+    assert DELAYS.ant_locations[1] == ANT3.location, "Wrong location for second antenna"
     assert DELAYS.ref_location == ANT1.location, "Wrong reference location"
     delays2 = katpoint.DelayCorrection(descr)
     delays_dict = json.loads(descr)
@@ -103,9 +97,7 @@ def test_construction():
     with pytest.raises(ValueError):
         katpoint.DelayCorrection("")
     delays3 = katpoint.DelayCorrection([], ANT1)
-    assert delays3.ant_locations.shape == (
-        0,
-    ), "Ant_locations property has wrong size"
+    assert delays3.ant_locations.shape == (0,), "Ant_locations property has wrong size"
     d = delays3.delays(TARGET1, TS + np.arange(3))
     assert d.shape == (
         0,
@@ -147,21 +139,15 @@ def test_correction():
     """Test delay correction."""
     extra_correction = DELAYS.extra_correction
     delay0, phase0, drate0, frate0 = DELAYS.corrections(TARGET1, TS)
-    delay1, phase1, drate1, frate1 = DELAYS.corrections(
-        TARGET1, [TS, TS + 1.0]
-    )
+    delay1, phase1, drate1, frate1 = DELAYS.corrections(TARGET1, [TS, TS + 1.0])
     # First check dimensions for time dimension T0 = () and T1 = (2,), respectively
     assert np.shape(delay0["A2h"]) == np.shape(phase0["A2h"]) == ()
     assert np.shape(drate0["A2h"]) == np.shape(frate0["A2h"]) == (0,)
     assert np.shape(delay1["A2h"]) == np.shape(phase1["A2h"]) == (2,)
     assert np.shape(drate1["A2h"]) == np.shape(frate1["A2h"]) == (1,)
     # This target is special - direction basically perpendicular to baseline (and stationary)
-    assert np.allclose(
-        delay0["A2h"], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
-    assert np.allclose(
-        delay0["A2v"], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
+    assert np.allclose(delay0["A2h"], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0["A2v"], extra_correction, rtol=0, atol=1e-6 * u.ps)
     assert np.allclose(drate1["A2h"], [0.0], rtol=0, atol=1e-22)
     assert np.allclose(drate1["A2v"], [0.0], rtol=0, atol=1e-22)
     assert np.allclose(frate1["A2h"], [0.0], rtol=0, atol=1e-12 * u.rad / u.s)
@@ -195,21 +181,15 @@ def test_offset():
     target3 = katpoint.Target.from_azel(
         azel.az - Angle(1.0, unit=u.deg), azel.alt - Angle(1.0, unit=u.deg)
     )
-    x, y = target3.sphere_to_plane(
-        azel.az.rad, azel.alt.rad, TS, ANT1, **offset
-    )
+    x, y = target3.sphere_to_plane(azel.az.rad, azel.alt.rad, TS, ANT1, **offset)
     offset["x"] = x
     offset["y"] = y
     extra_correction = DELAYS.extra_correction
     delay0, _, _, _ = DELAYS.corrections(target3, TS, offset=offset)
     delay1, _, drate1, _ = DELAYS.corrections(target3, (TS, TS + 1.0), offset)
     # Conspire to return to special target1
-    assert np.allclose(
-        delay0["A2h"], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
-    assert np.allclose(
-        delay0["A2v"], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
+    assert np.allclose(delay0["A2h"], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0["A2v"], extra_correction, rtol=0, atol=1e-6 * u.ps)
     assert np.allclose(
         delay1["A2h"], extra_correction.repeat(2), rtol=0, atol=1e-6 * u.ps
     )
@@ -224,27 +204,17 @@ def test_offset():
     target4 = katpoint.Target.from_radec(
         radec.ra - Angle(1.0, unit=u.deg), radec.dec - Angle(1.0, unit=u.deg)
     )
-    x, y = target4.sphere_to_plane(
-        radec.ra.rad, radec.dec.rad, TS, ANT1, **offset
-    )
+    x, y = target4.sphere_to_plane(radec.ra.rad, radec.dec.rad, TS, ANT1, **offset)
     offset["x"] = x
     offset["y"] = y
     extra_correction = DELAYS.extra_correction
     delay0, _, _, _ = DELAYS.corrections(target4, TS, offset=offset)
     delay1, _, drate1, _ = DELAYS.corrections(target4, (TS, TS + 1.0), offset)
     # Conspire to return to special target1
-    assert np.allclose(
-        delay0["A2h"], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
-    assert np.allclose(
-        delay0["A2v"], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
-    assert np.allclose(
-        delay1["A2h"][0], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
-    assert np.allclose(
-        delay1["A2v"][0], extra_correction, rtol=0, atol=1e-6 * u.ps
-    )
+    assert np.allclose(delay0["A2h"], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay0["A2v"], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1["A2h"][0], extra_correction, rtol=0, atol=1e-6 * u.ps)
+    assert np.allclose(delay1["A2v"][0], extra_correction, rtol=0, atol=1e-6 * u.ps)
     assert np.allclose(drate1["A2h"], [0.0], rtol=0, atol=5e-12)
     assert np.allclose(drate1["A2v"], [0.0], rtol=0, atol=5e-12)
 
@@ -263,9 +233,7 @@ ANT_MODELS = dict(
     s0105="8539.425 -1430.292 -5.872 0 0 2",  # had 39 ps error in 1.0a1
     s0121="-3545.28803 -10207.44399 -9.18584 0 0 2",
 )
-WEATHER = dict(
-    temperature=20 * u.deg_C, pressure=1000 * u.mbar, relative_humidity=0.5
-)
+WEATHER = dict(temperature=20 * u.deg_C, pressure=1000 * u.mbar, relative_humidity=0.5)
 
 
 def test_tropospheric_delay():
@@ -275,9 +243,7 @@ def test_tropospheric_delay():
     elevation = 15 * u.deg
     target = katpoint.Target.from_azel(0, elevation.to_value(u.rad))
     ts = katpoint.Timestamp(1605646800.0).time
-    expected_delay = tropospheric_delay(
-        elevation=elevation, timestamp=ts, **WEATHER
-    )
+    expected_delay = tropospheric_delay(elevation=elevation, timestamp=ts, **WEATHER)
     delay = dc.delays(target, ts, **WEATHER) - dc.delays(target, ts)
     assert np.allclose(delay, expected_delay, rtol=0, atol=1e-8 * u.ps)
     # The combination of positive relative humidity and unspecified temperature is an error
@@ -295,8 +261,7 @@ def test_tropospheric_delay():
     "times,ant_models,geom_atol,tropo_atol",
     [
         (
-            1605680300.0
-            + np.linspace(0, 50000, 6),  # minimum elevation is 15 degrees
+            1605680300.0 + np.linspace(0, 50000, 6),  # minimum elevation is 15 degrees
             {"m063": "-3419.5 -1840.4 16.3 0 0 1"},
             0.4 * u.ps,
             0.4 * u.ps,
@@ -353,9 +318,7 @@ def test_against_calc(times, ant_models, geom_atol, tropo_atol):
     ).T
     niao_delay = delay - geom_delay
     expected_niao_delay = expected_delay - expected_geom_delay
-    assert np.allclose(
-        niao_delay, expected_niao_delay, rtol=0, atol=0.005 * u.ps
-    )
+    assert np.allclose(niao_delay, expected_niao_delay, rtol=0, atol=0.005 * u.ps)
 
     # Check the tropospheric contribution independent of geometric or NIAO contributions
     model_tropo = model_enu.copy()
@@ -363,17 +326,11 @@ def test_against_calc(times, ant_models, geom_atol, tropo_atol):
     dc = katpoint.DelayCorrection(json.dumps(model_tropo))
     delay = dc.delays(TARGET, times, **WEATHER)[::2]
     expected_delay = calc(
-        dc.ant_locations,
-        TARGET.body.coord,
-        times.time,
-        dc.ref_location,
-        **WEATHER
+        dc.ant_locations, TARGET.body.coord, times.time, dc.ref_location, **WEATHER
     ).T
     tropo_delay = delay - geom_delay
     expected_tropo_delay = expected_delay - expected_geom_delay
-    assert np.allclose(
-        tropo_delay, expected_tropo_delay, rtol=0, atol=tropo_atol
-    )
+    assert np.allclose(tropo_delay, expected_tropo_delay, rtol=0, atol=tropo_atol)
 
 
 TLE_TARGET = (
@@ -396,9 +353,7 @@ astropy_version = Version(astropy_version)
 )
 def test_astropy_broadcasting(description):
     """Check that various Bodies can handle multiple times and antennas."""
-    times = katpoint.Timestamp(
-        1605646800.0 + np.linspace(0, 86400, 4).reshape(1, 4)
-    )
+    times = katpoint.Timestamp(1605646800.0 + np.linspace(0, 86400, 4).reshape(1, 4))
     ant_models = {
         "m048": "-2805.653 2686.863 -9.7545",
         "m058": "2805.764 2686.873 -3.6595",
@@ -416,9 +371,7 @@ def test_astropy_broadcasting(description):
     # Since delays are based on (az, el), `delay` is actually out by 20 ps on the Moon
     # and 80 ps on the GPS satellite, and the radec offset delay is correct...
     tol = 0.0001 * u.ps if astropy_version >= Version("4.3") else 100 * u.ps
-    assert np.allclose(
-        dc.delays(target, times, offset), delay, rtol=0, atol=tol
-    )
+    assert np.allclose(dc.delays(target, times, offset), delay, rtol=0, atol=tol)
     offset = dict(x=0.0, y=0.0, projection_type="STG", coord_system="azel")
     assert np.allclose(
         dc.delays(target, times, offset), delay, rtol=0, atol=0.0001 * u.ps
@@ -427,9 +380,7 @@ def test_astropy_broadcasting(description):
     temperature = np.ones_like(times.time) * 20 * u.deg_C
     relative_humidity = np.zeros_like(times.time) * u.dimensionless_unscaled
     assert np.allclose(
-        dc.delays(
-            target, times, None, pressure, temperature, relative_humidity
-        ),
+        dc.delays(target, times, None, pressure, temperature, relative_humidity),
         delay,
         rtol=0,
         atol=0.0001 * u.ps,

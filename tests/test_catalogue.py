@@ -39,9 +39,7 @@ TARGETS = [
 ]
 
 FLUX_TARGET = katpoint.Target("flux, radec, 0.0, 0.0, (1.0 2.0 2.0 0.0 0.0)")
-ANTENNA = katpoint.Antenna(
-    "XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0"
-)
+ANTENNA = katpoint.Antenna("XDM, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0")
 TIMESTAMP = "2009/06/14 12:34:56"
 
 
@@ -61,15 +59,12 @@ def test_catalogue_tab_completion():
     cat.add("Earth | Terra Incognita, azel, 0, 0")
     cat.add("Earth | Sky, azel, 0, 90")
     # Check that it returns a sorted list
-    assert (
-        cat._ipython_key_completions_()
-        == [  # pylint: disable=protected-access
-            "Earth",
-            "Nothing",
-            "Sky",
-            "Terra Incognita",
-        ]
-    )
+    assert cat._ipython_key_completions_() == [  # pylint: disable=protected-access
+        "Earth",
+        "Nothing",
+        "Sky",
+        "Terra Incognita",
+    ]
 
 
 def test_catalogue_same_name():
@@ -99,9 +94,7 @@ def test_catalogue_same_name():
     cat.remove("Sun")
     assert cat["Sun"].description == targets[0]
     cat.remove("Sun")
-    assert (
-        len(cat) == len(cat.targets) == len(cat.lookup) == 0
-    ), "Catalogue not empty"
+    assert len(cat) == len(cat.targets) == len(cat.lookup) == 0, "Catalogue not empty"
 
 
 def test_construct_catalogue(caplog):
@@ -128,9 +121,7 @@ def test_construct_catalogue(caplog):
     assert len(cat2) == num_targets_original + 1, "Number of targets incorrect"
     assert cat != cat2, "Catalogues should not be equal"
     test_target = cat.targets[-1]
-    assert (
-        test_target.description == cat[test_target.name].description
-    ), "Lookup failed"
+    assert test_target.description == cat[test_target.name].description, "Lookup failed"
     assert cat["Non-existent"] is None, "Lookup of non-existent target failed"
     tle_lines = [
         "# Near-Earth object (comment ignored)\n",
@@ -143,9 +134,7 @@ def test_construct_catalogue(caplog):
         "2 22700  55.4408  61.3790 0191986  78.1802 283.9935  2.00561720104282\n",
     ]
     cat.add_tle(tle_lines, "tle")
-    assert (
-        "2 of 2 TLE set(s) are outdated" in caplog.text
-    ), "TLE epoch checks failed"
+    assert "2 of 2 TLE set(s) are outdated" in caplog.text, "TLE epoch checks failed"
     assert (
         "deep-space" in caplog.text
     ), "Worst TLE epoch should be deep-space GPS satellite"
@@ -198,9 +187,7 @@ def test_filter_catalogue_static():
     # Flux filter
     cat.add(FLUX_TARGET)
     cat2 = cat.filter(flux_limit=50 * u.Jy, flux_frequency=1.5 * u.MHz)
-    assert (
-        len(cat2.targets) == 1
-    ), "Number of targets with sufficient flux should be 1"
+    assert len(cat2.targets) == 1, "Number of targets with sufficient flux should be 1"
     assert cat != cat2, "Catalogues should be inequal"
     with pytest.raises(ValueError):
         cat.filter(flux_limit=[0, 50, 100] * u.Jy)  # too many limits
@@ -212,25 +199,17 @@ def test_filter_catalogue_dynamic():
     """Test filtering of catalogues (dynamic parameters)."""
     cat = katpoint.Catalogue(TARGETS).filter(tags="special")
     cat.add(FLUX_TARGET)
-    cat3 = cat.filter(
-        az_limit=[0, 180] * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA
-    )
+    cat3 = cat.filter(az_limit=[0, 180] * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat3.targets) == 1, "Number of targets rising should be 1"
-    cat4 = cat.filter(
-        az_limit=[180, 0] * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA
-    )
+    cat4 = cat.filter(az_limit=[180, 0] * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA)
     assert len(cat4.targets) == 5, "Number of targets setting should be 5"
     with pytest.raises(ValueError):
         cat.filter(az_limit=0 * u.deg)  # too few limits
     with pytest.raises(ValueError):
         cat.filter(az_limit=[0, 90, 180] * u.deg)  # too many limits
     cat.add(katpoint.Target("Zenith, azel, 0, 90"))
-    cat5 = cat.filter(
-        el_limit=85 * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA
-    )
-    assert (
-        len(cat5.targets) == 1
-    ), "Number of targets close to zenith should be 1"
+    cat5 = cat.filter(el_limit=85 * u.deg, timestamp=TIMESTAMP, antenna=ANTENNA)
+    assert len(cat5.targets) == 1, "Number of targets close to zenith should be 1"
     with pytest.raises(ValueError):
         cat.filter(el_limit=[0, 20, 40] * u.deg)  # too many limits
     sun = katpoint.Target("Sun, special")
@@ -258,16 +237,10 @@ def test_sort_catalogue():
     assert cat2.targets[0].name == "Alpheratz", "Sorting on ra failed"
     cat3 = cat.sort(key="dec", timestamp=TIMESTAMP, antenna=ANTENNA)
     assert cat3.targets[0].name == "Miaplacidus", "Sorting on dec failed"
-    cat4 = cat.sort(
-        key="az", timestamp=TIMESTAMP, antenna=ANTENNA, ascending=False
-    )
-    assert (
-        cat4.targets[0].name == "Polaris"
-    ), "Sorting on az failed"  # az: 359:25:07.3
+    cat4 = cat.sort(key="az", timestamp=TIMESTAMP, antenna=ANTENNA, ascending=False)
+    assert cat4.targets[0].name == "Polaris", "Sorting on az failed"  # az: 359:25:07.3
     cat5 = cat.sort(key="el", timestamp=TIMESTAMP, antenna=ANTENNA)
-    assert (
-        cat5.targets[-1].name == "Zenith"
-    ), "Sorting on el failed"  # el: 90:00:00.0
+    assert cat5.targets[-1].name == "Zenith", "Sorting on el failed"  # el: 90:00:00.0
     cat.add(FLUX_TARGET)
     cat6 = cat.sort(key="flux", ascending=False, flux_frequency=1.5 * u.MHz)
     assert "flux" in (
@@ -283,8 +256,7 @@ def test_sort_catalogue():
 def test_visibility_list():
     """Test output of visibility list."""
     antenna2 = katpoint.Antenna(
-        "XDM2, -25:53:23.05075, 27:41:03.36453, "
-        "1406.1086, 15.0, 100.0 0.0 0.0"
+        "XDM2, -25:53:23.05075, 27:41:03.36453, " "1406.1086, 15.0, 100.0 0.0 0.0"
     )
     cat = katpoint.Catalogue(TARGETS)
     cat.add(FLUX_TARGET)

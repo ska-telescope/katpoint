@@ -97,9 +97,7 @@ class Timestamp:
         elif isinstance(timestamp, Timestamp):
             self.time = timestamp.time.replicate()
         elif isinstance(timestamp, TimeDelta):
-            raise ValueError(
-                f"Cannot construct Timestamp from TimeDelta {timestamp}"
-            )
+            raise ValueError(f"Cannot construct Timestamp from TimeDelta {timestamp}")
         elif isinstance(timestamp, Time):
             self.time = timestamp.replicate()
         else:
@@ -131,9 +129,7 @@ class Timestamp:
         # We need a custom formatter because suppress=True only works on values < 1e8
         # and today's Unix timestamps are bigger than that
         formatter = f"{{:.{self.time.precision:d}f}}".format
-        with np.printoptions(
-            threshold=2, edgeitems=1, formatter={"float": formatter}
-        ):
+        with np.printoptions(threshold=2, edgeitems=1, formatter={"float": formatter}):
             return f"Timestamp({self.secs})"
 
     def __str__(self):

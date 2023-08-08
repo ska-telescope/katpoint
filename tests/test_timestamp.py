@@ -58,9 +58,7 @@ def test_construct_valid_timestamp(init_value, string):
     t = katpoint.Timestamp(init_value)
     assert (
         str(t) == string
-    ), "Timestamp string ('{}') differs from expected one ('{}')".format(
-        str(t), string
-    )
+    ), "Timestamp string ('{}') differs from expected one ('{}')".format(str(t), string)
     # Exercise local() code path too
     print(t.local())
 
@@ -173,9 +171,7 @@ def test_operators():
     assert approx_equal(t + TimeDelta(1.0, format="sec", scale="tai"), t0 + 1)
     # interval + Timestamp
     assert approx_equal(1 + t, t0 + 1)
-    with pytest.raises(
-        TypeError
-    ):  # why does Quantity not return NotImplemented here?
+    with pytest.raises(TypeError):  # why does Quantity not return NotImplemented here?
         assert approx_equal(1 * u.second + t, t0 + 1)
     with warnings.catch_warnings():
         # Ignore any TimeDeltaMissingUnitWarning here, since this is triggered
@@ -184,9 +180,7 @@ def test_operators():
         # Timestamp.__radd__(t, time_delta).
         # XXX Reconsider this workaround once we depend on Astropy >= 6.0
         warnings.simplefilter("ignore", TimeDeltaMissingUnitWarning)
-        assert approx_equal(
-            TimeDelta(1.0, format="sec", scale="tai") + t, t0 + 1
-        )
+        assert approx_equal(TimeDelta(1.0, format="sec", scale="tai") + t, t0 + 1)
     # Timestamp + Timestamp
     with pytest.raises(ValueError):
         print(t + t)
@@ -197,9 +191,7 @@ def test_operators():
     assert approx_equal(t - 1 * u.second, t0 - 1)
     assert approx_equal(t - TimeDelta(1.0, format="sec", scale="tai"), t0 - 1)
     # This differs from PyEphem-based katpoint: leap seconds!
-    assert approx_equal(
-        t - t0, 26.0, rel=1e-5
-    )  # float t0 is an interval here...
+    assert approx_equal(t - t0, 26.0, rel=1e-5)  # float t0 is an interval here...
     # Timestamp - Timestamp
     assert t - katpoint.Timestamp(t0) == 0.0
     assert t - t.time == 0.0

@@ -76,14 +76,10 @@ def _itrs_delays(target, locations, time):
     # Discard distance from reference location (as well as any differentials),
     # so that we have a unit vector towards the target. We have to do this at AltAz
     # level (and not ITRS) to handle offsets on targets within the Solar System.
-    direction_repr = azel[ref].represent_as(
-        UnitSphericalRepresentation, s=None
-    )
+    direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
     target_dir_azel = azel[ref].realize_frame(direction_repr)
     # Obtain XYZ target direction as seen from reference location => shape (prod(T),)
-    target_dir_xyz = target_dir_azel.transform_to(
-        ITRS(obstime=time[ref])
-    ).cartesian
+    target_dir_xyz = target_dir_azel.transform_to(ITRS(obstime=time[ref])).cartesian
     locations_xyz = locations.itrs.cartesian
     # Antenna XYZ positions relative to reference location => shape (A, prod(T))
     relative_locations = locations_xyz[ants] - locations_xyz[ref]
@@ -106,9 +102,7 @@ def _gcrs_delays(target, locations, time):
     # Discard distance from reference location (as well as any differentials),
     # so that we have a unit vector towards the target. We have to do this at AltAz
     # level (and not ITRS) to handle offsets on targets within the Solar System.
-    direction_repr = azel[ref].represent_as(
-        UnitSphericalRepresentation, s=None
-    )
+    direction_repr = azel[ref].represent_as(UnitSphericalRepresentation, s=None)
     target_dir_azel = azel[ref].realize_frame(direction_repr)
     x, w = locations.get_gcrs_posvel(time)
     gcrs_ref = GCRS(obstime=time[ref], obsgeoloc=x[ref], obsgeovel=w[ref])
@@ -217,9 +211,7 @@ def _vlbi_delays(target, locations, time):
     # Geocentric vacuum delays [step 6] (11.9)
     kbc_scale = 1 - (2 * U + 0.5 * VE.norm() ** 2 + VE.dot(w2)) / c2
     vbc2_scale = 1 + K.dot(VE) / (2 * c)
-    vac_delays = (
-        T_grav - K.dot(b) / c * kbc_scale - VE.dot(b) / c2 * vbc2_scale
-    )
+    vac_delays = T_grav - K.dot(b) / c * kbc_scale - VE.dot(b) / c2 * vbc2_scale
     vac_delays /= 1 + K.dot(V2) / c
     # XXX Skip the geometric part of the tropospheric propagation delay (11.11)
     # since this needs tropospheric estimate (tiny for connected arrays anyway)
@@ -295,9 +287,7 @@ class DelayCorrection:
                 try:
                     extra_correction = descr["extra_delay"] * u.s
                 except KeyError:
-                    raise KeyError(
-                        "no 'extra_correction' or 'extra_delay'"
-                    ) from None
+                    raise KeyError("no 'extra_correction' or 'extra_delay'") from None
             tropospheric_model = descr.get("tropospheric_model", "None")
             ant_models = {}
             for ant_name, ant_model_str in descr["ant_models"].items():
@@ -314,9 +304,7 @@ class DelayCorrection:
                 # If reference positions agree, keep model to avoid small rounding errors
                 if ref_ant.position_wgs84 != ant.ref_position_wgs84:
                     # Remap antenna ENU offset to the common reference position
-                    enu = ecef_to_enu(
-                        *ref_ant.position_wgs84, *ant.position_ecef
-                    )
+                    enu = ecef_to_enu(*ref_ant.position_wgs84, *ant.position_ecef)
                     model["POS_E"] = enu[0]
                     model["POS_N"] = enu[1]
                     model["POS_U"] = enu[2]
@@ -324,8 +312,7 @@ class DelayCorrection:
 
         # Delay model parameters in units of seconds are combined in array of shape (A, 6)
         self._params = (
-            np.array([ant_models[ant].delay_params for ant in ant_models])
-            * u.s
+            np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
         )
         # With no antennas, let params still have correct shape
         self._params.shape = (-1, len(DelayModel()))
@@ -343,16 +330,11 @@ class DelayCorrection:
         self.sky_centre_freq = sky_centre_freq
         # Add a 1% safety margin to guarantee positive delay corrections
         self.extra_correction = (
-            1.01 * self.max_delay
-            if extra_correction is None
-            else extra_correction
+            1.01 * self.max_delay if extra_correction is None else extra_correction
         )
         self.inputs = [ant + pol for ant in ant_models for pol in "hv"]
         self._locations = np.stack(
-            [
-                Antenna(ref_ant, delay_model=dm).location
-                for dm in ant_models.values()
-            ]
+            [Antenna(ref_ant, delay_model=dm).location for dm in ant_models.values()]
             + [ref_ant.location]
         )
 
@@ -396,8 +378,7 @@ class DelayCorrection:
             "extra_correction": self.extra_correction.to_value(u.s),
             "tropospheric_model": self.tropospheric_model,
             "ant_models": {
-                ant: model.description
-                for ant, model in self.ant_models.items()
+                ant: model.description for ant, model in self.ant_models.items()
             },
         }
         return json.dumps(descr, sort_keys=True)
@@ -571,13 +552,9 @@ class DelayCorrection:
         turns = (self.sky_centre_freq * delays).decompose()
         phase_corrections = Angle(2.0 * np.pi * u.rad) * turns
         delta_time = (time[1:] - time[:-1]).to(u.s)
-        delta_delay_corrections = (
-            delay_corrections[:, 1:] - delay_corrections[:, :-1]
-        )
+        delta_delay_corrections = delay_corrections[:, 1:] - delay_corrections[:, :-1]
         delay_rate_corrections = delta_delay_corrections / delta_time
-        delta_phase_corrections = (
-            phase_corrections[:, 1:] - phase_corrections[:, :-1]
-        )
+        delta_phase_corrections = phase_corrections[:, 1:] - phase_corrections[:, :-1]
         fringe_rate_corrections = delta_phase_corrections / delta_time
         return (
             # Restore time dimensions to recover scalar times
@@ -587,9 +564,7 @@ class DelayCorrection:
             dict(zip(self.inputs, fringe_rate_corrections)),
         )
 
-    delays.__doc__ = delays.__doc__.format(
-        Parameters=_DELAY_PARAMETERS_DOCSTRING
-    )
+    delays.__doc__ = delays.__doc__.format(Parameters=_DELAY_PARAMETERS_DOCSTRING)
     corrections.__doc__ = corrections.__doc__.format(
         Parameters=_DELAY_PARAMETERS_DOCSTRING
     )

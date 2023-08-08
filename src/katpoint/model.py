@@ -243,9 +243,7 @@ class Model:
             cfg.set("header", key, str(val))
         cfg.add_section("params")
         for param_str in self.param_strs():
-            cfg.set(
-                "params", param_str[0], "{} ; {} ({})".format(*param_str[1:])
-            )
+            cfg.set("params", param_str[0], "{} ; {} ({})".format(*param_str[1:]))
         cfg.write(file_like)
 
     def fromfile(self, file_like):
@@ -257,20 +255,14 @@ class Model:
             File-like object with readline() method representing config file
         """
         defaults = {p.name: p._to_str(p.default_value) for p in self}
-        cfg = configparser.ConfigParser(
-            defaults, inline_comment_prefixes=(";", "#")
-        )
+        cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(";", "#"))
         try:
             cfg.read_file(file_like)
             if cfg.sections() != ["header", "params"]:
-                raise configparser.Error(
-                    "Expected sections not found in model file"
-                )
+                raise configparser.Error("Expected sections not found in model file")
         except configparser.Error as exc:
             filename = getattr(file_like, "name", "")
-            input_descr = (
-                f"file {filename!r}" if filename else "file-like object"
-            )
+            input_descr = f"file {filename!r}" if filename else "file-like object"
             msg = f"Could not construct {self.__class__.__name__} from {input_descr}"
             raise BadModelFile(msg) from exc
         self.header = dict(cfg.items("header"))

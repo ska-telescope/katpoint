@@ -51,10 +51,7 @@ def test_construct_target():
     assert katpoint.Target(t0.description) == t0
     # Construct Target from Body
     assert (
-        katpoint.Target(
-            t0.body, t0.name, t0.user_tags, t0.aliases, t0.flux_model
-        )
-        == t0
+        katpoint.Target(t0.body, t0.name, t0.user_tags, t0.aliases, t0.flux_model) == t0
     )
     # Override some parameters
     a0 = katpoint.Antenna(
@@ -81,9 +78,7 @@ def test_construct_target():
         t0, name="", flux_model=None, antenna=None, flux_frequency=None
     )
     assert t0c.body.coord == t0.body.coord
-    assert (
-        t0c.name == t0.body.default_name
-    )  # Target name cannot be empty - use default
+    assert t0c.name == t0.body.default_name  # Target name cannot be empty - use default
     assert t0c.tags == t0.tags
     assert t0c.aliases == t0.aliases
     assert t0c.flux_model is None
@@ -92,9 +87,7 @@ def test_construct_target():
     # Check that construction from Target is nearly exact (within 10 nanoarcsec)
     t1 = katpoint.Target.from_radec(np.e * u.deg, np.pi * u.deg)
     t2 = katpoint.Target(t1)
-    check_separation(
-        t2.body.coord, np.e * u.deg, np.pi * u.deg, tol=10 * u.narcsec
-    )
+    check_separation(t2.body.coord, np.e * u.deg, np.pi * u.deg, tol=10 * u.narcsec)
     assert t1.name == t2.name
     assert t1.tags == t2.tags
     assert t1.aliases == t2.aliases
@@ -115,9 +108,7 @@ def test_construct_target_from_azel():
     azel2 = katpoint.Target.from_azel("10:00:00.0", "-10:00:00.0")
     assert azel1 == azel2, "Special azel constructor failed"
     with pytest.warns(FutureWarning):
-        azel2_deprecated = katpoint.construct_azel_target(
-            "10:00:00.0", "-10:00:00.0"
-        )
+        azel2_deprecated = katpoint.construct_azel_target("10:00:00.0", "-10:00:00.0")
     assert azel1 == azel2_deprecated, "Deprecated azel constructor failed"
 
 
@@ -170,9 +161,7 @@ def test_compare_update_target():
     t2 = katpoint.Target("piet | bollie, azel, 20, 30")
     assert t1 != t2, "Targets should not be equal"
     t1 = katpoint.Target(t1, aliases=["bollie"])
-    assert (
-        t1.description == t2.description
-    ), "Target description string not updated"
+    assert t1.description == t2.description, "Target description string not updated"
     assert t1 == t2.description, "Equality with description string failed"
     assert t1 == t2, "Equality with target failed"
     assert t1 == katpoint.Target(t2), "Construction with target object failed"
@@ -240,9 +229,7 @@ def test_add_tags():
     ], "Added tags not correct"
 
 
-FLUX_MODEL = katpoint.FluxDensityModel.from_description(
-    "(1000.0 2000.0 1.0 10.0)"
-)
+FLUX_MODEL = katpoint.FluxDensityModel.from_description("(1000.0 2000.0 1.0 10.0)")
 
 
 @pytest.mark.parametrize(
@@ -416,9 +403,7 @@ ANT2 = katpoint.Antenna("A2, -31.0, 18.0, 0.0, 12.0, 10.0 -10.0 0.0")
 TS = katpoint.Timestamp("2013-08-14 09:25")
 
 
-def _array_vs_scalar(
-    func, array_in, sky_coord=False, pre_shape=(), post_shape=()
-):
+def _array_vs_scalar(func, array_in, sky_coord=False, pre_shape=(), post_shape=()):
     """Check that `func` output for ndarray of inputs is array of corresponding scalar outputs."""
     array_out = func(array_in)
     # XXX Workaround for Astropy 4.2 regression (np.shape used to work, now TypeError)
@@ -459,28 +444,18 @@ def test_array_valued_methods(description):
     assert times.shape == offsets.shape
     target = katpoint.Target(description)
     _array_vs_scalar(lambda t: target.azel(t, ANT1), times, sky_coord=True)
-    _array_vs_scalar(
-        lambda t: target.apparent_radec(t, ANT1), times, sky_coord=True
-    )
-    _array_vs_scalar(
-        lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True
-    )
+    _array_vs_scalar(lambda t: target.apparent_radec(t, ANT1), times, sky_coord=True)
+    _array_vs_scalar(lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.galactic(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.parallactic_angle(t, ANT1), times)
     _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[0], times)
     _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[1], times)
-    _array_vs_scalar(
-        lambda t: target.uvw_basis(t, ANT1), times, pre_shape=(3, 3)
-    )
+    _array_vs_scalar(lambda t: target.uvw_basis(t, ANT1), times, pre_shape=(3, 3))
     _array_vs_scalar(
         lambda t: target.uvw([ANT1, ANT2], t, ANT1), times, post_shape=(2,)
     )
-    _array_vs_scalar(
-        lambda t: target.lmn(0.0, 0.0, t, ANT1), times, pre_shape=(3,)
-    )
-    l, m, n = target.lmn(
-        np.zeros_like(offsets), np.zeros_like(offsets), times, ANT1
-    )
+    _array_vs_scalar(lambda t: target.lmn(0.0, 0.0, t, ANT1), times, pre_shape=(3,))
+    l, m, n = target.lmn(np.zeros_like(offsets), np.zeros_like(offsets), times, ANT1)
     assert l.shape == m.shape == n.shape == offsets.shape
     assert np.allclose(
         target.separation(target, times, ANT1).rad,
@@ -495,24 +470,16 @@ def test_coords():
     assert coord.az.deg == 45  # PyEphem: 45
     assert coord.alt.deg == 75  # PyEphem: 75
     coord = TARGET.apparent_radec(TS, ANT1)
-    check_separation(
-        coord, "8:53:03.49166920h", "-19:54:51.92328722d", tol=1 * u.mas
-    )
+    check_separation(coord, "8:53:03.49166920h", "-19:54:51.92328722d", tol=1 * u.mas)
     # PyEphem:               8:53:09.60,          -19:51:43.0 (same as astrometric)
     coord = TARGET.astrometric_radec(TS, ANT1)
-    check_separation(
-        coord, "8:53:09.60397465h", "-19:51:42.87773802d", tol=1 * u.mas
-    )
+    check_separation(coord, "8:53:09.60397465h", "-19:51:42.87773802d", tol=1 * u.mas)
     # PyEphem:               8:53:09.60,          -19:51:43.0
     coord = TARGET.galactic(TS, ANT1)
-    check_separation(
-        coord, "245:34:49.20442837d", "15:36:24.87974969d", tol=1 * u.mas
-    )
+    check_separation(coord, "245:34:49.20442837d", "15:36:24.87974969d", tol=1 * u.mas)
     # PyEphem:               245:34:49.3,           15:36:24.7
     coord = TARGET.parallactic_angle(TS, ANT1)
-    assert coord.deg == pytest.approx(
-        -140.279593566336
-    )  # PyEphem: -140.34440985011398
+    assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
 
 
 DELAY_TARGET = katpoint.Target("radec, 20.0, -20.0")
@@ -549,16 +516,12 @@ def test_uvw_timestamp_array_azel():
     target = katpoint.Target.from_azel(azel.az, azel.alt)
     uvw = target.uvw(ANT2, DELAY_TS, ANT1)
     assert np.allclose(uvw[0].xyz, UVW[0], rtol=0, atol=10 * u.nm)
-    assert np.allclose(
-        uvw.z, [UVW[0, 2]] * len(DELAY_TS), rtol=0, atol=10 * u.nm
-    )
+    assert np.allclose(uvw.z, [UVW[0, 2]] * len(DELAY_TS), rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_antenna_array():
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
-    assert np.allclose(
-        uvw.xyz, np.c_[np.zeros(3), UVW[0]], rtol=0, atol=10 * u.nm
-    )
+    assert np.allclose(uvw.xyz, np.c_[np.zeros(3), UVW[0]], rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_both_array():
@@ -645,13 +608,9 @@ def _ant_vs_location(func, atol=0.0):
         assert np.allclose(separation, 0.0, rtol=0.0, atol=atol)
     except AttributeError:
         try:
-            assert np.allclose(
-                location_output.xyz, ant_output.xyz, rtol=0.0, atol=atol
-            )
+            assert np.allclose(location_output.xyz, ant_output.xyz, rtol=0.0, atol=atol)
         except AttributeError:
-            assert np.allclose(
-                location_output, ant_output, rtol=0.0, atol=atol
-            )
+            assert np.allclose(location_output, ant_output, rtol=0.0, atol=atol)
 
 
 def test_earth_location():
@@ -673,27 +632,17 @@ def test_earth_location():
         atol=1e-21,
     )
     _ant_vs_location(lambda a1, a2: target.uvw_basis(timestamps, a1))
-    _ant_vs_location(
-        lambda a1, a2: target.uvw([a1, a2], timestamps, a1), atol=1e-9
-    )
+    _ant_vs_location(lambda a1, a2: target.uvw([a1, a2], timestamps, a1), atol=1e-9)
     _ant_vs_location(
         lambda a1, a2: target.uvw(np.stack([a1, a2]), timestamps, a1),
         atol=1e-9,
     )
     _ant_vs_location(lambda a1, a2: target.lmn(0.0, 0.0, timestamps, a1))
     _ant_vs_location(lambda a1, a2: target.separation(target, timestamps, a1))
-    _ant_vs_location(
-        lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[0]
-    )
-    _ant_vs_location(
-        lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[1]
-    )
-    _ant_vs_location(
-        lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[0]
-    )
-    _ant_vs_location(
-        lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[1]
-    )
+    _ant_vs_location(lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[0])
+    _ant_vs_location(lambda a1, a2: target.plane_to_sphere(0.1, 0.1, timestamps, a1)[1])
+    _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[0])
+    _ant_vs_location(lambda a1, a2: target.sphere_to_plane(0.1, 0.1, timestamps, a1)[1])
 
 
 # TLE for ISS on 2020-12-17
@@ -710,9 +659,7 @@ def test_great_conjunction():
     # Recreate Jason de Freitas's observation of the ISS passing between Jupiter and Saturn, based on
     # https://petapixel.com/2020/12/22/photographer-captures-iss-passing-between-jupiter-and-saturn/
     # The altitude is above sea level instead of WGS84, but should be close enough.
-    pentax = katpoint.Antenna(
-        "Jellore Lookout NSW, -34.462653, 150.427971, 864"
-    )
+    pentax = katpoint.Antenna("Jellore Lookout NSW, -34.462653, 150.427971, 864")
     # The photo was taken "at around 9:54pm". Australian Eastern Daylight Time (AEDT)
     # is 11 hours ahead of UTC => therefore around 10:54 UTC
     timestamp = katpoint.Timestamp("2020-12-17 10:53:10")
@@ -725,15 +672,9 @@ def test_great_conjunction():
     m = moon.radec(timestamp, pentax)
     # This is a regression test, using separations as measured by Astropy 4.3 (also valid for 4.1)
     # The accuracy is within the precision (9 digits => 0.5e-9 deg = 1.8 microarcsec)
-    assert np.allclose(
-        j.separation(s), 0.486585894 * u.deg, atol=0.0018 * u.mas
-    )
-    assert np.allclose(
-        j.separation(i), 0.213263690 * u.deg, atol=0.0018 * u.mas
-    )
-    assert np.allclose(
-        i.separation(s), 0.275048635 * u.deg, atol=0.0018 * u.mas
-    )
+    assert np.allclose(j.separation(s), 0.486585894 * u.deg, atol=0.0018 * u.mas)
+    assert np.allclose(j.separation(i), 0.213263690 * u.deg, atol=0.0018 * u.mas)
+    assert np.allclose(i.separation(s), 0.275048635 * u.deg, atol=0.0018 * u.mas)
     # The Moon model improved in Astropy 5.0
     tol = 0.0018 * u.mas if astropy_version >= Version("5.0") else 300 * u.mas
     assert np.allclose(m.separation(i), 3.262362502 * u.deg, atol=tol)
@@ -743,9 +684,7 @@ def test_improved_azel():
     """Check improved (az, el) for nearby objects due to topocentric CIRS in Astropy 4.3."""
     # Check a more extreme case where the ISS is close to the observer (433 km)
     timestamp = katpoint.Timestamp("2020-12-15 17:25:59")
-    pentax = katpoint.Antenna(
-        "Jellore Lookout NSW, -34.462653, 150.427971, 864"
-    )
+    pentax = katpoint.Antenna("Jellore Lookout NSW, -34.462653, 150.427971, 864")
     azel = ISS.azel(timestamp, pentax)
     # Check against Astropy 5.3 and relax tolerance for older versions
     tol = 0.1 * u.mas if astropy_version >= Version("5.3") else 4 * u.arcmin

@@ -100,9 +100,7 @@ class DelayModel(Model):
         Model.__init__(self, params)
         self.set(model)
         # The EM wave velocity associated with each parameter
-        self._speeds = np.array(
-            [LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED]
-        )
+        self._speeds = np.array([LIGHTSPEED] * 3 + [FIXEDSPEED] * 2 + [LIGHTSPEED])
 
     @property
     def delay_params(self):

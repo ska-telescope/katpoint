@@ -44,10 +44,7 @@ from .helper import assert_angles_almost_equal
     ],
 )
 def test_angle_from_degrees(angle, angle_deg):
-    assert (
-        katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg
-        == angle_deg
-    )
+    assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg == angle_deg
 
 
 @pytest.mark.parametrize(
@@ -66,8 +63,7 @@ def test_angle_from_degrees(angle, angle_deg):
 )
 def test_angle_from_hours(angle, angle_hour):
     assert (
-        katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour
-        == angle_hour
+        katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
     )
 
 
@@ -185,9 +181,7 @@ def test_ecef_to_enu(random, N=1000):
     lat, lon, alt = random_geoid(random, N)
     x, y, z = katpoint.lla_to_ecef(lat, lon, alt)
     east, north, up = katpoint.ecef_to_enu(lat[0], lon[0], alt[0], x, y, z)
-    new_x, new_y, new_z = katpoint.enu_to_ecef(
-        lat[0], lon[0], alt[0], east, north, up
-    )
+    new_x, new_y, new_z = katpoint.enu_to_ecef(lat[0], lon[0], alt[0], east, north, up)
     np.testing.assert_almost_equal(new_x, x, decimal=8)
     np.testing.assert_almost_equal(new_y, y, decimal=8)
     np.testing.assert_almost_equal(new_z, z, decimal=8)

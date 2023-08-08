@@ -343,12 +343,8 @@ def sphere_to_ortho(az0, el0, az, el, min_cos_theta=None):
     """
     # Ensure that elevation angles are in valid range if they are finite numbers
     check = "Elevation angle outside range of +- pi/2 radians"
-    el0 = treat_out_of_range_values(
-        el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0
-    )
-    el = treat_out_of_range_values(
-        el, check, lower=-np.pi / 2.0, upper=np.pi / 2.0
-    )
+    el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
+    el = treat_out_of_range_values(el, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin_el, cos_el, sin_el0, cos_el0 = (
         np.sin(el),
         np.cos(el),
@@ -372,9 +368,7 @@ def sphere_to_ortho(az0, el0, az, el, min_cos_theta=None):
             "Target point more than {} pi radians away from "
             "reference point".format(np.arccos(min_cos_theta) / np.pi)
         )
-        cos_theta = treat_out_of_range_values(
-            cos_theta, check, lower=min_cos_theta
-        )
+        cos_theta = treat_out_of_range_values(cos_theta, check, lower=min_cos_theta)
         # Adjust radius of (x, y) to be commensurate with potentially clipped cos(theta),
         # and also propagate any NaNs in cos(theta) to (x, y) to complete out-of-range treatment
         sin_theta = np.sqrt(1.0 - cos_theta * cos_theta)
@@ -486,9 +480,7 @@ def plane_to_sphere_sin(az0, el0, x, y):
     'slant orthographic' projection as in WCSLIB.
     """
     check = "Elevation angle outside range of +- pi/2 radians"
-    el0 = treat_out_of_range_values(
-        el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0
-    )
+    el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin2_theta = x * x + y * y
     check = "Length of (x, y) vector bigger than 1.0"
     sin2_theta = treat_out_of_range_values(sin2_theta, check, upper=1.0)
@@ -543,9 +535,7 @@ def sphere_to_plane_tan(az0, el0, az, el):
         and out-of-range treatment is 'raise'
     """
     # Angular separation theta must be strictly < pi/2 radians - pick 1e-6 radians less
-    ortho_x, ortho_y, cos_theta = sphere_to_ortho(
-        az0, el0, az, el, min_cos_theta=1e-6
-    )
+    ortho_x, ortho_y, cos_theta = sphere_to_ortho(az0, el0, az, el, min_cos_theta=1e-6)
     # x = tan(theta) * sin(phi), y = tan(theta) * cos(phi)
     return ortho_x / cos_theta, ortho_y / cos_theta
 
@@ -583,9 +573,7 @@ def plane_to_sphere_tan(az0, el0, x, y):
         If elevation `el0` is out of range and out-of-range treatment is 'raise'
     """
     check = "Elevation angle outside range of +- pi/2 radians"
-    el0 = treat_out_of_range_values(
-        el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0
-    )
+    el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
     # This term is cos(el) * cos(daz) / cos(theta)
     den = cos_el0 - y * sin_el0
@@ -674,9 +662,7 @@ def plane_to_sphere_arc(az0, el0, x, y):
         and out-of-range treatment is 'raise'
     """
     check = "Elevation angle outside range of +- pi/2 radians"
-    el0 = treat_out_of_range_values(
-        el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0
-    )
+    el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     theta = np.hypot(x, y)
     check = "Length of (x, y) vector bigger than pi"
     theta = treat_out_of_range_values(theta, check, upper=np.pi)
@@ -777,9 +763,7 @@ def plane_to_sphere_stg(az0, el0, x, y):
         If elevation `el0` is out of range and out-of-range treatment is 'raise'
     """
     check = "Elevation angle outside range of +- pi/2 radians"
-    el0 = treat_out_of_range_values(
-        el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0
-    )
+    el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin_el0, cos_el0 = np.sin(el0), np.cos(el0)
     # This is the square of 2 sin(theta) / (1 + cos(theta))
     r2 = x * x + y * y
@@ -979,9 +963,7 @@ def plane_to_sphere_ssn(az0, el0, x, y):
     in holography experiments.
     """
     check = "Elevation angle outside range of +- pi/2 radians"
-    el0 = treat_out_of_range_values(
-        el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0
-    )
+    el0 = treat_out_of_range_values(el0, check, lower=-np.pi / 2.0, upper=np.pi / 2.0)
     sin2_theta = x * x + y * y
     check = "Length of (x, y) vector bigger than 1.0"
     sin2_theta = treat_out_of_range_values(sin2_theta, check, upper=1.0)

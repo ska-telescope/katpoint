@@ -97,9 +97,7 @@ _locations_and_times = [
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
-@pytest.mark.parametrize(
-    "latitude,longitude,height,timestamp", _locations_and_times
-)
+@pytest.mark.parametrize("latitude,longitude,height,timestamp", _locations_and_times)
 def test_zenith_delay(
     latitude, longitude, height, timestamp
 ):  # pylint: disable=unused-argument
@@ -109,9 +107,7 @@ def test_zenith_delay(
     pressure = np.arange(800.0, 1000.0, 5.0) * u.hPa
     actual = zd.hydrostatic(pressure)
     expected = (
-        sastd(pressure.value, location.lat.rad, location.height.value)
-        * u.m
-        / const.c
+        sastd(pressure.value, location.lat.rad, location.height.value) * u.m / const.c
     )
     assert np.allclose(actual, expected, rtol=0, atol=0.01 * u.ps)
     # Check alternative units
@@ -126,9 +122,7 @@ def test_zenith_delay(
     assert np.allclose(actual, expected, rtol=0, atol=0.15 * u.ps)
     # Add a little realism to check the practical impact of tweaks to wet zenith delay
     dry_site = relative_humidity <= 2.06 - temperature / (20 * u.deg_C)
-    assert np.allclose(
-        actual[dry_site], expected[dry_site], rtol=0, atol=0.05 * u.ps
-    )
+    assert np.allclose(actual[dry_site], expected[dry_site], rtol=0, atol=0.05 * u.ps)
     # Check alternative units
     temperature, relative_humidity = np.meshgrid(
         (np.arange(-5.0, 45.0, 5.0) + 273.15) * u.K,
@@ -139,9 +133,7 @@ def test_zenith_delay(
 
 
 @pytest.mark.skipif(not HAS_ALMACALC, reason="almacalc is not installed")
-@pytest.mark.parametrize(
-    "latitude,longitude,height,timestamp", _locations_and_times
-)
+@pytest.mark.parametrize("latitude,longitude,height,timestamp", _locations_and_times)
 def test_mapping_function(latitude, longitude, height, timestamp):
     """Test hydrostatic and wet mapping functions against AlmaCalc."""
     location = EarthLocation.from_geodetic(longitude, latitude, height)
@@ -196,9 +188,7 @@ def test_tropospheric_delay(model_id, elevation, atol):
     obstime = timestamp.time
     td = TroposphericDelay(location, model_id)
     actual = td(pressure, temperature, relative_humidity, elevation, timestamp)
-    azel = AltAz(
-        az=0 * u.deg, alt=elevation, location=location, obstime=obstime
-    )
+    azel = AltAz(az=0 * u.deg, alt=elevation, location=location, obstime=obstime)
     radec = azel.transform_to(ICRS())
     enable_dry_delay = not model_id.endswith("-wet")
     enable_wet_delay = not model_id.endswith("-hydrostatic")

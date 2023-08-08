@@ -419,9 +419,7 @@ class Catalogue:
 
     def __eq__(self, other):
         """Equality comparison operator (ignores order of targets)."""
-        return isinstance(other, Catalogue) and set(self.targets) == set(
-            other.targets
-        )
+        return isinstance(other, Catalogue) and set(self.targets) == set(other.targets)
 
     def __hash__(self):
         """Hash value is independent of order of targets in catalogue."""
@@ -491,8 +489,7 @@ class Catalogue:
             existing_names = [name for name in target.names if name in self]
             if existing_names:
                 logger.warning(
-                    "Found different targets with same name(s) "
-                    "'%s' in catalogue",
+                    "Found different targets with same name(s) " "'%s' in catalogue",
                     ", ".join(existing_names),
                 )
             target.antenna = self.antenna
@@ -648,9 +645,7 @@ class Catalogue:
         filename : string
             Name of file to write catalogue to (overwriting existing contents)
         """
-        open(filename, "w").writelines(
-            [t.description + "\n" for t in self.targets]
-        )
+        open(filename, "w").writelines([t.description + "\n" for t in self.targets])
 
     def closest_to(self, target, timestamp=None, antenna=None):
         """Determine target in catalogue that is closest to given target.
@@ -681,10 +676,7 @@ class Catalogue:
         if antenna is None and target.antenna is None:
             antenna = self.antenna
         dist = np.stack(
-            [
-                target.separation(tgt, timestamp, antenna)
-                for tgt in self.targets
-            ]
+            [target.separation(tgt, timestamp, antenna) for tgt in self.targets]
         )
         closest = dist.argmin()
         return self.targets[closest], dist[closest]
@@ -790,9 +782,7 @@ class Catalogue:
             undesired_tags = {tag[1:] for tag in tags if tag[0] == "~"}
             if desired_tags:
                 targets = [
-                    target
-                    for target in targets
-                    if set(target.tags) & desired_tags
+                    target for target in targets if set(target.tags) & desired_tags
                 ]
             if undesired_tags:
                 targets = [
@@ -817,9 +807,7 @@ class Catalogue:
             targets = [
                 target
                 for target in targets
-                if flux_lower
-                <= target.flux_density(flux_frequency)
-                < flux_upper
+                if flux_lower <= target.flux_density(flux_frequency) < flux_upper
             ]
 
         # Now prepare for dynamic criteria (azimuth, elevation, proximity)
@@ -887,9 +875,7 @@ class Catalogue:
                 if proximity_filter:
                     dist = np.stack(
                         [
-                            target.separation(
-                                prox_target, latest_timestamp, antenna
-                            )
+                            target.separation(prox_target, latest_timestamp, antenna)
                             for prox_target in proximity_targets
                         ]
                     )
@@ -1012,25 +998,15 @@ class Catalogue:
         if key == "name":
             values = [target.name for target in self.targets]
         elif key == "ra":
-            values = [
-                target.radec(timestamp, antenna).ra for target in self.targets
-            ]
+            values = [target.radec(timestamp, antenna).ra for target in self.targets]
         elif key == "dec":
-            values = [
-                target.radec(timestamp, antenna).dec for target in self.targets
-            ]
+            values = [target.radec(timestamp, antenna).dec for target in self.targets]
         elif key == "az":
-            values = [
-                target.azel(timestamp, antenna).az for target in self.targets
-            ]
+            values = [target.azel(timestamp, antenna).az for target in self.targets]
         elif key == "el":
-            values = [
-                target.azel(timestamp, antenna).alt for target in self.targets
-            ]
+            values = [target.azel(timestamp, antenna).alt for target in self.targets]
         elif key == "flux":
-            values = [
-                target.flux_density(flux_frequency) for target in self.targets
-            ]
+            values = [target.flux_density(flux_frequency) for target in self.targets]
         else:
             raise ValueError("Unknown key to sort on")
         # Sort targets indirectly, either in ascending or descending order
@@ -1083,16 +1059,12 @@ class Catalogue:
         if antenna is None:
             antenna = self.antenna
         if antenna is None:
-            raise ValueError(
-                "Antenna object needed to calculate target position"
-            )
+            raise ValueError("Antenna object needed to calculate target position")
         title = f"Targets visible from antenna '{antenna.name}' at {timestamp.local()}"
         if flux_frequency is None:
             flux_frequency = self.flux_frequency
         if flux_frequency is not None:
-            title += (
-                f", with flux density (Jy) evaluated at {flux_frequency:g}"
-            )
+            title += f", with flux density (Jy) evaluated at {flux_frequency:g}"
         if antenna2 is not None:
             title += f" and fringe period (s) toward antenna '{antenna2.name}' at same frequency"
         print(title)
@@ -1123,13 +1095,9 @@ class Catalogue:
             else:
                 flux = target.flux_density(flux_frequency).to_value(u.Jy)
             if antenna2 is not None and flux_frequency is not None:
-                _, delay_rate = target.geometric_delay(
-                    antenna2, timestamp, antenna
-                )
+                _, delay_rate = target.geometric_delay(antenna2, timestamp, antenna)
                 if delay_rate != 0:
-                    fringe_period = 1.0 / (
-                        delay_rate * flux_frequency.to_value(u.Hz)
-                    )
+                    fringe_period = 1.0 / (delay_rate * flux_frequency.to_value(u.Hz))
                 else:
                     fringe_period = np.inf
             else:
@@ -1143,11 +1111,7 @@ class Catalogue:
             az = azel.az.wrap_at(180 * u.deg).to_string(sep=":", precision=1)
             el = azel.alt.to_string(sep=":", precision=1)
             line = "%-24s %12s %12s %c" % (target.name, az, el, el_code)
-            line = (
-                line + f" {flux:7.1f}"
-                if not np.isnan(flux)
-                else line + "        "
-            )
+            line = line + f" {flux:7.1f}" if not np.isnan(flux) else line + "        "
             if fringe_period is not None:
                 line += f"    {fringe_period:10.2f}"
             print(line)
@@ -1155,6 +1119,4 @@ class Catalogue:
     iterfilter.__doc__ = iterfilter.__doc__.format(
         Parameters=_FILTER_PARAMETERS_DOCSTRING
     )
-    filter.__doc__ = filter.__doc__.format(
-        Parameters=_FILTER_PARAMETERS_DOCSTRING
-    )
+    filter.__doc__ = filter.__doc__.format(Parameters=_FILTER_PARAMETERS_DOCSTRING)
