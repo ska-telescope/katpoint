@@ -348,7 +348,7 @@ class Target:
         body_types = ["azel", "radec", "gal", "special", "tle", "xephem"]
 
         def tags_in(field):
-            return any([field.startswith(s) for s in body_types])
+            return any(field.startswith(s) for s in body_types)
 
         if tags_in(fields[0]) and not tags_in(fields[1]):
             fields.insert(0, "")

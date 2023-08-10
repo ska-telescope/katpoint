@@ -14,10 +14,13 @@
 # limitations under the License.
 ################################################################################
 
-import numpy as np
+"""Global fixtures."""
+
 import pytest
+from numpy.random import RandomState
 
 
 @pytest.fixture(name="random")
 def fixture_random():
-    return np.random.RandomState(42)
+    """Provide repeatable 'random' generator in place of np.random."""
+    return RandomState(42)

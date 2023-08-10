@@ -310,10 +310,9 @@ def test_construct_valid_target(description):
     # Normalise description string through one cycle to allow comparison
     reference_description = katpoint.Target(description).description
     test_target = katpoint.Target(reference_description)
-    assert (
-        test_target.description == reference_description
-    ), "Target description ('{}') differs from reference ('{}')".format(
-        test_target.description, reference_description
+    assert test_target.description == reference_description, (
+        f"Target description ('{test_target.description}') "
+        f"differs from reference ('{reference_description}')"
     )
     # Exercise repr() and str()
     print(f"{test_target!r} {test_target}")

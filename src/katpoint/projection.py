@@ -134,9 +134,9 @@ import threading
 
 import numpy as np
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Handling out-of-range inputs
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 class OutOfRangeError(ValueError):
@@ -177,9 +177,8 @@ def set_out_of_range_treatment(treatment):
     valid_treatments = {"raise", "nan", "clip"}
     if treatment not in valid_treatments:
         raise ValueError(
-            "Unknown out-of-range treatment '{}', must be one of {}".format(
-                treatment, valid_treatments
-            )
+            f"Unknown out-of-range treatment '{treatment}', "
+            f"must be one of {valid_treatments}"
         )
     previous_treatment = _out_of_range_cvar.treatment
     _out_of_range_cvar.treatment = treatment
@@ -266,14 +265,14 @@ def treat_out_of_range_values(x, err_msg, lower=None, upper=None):
         )
         if treatment == "raise" and np.any(out_of_range):
             raise OutOfRangeError(err_msg)
-        elif treatment == "nan":
+        if treatment == "nan":
             clipped_x[out_of_range] = np.nan
     return clipped_x.item() if np.isscalar(x) else clipped_x
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Common
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def safe_scale(x, y, new_radius):
@@ -360,8 +359,8 @@ def sphere_to_ortho(az0, el0, az, el, min_cos_theta=None):
     ortho_y = sin_el * cos_el0 - cos_el * sin_el0 * cos_daz
     if min_cos_theta is not None:
         check = (
-            "Target point more than {} pi radians away from "
-            "reference point".format(np.arccos(min_cos_theta) / np.pi)
+            f"Target point more than {np.arccos(min_cos_theta) / np.pi} pi "
+            "radians away from reference point"
         )
         cos_theta = treat_out_of_range_values(cos_theta, check, lower=min_cos_theta)
         # Adjust radius of (x, y) to be commensurate with potentially
@@ -372,9 +371,9 @@ def sphere_to_ortho(az0, el0, az, el, min_cos_theta=None):
     return ortho_x, ortho_y, cos_theta
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Orthographic projection (SIN)
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def sphere_to_plane_sin(az0, el0, az, el):
@@ -491,9 +490,9 @@ def plane_to_sphere_sin(az0, el0, x, y):
     return az, el
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Gnomonic projection (TAN)
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def sphere_to_plane_tan(az0, el0, az, el):
@@ -579,9 +578,9 @@ def plane_to_sphere_tan(az0, el0, x, y):
     return az, el
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Zenithal equidistant projection (ARC)
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def sphere_to_plane_arc(az0, el0, az, el):
@@ -679,9 +678,9 @@ def plane_to_sphere_arc(az0, el0, x, y):
     return az, el
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Stereographic projection (STG)
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def sphere_to_plane_stg(az0, el0, az, el):
@@ -782,9 +781,9 @@ def plane_to_sphere_stg(az0, el0, x, y):
     return az, el
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Plate carree projection (CAR)
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def sphere_to_plane_car(az0, el0, az, el):
@@ -847,9 +846,9 @@ def plane_to_sphere_car(az0, el0, x, y):
     return az0 + x, el0 + y
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Swapped orthographic projection (SSN)
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def sphere_to_plane_ssn(az0, el0, az, el):
@@ -900,9 +899,8 @@ def sphere_to_plane_ssn(az0, el0, az, el):
     This projection was originally introduced by Mattieu de Villiers for use
     in holography experiments.
     """
-    return sphere_to_plane_sin(
-        az, el, az0, el0
-    )  # pylint: disable=arguments-out-of-order
+    # pylint: disable=arguments-out-of-order
+    return sphere_to_plane_sin(az, el, az0, el0)
 
 
 def plane_to_sphere_ssn(az0, el0, x, y):
@@ -988,9 +986,9 @@ def plane_to_sphere_ssn(az0, el0, x, y):
     return az, el
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- Top-level projection routines
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 # Maps projection code to appropriate function
 sphere_to_plane = {

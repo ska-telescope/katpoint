@@ -262,7 +262,7 @@ def test_sort_catalogue():
 def test_visibility_list():
     """Test output of visibility list."""
     antenna2 = katpoint.Antenna(
-        "XDM2, -25:53:23.05075, 27:41:03.36453, " "1406.1086, 15.0, 100.0 0.0 0.0"
+        "XDM2, -25:53:23.05075, 27:41:03.36453, 1406.1086, 15.0, 100.0 0.0 0.0"
     )
     cat = katpoint.Catalogue(TARGETS)
     cat.add(FLUX_TARGET)

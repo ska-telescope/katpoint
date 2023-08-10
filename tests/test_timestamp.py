@@ -18,6 +18,7 @@
 
 # pylint: disable=missing-function-docstring
 
+import re
 import warnings
 from unittest.mock import patch
 
@@ -58,7 +59,7 @@ def test_construct_valid_timestamp(init_value, string):
     t = katpoint.Timestamp(init_value)
     assert (
         str(t) == string
-    ), "Timestamp string ('{}') differs from expected one ('{}')".format(str(t), string)
+    ), f"Timestamp string ('{str(t)}') differs from expected one ('{string}')"
     # Exercise local() code path too
     print(t.local())
 
@@ -123,7 +124,8 @@ def test_numerical_timestamp():
     assert t > t - 1.0
     assert t < t + 1.0
     # This only works for scalars...
-    assert t == eval("katpoint." + repr(t))
+    repr_float = float(re.match(r"^Timestamp\((.*)\)$", repr(t)).group(1))
+    assert t == katpoint.Timestamp(repr_float)
     assert float(t) == t0
 
     # XXX Reimplement Astropy 4.2's Time.isclose for now

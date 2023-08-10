@@ -227,9 +227,7 @@ class Timestamp:
         frac_secs, int_secs = np.modf(np.round(self.secs, decimals=prec))
 
         def local_time_string(f, i):
-            format_string = "%Y-%m-%d %H:%M:%S.{:0{width}.0f} %Z".format(
-                f * 10**prec, width=prec
-            )
+            format_string = f"%Y-%m-%d %H:%M:%S.{f * 10**prec:0{prec}.0f} %Z"
             return time.strftime(format_string, time.localtime(i))
 
         local_str = np.vectorize(local_time_string)(frac_secs, int_secs)

@@ -85,6 +85,8 @@ def __dir__():
     return __all__
 
 
+# pylint: disable=consider-using-f-string
+
 # BEGIN VERSION CHECK
 # Get package version when locally imported from repo or via -e develop install
 try:

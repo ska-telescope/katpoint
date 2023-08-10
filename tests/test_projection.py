@@ -98,6 +98,7 @@ def test_out_of_range_handling_array(restore_treatment):
 
 @pytest.mark.parametrize("x, scalar", [(2.0, True), (np.array(2.0), False)])
 def test_scalar_vs_0d(x, scalar, restore_treatment):
+    """Check that out-of-range treatment preserves scalarity."""
     with out_of_range_context("clip"):
         y = treat_out_of_range_values(x, "Out of range", upper=1.1)
         assert np.isscalar(y) is scalar
@@ -105,6 +106,7 @@ def test_scalar_vs_0d(x, scalar, restore_treatment):
 
 @pytest.mark.parametrize("treatment", ["raise", "nan", "clip"])
 def test_clipping_of_minor_outliers(treatment, restore_treatment):
+    """Check that out-of-range treatment tolerates extremely small transgressions."""
     x = 1.0 + np.finfo(float).eps
     with out_of_range_context(treatment):
         y = treat_out_of_range_values(x, "Should not trigger false alarm", upper=1.0)
@@ -112,10 +114,12 @@ def test_clipping_of_minor_outliers(treatment, restore_treatment):
 
 
 def test_out_of_range_initialisation_in_new_thread():
+    """Check out-of-range treatment behaviour with multiple threads."""
+
     def my_thread():
         try:
             result.append(treat_out_of_range_values(2.0, "Should raise", upper=1.0))
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             result.append(exc)
 
     result = []
