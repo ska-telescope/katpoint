@@ -43,9 +43,9 @@ from .timestamp import Timestamp
 # Singleton that identifies default antenna parameters
 _DEFAULT = object()
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- CLASS :  Antenna
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 @functools.total_ordering
@@ -249,8 +249,8 @@ class Antenna:
         ]  # these are already in degrees
         # State height to nearest micron (way overkill) to get rid of numerical fluff,
         # using poor man's {:.6g} that avoids scientific notation for very small heights
-        fields += [strip_zeros("{:.6f}".format(height.to_value(u.m)))]
-        fields += [strip_zeros("{:.6f}".format(self.diameter.to_value(u.m)))]
+        fields += [strip_zeros(f"{height.to_value(u.m):.6f}")]
+        fields += [strip_zeros(f"{self.diameter.to_value(u.m):.6f}")]
         fields += [self.delay_model.description]
         fields += [self.pointing_model.description]
         fields += [str(self.beamwidth)]

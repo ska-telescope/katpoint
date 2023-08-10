@@ -175,7 +175,9 @@ class Model:
         if num_active == 0:
             return summary
         param_strs = "\n".join(
-            "{} = {} {} ({})".format(*ps) for ps in self.param_strs()
+            # pylint: disable=consider-using-f-string
+            "{} = {} {} ({})".format(*ps)
+            for ps in self.param_strs()
         )
         return f"{summary}:\n{param_strs}"
 
@@ -252,6 +254,7 @@ class Model:
             cfg.set("header", key, str(val))
         cfg.add_section("params")
         for param_str in self.param_strs():
+            # pylint: disable=consider-using-f-string
             cfg.set("params", param_str[0], "{} ; {} ({})".format(*param_str[1:]))
         cfg.write(file_like)
 
@@ -268,6 +271,7 @@ class Model:
         BadModelFile
             If `file_like` could not be read or parsed
         """
+        # pylint: disable=protected-access
         defaults = {p.name: p._to_str(p.default_value) for p in self}
         cfg = configparser.ConfigParser(defaults, inline_comment_prefixes=(";", "#"))
         try:
@@ -306,8 +310,8 @@ class Model:
         if isinstance(model, Model):
             if not isinstance(model, type(self)):
                 raise BadModelFile(
-                    "Cannot construct a %r from a %r"
-                    % (self.__class__.__name__, model.__class__.__name__)
+                    f"Cannot construct a '{self.__class__.__name__}' "
+                    f"from a '{model.__class__.__name__}'"
                 )
             self.fromlist(model.values())
             self.header = dict(model.header)

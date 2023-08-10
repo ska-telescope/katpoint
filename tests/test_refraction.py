@@ -69,8 +69,8 @@ def test_refraction_closure():
         reversed_el,
         el,
         decimal=7,
-        err_msg="Elevation closure error for temp=%f, pressure=%f, humidity=%f"
-        % (temp, pressure, humidity),
+        err_msg="Elevation closure error for "
+        f"temp={temp}, pressure={pressure}, humidity={humidity}",
     )
     # Generate random meteorological data,
     # now one weather measurement per elevation value.

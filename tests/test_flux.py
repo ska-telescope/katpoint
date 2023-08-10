@@ -150,6 +150,7 @@ def test_flux_density_stokes():
 
 
 def test_wavelength_inputs():
+    """Check that flux densities can be calculated for wavelengths."""
     model = katpoint.FluxDensityModel(100 * u.MHz, 200 * u.MHz, [0.0, 1.0])
     freq = 150 * u.MHz
     assert np.allclose(model.flux_density(freq), 150 * u.Jy, rtol=1e-15)

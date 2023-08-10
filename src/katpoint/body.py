@@ -241,13 +241,11 @@ class SolarSystemBody(Body):
     """
 
     def __init__(self, name):
-        if (
-            name.lower() not in solar_system_ephemeris.bodies
-        ):  # pylint: disable=unsupported-membership-test
+        # pylint: disable=unsupported-membership-test
+        if name.lower() not in solar_system_ephemeris.bodies:
             raise ValueError(
-                "Unknown Solar System body '{}' - should be one of {}".format(
-                    name.lower(), solar_system_ephemeris.bodies
-                )
+                f"Unknown Solar System body '{name.lower()}' - "
+                f"should be one of {solar_system_ephemeris.bodies}"
             )
         self._name = name
 

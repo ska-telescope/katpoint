@@ -317,7 +317,7 @@ class DelayCorrection:
         # Delay model parameters in units of seconds are combined
         # in array of shape (A, 6)
         self._params = (
-            np.array([ant_models[ant].delay_params for ant in ant_models]) * u.s
+            np.array([model.delay_params for model in ant_models.values()]) * u.s
         )
         # With no antennas, let params still have correct shape
         self._params.shape = (-1, len(DelayModel()))

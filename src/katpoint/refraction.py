@@ -1086,10 +1086,11 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
+        # pylint: disable=no-member
         return self._delay(
             pressure,
             temperature,
-            relative_humidity,  # pylint: disable=no-member
+            relative_humidity,
             elevation,
             timestamp,
         )

@@ -48,9 +48,9 @@ def _normalised(name):
     return name.strip().lower().replace(" ", "").replace("_", "")
 
 
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 # --- CLASS :  Catalogue
-# --------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 class Catalogue:
@@ -489,7 +489,7 @@ class Catalogue:
             existing_names = [name for name in target.names if name in self]
             if existing_names:
                 logger.warning(
-                    "Found different targets with same name(s) " "'%s' in catalogue",
+                    "Found different targets with same name(s) '%s' in catalogue",
                     ", ".join(existing_names),
                 )
             target.antenna = self.antenna
@@ -649,7 +649,8 @@ class Catalogue:
         filename : string
             Name of file to write catalogue to (overwriting existing contents)
         """
-        open(filename, "w").writelines([t.description + "\n" for t in self.targets])
+        with open(filename, "w", encoding="utf-8") as file:
+            file.writelines([t.description + "\n" for t in self.targets])
 
     def closest_to(self, target, timestamp=None, antenna=None):
         """Determine target in catalogue that is closest to given target.
@@ -1119,7 +1120,7 @@ class Catalogue:
                 above_horizon = False
             az = azel.az.wrap_at(180 * u.deg).to_string(sep=":", precision=1)
             el = azel.alt.to_string(sep=":", precision=1)
-            line = "%-24s %12s %12s %c" % (target.name, az, el, el_code)
+            line = f"{target.name:-24s} {az:12s} {el:12s} {el_code:c}"
             line = line + f" {flux:7.1f}" if not np.isnan(flux) else line + "        "
             if fringe_period is not None:
                 line += f"    {fringe_period:10.2f}"
