@@ -40,6 +40,7 @@ flake8-pyproject = ">=0.9.1"
 isort = "^5.10.1"
 pylint = "^2.12.2"
 pylint-junit = "^0.3.2"
+pylint-pytest = "^1.1.2"
 pytest = "^7.0.1"
 pytest-cov = ">=3.0"
 sphinx = ">=1.6,<7"
@@ -50,10 +51,29 @@ enable = true
 
 [tool.flake8]
 # E203 and W503 conflict with black
-ignore = ["E203", "W503"]
-per-file-ignores = [
-    '__init__.py:F401',
+ignore = [
+    "E203",  # whitespace before ':'
+    "W503"  # line break occurred before a binary operator (soon the opposite)
 ]
+per-file-ignores = [
+    '__init__.py:F401',  # module imported but unused
+]
+
+[tool.pylint.master]
+load-plugins = ["pylint_pytest"]
+
+[tool.pylint.messages_control]
+enable = ["useless-suppression"]
+disable = [
+    "fixme",
+    "invalid-name",  # Katpoint has many short and quirky variable names - leave it for now
+    "R",  # One day... all of this will be yours
+    "too-many-lines"  # Yes, some methods are bulky - leave it for now
+]
+
+[tool.pylint.typecheck]
+# These Astropy modules generate most of their members
+ignored-modules = ["astropy.units", "astropy.constants"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
