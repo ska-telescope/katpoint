@@ -68,12 +68,14 @@ TLE_EL = '-54:06:29.1901d'  # Astropy 5.3
 LOCATION = EarthLocation(lat=10.0, lon=80.0, height=0.0)
 astropy_version = Version(astropy_version)
 
-# Most reference coordinate values below are based on Astropy 4.3 with astropy/astropy#10994
-# (topocentric CIRS). This PR improved (az, el) for nearby objects, and their tolerances are
-# adjusted so that the tests still pass on Astropy 4.1. One exception is the reference
-# coordinates for the Moon, which is based on the more accurate Moon model in Astropy 5.0.
-# The azel reference values are updated to that of Astropy 5.3, which has a more accurate
-# IERS_B table based on ITRF2020 which is rotated by about 1 mas relative to earlier versions.
+# The reference coordinate values below are based on Astropy 5.3.
+# It ships with a more accurate IERS_B table based on ITRF2020 and differs
+# by about 1 mas from the previous Astropy versions starting from 4.3.
+# Astropy 5.0 introduced a more accurate Moon model.
+# Astropy 4.3 introduced topocentric CIRS in PR astropy/astropy#10994
+# which improved (az, el) for nearby objects, so coordinates in older
+# Astropy versions differ by more.
+# The test tolerances are adjusted so that the tests still pass on Astropy 4.1.
 # The accuracy is capped to 0.00005" since we specify azel arcsec to 4 decimal places.
 @pytest.mark.parametrize(
     "body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver",
