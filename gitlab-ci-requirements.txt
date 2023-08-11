@@ -1,3 +1,4 @@
+almacalc[highlevel] @ git+https://gitlab.com/ska-telescope/external/almacalc.git
 astropy>=4.1
 docutils
 markupsafe

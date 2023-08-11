@@ -17,6 +17,7 @@
 """Shared pytest utilities."""
 
 import numpy as np
+import astropy.units as u
 from astropy.coordinates import UnitSphericalRepresentation
 
 
@@ -32,7 +33,25 @@ def assert_angles_almost_equal(x, y, **kwargs):
     np.testing.assert_almost_equal(d, np.zeros(np.shape(x)), **kwargs)
 
 
+def _lon_lat_str(coord):
+    """Print coordinates in the format they are specified in unit tests."""
+    lookup = {v: k for k, v in coord.representation_component_names.items()}
+    lon = getattr(coord, lookup['lon'])
+    lat = getattr(coord, lookup['lat'])
+    kwargs = dict(sep=':', pad=True)
+    if lookup['lon'] == 'ra':
+        lon_str = lon.to_string(unit=u.hourangle, precision=5, **kwargs) + 'h'
+    else:
+        lon_str = lon.to_string(unit=u.deg, precision=4, **kwargs) + 'd'
+    lat_str = lat.to_string(unit=u.deg, precision=4, **kwargs) + 'd'
+    return f'({lon_str}, {lat_str})'
+
+
 def check_separation(actual, lon, lat, tol):
     """Check that actual and desired directions are within tolerance."""
     desired = actual.realize_frame(UnitSphericalRepresentation(lon, lat))
-    assert actual.separation(desired) <= tol
+    sep = actual.separation(desired)
+    assert sep <= tol, (
+        f"Expected {_lon_lat_str(desired)}, got {_lon_lat_str(actual)} "
+        f"which is {sep.to(tol.unit):.3f} away instead of within {tol}"
+    )

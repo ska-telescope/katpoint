@@ -181,8 +181,11 @@ class FixedBody(Body):
         Body._check_location(frame)
         # If obstime is array-valued and not contained in the output frame, the transform
         # will return a scalar SkyCoord. Repeat the value to match obstime shape instead.
-        if (obstime is not None and not obstime.isscalar
-           and 'obstime' not in frame.get_frame_attr_names()):
+        if (
+            obstime is not None
+            and not obstime.isscalar
+            and 'obstime' not in frame.frame_attributes
+        ):
             coord = self.coord.take(np.zeros_like(obstime, dtype=int))
         else:
             coord = self.coord
