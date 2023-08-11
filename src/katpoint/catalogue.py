@@ -1120,7 +1120,7 @@ class Catalogue:
                 above_horizon = False
             az = azel.az.wrap_at(180 * u.deg).to_string(sep=":", precision=1)
             el = azel.alt.to_string(sep=":", precision=1)
-            line = f"{target.name:-24s} {az:12s} {el:12s} {el_code:c}"
+            line = f"{target.name:<24s} {az:>12s} {el:>12s} {el_code:1s}"
             line = line + f" {flux:7.1f}" if not np.isnan(flux) else line + "        "
             if fringe_period is not None:
                 line += f"    {fringe_period:10.2f}"
