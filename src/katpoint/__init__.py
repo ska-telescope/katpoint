@@ -15,10 +15,11 @@
 ################################################################################
 
 """
-Coordinate library for the MeerKAT project, providing astronomical coordinate
-transformations, antenna pointing models, correlator delay models, source flux
-models and basic source catalogues, using an existing coordinate library such
-as Astropy to do the low-level calculations.
+Coordinate library for the SKA and MeerKAT radio telescopes.
+
+This provides astronomical coordinate transformations, antenna pointing models,
+correlator delay models, source flux models and basic source catalogues, using
+an existing coordinate library (Astropy) to do the low-level calculations.
 """
 
 import logging as _logging
@@ -81,7 +82,7 @@ __all__ += ["__version__"]
 
 
 def __dir__():
-    """IPython tab completion seems to respect this."""
+    """Tab completion in IPython seems to respect this."""
     return __all__
 
 

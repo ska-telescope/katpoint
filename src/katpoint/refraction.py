@@ -152,7 +152,7 @@ class RefractionCorrection:
         return isinstance(other, RefractionCorrection) and (self.model == other.model)
 
     def __hash__(self):
-        """Base hash on underlying model name, just like equality operator."""
+        """Compute hash on underlying model name, just like equality operator."""
         return hash((self.__class__, self.model))
 
     def apply(self, el, temperature_C, pressure_hPa, humidity_percent):
@@ -916,7 +916,7 @@ class GlobalMappingFunction:
 
     @u.quantity_input
     def hydrostatic(self, elevation: u.rad, timestamp) -> u.dimensionless_unscaled:
-        """Mapping function for "dry" (hydrostatic) component of the atmosphere.
+        """Perform mapping for "dry" (hydrostatic) component of the atmosphere.
 
         Parameters
         ----------
@@ -959,7 +959,7 @@ class GlobalMappingFunction:
 
     @u.quantity_input
     def wet(self, elevation: u.rad, timestamp) -> u.dimensionless_unscaled:
-        """Mapping function for "wet" (non-hydrostatic) component of the atmosphere.
+        """Perform mapping for "wet" (non-hydrostatic) component of the atmosphere.
 
         Parameters
         ----------

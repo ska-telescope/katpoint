@@ -413,7 +413,7 @@ def does_not_raise(error):  # pylint: disable=unused-argument
     ],
 )
 def test_coord_methods_without_antenna(description, methods, raises, error):
-    """ "Test whether coordinate methods can operate without an Antenna."""
+    """Test whether coordinate methods can operate without an Antenna."""
     target = katpoint.Target(description)
     for method in methods.split():
         with raises(error):

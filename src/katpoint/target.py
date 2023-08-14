@@ -215,7 +215,7 @@ class Target:
         )
 
     def __reduce__(self):
-        """Custom pickling routine based on description string."""
+        """Pickle object based on description string."""
         return (self.__class__, (self.description,))
 
     def __eq__(self, other):
@@ -231,7 +231,7 @@ class Target:
         )
 
     def __hash__(self):
-        """Base hash on description string, just like equality operator."""
+        """Compute hash on description string, just like equality operator."""
         return hash(self.description)
 
     @property
@@ -761,7 +761,7 @@ class Target:
         return Angle(np.arctan2(y, x))
 
     def geometric_delay(self, antenna2, timestamp=None, antenna=None):
-        """Calculate geometric delay between two antennas pointing at target.
+        r"""Calculate geometric delay between two antennas pointing at target.
 
         An incoming plane wavefront travelling along the direction from the
         target to the reference antenna *antenna* arrives at this antenna at the
@@ -821,8 +821,10 @@ class Target:
         return delays[..., 1], delay_rate
 
     def uvw_basis(self, timestamp=None, antenna=None):
-        """Calculate the coordinate transformation from local ENU coordinates
-        to (u,v,w) coordinates while pointing at target.
+        """Calculate ENU -> (u,v,w) transform while pointing at the target.
+
+        Calculate the coordinate transformation from local ENU coordinates
+        to (u,v,w) coordinates while pointing at the target.
 
         In most cases you should use :meth:`uvw` directly.
 
@@ -941,7 +943,9 @@ class Target:
         return CartesianRepresentation(np.tensordot(basis, baseline, ([1], [-1])))
 
     def lmn(self, ra, dec, timestamp=None, antenna=None):
-        """Calculate (l, m, n) coordinates for another target, while pointing at
+        """Calculate (l, m, n) coordinates for another target relative to self.
+
+        Calculate (l, m, n) coordinates for another target, while pointing at
         this target.
 
         Refer to :meth:`uvw` for a description of the coordinate system. This

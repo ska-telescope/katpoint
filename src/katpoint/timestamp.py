@@ -218,7 +218,7 @@ class Timestamp:
             ) from err
 
     def __hash__(self):
-        """Base hash on internal timestamp, just like equality operator."""
+        """Compute hash on internal timestamp, just like equality operator."""
         return hash(self.time)
 
     def local(self):

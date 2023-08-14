@@ -188,7 +188,7 @@ class Antenna:
         return f"<katpoint.Antenna {self.name!r} diam={self.diameter} at {id(self):#x}>"
 
     def __reduce__(self):
-        """Custom pickling routine based on description string."""
+        """Pickle object based on description string."""
         return (self.__class__, (self.description,))
 
     def __eq__(self, other):
@@ -204,7 +204,7 @@ class Antenna:
         )
 
     def __hash__(self):
-        """Base hash on description string, just like equality operator."""
+        """Compute hash on description string, just like equality operator."""
         return hash(self.description)
 
     @property

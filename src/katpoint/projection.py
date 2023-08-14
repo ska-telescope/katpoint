@@ -186,7 +186,7 @@ def set_out_of_range_treatment(treatment):
 
 
 def get_out_of_range_treatment():
-    """The current treatment of out-of-range values."""
+    """Return the current treatment of out-of-range values."""
     return _out_of_range_cvar.treatment
 
 
