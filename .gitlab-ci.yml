@@ -7,19 +7,18 @@ stages:
   - lint
   - test
   - build
-  - publish
+# Drop this for now as katpoint ships to PyPI and has funky version numbers
+#  - publish
   - scan
   - pages
 
 include:
-  # Run python jobs
+  # Run standard python jobs
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/python.gitlab-ci.yml'
   # Include documentation
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/docs.gitlab-ci.yml'
-#  - project: 'ska-telescope/templates-repository'
-#    file: 'gitlab-ci/includes/release.gitlab-ci.yml'
   # Run finalizer, inc. ci-metrics
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/finaliser.gitlab-ci.yml'
