@@ -16,8 +16,6 @@
 
 """Tests for the delay modules."""
 
-# pylint: disable=missing-function-docstring
-
 import json
 from io import StringIO
 
@@ -238,6 +236,7 @@ WEATHER = dict(temperature=20 * u.deg_C, pressure=1000 * u.mbar, relative_humidi
 
 
 def test_tropospheric_delay():
+    """Test that `DelayCorrection` correctly applies tropospheric delays."""
     model = dict(ant_models=ANT_MODELS, **DELAY_MODEL)
     dc = katpoint.DelayCorrection(json.dumps(model))
     tropospheric_delay = katpoint.refraction.TroposphericDelay(dc.ref_location)
@@ -288,6 +287,7 @@ def test_tropospheric_delay():
     ],
 )
 def test_against_calc(times, ant_models, geom_atol, tropo_atol):
+    """Test geocentric katpoint against Calc (especially tropos and NIAO parts)."""
     times = katpoint.Timestamp(times)
     if ant_models != {"ref": ""}:
         pytest.xfail("Topocentric delay models don't match Calc")

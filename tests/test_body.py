@@ -21,8 +21,6 @@ pyephem package.
 
 """
 
-# pylint: disable=missing-function-docstring
-
 import astropy.units as u
 import pytest
 from astropy import __version__ as astropy_version
@@ -210,6 +208,7 @@ def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astro
 
 
 def test_fixed():
+    """Test basic properties of fixed body."""
     body = _get_fixed_body("10:10:40.123", "40:20:50.567")
     assert body.tag == "radec"
     assert body.default_name
@@ -218,6 +217,7 @@ def test_fixed():
 
 
 def test_galactic():
+    """Test basic properties of galactic body."""
     body = GalacticBody(Galactic(l="-10d", b="20d"))
     assert body.tag == "gal"
     assert body.default_name
@@ -226,6 +226,7 @@ def test_galactic():
 
 
 def test_solar_system():
+    """Test basic properties of solar system body."""
     body = SolarSystemBody("Venus")
     assert body.tag == "special"
     assert body.default_name
@@ -233,6 +234,7 @@ def test_solar_system():
 
 @pytest.mark.skipif(not HAS_SKYFIELD, reason="Skyfield is not installed")
 def test_earth_satellite_vs_skyfield():
+    """Test whether Skyfield agrees with katpoint on satellite (az, el)."""
     ts = load.timescale()
     satellite = EarthSatellite(TLE_LINE1, TLE_LINE2, TLE_NAME, ts)
     antenna = Topos(
@@ -266,6 +268,7 @@ def _check_edb_E(sat, epoch_iso, inc, raan, e, ap, M, n, decay, drag):
 
 
 def test_earth_satellite():
+    """Test basic properties of satellite body and conversion to/from EDB."""
     body = EarthSatelliteBody.from_tle(TLE_LINE1, TLE_LINE2)
     assert body.tag == "tle"
     assert body.default_name
@@ -300,6 +303,7 @@ def test_earth_satellite():
 
 
 def test_stationary():
+    """Test basic properties of stationary body."""
     body = StationaryBody("20d", "30d")
     assert body.tag == "azel"
     assert body.default_name
@@ -308,6 +312,7 @@ def test_stationary():
 
 
 def test_fixed_edb():
+    """Test that we can construct fixed body from EDB."""
     record = "Sadr,f|S|F8,20:22:13.7|2.43,40:15:24|-0.93,2.23,2000,0"
     body = Body.from_edb(record)
     assert isinstance(body, FixedBody)

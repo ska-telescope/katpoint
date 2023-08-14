@@ -16,8 +16,6 @@
 
 """Tests for the antenna module."""
 
-# pylint: disable=missing-function-docstring
-
 import pickle
 import time
 
@@ -188,6 +186,7 @@ def test_local_sidereal_time():
 
 
 def test_array_reference_antenna():
+    """Test that the reference antenna is correctly reported."""
     ant = katpoint.Antenna(
         "FF2, -30:43:17.3, 21:24:38.5, 1038.0, 12.0, 86.2 25.5 0.0, "
         "-0:06:39.6 0 0 0 0 0 0:09:48.9, 1.16"
@@ -209,6 +208,7 @@ def test_array_reference_antenna():
     ],
 )
 def test_description_round_trip(description):
+    """Test that the description strings can round-trip for various precisions."""
     assert katpoint.Antenna(description).description == description
 
 
@@ -230,6 +230,7 @@ def test_description_round_trip(description):
     ],
 )
 def test_location_round_trip(location):
+    """Test that locations can round-trip via Antenna description strings and back."""
     xyz = location.itrs.cartesian
     descr = katpoint.Antenna(location).description
     xyz2 = katpoint.Antenna(descr).location.itrs.cartesian

@@ -16,8 +16,6 @@
 
 """Tests for the conversion module."""
 
-# pylint: disable=missing-function-docstring
-
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
@@ -44,6 +42,7 @@ from .helper import assert_angles_almost_equal
     ],
 )
 def test_angle_from_degrees(angle, angle_deg):
+    """Check that `to_angle` can construct from angles in units of degrees."""
     assert katpoint.conversion.to_angle(angle, sexagesimal_unit=u.deg).deg == angle_deg
 
 
@@ -62,12 +61,14 @@ def test_angle_from_degrees(angle, angle_deg):
     ],
 )
 def test_angle_from_hours(angle, angle_hour):
+    """Check that `to_angle` can construct from angles in units of hourangle."""
     assert (
         katpoint.conversion.to_angle(angle, sexagesimal_unit=u.hour).hour == angle_hour
     )
 
 
 def test_bytes_to_angle():
+    """Test that `to_angle` rejects bytes (decode them first)."""
     # Raw bytes are not supported
     with pytest.raises(TypeError):
         katpoint.conversion.to_angle(b"1.2")
@@ -110,6 +111,7 @@ def test_bytes_to_angle():
     ],
 )
 def test_angle_to_string(angle, kwargs, angle_string):
+    """Test `angle_to_string` for various parameter settings."""
     np.testing.assert_array_equal(
         katpoint.conversion.angle_to_string(Angle(angle), **kwargs),
         angle_string,
@@ -125,6 +127,7 @@ def test_angle_to_string(angle, kwargs, angle_string):
     ],
 )
 def test_angle_to_string_errors(angle, kwargs):
+    """Test that `angle_to_string` rejects requests for radians and dms separators."""
     with pytest.raises(ValueError):
         katpoint.conversion.angle_to_string(Angle(angle), **kwargs)
 
@@ -139,6 +142,7 @@ def test_angle_to_string_errors(angle, kwargs):
     ],
 )
 def test_angle_to_string_round_trip(random, kwargs, N=1000):
+    """Check closure of random angles converted to strings and back."""
     angle1 = Angle(360 * random.rand(N) * u.deg)
     string1 = katpoint.conversion.angle_to_string(angle1, **kwargs)
     angle2 = katpoint.conversion.to_angle(string1)
@@ -152,6 +156,7 @@ def test_angle_to_string_round_trip(random, kwargs, N=1000):
 
 
 def random_geoid(random, N):
+    """Generate `N` random points on geoid in (longitude, latitude, altitude) form."""
     lat = 0.999 * np.pi * (random.rand(N) - 0.5)
     lon = 2.0 * np.pi * random.rand(N)
     alt = 1000.0 * random.randn(N)
@@ -189,6 +194,7 @@ def test_ecef_to_enu(random, N=1000):
 
 
 def random_sphere(random, N):
+    """Generate `N` random points on a 3D sphere in (longitude, latitude) form."""
     az = Angle(2.0 * np.pi * random.rand(N), unit=u.rad)
     el = Angle(0.999 * np.pi * (random.rand(N) - 0.5), unit=u.rad)
     return az, el
