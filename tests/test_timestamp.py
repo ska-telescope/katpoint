@@ -16,8 +16,6 @@
 
 """Tests for the timestamp module."""
 
-# pylint: disable=missing-function-docstring
-
 import re
 import warnings
 from unittest.mock import patch
@@ -56,6 +54,7 @@ import katpoint
     ],
 )
 def test_construct_valid_timestamp(init_value, string):
+    """Test that we can construct a `Timestamp` from valid inputs."""
     t = katpoint.Timestamp(init_value)
     assert (
         str(t) == string
@@ -78,6 +77,7 @@ def test_construct_valid_timestamp(init_value, string):
     ],
 )
 def test_construct_invalid_timestamp(init_value):
+    """Test that `Timestamp` rejects invalid inputs."""
     with pytest.raises(ValueError):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", np.ComplexWarning)
@@ -85,6 +85,7 @@ def test_construct_invalid_timestamp(init_value):
 
 
 def test_string_representations():
+    """Test string representations of `Timestamp`."""
     t = katpoint.Timestamp(1234567890.01234)
     assert t.to_string() == "2009-02-13 23:31:30.012"
     assert str(t) == "2009-02-13 23:31:30.012"
@@ -99,12 +100,14 @@ def test_string_representations():
 
 
 def test_current_timestamp():
+    """Check that `Timestamp()` is equal to `Time.now()`."""
     t0 = Time.now()
     with patch.object(Time, "now", return_value=t0):
         assert katpoint.Timestamp() == t0
 
 
 def test_timestamp_ordering():
+    """Check that `Timestamp`s can be compared to each other."""
     t1 = katpoint.Timestamp(1234567890)
     t2 = katpoint.Timestamp(1234567891)
     assert t2 >= t1
@@ -233,6 +236,7 @@ def test_operators():
 
 
 def test_array_timestamps():
+    """Test that `Timestamp` supports arrays of times."""
     t = katpoint.Timestamp([1234567890.0, 1234567891.0])
     with pytest.raises(TypeError):
         float(t)
@@ -271,6 +275,7 @@ def test_array_timestamps():
 
 @pytest.mark.parametrize("mjd", [59000.0, (59000.0, 59001.0)])
 def test_mjd_timestamp(mjd):
+    """Test `Timestamp.to_mjd` functionality."""
     t = Time(mjd, format="mjd")
     t2 = katpoint.Timestamp(t)
     assert np.all(t2.to_mjd() == mjd)

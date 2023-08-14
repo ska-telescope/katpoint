@@ -16,8 +16,6 @@
 
 """Tests for the target module."""
 
-# pylint: disable=missing-function-docstring
-
 import pickle
 from contextlib import contextmanager
 
@@ -199,6 +197,7 @@ def test_compare_update_target():
     ],
 )
 def test_names(description):
+    """Test that targets have appropriate names and aliases."""
     target = katpoint.Target(description)
     assert target.name == "Venus"
     assert target.aliases == ("Flytrap", "De Milo")
@@ -255,6 +254,7 @@ FLUX_MODEL = katpoint.FluxDensityModel.from_description("(1000.0 2000.0 1.0 10.0
     ],
 )
 def test_flux_model_on_all_targets(description):
+    """Test that any target type can have a flux model."""
     target = katpoint.Target(description)
     assert target.flux_model == FLUX_MODEL
 
@@ -386,6 +386,7 @@ def test_construct_invalid_target(description):
     ],
 )
 def test_no_name_targets(description):
+    """Test that targets of any type can be anonymous."""
     assert katpoint.Target(description).description == description
 
 
@@ -393,23 +394,23 @@ NON_AZEL = "astrometric_radec apparent_radec galactic"
 
 
 @contextmanager
-def does_not_raise(error):  # pylint: disable=unused-argument
+def _does_not_raise(error):  # pylint: disable=unused-argument
     yield
 
 
 @pytest.mark.parametrize(
     "description,methods,raises,error",
     [
-        ("azel, 10, -10", "azel", does_not_raise, None),
+        ("azel, 10, -10", "azel", _does_not_raise, None),
         ("azel, 10, -10", NON_AZEL, pytest.raises, ValueError),
         ("radec, 20, -20", "azel", pytest.raises, ValueError),
-        ("radec, 20, -20", NON_AZEL, does_not_raise, None),
+        ("radec, 20, -20", NON_AZEL, _does_not_raise, None),
         ("gal, 30, -30", "azel", pytest.raises, ValueError),
-        ("gal, 30, -30", NON_AZEL, does_not_raise, None),
+        ("gal, 30, -30", NON_AZEL, _does_not_raise, None),
         ("Sun, special", "azel", pytest.raises, ValueError),
-        ("Sun, special", NON_AZEL, does_not_raise, None),
+        ("Sun, special", NON_AZEL, _does_not_raise, None),
         (TLE_TARGET, "azel", pytest.raises, ValueError),
-        (TLE_TARGET, NON_AZEL, does_not_raise, None),
+        (TLE_TARGET, NON_AZEL, _does_not_raise, None),
     ],
 )
 def test_coord_methods_without_antenna(description, methods, raises, error):
@@ -537,11 +538,13 @@ def test_uvw_timestamp_array_azel():
 
 
 def test_uvw_antenna_array():
+    """Test that uvw can be computed on a list of baselines to speed things up."""
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS[0], ANT1)
     assert np.allclose(uvw.xyz, np.c_[np.zeros(3), UVW[0]], rtol=0, atol=10 * u.nm)
 
 
 def test_uvw_both_array():
+    """Test that uvw can be computed on a list of baselines and times at once."""
     uvw = DELAY_TARGET.uvw([ANT1, ANT2], DELAY_TS, ANT1)
     # UVW array has shape (3, n_times, n_bls)
     # stack times along dim 1 and ants along dim 2

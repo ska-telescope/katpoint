@@ -16,8 +16,6 @@
 
 """Tests for the catalogue module."""
 
-# pylint: disable=missing-function-docstring
-
 import astropy.units as u
 import numpy as np
 import pytest
@@ -60,6 +58,7 @@ def test_catalogue_basic():
 
 
 def test_catalogue_tab_completion():
+    """Test that IPython tab completion will work."""
     cat = katpoint.Catalogue()
     cat.add("Nothing, special")
     cat.add("Earth | Terra Incognita, azel, 0, 0")
@@ -162,6 +161,7 @@ def test_construct_catalogue(caplog):
 
 
 def test_that_equality_and_hash_ignore_order():
+    """Test that shuffled catalogues are equal and produce the same hash."""
     a = katpoint.Catalogue()
     b = katpoint.Catalogue()
     t1 = katpoint.Target("Nothing, special")
@@ -175,6 +175,7 @@ def test_that_equality_and_hash_ignore_order():
 
 
 def test_skip_empty():
+    """Test that Catalogue can handle empty files without crashing."""
     cat = katpoint.Catalogue(["", "# comment", "   ", "\t\r "])
     assert len(cat) == 0
 
