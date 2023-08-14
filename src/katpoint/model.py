@@ -75,7 +75,7 @@ class Parameter:
         self.default_value = default_value
 
     def __bool__(self):
-        """True if parameter is active, i.e. its value differs from default."""
+        """Return True if parameter is active, i.e. its value differs from default."""
         # Do explicit cast to bool, as value can be a NumPy type, resulting in
         # an np.bool_ type for the expression (not allowed for __bool__)
         return bool(self.value != self.default_value)
@@ -128,11 +128,11 @@ class Model:
         self.params = OrderedDict((p.name, p) for p in params)
 
     def __len__(self):
-        """Number of parameters in full model."""
+        """Return number of parameters in full model."""
         return len(self.params)
 
     def __bool__(self):
-        """True if model contains any active (non-default) parameters."""
+        """Return True if model contains any active (non-default) parameters."""
         return any(p for p in self)
 
     def __iter__(self):
@@ -188,7 +188,7 @@ class Model:
         )
 
     def __hash__(self):
-        """Base hash on description string, just like equality operator."""
+        """Compute hash on description string, just like equality operator."""
         return hash(self.description)
 
     def __getitem__(self, key):

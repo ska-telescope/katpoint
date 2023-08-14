@@ -176,7 +176,6 @@ def lla_to_ecef(lat_rad, lon_rad, alt_m):
 
     References
     ----------
-
     .. [NIMA2004] National Imagery and Mapping Agency, "Department of Defense
        World Geodetic System 1984," NIMA TR8350.2, Page 4-4, last updated
        June, 2004.

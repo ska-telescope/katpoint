@@ -74,7 +74,7 @@ def test_catalogue_tab_completion():
 
 
 def test_catalogue_same_name():
-    """ "Test add() and remove() of targets with the same name."""
+    """Test add() and remove() of targets with the same name."""
     cat = katpoint.Catalogue()
     targets = ["Sun, special", "Sun | Sol, special", "Sun, special hot"]
     # Add various targets called Sun

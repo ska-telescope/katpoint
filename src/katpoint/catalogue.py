@@ -381,11 +381,11 @@ class Catalogue:
         return f"<katpoint.Catalogue targets={targets} names={names} at {id(self):#x}>"
 
     def __len__(self):
-        """Number of targets in catalogue."""
+        """Return number of targets in catalogue."""
         return len(self.targets)
 
     def _targets_with_name(self, name):
-        """List of targets in catalogue with given name (or alias)."""
+        """Return list of targets in catalogue with given name (or alias)."""
         return self.lookup.get(_normalised(name), [])
 
     def __getitem__(self, name):
@@ -736,7 +736,7 @@ class Catalogue:
         timestamp=None,
         antenna=None,
     ):
-        """Generator function which returns targets satisfying various criteria.
+        """Yield targets satisfying various criteria (generator function).
 
         This returns a (generator-)iterator which returns targets satisfying
         various criteria, one at a time. The standard use of this method is in a

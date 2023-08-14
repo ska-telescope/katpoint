@@ -125,7 +125,7 @@ class FluxDensityModel:
         )
 
     def __hash__(self):
-        """Base hash on description string, just like equality operator."""
+        """Compute hash on description string, just like equality operator."""
         return hash(self.description)
 
     @property

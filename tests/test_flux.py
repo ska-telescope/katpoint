@@ -107,7 +107,7 @@ def test_flux_density():
 
 
 def test_flux_density_stokes():
-    """Test flux density calculation for Stokes parameters"""
+    """Test flux density calculation for Stokes parameters."""
     np.testing.assert_array_equal(
         FLUX_MODEL.flux_density_stokes(1.5 * u.MHz),
         np.array([200.0, 50.0, 25.0, -75.0]) * u.Jy,
