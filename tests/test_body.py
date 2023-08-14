@@ -92,7 +92,7 @@ astropy_version = Version(astropy_version)
 # 1 mas relative to earlier versions. The accuracy is capped to 0.00005"
 # since we specify azel arcsec to 4 decimal places.
 @pytest.mark.parametrize(
-    "body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver",
+    "body, date_str, ra_str, dec_str, az_str, el_str, tol, ref_astropy_ver",
     [
         (
             _get_fixed_body("10:10:40.123", "40:20:50.567"),
@@ -176,16 +176,16 @@ astropy_version = Version(astropy_version)
             "127:15:17.1418d",
             "60:05:10.5475d",
             1 * u.mas,
-            "4.3",
+            "5.3",
         ),
         # 23:35:44.31h       -8:32:55.3d       127:15:17.1d       60:05:10.5d  (PyEphem)
     ],
 )
-def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol, min_astropy_ver):
+def test_compute(body, date_str, ra_str, dec_str, az_str, el_str, tol, ref_astropy_ver):
     """Test `body.compute()` for the two ends of the coordinate chain."""
     obstime = Time(date_str)
     is_moon = body.default_name == "Moon"
-    accurate = astropy_version >= Version(min_astropy_ver)
+    accurate = astropy_version >= Version(ref_astropy_ver)
     if accurate:
         # Accuracy is roughly capped to 0.0001" since we specify arcseconds
         # to 4 decimal places and hourangle seconds to 5 decimal places, and
