@@ -7,8 +7,7 @@ stages:
   - lint
   - test
   - build
-# Drop this for now as katpoint ships to PyPI and has funky version numbers
-#  - publish
+  - publish
   - scan
   - pages
 
