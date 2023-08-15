@@ -6,3 +6,5 @@ include .make/base.mk
 include .make/python.mk
 
 
+docs-pre-build:
+	poetry install --with docs
