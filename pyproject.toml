@@ -54,8 +54,10 @@ pylint-junit = "^0.3.2"
 pylint-pytest = "^1.1.2"
 pytest = "^7.0.1"
 pytest-cov = ">=3.0"
+
+[tool.poetry.group.docs.dependencies]
 sphinx = ">=1.6,<7"
-sphinx-rtd-theme = "^1.2.2"
+ska-ser-sphinx-theme = "^0.1.1"
 
 
 [tool.flake8]
