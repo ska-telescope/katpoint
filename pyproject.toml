@@ -20,9 +20,19 @@ include = [
     { path = "tests", format = "sdist" }
 ]
 
+[tool.poetry-dynamic-versioning]
+enable = true
+
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
 [[tool.poetry.source]]
 name = "ska"
 url = "https://artefact.skao.int/repository/pypi-internal/simple"
+priority = "supplemental"
+
 
 [tool.poetry.dependencies]
 # MeerKAT CAM still uses Python 3.6.9 provided by Ubuntu 18.04 LTS
@@ -31,14 +41,14 @@ astropy = ">=4.1"
 numpy = "^1.13"
 sgp4 = "^2.7"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 # These are the last versions that can still run on Python 3.6
-black = ">=22.1.0"
 build = "^0.7.0"
+isort = "^5.10.1"
+black = ">=22.1.0"
 flake8 = ">=4.0.1"
 flake8-docstrings = "^1.4.0"
 flake8-pyproject = ">=0.9.1"
-isort = "^5.10.1"
 pylint = "^2.12.2"
 pylint-junit = "^0.3.2"
 pylint-pytest = "^1.1.2"
@@ -47,8 +57,6 @@ pytest-cov = ">=3.0"
 sphinx = ">=1.6,<7"
 sphinx-rtd-theme = "^1.2.2"
 
-[tool.poetry-dynamic-versioning]
-enable = true
 
 [tool.flake8]
 # E203 and W503 conflict with black
@@ -66,6 +74,7 @@ rst-roles = ["py:attr", "py:class", "py:const", "py:exc", "py:func", "py:meth", 
 enable = "DAR104"
 # max-complexity = 10
 
+
 [tool.pylint.master]
 load-plugins = ["pylint_pytest"]
 
@@ -81,6 +90,7 @@ disable = [
 [tool.pylint.typecheck]
 # These Astropy modules generate most of their members
 ignored-modules = ["astropy.units", "astropy.constants"]
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
