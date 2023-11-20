@@ -33,19 +33,27 @@ sgp4 = "^2.7"
 
 [tool.poetry.dev-dependencies]
 # These are the last versions that can still run on Python 3.6
-black = "^22.1.0"
+black = ">=22.1.0"
 build = "^0.7.0"
-flake8 = "^4.0.1"
+flake8 = ">=4.0.1"
+flake8-pyproject = ">=0.9.1"
 isort = "^5.10.1"
 pylint = "^2.12.2"
 pylint-junit = "^0.3.2"
 pytest = "^7.0.1"
-pytest-cov = "^3.0.0"
+pytest-cov = ">=3.0"
 sphinx = ">=1.6,<7"
 sphinx-rtd-theme = "^1.2.2"
 
 [tool.poetry-dynamic-versioning]
 enable = true
+
+[tool.flake8]
+# E203 and W503 conflict with black
+ignore = ["E203", "W503"]
+per-file-ignores = [
+    '__init__.py:F401',
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
