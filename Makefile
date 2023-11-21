@@ -7,4 +7,8 @@ include .make/python.mk
 
 
 docs-pre-build:
+	git fetch --unshallow
 	poetry install --with docs
+
+python-pre-lint:
+	git fetch --unshallow
