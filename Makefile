@@ -12,3 +12,6 @@ docs-pre-build:
 
 python-pre-lint:
 	git fetch --unshallow
+
+python-pre-scan:
+	poetry self update 1.2.2
