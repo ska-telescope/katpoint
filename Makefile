@@ -10,4 +10,4 @@ docs-pre-build:
 	poetry install --with docs
 
 python-pre-scan:
-	pip install poetry==1.2.2
+	pip install poetry==1.2.2 poetry-dynamic-versioning
