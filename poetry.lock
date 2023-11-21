@@ -1308,6 +1308,7 @@ files = [
 [package.dependencies]
 dunamai = ">=1.18.0,<2.0.0"
 jinja2 = ">=2.11.1,<4"
+poetry = {version = ">=1.2.0,<2.0.0", optional = true, markers = "extra == \"plugin\""}
 tomlkit = ">=0.4"
 
 [package.extras]
@@ -2335,4 +2336,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "319a71689002c28a0143297797554e27fb8a9a4b69f69940877c0de777741112"
+content-hash = "0edc6c3535678610b25044cbc175b823dfc802bdf868714e3a0e7107365740a9"

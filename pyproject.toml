@@ -42,7 +42,7 @@ astropy = ">=4.1"
 numpy = "^1.13"
 sgp4 = "^2.7"
 poetry = ">=1.1.13"
-poetry-dynamic-versioning = ">=0.17.1"
+poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1"}
 
 [tool.poetry.dev-dependencies]
 # These are the last versions that can still run on Python 3.6
@@ -68,7 +68,7 @@ ska-ser-sphinx-theme = "^0.1.1"
 # numpy = "^1.21"
 # sgp4 = "^2.7"
 # poetry = ">=1.7.1"
-# poetry-dynamic-versioning = ">=1.1.1"
+# poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}
 # build = "^1.0.3"
 
 [tool.flake8]
