@@ -62,6 +62,14 @@ pytest-cov = ">=3.0"
 sphinx = ">=1.6,<7"
 ska-ser-sphinx-theme = "^0.1.1"
 
+## The versions used to produce the poetry.lock file
+# python = "^3.8.1"
+# astropy = ">=5.2"
+# numpy = "^1.21"
+# sgp4 = "^2.7"
+# poetry = ">=1.7.1"
+# poetry-dynamic-versioning = ">=1.1.1"
+# build = "^1.0.3"
 
 [tool.flake8]
 # E203 and W503 conflict with black
