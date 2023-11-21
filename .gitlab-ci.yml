@@ -4,6 +4,9 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_DEPTH: 0
 
+before_script:
+  poetry self add dynamic-versioning[plugin]
+
 stages:
   - lint
   - test
