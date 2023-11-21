@@ -7,11 +7,7 @@ include .make/python.mk
 
 
 docs-pre-build:
-	git fetch --unshallow
 	poetry install --with docs
-
-python-pre-lint:
-	git fetch --unshallow
 
 python-pre-scan:
 	poetry self update 1.2.2
