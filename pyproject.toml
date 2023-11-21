@@ -46,7 +46,7 @@ poetry-dynamic-versioning = ">=0.17.1"
 
 [tool.poetry.dev-dependencies]
 # These are the last versions that can still run on Python 3.6
-build = "^0.7.0"
+build = ">=0.7.0"
 isort = "^5.10.1"
 black = ">=22.1.0"
 flake8 = ">=4.0.1"
