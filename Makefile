@@ -8,4 +8,5 @@ include .make/python.mk
 
 
 docs-pre-build:
+	poetry self add "poetry-dynamic-versioning[plugin]"
 	poetry install --with docs
