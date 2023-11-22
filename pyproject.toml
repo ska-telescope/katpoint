@@ -22,6 +22,7 @@ include = [
 
 [tool.poetry-dynamic-versioning]
 enable = true
+dirty = true
 
 [tool.poetry-dynamic-versioning.substitution]
 folders = [
