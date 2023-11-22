@@ -36,16 +36,24 @@ url = "https://artefact.skao.int/repository/pypi-internal/simple"
 
 
 [tool.poetry.dependencies]
+# These are versions used to produce the poetry.lock file
+# python = "^3.8.1"
+# astropy = ">=5.2"
+# numpy = "^1.21"
 # MeerKAT CAM still uses Python 3.6.9 provided by Ubuntu 18.04 LTS
 python = "^3.6.2"
 astropy = ">=4.1"
 numpy = "^1.13"
 sgp4 = "^2.7"
-poetry = ">=1.1.13"
-poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1"}
 
 [tool.poetry.dev-dependencies]
+# These are versions used to produce the poetry.lock file
+# poetry = ">=1.7.1"
+# poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}
+# build = "^1.0.3"
 # These are the last versions that can still run on Python 3.6
+poetry = ">=1.1.13"
+poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1"}
 build = ">=0.7.0"
 isort = "^5.10.1"
 black = ">=22.1.0"
@@ -61,15 +69,6 @@ pytest-cov = ">=3.0"
 [tool.poetry.group.docs.dependencies]
 sphinx = ">=1.6,<7"
 ska-ser-sphinx-theme = "^0.1.1"
-
-## The versions used to produce the poetry.lock file
-# python = "^3.8.1"
-# astropy = ">=5.2"
-# numpy = "^1.21"
-# sgp4 = "^2.7"
-# poetry = ">=1.7.1"
-# poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}
-# build = "^1.0.3"
 
 [tool.flake8]
 # E203 and W503 conflict with black
