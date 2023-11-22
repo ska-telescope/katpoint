@@ -9,8 +9,7 @@ stages:
   - test
   - build
   - publish
-# XXX Disable scan stage until its environment moves beyond Poetry 1.1.13
-#  - scan
+  - scan
   - pages
 
 include:
