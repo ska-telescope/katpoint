@@ -7,7 +7,7 @@ include .make/base.mk
 include .make/python.mk
 
 
-lint-pre-build:
+python-pre-lint:
 	poetry self add "poetry-dynamic-versioning[plugin]"
 	poetry install
 
