@@ -48,6 +48,7 @@ from .projection import plane_to_sphere, sphere_to_plane
 from .refraction import RefractionCorrection
 from .target import NonAsciiError, Target, construct_azel_target, construct_radec_target
 from .timestamp import Timestamp
+from ._version import __version__
 
 
 def wrap_angle(angle, period=2.0 * _np.pi):
@@ -84,18 +85,3 @@ __all__ += ["__version__"]
 def __dir__():
     """Tab completion in IPython seems to respect this."""
     return __all__
-
-
-# pylint: disable=consider-using-f-string
-
-# BEGIN VERSION CHECK
-# Get package version when locally imported from repo or via -e develop install
-try:
-    import katversion as _katversion
-except ImportError:
-    import time as _time
-
-    __version__ = "0.0+unknown.{}".format(_time.strftime("%Y%m%d%H%M"))
-else:
-    __version__ = _katversion.get_version(__path__[0])
-# END VERSION CHECK
