@@ -27,6 +27,7 @@ from types import ModuleType as _ModuleType
 
 import numpy as _np
 
+from ._version import __version__
 from .antenna import Antenna
 from .catalogue import Catalogue, specials
 from .conversion import (
@@ -48,7 +49,6 @@ from .projection import plane_to_sphere, sphere_to_plane
 from .refraction import RefractionCorrection
 from .target import NonAsciiError, Target, construct_azel_target, construct_radec_target
 from .timestamp import Timestamp
-from ._version import __version__
 
 
 def wrap_angle(angle, period=2.0 * _np.pi):
