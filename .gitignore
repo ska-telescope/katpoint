@@ -1,5 +1,8 @@
 *.py[cod]
 
+# Dynamically generated version files
+_version.py
+
 # C extensions
 *.so
 *.so.dSYM

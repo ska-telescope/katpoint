@@ -23,10 +23,15 @@ include = [
 [tool.poetry-dynamic-versioning]
 enable = true
 
+[tool.poetry-dynamic-versioning.substitution]
+folders = [
+  { path = "src" }
+]
+
 [tool.poetry-dynamic-versioning.files."src/katpoint/_version.py"]
 persistent-substitution = true
 initial-content = """
-  # These are populated by poetry-dynamic-versioning / Dunamai
+  # This is populated by poetry-dynamic-versioning / Dunamai
   __version__ = "0.0.0"
   __version_tuple__ = (0, 0, 0)
 """
