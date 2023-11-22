@@ -10,6 +10,9 @@ include .make/python.mk
 python-pre-lint:
 	poetry install
 
+python-pre-test:
+	poetry install
+
 docs-pre-build:
 	poetry self add "poetry-dynamic-versioning[plugin]"
 	poetry install --with docs
