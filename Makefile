@@ -8,7 +8,6 @@ include .make/python.mk
 
 
 python-pre-lint:
-	poetry self add "poetry-dynamic-versioning[plugin]"
 	poetry install
 
 docs-pre-build:
