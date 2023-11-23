@@ -22,7 +22,10 @@ include = [
 
 [tool.poetry-dynamic-versioning]
 enable = true
-dirty = true
+# XXX This first requires pythonBuild() in ska-cicd-makefile to stop tweaking versions too
+# dirty = true
+# XXX Enable this once katpoint git tags move over to semver (still pep440 at the moment)
+# style = "semver"
 
 [tool.poetry-dynamic-versioning.substitution]
 folders = [
