@@ -13,6 +13,9 @@ python-pre-lint:
 python-pre-test:
 	poetry install
 
+python-pre-build:
+	poetry install
+
 docs-pre-build:
 	poetry self add "poetry-dynamic-versioning[plugin]"
 	poetry install --with docs
