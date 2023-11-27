@@ -17,11 +17,29 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy"
 ]
 include = [
-    { path = "tests", format = "sdist" }
+    { path = "tests", format = "sdist" },
+    { path = "src/katpoint/_version.py", format = "sdist" }
 ]
 
 [tool.poetry-dynamic-versioning]
 enable = true
+# XXX This first requires pythonBuild() in ska-cicd-makefile to stop tweaking versions too
+# dirty = true
+# XXX Enable this once katpoint git tags move over to semver (still pep440 at the moment)
+# style = "semver"
+
+[tool.poetry-dynamic-versioning.substitution]
+folders = [
+  { path = "src" }
+]
+
+[tool.poetry-dynamic-versioning.files."src/katpoint/_version.py"]
+persistent-substitution = true
+initial-content = """
+  \"""Version data populated by poetry-dynamic-versioning / Dunamai.\"""
+  __version__ = "0.0.0"
+  __version_tuple__ = (0, 0, 0)
+"""
 
 
 # XXX Restore this entry when the latest Poetry demands it
@@ -41,11 +59,12 @@ python = "^3.6.2"
 astropy = ">=4.1"
 numpy = "^1.13"
 sgp4 = "^2.7"
-poetry = ">=1.1.13 <1.3.0"
 
 [tool.poetry.dev-dependencies]
 # These are the last versions that can still run on Python 3.6
-build = "^0.7.0"
+poetry = ">=1.1.13"
+poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1"}
+build = ">=0.7.0"
 isort = "^5.10.1"
 black = ">=22.1.0"
 flake8 = ">=4.0.1"
@@ -60,7 +79,6 @@ pytest-cov = ">=3.0"
 [tool.poetry.group.docs.dependencies]
 sphinx = ">=1.6,<7"
 ska-ser-sphinx-theme = "^0.1.1"
-
 
 [tool.flake8]
 # E203 and W503 conflict with black

@@ -27,6 +27,7 @@ from types import ModuleType as _ModuleType
 
 import numpy as _np
 
+from ._version import __version__
 from .antenna import Antenna
 from .catalogue import Catalogue, specials
 from .conversion import (
@@ -84,18 +85,3 @@ __all__ += ["__version__"]
 def __dir__():
     """Tab completion in IPython seems to respect this."""
     return __all__
-
-
-# pylint: disable=consider-using-f-string
-
-# BEGIN VERSION CHECK
-# Get package version when locally imported from repo or via -e develop install
-try:
-    import katversion as _katversion
-except ImportError:
-    import time as _time
-
-    __version__ = "0.0+unknown.{}".format(_time.strftime("%Y%m%d%H%M"))
-else:
-    __version__ = _katversion.get_version(__path__[0])
-# END VERSION CHECK
