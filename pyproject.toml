@@ -21,6 +21,8 @@ include = [
     { path = "src/katpoint/_version.py", format = "sdist" }
 ]
 
+
+
 [tool.poetry-dynamic-versioning]
 enable = true
 # XXX This first requires pythonBuild() in ska-cicd-makefile to stop tweaking versions too
@@ -42,6 +44,7 @@ initial-content = """
 """
 
 
+
 # XXX Restore this entry when the latest Poetry demands it
 # [[tool.poetry.source]]
 # name = "PyPI"
@@ -53,7 +56,12 @@ url = "https://artefact.skao.int/repository/pypi-internal/simple"
 # priority = "supplemental"
 
 
+
 [tool.poetry.dependencies]
+# These are versions used to produce the poetry.lock file
+# python = "^3.8.1"
+# astropy = ">=5.2"
+# numpy = "^1.21"
 # MeerKAT CAM still uses Python 3.6.9 provided by Ubuntu 18.04 LTS
 python = "^3.6.2"
 astropy = ">=4.1"
@@ -61,6 +69,10 @@ numpy = "^1.13"
 sgp4 = "^2.7"
 
 [tool.poetry.dev-dependencies]
+# These are versions used to produce the poetry.lock file
+# poetry = ">=1.7.1"
+# poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}
+# build = "^1.0.3"
 # These are the last versions that can still run on Python 3.6
 poetry = ">=1.1.13"
 poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1"}
@@ -80,6 +92,8 @@ pytest-cov = ">=3.0"
 sphinx = ">=1.6,<7"
 ska-ser-sphinx-theme = "^0.1.1"
 
+
+
 [tool.flake8]
 # E203 and W503 conflict with black
 ignore = [
@@ -97,6 +111,7 @@ enable = "DAR104"
 # max-complexity = 10
 
 
+
 [tool.pylint.master]
 load-plugins = ["pylint_pytest"]
 
@@ -112,6 +127,7 @@ disable = [
 [tool.pylint.typecheck]
 # These Astropy modules generate most of their members
 ignored-modules = ["astropy.units", "astropy.constants"]
+
 
 
 [build-system]
