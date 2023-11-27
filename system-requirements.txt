@@ -1,6 +1,0 @@
-astropy>=4.1
-numpy
-pytest
-pytest-cov
-sgp4>=2.7
-virtualenv
