@@ -17,7 +17,8 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy"
 ]
 include = [
-    { path = "tests", format = "sdist" }
+    { path = "tests", format = "sdist" },
+    { path = "src/katpoint/_version.py", format = "sdist" }
 ]
 
 [tool.poetry-dynamic-versioning]
