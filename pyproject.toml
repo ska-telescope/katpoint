@@ -1,0 +1,135 @@
+[tool.poetry]
+name = "katpoint"
+# The real version is provided by the poetry-dynamic-versioning plugin based on git tags
+# This is a fake placeholder version to keep the rest of poetry happy
+version = "0.0.0"
+description = "Karoo Array Telescope pointing coordinate library"
+authors = ["Ludwig Schwardt <ludwig@ska.ac.za>"]
+license = "BSD-3-Clause"
+repository = "https://gitlab.com/ska-telescope/katpoint"
+documentation = "https://developer.skao.int/projects/katpoint/en/latest/"
+keywords = ["meerkat", "ska"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Astronomy"
+]
+include = [
+    { path = "tests", format = "sdist" },
+    { path = "src/katpoint/_version.py", format = "sdist" }
+]
+
+
+
+[tool.poetry-dynamic-versioning]
+enable = true
+# XXX This first requires pythonBuild() in ska-cicd-makefile to stop tweaking versions too
+# dirty = true
+# XXX Enable this once katpoint git tags move over to semver (still pep440 at the moment)
+# style = "semver"
+
+[tool.poetry-dynamic-versioning.substitution]
+folders = [
+  { path = "src" }
+]
+
+[tool.poetry-dynamic-versioning.files."src/katpoint/_version.py"]
+persistent-substitution = true
+initial-content = """
+  \"""Version data populated by poetry-dynamic-versioning / Dunamai.\"""
+  __version__ = "0.0.0"
+  __version_tuple__ = (0, 0, 0)
+"""
+
+
+
+# XXX Restore this entry when the latest Poetry demands it
+# [[tool.poetry.source]]
+# name = "PyPI"
+# priority = "primary"
+
+[[tool.poetry.source]]
+name = "ska"
+url = "https://artefact.skao.int/repository/pypi-internal/simple"
+# priority = "supplemental"
+
+
+
+[tool.poetry.dependencies]
+# These are versions used to produce the poetry.lock file
+# python = "^3.8.1"
+# astropy = ">=5.2"
+# numpy = "^1.21"
+# MeerKAT CAM still uses Python 3.6.9 provided by Ubuntu 18.04 LTS
+python = "^3.6.2"
+astropy = ">=4.1"
+numpy = "^1.13"
+sgp4 = "^2.7"
+
+[tool.poetry.dev-dependencies]
+# These are versions used to produce the poetry.lock file
+# poetry = ">=1.7.1"
+# poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}
+# build = "^1.0.3"
+# These are the last versions that can still run on Python 3.6
+poetry = ">=1.1.13"
+poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1"}
+build = ">=0.7.0"
+isort = "^5.10.1"
+black = ">=22.1.0"
+flake8 = ">=4.0.1"
+flake8-docstrings = "^1.4.0"
+flake8-pyproject = ">=0.9.1"
+pylint = "^2.12.2"
+pylint-junit = "^0.3.2"
+pylint-pytest = "^1.1.2"
+pytest = "^7.0.1"
+pytest-cov = ">=3.0"
+
+[tool.poetry.group.docs.dependencies]
+sphinx = ">=1.6,<7"
+ska-ser-sphinx-theme = "^0.1.1"
+
+
+
+[tool.flake8]
+# E203 and W503 conflict with black
+ignore = [
+    "E203",  # whitespace before ':'
+    "W503"  # line break occurred before a binary operator (soon the opposite)
+]
+per-file-ignores = [
+    '__init__.py:F401',  # module imported but unused
+]
+docstring-convention = "numpy"
+docstring-style = "sphinx"
+rst-directives = "literalinclude"
+rst-roles = ["py:attr", "py:class", "py:const", "py:exc", "py:func", "py:meth", "py:mod"]
+enable = "DAR104"
+# max-complexity = 10
+
+
+
+[tool.pylint.master]
+load-plugins = ["pylint_pytest"]
+
+[tool.pylint.messages_control]
+enable = ["useless-suppression"]
+disable = [
+    "fixme",
+    "invalid-name",  # Katpoint has many short and quirky variable names - leave it for now
+    "R",  # One day... all of this will be yours
+    "too-many-lines"  # Yes, some methods are bulky - leave it for now
+]
+
+[tool.pylint.typecheck]
+# These Astropy modules generate most of their members
+ignored-modules = ["astropy.units", "astropy.constants"]
+
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
