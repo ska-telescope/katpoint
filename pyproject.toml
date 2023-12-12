@@ -75,7 +75,7 @@ sgp4 = "^2.7"
 # build = "^1.0.3"
 # These are the last versions that can still run on Python 3.6
 poetry = ">=1.1.13"
-poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1"}
+poetry-dynamic-versioning = {extras = ["plugin"], version = ">=0.17.1, <1.2.0"}
 build = ">=0.7.0"
 isort = "^5.10.1"
 black = ">=22.1.0"

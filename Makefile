@@ -19,5 +19,5 @@ python-pre-build:
 
 # XXX Install package itself with Poetry to access its dynamic version
 docs-pre-build:
-	poetry self add "poetry-dynamic-versioning[plugin]"
+#	poetry self add "poetry-dynamic-versioning[plugin]"
 	poetry install --with docs
