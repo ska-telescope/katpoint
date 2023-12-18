@@ -7,7 +7,7 @@ include .make/base.mk
 include .make/python.mk
 
 
-# XXX Reinstall Poetry so that dynamic versioning can take effect
+# XXX Reinstall Poetry environment so that dynamic versioning can take effect
 python-pre-lint:
 	poetry install
 
@@ -17,7 +17,10 @@ python-pre-test:
 python-pre-build:
 	poetry install
 
-# XXX Install package itself with Poetry to access its dynamic version
+# XXX Reinstall Poetry environment so that dynamic versioning can take effect.
+# This has to be done before the `--with docs` step that needs a proper version.
+# XXX Also install package itself with Poetry to access `katpoint.__version__`
+# in docs (unlike the default CI step that has `--no-root --only docs` options).
 docs-pre-build:
-	poetry self add "poetry-dynamic-versioning[plugin]"
+	poetry install
 	poetry install --with docs
