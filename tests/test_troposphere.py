@@ -42,21 +42,21 @@ from .helper import assert_angles_almost_equal
 
 def test_refraction_basic():
     """Test basic refraction correction properties."""
-    rc = katpoint.RefractionCorrection()
+    rc = katpoint.TroposphericRefraction()
     print(repr(rc))
     with pytest.raises(ValueError):
-        katpoint.RefractionCorrection("unknown")
-    rc2 = katpoint.RefractionCorrection()
+        katpoint.TroposphericRefraction("unknown")
+    rc2 = katpoint.TroposphericRefraction()
     assert rc == rc2, "Refraction models should be equal"
     try:
         assert hash(rc) == hash(rc2), "Refraction model hashes should be equal"
     except TypeError:
-        pytest.fail("RefractionCorrection object not hashable")
+        pytest.fail("TroposphericRefraction object not hashable")
 
 
 def test_refraction_closure():
     """Test closure between refraction correction and its reverse operation."""
-    rc = katpoint.RefractionCorrection()
+    rc = katpoint.TroposphericRefraction()
     el = np.radians(np.arange(0.0, 90.1, 0.1))
     # Generate random meteorological data (a single measurement, hopefully sensible)
     temp = -10.0 + 50.0 * np.random.rand()

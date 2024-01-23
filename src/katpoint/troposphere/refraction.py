@@ -108,7 +108,7 @@ def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
     return np.radians(bphi * sn - aphi)
 
 
-class RefractionCorrection:
+class TroposphericRefraction:
     """Correct pointing for refractive bending in atmosphere.
 
     This uses the specified refraction model to calculate a correction to a
@@ -141,11 +141,11 @@ class RefractionCorrection:
 
     def __repr__(self):
         """Short human-friendly string representation of object."""
-        return f"<katpoint.RefractionCorrection model='{self.model}' at {id(self):#x}>"
+        return f"<katpoint.TroposphericRefraction model='{self.model}' at {id(self):#x}>"
 
     def __eq__(self, other):
         """Equality comparison operator."""
-        return isinstance(other, RefractionCorrection) and (self.model == other.model)
+        return isinstance(other, TroposphericRefraction) and (self.model == other.model)
 
     def __hash__(self):
         """Compute hash on underlying model name, just like equality operator."""
