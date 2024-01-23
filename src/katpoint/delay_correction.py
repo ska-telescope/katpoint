@@ -36,7 +36,7 @@ from astropy.coordinates import (
 from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
 from .delay_model import DelayModel
-from .refraction import TroposphericDelay
+from .troposphere.delay import TroposphericDelay
 from .target import Target
 from .timestamp import Timestamp
 

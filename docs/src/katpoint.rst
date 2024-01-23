@@ -100,6 +100,14 @@ katpoint.timestamp module
    :undoc-members:
    :show-inheritance:
 
+katpoint.troposphere.delay module
+---------------------------------
+
+.. automodule:: katpoint.troposphere.delay
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

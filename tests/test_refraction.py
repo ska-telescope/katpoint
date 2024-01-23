@@ -23,7 +23,7 @@ import pytest
 from astropy.coordinates import ICRS, AltAz, EarthLocation
 
 import katpoint
-from katpoint.refraction import (
+from katpoint.troposphere.delay import (
     GlobalMappingFunction,
     SaastamoinenZenithDelay,
     TroposphericDelay,
