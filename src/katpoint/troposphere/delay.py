@@ -800,6 +800,11 @@ class TroposphericDelay:
     model_id : str, optional
         Unique identifier of tropospheric model (defaults to the only model
         implemented so far)
+
+    Raises
+    ------
+    ValueError
+        If the specified tropospheric model is unknown or has wrong format
     """
 
     def __init__(
