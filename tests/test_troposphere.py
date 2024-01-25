@@ -42,29 +42,29 @@ from .helper import assert_angles_almost_equal
 
 def test_refraction_basic():
     """Test basic refraction correction properties."""
-    rc = katpoint.TroposphericRefraction()
-    print(repr(rc))
+    tropo = katpoint.TroposphericRefraction()
+    print(repr(tropo))
     with pytest.raises(ValueError):
         katpoint.TroposphericRefraction("unknown")
-    rc2 = katpoint.TroposphericRefraction()
-    assert rc == rc2, "Refraction models should be equal"
+    tropo2 = katpoint.TroposphericRefraction()
+    assert tropo == tropo2, "Refraction models should be equal"
     try:
-        assert hash(rc) == hash(rc2), "Refraction model hashes should be equal"
+        assert hash(tropo) == hash(tropo2), "Refraction model hashes should be equal"
     except TypeError:
         pytest.fail("TroposphericRefraction object not hashable")
 
 
 def test_refraction_closure():
     """Test closure between refraction correction and its reverse operation."""
-    rc = katpoint.TroposphericRefraction()
+    tropo = katpoint.TroposphericRefraction()
     el = np.radians(np.arange(0.0, 90.1, 0.1))
     # Generate random meteorological data (a single measurement, hopefully sensible)
     temp = -10.0 + 50.0 * np.random.rand()
     pressure = 900.0 + 200.0 * np.random.rand()
     humidity = 5.0 + 90.0 * np.random.rand()
     # Test closure on el grid
-    refracted_el = rc.apply(el, temp, pressure, humidity)
-    reversed_el = rc.reverse(refracted_el, temp, pressure, humidity)
+    refracted_el = tropo.refract(el, temp, pressure, humidity)
+    reversed_el = tropo.unrefract(refracted_el, temp, pressure, humidity)
     assert_angles_almost_equal(
         reversed_el,
         el,
@@ -78,8 +78,8 @@ def test_refraction_closure():
     pressure = 900.0 + 200.0 * np.random.rand(len(el))
     humidity = 5.0 + 90.0 * np.random.rand(len(el))
     # Test closure on el grid
-    refracted_el = rc.apply(el, temp, pressure, humidity)
-    reversed_el = rc.reverse(refracted_el, temp, pressure, humidity)
+    refracted_el = tropo.refract(el, temp, pressure, humidity)
+    reversed_el = tropo.unrefract(refracted_el, temp, pressure, humidity)
     assert_angles_almost_equal(
         reversed_el,
         el,
