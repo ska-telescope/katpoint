@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2022, National Research Foundation (SARAO)
+# Copyright (c) 2009-2024, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -29,21 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 class HaystackRefraction:
+    """Refraction model of the MIT Haystack Pointing System."""
 
     @classmethod
     def refract(cls, el, temperature_C, pressure_hPa, humidity_percent):
-        """Calculate refraction correction using model in VLBI Field System.
-
-        This uses the refraction model in the VLBI Field System to calculate a
-        correction to a given elevation angle to account for refractive bending in
-        the atmosphere, based on surface weather measurements. Each input parameter
-        can either be a scalar value or an array of values, as long as all arrays
-        are of the same shape.
+        """Calculate refracted elevation angle from unrefracted `el`.
 
         Parameters
         ----------
         el : float or array
-            Requested elevation angle(s), in radians
+            Unrefracted / topocentric / vacuum elevation angle(s), in radians
         temperature_C : float or array
             Ambient air temperature at surface, in degrees Celsius
         pressure_hPa : float or array
@@ -54,7 +49,7 @@ class HaystackRefraction:
         Returns
         -------
         refracted_el : float or array
-            Refracted elevation angle(s), in radians
+            Refracted / observed / surface elevation angle(s), in radians
 
         Notes
         -----
@@ -71,7 +66,8 @@ class HaystackRefraction:
         Manual, Version 8.2, 1 September 1993.
         .. [Clark1966] C.A. Clark, "Haystack Pointing System: Radar Coordinate
         Correction," Technical Note 1966-56, Lincoln Laboratory, MIT, 1966,
-        `<https://doi.org/10.21236/ad0641603>`_
+        `<https://doi.org/10.21236/ad0641603>`_ or
+        `<https://apps.dtic.mil/sti/tr/pdf/AD0641603.pdf>`_
         .. [IH1963] W.R. Iliff, J.M. Holt, "Use of Surface Refractivity in the
         Empirical Prediction of Total Atmospheric Refraction," Journal of Research
         of the National Bureau of Standards--D. Radio Propagation, vol. 67D,
@@ -112,15 +108,15 @@ class HaystackRefraction:
 
     @classmethod
     def unrefract(cls, refracted_el, temperature_C, pressure_hPa, humidity_percent):
-        """Remove refraction correction from elevation angle.
+        """Calculate unrefracted elevation angle from `refracted_el`.
 
         This undoes a refraction correction that resulted in the given elevation
-        angle. It is the inverse of :meth:`apply`.
+        angle. It is the inverse of :meth:`refract`.
 
         Parameters
         ----------
         refracted_el : float or array
-            Elevation angle(s), corrected for refraction, in radians
+            Refracted / observed / surface elevation angle(s), in radians
         temperature_C : float or array
             Ambient air temperature at surface, in degrees Celsius
         pressure_hPa : float or array
@@ -131,7 +127,7 @@ class HaystackRefraction:
         Returns
         -------
         el : float or array
-            Elevation angle(s) before refraction correction, in radians
+            Unrefracted / topocentric / vacuum elevation angle(s), in radians
         """
         # Maximum difference between input elevation and
         # refraction-corrected version of final output elevation
@@ -230,7 +226,7 @@ class TroposphericRefraction:
         Parameters
         ----------
         el : float or array
-            Requested elevation angle(s), in radians
+            Unrefracted / topocentric / vacuum elevation angle(s), in radians
         temperature_C : float or array
             Ambient air temperature at surface, in degrees Celsius
         pressure_hPa : float or array
@@ -241,11 +237,11 @@ class TroposphericRefraction:
         Returns
         -------
         refracted_el : float or array
-            Elevation angle(s), corrected for refraction, in radians
+            Refracted / observed / surface elevation angle(s), in radians
         """
         return self._model.refract(el, temperature_C, pressure_hPa, humidity_percent)
 
-    def unrefract(self, el, temperature_C, pressure_hPa, humidity_percent):
+    def unrefract(self, refracted_el, temperature_C, pressure_hPa, humidity_percent):
         """Remove refraction correction from elevation angle.
 
         This undoes a refraction correction that resulted in the given elevation
@@ -254,7 +250,7 @@ class TroposphericRefraction:
         Parameters
         ----------
         refracted_el : float or array
-            Elevation angle(s), corrected for refraction, in radians
+            Refracted / observed / surface elevation angle(s), in radians
         temperature_C : float or array
             Ambient air temperature at surface, in degrees Celsius
         pressure_hPa : float or array
@@ -265,6 +261,8 @@ class TroposphericRefraction:
         Returns
         -------
         el : float or array
-            Elevation angle(s) before refraction correction, in radians
+            Unrefracted / topocentric / vacuum elevation angle(s), in radians
         """
-        return self._model.unrefract(el, temperature_C, pressure_hPa, humidity_percent)
+        return self._model.unrefract(
+            refracted_el, temperature_C, pressure_hPa, humidity_percent
+        )
