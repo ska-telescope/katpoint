@@ -36,9 +36,9 @@ from astropy.coordinates import (
 from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
 from .delay_model import DelayModel
-from .troposphere.delay import TroposphericDelay
 from .target import Target
 from .timestamp import Timestamp
+from .troposphere.delay import TroposphericDelay
 
 NO_TEMPERATURE = -300 * u.deg_C  # used as default parameter, akin to None
 

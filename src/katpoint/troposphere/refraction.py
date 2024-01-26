@@ -25,7 +25,6 @@ import logging
 
 import astropy.units as u
 import numpy as np
-
 from astropy.coordinates import Angle
 
 logger = logging.getLogger(__name__)
@@ -41,7 +40,7 @@ class HaystackRefraction:
         elevation: u.deg,
         pressure: u.hPa,
         temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled
+        relative_humidity: u.dimensionless_unscaled,
     ) -> u.deg:
         """Calculate refracted elevation angle from unrefracted `elevation`.
 
@@ -103,7 +102,13 @@ class HaystackRefraction:
         dewpt = temperature_C - rhumi * (
             0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
         )
-        pp = p[0] + p[1] * dewpt + p[2] * dewpt**2 + p[3] * dewpt**3 + p[4] * dewpt**4
+        pp = (
+            p[0]
+            + p[1] * dewpt
+            + p[2] * dewpt**2
+            + p[3] * dewpt**3
+            + p[4] * dewpt**4
+        )
         # Left this inaccurate conversion in case coefficients were fitted with it [LS]
         temperature_K = temperature_C + 273.0
         # This looks like Smith & Weintraub (1953) or Crane (1976) [LS]
@@ -128,7 +133,7 @@ class HaystackRefraction:
         refracted_elevation: u.deg,
         pressure: u.hPa,
         temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled
+        relative_humidity: u.dimensionless_unscaled,
     ) -> u.deg:
         """Calculate unrefracted elevation angle from `refracted_el`.
 
@@ -157,9 +162,10 @@ class HaystackRefraction:
         tolerance = 10 * u.mas
         # Assume offset from corrected el is similar to offset from uncorrected el
         # -> get lower bound on desired el
-        close_offset = cls.refract(
-            refracted_elevation, pressure, temperature, relative_humidity
-        ) - refracted_elevation
+        close_offset = (
+            cls.refract(refracted_elevation, pressure, temperature, relative_humidity)
+            - refracted_elevation
+        )
         lower = refracted_elevation - 4 * np.abs(close_offset)
         # We know that corrected el > uncorrected el (mostly)
         # -> this becomes upper bound on desired el
@@ -231,9 +237,8 @@ class TroposphericRefraction:
 
     def __eq__(self, other):
         """Equality comparison operator."""
-        return (
-            isinstance(other, TroposphericRefraction)
-            and (self.model_id == other.model_id)
+        return isinstance(other, TroposphericRefraction) and (
+            self.model_id == other.model_id
         )
 
     def __hash__(self):
@@ -246,7 +251,7 @@ class TroposphericRefraction:
         elevation: u.deg,
         pressure: u.hPa,
         temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled
+        relative_humidity: u.dimensionless_unscaled,
     ) -> u.deg:
         """Apply refraction correction to elevation angle.
 
@@ -274,7 +279,7 @@ class TroposphericRefraction:
         refracted_elevation: u.deg,
         pressure: u.hPa,
         temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled
+        relative_humidity: u.dimensionless_unscaled,
     ) -> u.deg:
         """Remove refraction correction from elevation angle.
 

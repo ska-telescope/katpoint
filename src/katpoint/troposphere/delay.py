@@ -28,7 +28,6 @@ import numpy as np
 
 from ..timestamp import Timestamp
 
-
 _EXCESS_PATH_PER_PRESSURE = 2.2768 * u.m / u.bar
 
 

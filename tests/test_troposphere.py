@@ -20,7 +20,7 @@ import astropy.constants as const
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.coordinates import ICRS, AltAz, EarthLocation, Angle
+from astropy.coordinates import ICRS, AltAz, Angle, EarthLocation
 
 import katpoint
 from katpoint.troposphere.delay import (
@@ -58,12 +58,14 @@ def test_refraction_basic():
     "el,pressure,temperature,relative_humidity,refracted_el",
     [
         # Produced by katpoint 0.10
-        (15. * u.deg, 900 * u.hPa, 10 * u.deg_C, 0.80, 15.061621833721594 * u.deg),
-        (15. * u.deg, 900 * u.hPa, 20 * u.deg_C, 0.25, 15.056928675685779 * u.deg),
-        (15. * u.deg, 900 * u.hPa, 40 * u.deg_C, 0.10, 15.060931376413768 * u.deg),
-    ]
+        (15.0 * u.deg, 900 * u.hPa, 10 * u.deg_C, 0.80, 15.061621833721594 * u.deg),
+        (15.0 * u.deg, 900 * u.hPa, 20 * u.deg_C, 0.25, 15.056928675685779 * u.deg),
+        (15.0 * u.deg, 900 * u.hPa, 40 * u.deg_C, 0.10, 15.060931376413768 * u.deg),
+    ],
 )
-def test_refraction_haystack(el, pressure, temperature, relative_humidity, refracted_el):
+def test_refraction_haystack(
+    el, pressure, temperature, relative_humidity, refracted_el
+):
     """Check for any regressions in Haystack refraction model."""
     tropo = katpoint.TroposphericRefraction("HaystackRefraction")
     measured_el = tropo.refract(el, pressure, temperature, relative_humidity)
