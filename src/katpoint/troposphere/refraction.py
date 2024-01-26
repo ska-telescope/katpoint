@@ -233,16 +233,19 @@ class TroposphericRefraction:
 
     def __repr__(self):
         """Short human-friendly string representation of object."""
+        # pylint: disable=no-member
         return f"<katpoint.TroposphericRefraction {self.model_id!r} at {id(self):#x}>"
 
     def __eq__(self, other):
         """Equality comparison operator."""
+        # pylint: disable=no-member
         return isinstance(other, TroposphericRefraction) and (
             self.model_id == other.model_id
         )
 
     def __hash__(self):
         """Compute hash on underlying model name, just like equality operator."""
+        # pylint: disable=no-member
         return hash((self.__class__, self.model_id))
 
     @u.quantity_input(equivalencies=u.temperature())
@@ -271,6 +274,7 @@ class TroposphericRefraction:
         refracted_elevation : :class:`~astropy.coordinates.Angle`
             Refracted / observed / surface elevation angle
         """
+        # pylint: disable=no-member
         return self._model.refract(elevation, pressure, temperature, relative_humidity)
 
     @u.quantity_input(equivalencies=u.temperature())
@@ -302,6 +306,7 @@ class TroposphericRefraction:
         elevation : :class:`~astropy.coordinates.Angle`
             Unrefracted / topocentric / vacuum elevation angle
         """
+        # pylint: disable=no-member
         return self._model.unrefract(
             refracted_elevation, pressure, temperature, relative_humidity
         )
