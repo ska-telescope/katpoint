@@ -114,7 +114,7 @@ def test_refraction_closure():
 def test_delay_basic():
     """Test basic tropospheric delay properties."""
     with pytest.raises(TypeError):
-        TroposphericDelay()
+        TroposphericDelay()  # pylint: disable=no-value-for-parameter
     location = EarthLocation.from_geodetic("-30:42:39.8", "21:26:38.0", "1086.6")
     with pytest.raises(ValueError):
         TroposphericDelay(location, "bad_format")

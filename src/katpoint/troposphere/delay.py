@@ -888,7 +888,6 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
-        # pylint: disable=no-member
         return self._delay(
             pressure,
             temperature,

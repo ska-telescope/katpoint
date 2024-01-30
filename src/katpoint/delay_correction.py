@@ -346,11 +346,7 @@ class DelayCorrection:
     @property
     def tropospheric_model(self):
         """Unique identifier of tropospheric model, or 'None' for no correction."""
-        return (
-            self._tropospheric_delay.model_id  # pylint: disable=no-member
-            if self._tropospheric_delay
-            else "None"
-        )
+        return self._tropospheric_delay.model_id if self._tropospheric_delay else "None"
 
     @property
     def ant_locations(self):

@@ -258,7 +258,6 @@ class TroposphericRefraction:
         refracted_elevation : :class:`~astropy.coordinates.Angle`
             Refracted / observed / surface elevation angle
         """
-        # pylint: disable=no-member
         return self._model.refract(elevation, pressure, temperature, relative_humidity)
 
     @u.quantity_input(equivalencies=u.temperature())
@@ -290,7 +289,6 @@ class TroposphericRefraction:
         elevation : :class:`~astropy.coordinates.Angle`
             Unrefracted / topocentric / vacuum elevation angle
         """
-        # pylint: disable=no-member
         return self._model.unrefract(
             refracted_elevation, pressure, temperature, relative_humidity
         )
