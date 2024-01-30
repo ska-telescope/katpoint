@@ -22,9 +22,13 @@ and season. The basic model is a direct translation of the model in ALMA's
 version of CALC.
 """
 
+from dataclasses import dataclass, field
+from typing import Callable
+
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
+from astropy.coordinates import EarthLocation
 
 from ..timestamp import Timestamp
 
@@ -781,6 +785,7 @@ class GlobalMappingFunction:
 _MAPPING_FUNCTION = {"GlobalMappingFunction": GlobalMappingFunction}
 
 
+@dataclass(frozen=True)
 class TroposphericDelay:
     """Propagation delay due to neutral gas in the troposphere and stratosphere.
 
@@ -806,20 +811,22 @@ class TroposphericDelay:
         If the specified tropospheric model is unknown or has wrong format
     """
 
-    def __init__(
-        self, location, model_id="SaastamoinenZenithDelay-GlobalMappingFunction"
-    ):
-        # These will effectively be read-only attributes because setattr is disabled
-        super().__setattr__("location", location)
-        super().__setattr__("model_id", model_id)
+    location: EarthLocation
+    model_id: str = "SaastamoinenZenithDelay-GlobalMappingFunction"
+    _delay: Callable = field(init=False, repr=False, compare=False)
+    # EarthLocation is not hashable, but dataclass assumes it is, so disable it
+    __hash__ = None
+
+    def __post_init__(self):
+        """Initialise main function `_delay` from `location` and `model_id`."""
         # Parse model identifier string
-        model_parts = model_id.split("-")
+        model_parts = self.model_id.split("-")
         if len(model_parts) == 2:
             model_parts.append("total")
         if len(model_parts) != 3:
             raise ValueError(
                 f"Format for tropospheric delay model ID is '<zenith delay>-"
-                f"<mapping function>[-<hydrostatic/wet>]', not {model_id:!r}"
+                f"<mapping function>[-<hydrostatic/wet>]', not {self.model_id!r}"
             )
 
         def get(mapping, key, name):
@@ -827,15 +834,15 @@ class TroposphericDelay:
                 return mapping[key]
             except KeyError as err:
                 raise ValueError(
-                    f"Tropospheric delay model {model_id!r} has unknown {name} "
+                    f"Tropospheric delay model {self.model_id!r} has unknown {name} "
                     f"{key!r}, available ones are {list(mapping.keys())}"
                 ) from err
 
         zenith_delay = get(_ZENITH_DELAY, model_parts[0], "zenith delay function")(
-            location
+            self.location
         )
         mapping_function = get(_MAPPING_FUNCTION, model_parts[1], "mapping function")(
-            location
+            self.location
         )
 
         def hydrostatic(p, t, h, el, ts):  # pylint: disable=unused-argument
@@ -848,11 +855,8 @@ class TroposphericDelay:
             return hydrostatic(p, t, h, el, ts) + wet(p, t, h, el, ts)
 
         model_types = {"hydrostatic": hydrostatic, "wet": wet, "total": total}
+        # Set attribute on base class because this class is frozen
         super().__setattr__("_delay", get(model_types, model_parts[2], "type"))
-
-    def __setattr__(self, name, value):
-        """Prevent modification of attributes (the model is read-only)."""
-        raise AttributeError("Tropospheric delay models are immutable")
 
     @u.quantity_input(equivalencies=u.temperature())
     def __call__(

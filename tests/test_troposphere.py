@@ -16,6 +16,8 @@
 
 """Tests for the refraction module."""
 
+from dataclasses import FrozenInstanceError
+
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
@@ -52,6 +54,8 @@ def test_refraction_basic():
         assert hash(tropo) == hash(tropo2), "Refraction model hashes should be equal"
     except TypeError:
         pytest.fail("TroposphericRefraction object not hashable")
+    with pytest.raises(FrozenInstanceError):
+        tropo.model_id = "it's frozen, so the model_id can't be changed"
 
 
 @pytest.mark.parametrize(
@@ -105,6 +109,27 @@ def test_refraction_closure():
         err_msg="Elevation closure error for "
         f"pressure={pressure}, temp={temp}, humidity={humidity}",
     )
+
+
+def test_delay_basic():
+    """Test basic tropospheric delay properties."""
+    with pytest.raises(TypeError):
+        TroposphericDelay()
+    location = EarthLocation.from_geodetic("-30:42:39.8", "21:26:38.0", "1086.6")
+    with pytest.raises(ValueError):
+        TroposphericDelay(location, "bad_format")
+    with pytest.raises(ValueError):
+        TroposphericDelay(location, "unknown-components")
+    tropo = TroposphericDelay(location)
+    print(repr(tropo))
+    location2 = EarthLocation.from_geodetic("-30:42:39.8", "21:26:38.0", "1086.6")
+    tropo2 = TroposphericDelay(location2)
+    assert tropo == tropo2, "Tropospheric delay models should be equal by value"
+    # TroposphericDelay is not hashable yet (prevented by EarthLocation)
+    with pytest.raises(TypeError):
+        hash(tropo)
+    with pytest.raises(FrozenInstanceError):
+        tropo.model_id = "it's frozen, so the model_id can't be changed"
 
 
 _locations_and_times = [

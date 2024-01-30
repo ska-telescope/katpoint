@@ -22,6 +22,7 @@ measurements.
 """
 
 import logging
+from dataclasses import dataclass, field
 
 import astropy.units as u
 import numpy as np
@@ -30,7 +31,11 @@ from astropy.coordinates import Angle
 logger = logging.getLogger(__name__)
 
 
-class HaystackRefraction:
+class _RefractionModel:
+    """A basic tropospheric refraction model operating on elevation angles."""
+
+
+class HaystackRefraction(_RefractionModel):
     """Refraction model of the MIT Haystack Pointing System."""
 
     @classmethod
@@ -190,11 +195,7 @@ class HaystackRefraction:
         return el if el.ndim else el.item()
 
 
-_REFRACTION = {
-    "HaystackRefraction": HaystackRefraction,
-}
-
-
+@dataclass(frozen=True)
 class TroposphericRefraction:
     """Correct pointing for refractive bending in atmosphere.
 
@@ -215,38 +216,21 @@ class TroposphericRefraction:
         If the specified refraction model is unknown
     """
 
-    def __init__(self, model_id="HaystackRefraction"):
+    model_id: str = "HaystackRefraction"
+    _model: _RefractionModel = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self):
+        """Initialise underlying refraction `_model` from `model_id`."""
+        models = {cls.__name__: cls for cls in _RefractionModel.__subclasses__()}
         try:
-            model = _REFRACTION[model_id]
+            model = models[self.model_id]
         except KeyError as err:
             raise ValueError(
-                f"Unknown tropospheric refraction model {model_id!r}, "
-                f"available ones are {list(_REFRACTION.keys())}"
+                f"Unknown tropospheric refraction model {self.model_id!r}, "
+                f"available ones are {list(models.keys())}"
             ) from err
-        # These will effectively be read-only attributes because setattr is disabled
-        super().__setattr__("model_id", model_id)
+        # Set attribute on base class because this class is frozen
         super().__setattr__("_model", model)
-
-    def __setattr__(self, name, value):
-        """Prevent modification of attributes (the model is read-only)."""
-        raise AttributeError("Tropospheric refraction models are immutable")
-
-    def __repr__(self):
-        """Short human-friendly string representation of object."""
-        # pylint: disable=no-member
-        return f"<katpoint.TroposphericRefraction {self.model_id!r} at {id(self):#x}>"
-
-    def __eq__(self, other):
-        """Equality comparison operator."""
-        # pylint: disable=no-member
-        return isinstance(other, TroposphericRefraction) and (
-            self.model_id == other.model_id
-        )
-
-    def __hash__(self):
-        """Compute hash on underlying model name, just like equality operator."""
-        # pylint: disable=no-member
-        return hash((self.__class__, self.model_id))
 
     @u.quantity_input(equivalencies=u.temperature())
     def refract(
