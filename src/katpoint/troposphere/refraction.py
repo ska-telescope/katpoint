@@ -27,7 +27,7 @@ from typing import Type, TypeVar
 
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle, AltAz, UnitSphericalRepresentation
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,7 @@ class HaystackRefraction(_RefractionModel):
 
 @dataclass(frozen=True)
 class TroposphericRefraction:
-    """Correct pointing for refractive bending in atmosphere.
+    """Correct pointing for refractive bending in Earth's atmosphere.
 
     This uses the specified refraction model to calculate a correction to a
     given elevation angle to account for refractive bending in the atmosphere,
@@ -240,17 +240,23 @@ class TroposphericRefraction:
     @u.quantity_input(equivalencies=u.temperature())
     def refract(
         self,
-        elevation: u.deg,
+        azel: AltAz,
         pressure: u.hPa,
         temperature: u.deg_C,
         relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        """Apply refraction correction to elevation angle.
+    ) -> AltAz:
+        """Apply refraction correction to (az, el) coordinates.
+
+        Given `azel`, the direction of incoming electromagnetic waves in the
+        absence of an atmosphere, produce `refracted_azel`, the direction from
+        which the radiation appears to be coming due to the refractive bending
+        induced by the Earth's atmosphere. This therefore transforms space
+        coordinates to surface coordinates.
 
         Parameters
         ----------
-        elevation : :class:`~astropy.coordinates.Angle`
-            Unrefracted / topocentric / vacuum elevation angle
+        azel : :class:`~astropy.coordinates.AltAz`
+            Unrefracted / topocentric / vacuum coordinates
         pressure : :class:`~astropy.units.Quantity`
             Total barometric pressure at surface
         temperature : :class:`~astropy.units.Quantity`
@@ -260,28 +266,40 @@ class TroposphericRefraction:
 
         Returns
         -------
-        refracted_elevation : :class:`~astropy.coordinates.Angle`
-            Refracted / observed / surface elevation angle
+        refracted_azel : :class:`~astropy.coordinates.AltAz`
+            Refracted / observed / surface coordinates
         """
-        return self._model.refract(elevation, pressure, temperature, relative_humidity)
+        refracted_el = self._model.refract(
+            azel.alt, pressure, temperature, relative_humidity
+        )
+        # Clip at zenith, otherwise tiny refraction can go over top and upset Latitude
+        refracted_el = np.clip(refracted_el, -90 * u.deg, 90 * u.deg)
+        data = UnitSphericalRepresentation(azel.az, refracted_el)
+        return azel.realize_frame(data)
 
     @u.quantity_input(equivalencies=u.temperature())
     def unrefract(
         self,
-        refracted_elevation: u.deg,
+        refracted_azel: AltAz,
         pressure: u.hPa,
         temperature: u.deg_C,
         relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        """Remove refraction correction from elevation angle.
+    ) -> AltAz:
+        """Remove refraction correction from (az, el) coordinates.
 
-        This undoes a refraction correction that resulted in the given elevation
-        angle. It is the inverse of :meth:`refract`.
+        Given `refracted_azel`, the apparent direction of incoming
+        electromagnetic waves in the presence of the Earth's atmosphere,
+        produce `azel`, the direction of the radiation in the absence of
+        the atmosphere. This therefore transforms surface coordinates to
+        space coordinates.
+
+        This undoes a refraction correction that resulted in the given (az, el)
+        coordinates. It is the inverse of :meth:`refract`.
 
         Parameters
         ----------
-        refracted_elevation : :class:`~astropy.coordinates.Angle`
-            Refracted / observed / surface elevation angle
+        refracted_azel : :class:`~astropy.coordinates.AltAz`
+            Refracted / observed / surface coordinates
         pressure : :class:`~astropy.units.Quantity`
             Total barometric pressure at surface
         temperature : :class:`~astropy.units.Quantity`
@@ -291,9 +309,13 @@ class TroposphericRefraction:
 
         Returns
         -------
-        elevation : :class:`~astropy.coordinates.Angle`
-            Unrefracted / topocentric / vacuum elevation angle
+        azel : :class:`~astropy.coordinates.AltAz`
+            Unrefracted / topocentric / vacuum coordinates
         """
-        return self._model.unrefract(
-            refracted_elevation, pressure, temperature, relative_humidity
+        el = self._model.unrefract(
+            refracted_azel.alt, pressure, temperature, relative_humidity
         )
+        # Avoid strangeness and clip at -90 degrees
+        el = np.clip(el, -90 * u.deg, 90 * u.deg)
+        data = UnitSphericalRepresentation(refracted_azel.az, el)
+        return refracted_azel.realize_frame(data)

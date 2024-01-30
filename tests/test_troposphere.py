@@ -25,6 +25,7 @@ import pytest
 from astropy.coordinates import ICRS, AltAz, Angle, EarthLocation
 
 import katpoint
+from katpoint.troposphere.refraction import HaystackRefraction
 from katpoint.troposphere.delay import (
     GlobalMappingFunction,
     SaastamoinenZenithDelay,
@@ -59,7 +60,7 @@ def test_refraction_basic():
 
 
 @pytest.mark.parametrize(
-    "el,pressure,temperature,relative_humidity,refracted_el",
+    "el,pressure,temp,humidity,refracted_el",
     [
         # Produced by katpoint 0.10
         (15.0 * u.deg, 900 * u.hPa, 10 * u.deg_C, 0.80, 15.061621833721594 * u.deg),
@@ -68,11 +69,10 @@ def test_refraction_basic():
     ],
 )
 def test_refraction_haystack(
-    el, pressure, temperature, relative_humidity, refracted_el
+    el, pressure, temp, humidity, refracted_el
 ):
     """Check for any regressions in Haystack refraction model."""
-    tropo = katpoint.TroposphericRefraction("HaystackRefraction")
-    measured_el = tropo.refract(el, pressure, temperature, relative_humidity)
+    measured_el = HaystackRefraction.refract(el, pressure, temp, humidity)
     np.testing.assert_array_almost_equal_nulp(measured_el, refracted_el)
 
 
@@ -80,15 +80,16 @@ def test_refraction_closure():
     """Test closure between refraction correction and its reverse operation."""
     tropo = katpoint.TroposphericRefraction()
     el = Angle(np.arange(0.0, 90.1, 0.1), u.deg)
+    azel = AltAz(az=Angle(np.zeros_like(el)), alt=el)
     # Generate random meteorological data (a single measurement, hopefully sensible)
-    temp = (-10.0 + 50.0 * np.random.rand()) * u.deg_C
     pressure = (900.0 + 200.0 * np.random.rand()) * u.hPa
+    temp = (-10.0 + 50.0 * np.random.rand()) * u.deg_C
     humidity = (5.0 + 90.0 * np.random.rand()) * u.percent
     # Test closure on el grid
-    refracted_el = tropo.refract(el, pressure, temp, humidity)
-    reversed_el = tropo.unrefract(refracted_el, pressure, temp, humidity)
+    refracted_azel = tropo.refract(azel, pressure, temp, humidity)
+    reversed_azel = tropo.unrefract(refracted_azel, pressure, temp, humidity)
     assert_angles_almost_equal(
-        reversed_el.rad,
+        reversed_azel.alt.rad,
         el.rad,
         decimal=7,
         err_msg="Elevation closure error for "
@@ -96,14 +97,14 @@ def test_refraction_closure():
     )
     # Generate random meteorological data,
     # now one weather measurement per elevation value.
-    temp = (-10.0 + 50.0 * np.random.rand(len(el))) * u.deg_C
     pressure = (900.0 + 200.0 * np.random.rand(len(el))) * u.hPa
+    temp = (-10.0 + 50.0 * np.random.rand(len(el))) * u.deg_C
     humidity = (5.0 + 90.0 * np.random.rand(len(el))) * u.percent
     # Test closure on el grid
-    refracted_el = tropo.refract(el, pressure, temp, humidity)
-    reversed_el = tropo.unrefract(refracted_el, pressure, temp, humidity)
+    refracted_azel = tropo.refract(azel, pressure, temp, humidity)
+    reversed_azel = tropo.unrefract(refracted_azel, pressure, temp, humidity)
     assert_angles_almost_equal(
-        reversed_el.rad,
+        reversed_azel.alt.rad,
         el.rad,
         decimal=7,
         err_msg="Elevation closure error for "
