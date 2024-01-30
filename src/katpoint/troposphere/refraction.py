@@ -23,6 +23,7 @@ measurements.
 
 import logging
 from dataclasses import dataclass, field
+from typing import Type, TypeVar
 
 import astropy.units as u
 import numpy as np
@@ -33,6 +34,9 @@ logger = logging.getLogger(__name__)
 
 class _RefractionModel:
     """A basic tropospheric refraction model operating on elevation angles."""
+
+
+_SomeRefractionModel = TypeVar("_SomeRefractionModel", bound=_RefractionModel)
 
 
 class HaystackRefraction(_RefractionModel):
@@ -217,10 +221,11 @@ class TroposphericRefraction:
     """
 
     model_id: str = "HaystackRefraction"
-    _model: _RefractionModel = field(init=False, repr=False, compare=False)
+    # _model is class itself, not an instance, since all its methods are class methods
+    _model: Type[_SomeRefractionModel] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
-        """Initialise underlying refraction `_model` from `model_id`."""
+        """Pick underlying refraction `_model` class based once `model_id`."""
         models = {cls.__name__: cls for cls in _RefractionModel.__subclasses__()}
         try:
             model = models[self.model_id]
