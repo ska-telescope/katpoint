@@ -25,12 +25,12 @@ import pytest
 from astropy.coordinates import ICRS, AltAz, Angle, EarthLocation
 
 import katpoint
-from katpoint.troposphere.refraction import HaystackRefraction
 from katpoint.troposphere.delay import (
     GlobalMappingFunction,
     SaastamoinenZenithDelay,
     TroposphericDelay,
 )
+from katpoint.troposphere.refraction import HaystackRefraction
 
 try:
     from almacalc.highlevel import calc
@@ -68,9 +68,7 @@ def test_refraction_basic():
         (15.0 * u.deg, 900 * u.hPa, 40 * u.deg_C, 0.10, 15.060931376413768 * u.deg),
     ],
 )
-def test_refraction_haystack(
-    el, pressure, temp, humidity, refracted_el
-):
+def test_refraction_haystack(el, pressure, temp, humidity, refracted_el):
     """Check for any regressions in Haystack refraction model."""
     measured_el = HaystackRefraction.refract(el, pressure, temp, humidity)
     np.testing.assert_array_almost_equal_nulp(measured_el, refracted_el)
