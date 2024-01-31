@@ -86,10 +86,11 @@ def test_refraction_closure():
     # Test closure on el grid
     refracted_azel = tropo.refract(azel, pressure, temp, humidity)
     reversed_azel = tropo.unrefract(refracted_azel, pressure, temp, humidity)
-    assert_angles_almost_equal(
-        reversed_azel.alt.rad,
-        el.rad,
-        decimal=7,
+    np.testing.assert_allclose(
+        reversed_azel.alt,
+        el,
+        rtol=0.0,
+        atol=0.03 * u.arcsec,
         err_msg="Elevation closure error for "
         f"pressure={pressure:g}, temp={temp:g}, humidity={humidity:g}",
     )
@@ -101,10 +102,11 @@ def test_refraction_closure():
     # Test closure on el grid
     refracted_azel = tropo.refract(azel, pressure, temp, humidity)
     reversed_azel = tropo.unrefract(refracted_azel, pressure, temp, humidity)
-    assert_angles_almost_equal(
-        reversed_azel.alt.rad,
-        el.rad,
-        decimal=7,
+    np.testing.assert_allclose(
+        reversed_azel.alt,
+        el,
+        rtol=0.0,
+        atol=0.03 * u.arcsec,
         err_msg="Elevation closure error for "
         f"pressure={pressure}, temp={temp}, humidity={humidity}",
     )
