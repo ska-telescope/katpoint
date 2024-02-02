@@ -40,8 +40,6 @@ except ImportError:
 else:
     HAS_ALMACALC = True
 
-from .helper import assert_angles_almost_equal
-
 
 def test_refraction_basic():
     """Test basic refraction correction properties."""
@@ -76,6 +74,7 @@ def test_refraction_haystack(el, pressure, temp, humidity, refracted_el):
 
 def test_refraction_closure():
     """Test closure between refraction correction and its reverse operation."""
+    atol = 0.03 * u.arcsec
     tropo = katpoint.TroposphericRefraction()
     el = Angle(np.arange(0.0, 90.1, 0.1), u.deg)
     azel = AltAz(az=Angle(np.zeros_like(el)), alt=el)
@@ -86,30 +85,24 @@ def test_refraction_closure():
     # Test closure on el grid
     refracted_azel = tropo.refract(azel, pressure, temp, humidity)
     reversed_azel = tropo.unrefract(refracted_azel, pressure, temp, humidity)
-    np.testing.assert_allclose(
-        reversed_azel.alt,
-        el,
-        rtol=0.0,
-        atol=0.03 * u.arcsec,
-        err_msg="Elevation closure error for "
-        f"pressure={pressure:g}, temp={temp:g}, humidity={humidity:g}",
+    msg = (
+        "Elevation closure / consistency error for "
+        f"pressure={pressure:g}, temp={temp:g}, humidity={humidity:g}"
     )
-    # Generate random meteorological data,
-    # now one weather measurement per elevation value.
-    pressure = (900.0 + 200.0 * np.random.rand(len(el))) * u.hPa
-    temp = (-10.0 + 50.0 * np.random.rand(len(el))) * u.deg_C
+    np.testing.assert_allclose(reversed_azel.alt, el, rtol=0.0, atol=atol, err_msg=msg)
+    # Generate random meteorological data, one weather sample per elevation value.
+    # Also test out different units for the parameters.
+    pressure = (90.0 + 20.0 * np.random.rand(len(el))) * u.kPa
+    temp = (273.15 - 10.0 + 50.0 * np.random.rand(len(el))) * u.K
     humidity = (5.0 + 90.0 * np.random.rand(len(el))) * u.percent
     # Test closure on el grid
     refracted_azel = tropo.refract(azel, pressure, temp, humidity)
     reversed_azel = tropo.unrefract(refracted_azel, pressure, temp, humidity)
-    np.testing.assert_allclose(
-        reversed_azel.alt,
-        el,
-        rtol=0.0,
-        atol=0.03 * u.arcsec,
-        err_msg="Elevation closure error for "
-        f"pressure={pressure}, temp={temp}, humidity={humidity}",
+    msg = (
+        "Elevation closure / consistency error for "
+        f"pressure={pressure}, temp={temp}, humidity={humidity}"
     )
+    np.testing.assert_allclose(reversed_azel.alt, el, rtol=0.0, atol=atol, err_msg=msg)
 
 
 def test_delay_basic():

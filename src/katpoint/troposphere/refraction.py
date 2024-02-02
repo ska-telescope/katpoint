@@ -73,7 +73,7 @@ class _RefractionModel:
         temperature: u.deg_C,
         relative_humidity: u.dimensionless_unscaled,
     ) -> u.deg:
-        """Calculate unrefracted elevation angle from `refracted_el`.
+        """Calculate unrefracted elevation angle from `refracted_elevation`.
 
         This undoes a refraction correction that resulted in the given elevation
         angle. It is the inverse of :meth:`refract`.
@@ -139,8 +139,9 @@ class HaystackRefraction(_RefractionModel):
         relative_humidity: u.dimensionless_unscaled,
     ) -> u.deg:
         elevation = Angle(elevation)
-        pressure_hPa = pressure.value
-        temperature_C = temperature.value
+        pressure_hPa = pressure.to_value(u.hPa)
+        temperature_C = temperature.to_value(u.deg_C)
+        humidity = u.Quantity(relative_humidity).to_value(u.dimensionless_unscaled)
 
         p = (0.458675e1, 0.322009e0, 0.103452e-1, 0.274777e-3, 0.157115e-5)
         cvt = 1.33289
@@ -154,7 +155,7 @@ class HaystackRefraction(_RefractionModel):
 
         # Compute SN (surface refractivity)
         # (via dewpoint and water vapor partial pressure? [LS])
-        rhumi = 100.0 * (1.0 - relative_humidity) * 0.9
+        rhumi = 100.0 * (1.0 - humidity) * 0.9
         dewpt = temperature_C - rhumi * (
             0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
         )
@@ -175,8 +176,8 @@ class HaystackRefraction(_RefractionModel):
         el = np.clip(elevation, 1.0 * u.deg, 90.0 * u.deg)
         aphi = a / ((el.deg + b) ** c)
         dele = -d / ((el.deg + e) ** f)
-        zenith_angle = 90.0 * u.deg - el
-        bphi = g * (np.tan(zenith_angle) + dele)
+        tan_z = 1.0 / np.tan(el)
+        bphi = g * (tan_z + dele)
         # Threw out an (el < 0.01) check here,
         # which will never succeed because el is clipped to be above 1.0 [LS]
 
@@ -313,7 +314,7 @@ class TroposphericRefraction:
     ) -> AltAz:
         """Remove refraction correction from (az, el) coordinates.
 
-        Given `refracted_azel`, the apparent direction of incoming
+        Given `refracted_azel`, the observed direction of incoming
         electromagnetic waves in the presence of the Earth's atmosphere,
         produce `azel`, the direction of the radiation in the absence of
         the atmosphere. This therefore transforms surface coordinates to
