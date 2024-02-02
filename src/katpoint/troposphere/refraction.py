@@ -234,7 +234,7 @@ _SELMIN = 0.05
 
 
 def _erfa_refco(pressure, temperature, relative_humidity):
-    """"""
+    """Convert weather parameters to correct units before calling erfa.refco."""
     return erfa.refco(
         pressure.to_value(u.hPa),
         temperature.to_value(u.deg_C),
@@ -265,7 +265,36 @@ def _erfa_refv(el, refa, refb):
 
 
 class ErfaRefraction(_RefractionModel):
-    """"""
+    """Refraction model used by Astropy, based on ERFA / SOFA.
+
+    Expose the refraction routines used internally by Astropy to transform
+    to and from the observed frame, which in turn comes from [ERFA]_.
+
+    Notes
+    -----
+    The `unrefract` step implements a model dZ = A tan Z + B tan^3 Z, where
+    Z is the zenith angle / distance and constants A and B (in radians) are
+    derived from the weather parameters by the `erfa.refco` / eraRefco
+    routine. This routine in turn traces its lineage to [SOFA]_ and the
+    iauRefco routine, and [SLALIB]_ and the sla_REFCOQ routine before that.
+    The implementation is a translation of the relevant bit of code found
+    in `erfa.atoiq` / eraAtoiq.
+
+    The `refract` step is very similar to the SLALIB sla_REFV routine,
+    which inverts the tan(z) model with a single Newton-Raphson iteration.
+    This approach first popped up in SOFA release 10 in 2013, which
+    introduced the various high-level astrometry routines. This
+    implementation follows the code in `erfa.atioq` / eraAtioq, which in
+    turn derives from SOFA's iauAtioq.
+
+    References
+    ----------
+    .. [ERFA] "Essential Routines for Fundamental Astronomy,"
+    `<https://github.com/liberfa/erfa>`_
+    .. [SOFA] "Standards of Fundamental Astronomy," `<http://www.iausofa.org>`_
+    .. [SLALIB] "SLALIB - Positional Astronomy Library," Starlink Project,
+    `<https://github.com/scottransom/pyslalib>`_
+    """
 
     @classmethod
     @u.quantity_input(equivalencies=u.temperature())
@@ -294,10 +323,10 @@ class ErfaRefraction(_RefractionModel):
         refracted_elevation = Angle(refracted_elevation)
         # Get constants A and B in model: dZ = A tan Z + B tan^3 Z
         refa, refb = _erfa_refco(pressure, temperature, relative_humidity)
-        # Compute refraction at elevation
-        # (clipped at 1 degree to avoid cot(el) blow-up at horizon)
-        el = np.clip(refracted_elevation, 1.0 * u.deg, 90.0 * u.deg)
-        tan_z = 1.0 / np.tan(el)
+        # Compute refraction at elevation (clipped to avoid blow-up at horizon)
+        cos_el = np.cos(refracted_elevation)
+        sin_el = np.maximum(np.sin(refracted_elevation), _SELMIN)
+        tan_z = cos_el / sin_el
         # Model offset is added to zenith angle and therefore subtracted from elevation
         return refracted_elevation - (refa + refb * tan_z * tan_z) * tan_z * u.rad
 
@@ -323,7 +352,7 @@ class TroposphericRefraction:
         If the specified refraction model is unknown
     """
 
-    model_id: str = "HaystackRefraction"
+    model_id: str = "ErfaRefraction"
     # _model is class itself, not an instance, since all its methods are class methods
     _model: Type[_SomeRefractionModel] = field(init=False, repr=False, compare=False)
 

@@ -22,7 +22,7 @@ import astropy.constants as const
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.coordinates import ICRS, CIRS, AltAz, Angle, EarthLocation
+from astropy.coordinates import CIRS, ICRS, AltAz, Angle, EarthLocation
 
 import katpoint
 from katpoint.troposphere.delay import (
@@ -31,7 +31,9 @@ from katpoint.troposphere.delay import (
     TroposphericDelay,
 )
 from katpoint.troposphere.refraction import (
-    HaystackRefraction, ErfaRefraction, _WAVELENGTH_UM
+    _WAVELENGTH_UM,
+    ErfaRefraction,
+    HaystackRefraction,
 )
 
 try:
