@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import Type, TypeVar
 
 import astropy.units as u
+import erfa
 import numpy as np
 from astropy.coordinates import AltAz, Angle, UnitSphericalRepresentation
 
@@ -224,6 +225,81 @@ class HaystackRefraction(_RefractionModel):
                 np.abs(test_el - refracted_elevation).max().to_value(u.arcsec),
             )
         return el if el.ndim else el.item()
+
+
+# Pick radio frequencies, for which refraction is non-dispersive
+_WAVELENGTH_UM = (21 * u.cm).to_value(u.micron)
+_CELMIN = 1e-6
+_SELMIN = 0.05
+
+
+def _erfa_refco(pressure, temperature, relative_humidity):
+    """"""
+    return erfa.refco(
+        pressure.to_value(u.hPa),
+        temperature.to_value(u.deg_C),
+        u.Quantity(relative_humidity).to_value(u.dimensionless_unscaled),
+        _WAVELENGTH_UM,
+    )
+
+
+def _erfa_refv(el, refa, refb):
+    """Source: eraAtioq, from iauAtioq. Very similar to slaRefv."""
+    # Cosine and sine of elevation, with precautions
+    raet = np.cos(el)
+    zaet = np.sin(el)
+    r = np.maximum(raet, _CELMIN)
+    z = np.maximum(zaet, _SELMIN)
+    # A*tan(z)+B*tan^3(z) model, with Newton-Raphson correction
+    tz = r / z
+    w = refb * tz * tz
+    d_el = (refa + w) * tz / (1.0 + (refa + 3.0 * w) / (z * z))
+    # Apply the change, giving observed (az, el) vector
+    cosdel = 1.0 - d_el * d_el / 2.0
+    f = cosdel - d_el * z / r
+    raeo = f * raet
+    zaeo = cosdel * zaet + d_el * r
+    # Observed zenith distance: flip y and x to get observed elevation
+    # zdobs = np.arctan2(raeo, zaeo)
+    return np.arctan2(zaeo, raeo)
+
+
+class ErfaRefraction(_RefractionModel):
+    """"""
+
+    @classmethod
+    @u.quantity_input(equivalencies=u.temperature())
+    def refract(  # noqa: D102 (docstring inherited from base class)
+        cls,
+        elevation: u.deg,
+        pressure: u.hPa,
+        temperature: u.deg_C,
+        relative_humidity: u.dimensionless_unscaled,
+    ) -> u.deg:
+        elevation = Angle(elevation)
+        # Get constants A and B in model: dZ = A tan Z + B tan^3 Z
+        refa, refb = _erfa_refco(pressure, temperature, relative_humidity)
+        # Quick model inversion (1 Newton-Raphson iteration)
+        return Angle(_erfa_refv(elevation, refa, refb), unit=u.rad)
+
+    @classmethod
+    @u.quantity_input(equivalencies=u.temperature())
+    def unrefract(  # noqa: D102 (docstring inherited from base class)
+        cls,
+        refracted_elevation: u.deg,
+        pressure: u.hPa,
+        temperature: u.deg_C,
+        relative_humidity: u.dimensionless_unscaled,
+    ) -> u.deg:
+        refracted_elevation = Angle(refracted_elevation)
+        # Get constants A and B in model: dZ = A tan Z + B tan^3 Z
+        refa, refb = _erfa_refco(pressure, temperature, relative_humidity)
+        # Compute refraction at elevation
+        # (clipped at 1 degree to avoid cot(el) blow-up at horizon)
+        el = np.clip(refracted_elevation, 1.0 * u.deg, 90.0 * u.deg)
+        tan_z = 1.0 / np.tan(el)
+        # Model offset is added to zenith angle and therefore subtracted from elevation
+        return refracted_elevation - (refa + refb * tan_z * tan_z) * tan_z * u.rad
 
 
 @dataclass(frozen=True)

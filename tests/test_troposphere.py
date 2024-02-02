@@ -22,7 +22,7 @@ import astropy.constants as const
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.coordinates import ICRS, AltAz, Angle, EarthLocation
+from astropy.coordinates import ICRS, CIRS, AltAz, Angle, EarthLocation
 
 import katpoint
 from katpoint.troposphere.delay import (
@@ -30,7 +30,9 @@ from katpoint.troposphere.delay import (
     SaastamoinenZenithDelay,
     TroposphericDelay,
 )
-from katpoint.troposphere.refraction import HaystackRefraction
+from katpoint.troposphere.refraction import (
+    HaystackRefraction, ErfaRefraction, _WAVELENGTH_UM
+)
 
 try:
     from almacalc.highlevel import calc
@@ -66,17 +68,91 @@ def test_refraction_basic():
         (15.0 * u.deg, 900 * u.hPa, 40 * u.deg_C, 0.10, 15.060931376413768 * u.deg),
     ],
 )
-def test_refraction_haystack(el, pressure, temp, humidity, refracted_el):
+def test_haystack_refraction(el, pressure, temp, humidity, refracted_el):
     """Check for any regressions in Haystack refraction model."""
     measured_el = HaystackRefraction.refract(el, pressure, temp, humidity)
     np.testing.assert_array_almost_equal_nulp(measured_el, refracted_el)
 
 
-def test_refraction_closure():
+@pytest.mark.parametrize(
+    "el,pressure,temp,humidity,refracted_el",
+    [
+        # Produced by katpoint 0.10
+        (15.0 * u.deg, 900 * u.hPa, 10 * u.deg_C, 0.80, 15.061429045176592 * u.deg),
+        (15.0 * u.deg, 900 * u.hPa, 20 * u.deg_C, 0.25, 15.05540653214649 * u.deg),
+        (15.0 * u.deg, 900 * u.hPa, 40 * u.deg_C, 0.10, 15.053121703447712 * u.deg),
+    ],
+)
+def test_erfa_refraction(el, pressure, temp, humidity, refracted_el):
+    """Check for any regressions in ERFA refraction model."""
+    measured_el = ErfaRefraction.refract(el, pressure, temp, humidity)
+    np.testing.assert_array_almost_equal_nulp(measured_el, refracted_el)
+
+
+def test_erfa_refraction_against_astropy():
+    """Check that our ERFA-derived refraction routines match the Astropy machinery."""
+    # Start with a east-pointing dish slewing from near horizon to zenith, in vacuum
+    location = EarthLocation.from_geodetic("-30:42:39.8", "21:26:38.0", "1086.6")
+    el = Angle(np.arange(5.0, 91.0, 1.0), u.deg)
+    az = Angle(np.full_like(el, 90 * u.deg))
+    # We have to generate multiple obstimes too if we want multiple weather samples
+    # later on, because the refa and refb coefficients are shaped according to obstime.
+    # Pick a range of time steps that roughly correspond to celestial tracking.
+    time_steps = np.arange(len(el)) * 5.0 * u.min
+    obstime = (katpoint.Timestamp("2024-02-01 21:15:00") + time_steps).time
+    azel = AltAz(az=az, alt=el, location=location, obstime=obstime)
+    # Use CIRS as a reference point, from where we will transform back to Earth.
+    # XXX Eventually we could just use topocentric ITRS transforms as a shortcut.
+    intermediate = azel.transform_to(CIRS(location=location, obstime=obstime))
+    # Obtain vacuum azel from the reference coordinates. It only differs by a tiny
+    # amount from `azel`` but this is the direct input to ERFA refraction in Astropy.
+    vacuum_azel = intermediate.transform_to(azel)
+    # Generate random meteorological data (also try to check different units)
+    pressure = (90.0 + 20.0 * np.random.rand(len(vacuum_azel))) * u.kPa
+    temp = (-10.0 + 50.0 * np.random.rand(len(vacuum_azel))) * u.deg_C
+    humidity = (5.0 + 90.0 * np.random.rand(len(vacuum_azel))) * u.percent
+    # Generate a frame that includes location, obstime *and* the weather
+    azel_with_weather = azel.replicate_without_data(
+        copy=True,
+        pressure=pressure,
+        temperature=temp,
+        relative_humidity=humidity,
+        obswl=_WAVELENGTH_UM * u.micron,
+    )
+    # Obtain refracted azel from the reference coordinates via Astropy
+    surface_azel = intermediate.transform_to(azel_with_weather)
+    # Apply the same refraction code to the same data via katpoint
+    tropo = katpoint.TroposphericRefraction("ErfaRefraction")
+    refracted_azel = tropo.refract(vacuum_azel, pressure, temp, humidity)
+    # Strip off the weather from frame so that it can be directly compared
+    # to the katpoint version without ungoing refraction again in the transform.
+    surface_azel = azel.realize_frame(surface_azel.data)
+    sep = refracted_azel.separation(surface_azel)
+    np.testing.assert_allclose(sep, np.zeros_like(sep), rtol=0.0, atol=1 * u.narcsec)
+    # Now pretend that the dish slewed in observed coordinates and find new reference
+    surface_azel2 = azel_with_weather.realize_frame(azel.data)
+    intermediate2 = surface_azel2.transform_to(CIRS(location=location, obstime=obstime))
+    # Come back to vacuum azel, which should be the result of unrefracting surface_azel2
+    vacuum_azel2 = intermediate2.transform_to(azel)
+    # Unrefract surface_azel2 but azel is easier (same values but no weather to strip)
+    unrefracted_azel = tropo.unrefract(azel, pressure, temp, humidity)
+    sep2 = unrefracted_azel.separation(vacuum_azel2)
+    np.testing.assert_allclose(sep2, np.zeros_like(sep2), rtol=0.0, atol=1 * u.narcsec)
+
+
+@pytest.mark.parametrize(
+    "model,min_elevation,atol",
+    [
+        ("HaystackRefraction", 0 * u.deg, 0.03 * u.arcsec),
+        # ("ErfaRefraction", 5 * u.deg, 0.05 * u.arcsec),  # the advertised consistency
+        ("ErfaRefraction", 11 * u.deg, 0.1 * u.arcsec),  # what we found instead
+    ],
+)
+def test_refraction_closure(model, min_elevation, atol):
     """Test closure between refraction correction and its reverse operation."""
-    atol = 0.03 * u.arcsec
-    tropo = katpoint.TroposphericRefraction()
+    tropo = katpoint.TroposphericRefraction(model)
     el = Angle(np.arange(0.0, 90.1, 0.1), u.deg)
+    el = el[el >= min_elevation]
     azel = AltAz(az=Angle(np.zeros_like(el)), alt=el)
     # Generate random meteorological data (a single measurement, hopefully sensible)
     pressure = (900.0 + 200.0 * np.random.rand()) * u.hPa
