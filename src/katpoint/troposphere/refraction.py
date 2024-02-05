@@ -28,72 +28,74 @@ from typing import Type, TypeVar
 import astropy.units as u
 import erfa
 import numpy as np
-from astropy.coordinates import AltAz, Angle, UnitSphericalRepresentation
+from astropy.coordinates import AltAz, UnitSphericalRepresentation
 
 logger = logging.getLogger(__name__)
 
 
 class _RefractionModel:
-    """A basic tropospheric refraction model operating on elevation angles."""
+    """A basic tropospheric refraction model operating on elevation angles.
+
+    This is considered a low-level class that operates on floats instead of
+    Astropy Quantities, sort of like PyERFA.
+    """
 
     @classmethod
-    @u.quantity_input(equivalencies=u.temperature())
     def refract(
         cls,
-        elevation: u.deg,
-        pressure: u.hPa,
-        temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        """Calculate refracted elevation angle from unrefracted `elevation`.
+        elevation_rad,
+        pressure_hPa,
+        temperature_C,
+        humidity_frac,
+    ):
+        """Calculate refracted elevation angle from unrefracted elevation.
 
         Parameters
         ----------
-        elevation : :class:`~astropy.coordinates.Angle`-like
-            Unrefracted / topocentric / vacuum elevation angle
-        pressure : :class:`~astropy.units.Quantity`
-            Total barometric pressure at surface
-        temperature : :class:`~astropy.units.Quantity`
-            Ambient air temperature at surface
-        relative_humidity : :class:`~astropy.units.Quantity` or float or array
+        elevation_rad : float or array
+            Unrefracted / topocentric / vacuum elevation angle, in radians
+        pressure_hPa : float or array
+            Total barometric pressure at surface, in hectopascal or millibars
+        temperature_C : float or array
+            Ambient air temperature at surface, in degrees Celsius
+        humidity_frac : float or array
             Relative humidity at surface, as a fraction in range [0, 1]
 
         Returns
         -------
-        refracted_elevation : :class:`~astropy.coordinates.Angle`
-            Refracted / observed / surface elevation angle
+        refracted_el_rad : float or array
+            Refracted / observed / surface elevation angle, in radians
         """
         raise NotImplementedError
 
     @classmethod
-    @u.quantity_input(equivalencies=u.temperature())
     def unrefract(
         cls,
-        refracted_elevation: u.deg,
-        pressure: u.hPa,
-        temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        """Calculate unrefracted elevation angle from `refracted_elevation`.
+        refracted_el_rad,
+        pressure_hPa,
+        temperature_C,
+        humidity_frac,
+    ):
+        """Calculate unrefracted elevation angle from refracted elevation.
 
         This undoes a refraction correction that resulted in the given elevation
         angle. It is the inverse of :meth:`refract`.
 
         Parameters
         ----------
-        refracted_elevation : :class:`~astropy.coordinates.Angle`-like
-            Refracted / observed / surface elevation angle
-        pressure : :class:`~astropy.units.Quantity`
-            Total barometric pressure at surface
-        temperature : :class:`~astropy.units.Quantity`
-            Ambient air temperature at surface
-        relative_humidity : :class:`~astropy.units.Quantity` or float or array
+        refracted_el_rad : float or array
+            Refracted / observed / surface elevation angle, in radians
+        pressure_hPa : float or array
+            Total barometric pressure at surface, in hectopascal or millibars
+        temperature_C : float or array
+            Ambient air temperature at surface, in degrees Celsius
+        humidity_frac : float or array
             Relative humidity at surface, as a fraction in range [0, 1]
 
         Returns
         -------
-        elevation : :class:`~astropy.coordinates.Angle`
-            Unrefracted / topocentric / vacuum elevation angle
+        elevation_rad : float or array
+            Unrefracted / topocentric / vacuum elevation angle, in radians
         """
         raise NotImplementedError
 
@@ -131,19 +133,13 @@ class HaystackRefraction(_RefractionModel):
     """
 
     @classmethod
-    @u.quantity_input(equivalencies=u.temperature())
     def refract(  # noqa: D102 (docstring inherited from base class)
         cls,
-        elevation: u.deg,
-        pressure: u.hPa,
-        temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        elevation = Angle(elevation)
-        pressure_hPa = pressure.to_value(u.hPa)
-        temperature_C = temperature.to_value(u.deg_C)
-        humidity = u.Quantity(relative_humidity).to_value(u.dimensionless_unscaled)
-
+        elevation_rad,
+        pressure_hPa,
+        temperature_C,
+        humidity_frac,
+    ):
         p = (0.458675e1, 0.322009e0, 0.103452e-1, 0.274777e-3, 0.157115e-5)
         cvt = 1.33289
         a = 40.0
@@ -156,7 +152,7 @@ class HaystackRefraction(_RefractionModel):
 
         # Compute SN (surface refractivity)
         # (via dewpoint and water vapor partial pressure? [LS])
-        rhumi = 100.0 * (1.0 - humidity) * 0.9
+        rhumi = 100.0 * (1.0 - humidity_frac) * 0.9
         dewpt = temperature_C - rhumi * (
             0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
         )
@@ -174,55 +170,53 @@ class HaystackRefraction(_RefractionModel):
 
         # Compute refraction at elevation
         # (clipped at 1 degree to avoid cot(el) blow-up at horizon)
-        el = np.clip(elevation, 1.0 * u.deg, 90.0 * u.deg)
-        aphi = a / ((el.deg + b) ** c)
-        dele = -d / ((el.deg + e) ** f)
-        tan_z = 1.0 / np.tan(el)
-        bphi = g * (tan_z + dele)
+        el_deg = np.clip(np.degrees(elevation_rad), 1.0, 90.0)
+        aphi = a / ((el_deg + b) ** c)
+        dele = -d / ((el_deg + e) ** f)
+        zenith_angle = np.radians(90.0 - el_deg)
+        bphi = g * (np.tan(zenith_angle) + dele)
         # Threw out an (el < 0.01) check here,
         # which will never succeed because el is clipped to be above 1.0 [LS]
 
-        return elevation + (bphi * sn - aphi) * u.deg
+        return elevation_rad + np.radians(bphi * sn - aphi)
 
     @classmethod
-    @u.quantity_input(equivalencies=u.temperature())
     def unrefract(  # noqa: D102 (docstring inherited from base class)
         cls,
-        refracted_elevation: u.deg,
-        pressure: u.hPa,
-        temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        refracted_elevation = Angle(refracted_elevation)
+        refracted_el_rad,
+        pressure_hPa,
+        temperature_C,
+        humidity_frac,
+    ):
         # Maximum difference between input elevation and
         # refraction-corrected version of final output elevation
-        tolerance = 10 * u.mas
+        tolerance = np.radians(0.01 / 3600)
         # Assume offset from corrected el is similar to offset from uncorrected el
         # -> get lower bound on desired el
         close_offset = (
-            cls.refract(refracted_elevation, pressure, temperature, relative_humidity)
-            - refracted_elevation
+            cls.refract(refracted_el_rad, pressure_hPa, temperature_C, humidity_frac)
+            - refracted_el_rad
         )
-        lower = refracted_elevation - 4 * np.abs(close_offset)
+        lower = refracted_el_rad - 4 * np.abs(close_offset)
         # We know that corrected el > uncorrected el (mostly)
         # -> this becomes upper bound on desired el
-        upper = refracted_elevation + 1 * u.arcsec
+        upper = refracted_el_rad + np.radians(1 / 3600)
         # Do binary search for desired el within this range (but cap iterations
         # in case of a mishap). This assumes that refraction-corrected elevation
         # is monotone function of uncorrected elevation.
         for iteration in range(40):
             el = 0.5 * (lower + upper)
-            test_el = cls.refract(el, pressure, temperature, relative_humidity)
-            if np.all(np.abs(test_el - refracted_elevation) < tolerance):
+            test_el = cls.refract(el, pressure_hPa, temperature_C, humidity_frac)
+            if np.all(np.abs(test_el - refracted_el_rad) < tolerance):
                 break
-            lower = np.where(test_el < refracted_elevation, el, lower)
-            upper = np.where(test_el > refracted_elevation, el, upper)
+            lower = np.where(test_el < refracted_el_rad, el, lower)
+            upper = np.where(test_el > refracted_el_rad, el, upper)
         else:
             logger.warning(
                 "Reverse refraction correction did not converge in "
                 "%d iterations - elevation differs by at most %f arcsecs",
                 iteration + 1,
-                np.abs(test_el - refracted_elevation).max().to_value(u.arcsec),
+                np.degrees(np.abs(test_el - refracted_el_rad).max()) * 3600,
             )
         return el if el.ndim else el.item()
 
@@ -231,16 +225,6 @@ class HaystackRefraction(_RefractionModel):
 _WAVELENGTH_UM = (21 * u.cm).to_value(u.micron)
 _CELMIN = 1e-6
 _SELMIN = 0.05
-
-
-def _erfa_refco(pressure, temperature, relative_humidity):
-    """Convert weather parameters to correct units before calling erfa.refco."""
-    return erfa.refco(
-        pressure.to_value(u.hPa),
-        temperature.to_value(u.deg_C),
-        u.Quantity(relative_humidity).to_value(u.dimensionless_unscaled),
-        _WAVELENGTH_UM,
-    )
 
 
 def _erfa_refv(el, refa, refb):
@@ -297,38 +281,38 @@ class ErfaRefraction(_RefractionModel):
     """
 
     @classmethod
-    @u.quantity_input(equivalencies=u.temperature())
     def refract(  # noqa: D102 (docstring inherited from base class)
         cls,
-        elevation: u.deg,
-        pressure: u.hPa,
-        temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        elevation = Angle(elevation)
+        elevation_rad,
+        pressure_hPa,
+        temperature_C,
+        humidity_frac,
+    ):
         # Get constants A and B in model: dZ = A tan Z + B tan^3 Z
-        refa, refb = _erfa_refco(pressure, temperature, relative_humidity)
+        refa, refb = erfa.refco(
+            pressure_hPa, temperature_C, humidity_frac, _WAVELENGTH_UM
+        )
         # Quick model inversion (1 Newton-Raphson iteration)
-        return Angle(_erfa_refv(elevation, refa, refb), unit=u.rad)
+        return _erfa_refv(elevation_rad, refa, refb)
 
     @classmethod
-    @u.quantity_input(equivalencies=u.temperature())
     def unrefract(  # noqa: D102 (docstring inherited from base class)
         cls,
-        refracted_elevation: u.deg,
-        pressure: u.hPa,
-        temperature: u.deg_C,
-        relative_humidity: u.dimensionless_unscaled,
-    ) -> u.deg:
-        refracted_elevation = Angle(refracted_elevation)
+        refracted_el_rad,
+        pressure_hPa,
+        temperature_C,
+        humidity_frac,
+    ):
         # Get constants A and B in model: dZ = A tan Z + B tan^3 Z
-        refa, refb = _erfa_refco(pressure, temperature, relative_humidity)
+        refa, refb = erfa.refco(
+            pressure_hPa, temperature_C, humidity_frac, _WAVELENGTH_UM
+        )
         # Compute refraction at elevation (clipped to avoid blow-up at horizon)
-        cos_el = np.cos(refracted_elevation)
-        sin_el = np.maximum(np.sin(refracted_elevation), _SELMIN)
+        cos_el = np.cos(refracted_el_rad)
+        sin_el = np.maximum(np.sin(refracted_el_rad), _SELMIN)
         tan_z = cos_el / sin_el
         # Model offset is added to zenith angle and therefore subtracted from elevation
-        return refracted_elevation - (refa + refb * tan_z * tan_z) * tan_z * u.rad
+        return refracted_el_rad - (refa + refb * tan_z * tan_z) * tan_z
 
 
 @dataclass(frozen=True)
@@ -357,7 +341,7 @@ class TroposphericRefraction:
     _model: Type[_SomeRefractionModel] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
-        """Pick underlying refraction `_model` class based once `model_id`."""
+        """Pick underlying refraction `_model` class based on `model_id`."""
         models = {cls.__name__: cls for cls in _RefractionModel.__subclasses__()}
         try:
             model = models[self.model_id]
@@ -402,10 +386,13 @@ class TroposphericRefraction:
             Refracted / observed / surface coordinates
         """
         refracted_el = self._model.refract(
-            azel.alt, pressure, temperature, relative_humidity
+            azel.alt.rad,
+            pressure.to_value(u.hPa),
+            temperature.to_value(u.deg_C),
+            u.Quantity(relative_humidity).to_value(u.dimensionless_unscaled),
         )
         # Clip at zenith, otherwise tiny refraction can go over top and upset Latitude
-        refracted_el = np.clip(refracted_el, -90 * u.deg, 90 * u.deg)
+        refracted_el = np.clip(refracted_el * u.rad, -90 * u.deg, 90 * u.deg)
         data = UnitSphericalRepresentation(azel.az, refracted_el)
         return azel.realize_frame(data)
 
@@ -445,9 +432,12 @@ class TroposphericRefraction:
             Unrefracted / topocentric / vacuum coordinates
         """
         el = self._model.unrefract(
-            refracted_azel.alt, pressure, temperature, relative_humidity
+            refracted_azel.alt.rad,
+            pressure.to_value(u.hPa),
+            temperature.to_value(u.deg_C),
+            u.Quantity(relative_humidity).to_value(u.dimensionless_unscaled),
         )
         # Avoid strangeness and clip at -90 degrees
-        el = np.clip(el, -90 * u.deg, 90 * u.deg)
+        el = np.clip(el * u.rad, -90 * u.deg, 90 * u.deg)
         data = UnitSphericalRepresentation(refracted_azel.az, el)
         return refracted_azel.realize_frame(data)

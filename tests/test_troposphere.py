@@ -72,8 +72,10 @@ def test_refraction_basic():
 )
 def test_haystack_refraction(el, pressure, temp, humidity, refracted_el):
     """Check for any regressions in Haystack refraction model."""
-    measured_el = HaystackRefraction.refract(el, pressure, temp, humidity)
-    np.testing.assert_array_almost_equal_nulp(measured_el, refracted_el)
+    measured_el = HaystackRefraction.refract(
+        el.to_value(u.rad), pressure.value, temp.value, humidity
+    )
+    np.testing.assert_array_almost_equal_nulp(measured_el * u.rad, refracted_el)
 
 
 @pytest.mark.parametrize(
@@ -87,8 +89,10 @@ def test_haystack_refraction(el, pressure, temp, humidity, refracted_el):
 )
 def test_erfa_refraction(el, pressure, temp, humidity, refracted_el):
     """Check for any regressions in ERFA refraction model."""
-    measured_el = ErfaRefraction.refract(el, pressure, temp, humidity)
-    np.testing.assert_array_almost_equal_nulp(measured_el, refracted_el)
+    measured_el = ErfaRefraction.refract(
+        el.to_value(u.rad), pressure.value, temp.value, humidity
+    )
+    np.testing.assert_array_almost_equal_nulp(measured_el * u.rad, refracted_el)
 
 
 def test_erfa_refraction_against_astropy():
