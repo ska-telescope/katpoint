@@ -45,15 +45,14 @@ initial-content = """
 
 
 
-# XXX Restore this entry when the latest Poetry demands it
-# [[tool.poetry.source]]
-# name = "PyPI"
-# priority = "primary"
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
 
 [[tool.poetry.source]]
 name = "ska"
 url = "https://artefact.skao.int/repository/pypi-internal/simple"
-# priority = "supplemental"
+priority = "supplemental"
 
 
 
