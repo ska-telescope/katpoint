@@ -36,8 +36,8 @@ These parameters cannot be set to True anymore, and setting them to False
 elicits a ``FutureWarning`` since they are slated for removal. Add these
 targets manually to the Catalogue instead.
 
-Removals
---------
+Removals and renames
+--------------------
 
 Removed behaviour
 ~~~~~~~~~~~~~~~~~
@@ -51,6 +51,7 @@ Modules
   ``scripts/ephem_stars.edb`` into a Catalogue instead.
 - The ``delay`` module has been split into the ``delay_model`` and
   ``delay_correction`` modules.
+- The ``refraction`` module has been moved to ``troposphere.refraction``.
 
 Classes, methods and attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +60,12 @@ Classes, methods and attributes
   ``katpoint.DelayCorrection.extra_correction``.
 - ``katpoint.Antenna.format_katcp`` has been removed; KATCP uses ``str()`` instead.
 - ``katpoint.Target.format_katcp`` has been removed; KATCP uses ``str()`` instead.
+- ``katpoint.RefractionCorrection`` has been removed.
+  Use ``katpoint.TroposphericRefraction`` instead.
+- Replace ``katpoint.RefractionCorrection.apply`` with
+  ``katpoint.TroposphericRefraction.refract``.
+- Replace ``katpoint.RefractionCorrection.reverse`` with
+  ``katpoint.TroposphericRefraction.unrefract``.
 
 Functions
 ~~~~~~~~~

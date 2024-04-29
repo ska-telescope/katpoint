@@ -12,6 +12,14 @@ katpoint.antenna module
    :undoc-members:
    :show-inheritance:
 
+katpoint.body module
+--------------------
+
+.. automodule:: katpoint.body
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 katpoint.catalogue module
 -------------------------
 
@@ -28,18 +36,18 @@ katpoint.conversion module
    :undoc-members:
    :show-inheritance:
 
-katpoint.delay module
----------------------
+katpoint.delay\_correction module
+---------------------------------
 
-.. automodule:: katpoint.delay
+.. automodule:: katpoint.delay_correction
    :members:
    :undoc-members:
    :show-inheritance:
 
-katpoint.ephem\_extra module
+katpoint.delay\_model module
 ----------------------------
 
-.. automodule:: katpoint.ephem_extra
+.. automodule:: katpoint.delay_model
    :members:
    :undoc-members:
    :show-inheritance:
@@ -76,14 +84,6 @@ katpoint.projection module
    :undoc-members:
    :show-inheritance:
 
-katpoint.refraction module
---------------------------
-
-.. automodule:: katpoint.refraction
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 katpoint.target module
 ----------------------
 
@@ -104,6 +104,14 @@ katpoint.troposphere.delay module
 ---------------------------------
 
 .. automodule:: katpoint.troposphere.delay
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+katpoint.troposphere.refraction module
+--------------------------------------
+
+.. automodule:: katpoint.troposphere.refraction
    :members:
    :undoc-members:
    :show-inheritance:
