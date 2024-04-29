@@ -68,7 +68,7 @@ numpy = "^1.13"
 sgp4 = "^2.7"
 dataclasses = { version = ">=0.8", python = "<3.7" }
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 # These are versions used to produce the poetry.lock file
 # poetry = ">=1.7.1"
 # poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}
