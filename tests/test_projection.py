@@ -20,6 +20,7 @@ import threading
 
 import numpy as np
 import pytest
+from astropy.wcs import WCS
 from numpy import pi as PI  # Unorthodox but shortens those parametrization lines a lot
 
 import katpoint
@@ -241,6 +242,124 @@ def test_random_closure(random, projection, decimal, N=100):
     np.testing.assert_almost_equal(y, yy, decimal=decimal)
     assert_angles_almost_equal(az, aa, decimal=decimal)
     assert_angles_almost_equal(el, ee, decimal=decimal)
+
+
+def _prepare_wcs(code):
+    """Construct :class:`~astropy.wcs.WCS` object with `code` projection type."""
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [0.0, 0.0]
+    # Setting the pixel width to one degree ensures that fractional pixel locations
+    # match the intermediate world coordinates we actually want.
+    wcs.wcs.cdelt = [1.0, 1.0]
+    wcs.wcs.ctype = [f"RA---{code}", f"DEC--{code}"]
+    return wcs
+
+
+def _fix_scalar(x, reference):
+    """Ensure that `x` is a proper scalar if `reference` is scalar."""
+    return x.item() if np.isscalar(reference) else x
+
+
+def sphere_to_plane_wcs(code, az0_rad, el0_rad, az_rad, el_rad):
+    """Project sphere to plane using specified WCSLIB projection.
+
+    Parameters
+    ----------
+    code : str
+        Three-letter projection code defined by the FITS standard
+    az0_rad : float or array
+        Azimuth / right ascension / longitude of reference point(s), in radians
+    el0_rad : float or array
+        Elevation / declination / latitude of reference point(s), in radians
+    az_rad : float or array
+        Azimuth / right ascension / longitude of point(s) to project, in radians
+    el_rad : float or array
+        Elevation / declination / latitude of point(s) to project, in radians
+
+    Returns
+    -------
+    x_rad : float or array
+        Azimuth-like coordinate(s) on plane (equivalent to l), in radians
+    y_rad : float or array
+        Elevation-like coordinate(s) on plane (equivalent to m), in radians
+    """
+    wcs = _prepare_wcs(code)
+    azel0_deg = np.rad2deg(np.c_[az0_rad, el0_rad])
+    azel_deg = np.rad2deg(np.c_[az_rad, el_rad])
+    # WCSLIB supports vector (az, el) but only scalar (az0, el0)
+    if azel0_deg.shape[0] == 1:
+        wcs.wcs.crval = azel0_deg[0]
+        xy_deg = wcs.wcs.s2p(azel_deg, origin=1)["imgcrd"]
+    else:
+        xy_deg = np.zeros_like(azel_deg)
+        for n in range(azel_deg.shape[0]):
+            wcs.wcs.crval = azel0_deg[n]
+            xy_deg[n] = wcs.wcs.s2p(azel_deg[n:n + 1], origin=1)["imgcrd"]
+    xy_rad = np.deg2rad(xy_deg)
+    # XXX Support out-of-range treatment (at least "nan" and "raise") via s2p "stat"
+    return _fix_scalar(xy_rad[:, 0], az_rad), _fix_scalar(xy_rad[:, 1], el_rad)
+
+
+def plane_to_sphere_wcs(code, az0_rad, el0_rad, x_rad, y_rad):
+    """Deproject plane to sphere using specified WCSLIB projection.
+
+    Parameters
+    ----------
+    code : str
+        Three-letter projection code defined by the FITS standard
+    az0_rad : float or array
+        Azimuth / right ascension / longitude of reference point(s), in radians
+    el0_rad : float or array
+        Elevation / declination / latitude of reference point(s), in radians
+    x_rad : float or array
+        Azimuth-like coordinate(s) on plane (equivalent to l), in radians
+    y_rad : float or array
+        Elevation-like coordinate(s) on plane (equivalent to m), in radians
+
+    Returns
+    -------
+    az_rad : float or array
+        Azimuth / right ascension / longitude of deprojected point(s), in radians
+    el_rad : float or array
+        Elevation / declination / latitude of deprojected point(s), in radians
+    """
+    wcs = _prepare_wcs(code)
+    azel0_deg = np.rad2deg(np.c_[az0_rad, el0_rad])
+    xy_deg = np.rad2deg(np.c_[x_rad, y_rad])
+    # WCSLIB supports vector (x, y) but only scalar (az0, el0)
+    if azel0_deg.shape[0] == 1:
+        wcs.wcs.crval = azel0_deg[0]
+        azel_deg = wcs.wcs.p2s(xy_deg, origin=1)["world"]
+    else:
+        azel_deg = np.zeros_like(xy_deg)
+        for n in range(xy_deg.shape[0]):
+            wcs.wcs.crval = azel0_deg[n]
+            azel_deg[n] = wcs.wcs.p2s(xy_deg[n:n + 1], origin=1)["world"]
+    azel_rad = np.deg2rad(azel_deg)
+    # XXX Support out-of-range treatment (at least "nan" and "raise") via p2s "stat"
+    return _fix_scalar(azel_rad[:, 0], x_rad), _fix_scalar(azel_rad[:, 1], y_rad)
+
+
+# The decimal accuracy for each projection is the maximum that makes
+# the test pass during an extended random run (N = 100000).
+# CAR has issues (see e.g. https://github.com/astropy/astropy/issues/6490).
+@pytest.mark.parametrize(
+    "projection,decimal",
+    [("SIN", 11), ("TAN", 11), ("ARC", 11), ("STG", 11)],
+)
+def test_wcs_compatibility(random, projection, decimal, N=100):
+    """Compare to corresponding WCSLIB routine."""
+    plane_to_sphere = katpoint.plane_to_sphere[projection]
+    sphere_to_plane = katpoint.sphere_to_plane[projection]
+    az0, el0, x, y = generate_data[projection](random, N)
+    az, el = plane_to_sphere(az0, el0, x, y)
+    xx, yy = sphere_to_plane(az0, el0, az, el)
+    az_wcs, el_wcs = plane_to_sphere_wcs(projection, az0, el0, x, y)
+    x_wcs, y_wcs = sphere_to_plane_wcs(projection, az0, el0, az, el)
+    assert_angles_almost_equal(az, az_wcs, decimal=decimal)
+    assert_angles_almost_equal(el, el_wcs, decimal=decimal)
+    np.testing.assert_almost_equal(xx, x_wcs, decimal=decimal)
+    np.testing.assert_almost_equal(yy, y_wcs, decimal=decimal)
 
 
 # The decimal accuracy for each projection is the maximum that makes
