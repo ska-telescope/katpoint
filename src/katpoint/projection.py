@@ -16,16 +16,14 @@
 
 """Spherical projections.
 
-This module provides a basic set of routines that projects spherical coordinates
-onto a plane and deprojects the plane coordinates back to the sphere. It
-complements the astropy module, which focuses on transformations between various
-spherical coordinate systems instead. The routines are derived from AIPS, as
-documented in [Gre1993a]_ and [Gre1993b]_ and implemented in the DIRCOS and
-NEWPOS routines in the 31DEC08 release, with minor improvements. The projections
-are referred to by their AIPS (and FITS) codes, as also described in [CB2002]_
-and implemented in Calabretta's WCSLIB. The (x, y) coordinates in this module
-correspond to the (L, M) direction cosines calculated in [Gre1993a]_ and
-[Gre1993b]_.
+This module provides a basic set of routines that projects spherical
+coordinates onto a plane and deprojects the plane coordinates back to the
+sphere. The routines are derived from AIPS, as documented in [Gre1993a]_ and
+[Gre1993b]_ and implemented in the DIRCOS and NEWPOS routines in the 31DEC08
+release, with minor improvements. The projections are referred to by their
+AIPS (and FITS) codes, as also described in [CB2002]_ and implemented in
+Calabretta's WCSLIB. The (x, y) coordinates in this module correspond to
+the (L, M) direction cosines calculated in [Gre1993a]_ and [Gre1993b]_.
 
 Any spherical coordinate system can be used in the projections, as long as the
 target and reference points are expressed in the same system of longitude and
@@ -67,10 +65,10 @@ The following projections are implemented:
   projection of AIPS and [Gre1993a]_, not the generalised slant orthographic
   projection of [CB2002]_.
 
-- Gnomonic (**TAN**): This is commonly used in optical astronomy. Great circles
-  are projected as straight lines, so that the shortest distance between two
-  points on the sphere is represented as a straight line interval (non-uniformly
-  divided though).
+- Gnomonic (**TAN**): This is commonly used in optical astronomy as it is
+  associated with pinhole cameras. Great circles are projected as straight
+  lines, so that the shortest distance between two points on the sphere is
+  represented as a straight line interval (non-uniformly divided though).
 
 - Zenithal equidistant (**ARC**): This is commonly used for single-dish maps,
   and is obtained if relative (cross-el, el) coordinates are directly plotted
@@ -90,6 +88,7 @@ The following projections are implemented:
   roles of reference and target points reversed. It is useful for holography
   and other beam pattern measurements where a dish moves relative to a fixed
   beacon but the beam pattern is referenced to the boresight of the moving dish.
+  The (x, y) plane could be called the idealised *feed plane* of the dish.
 
 Each projection typically has restrictions on the input domain and output range
 of values, which are highlighted in the docstrings of the individual functions.
@@ -120,6 +119,12 @@ Alternatively they can be called directly::
 
   x, y = katpoint.sphere_to_plane['ARC'](az0, el0, az, el)
   az, el = katpoint.plane_to_sphere['ARC'](az0, el0, x, y)
+
+This module provides similar functionality to the :mod:`astropy.wcs` module,
+but precedes it. In fact, it was the birth of katpoint... In addition it is
+much faster when you have arrays of reference points (a common scenario when
+scanning dishes across sources), it has more advanced treatment of out-of-range
+values (the "clip" option) and it adds a custom projection (SSN).
 
 .. [Gre1993a] Greisen, "Non-linear Coordinate Systems in AIPS," AIPS Memo 27,
    1993.
