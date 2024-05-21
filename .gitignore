@@ -38,7 +38,3 @@ docs/apidocs
 
 # macOS detritus
 .DS_Store
-
-# Downloaded AIPS source files
-tests/aips_projection/*.F
-tests/aips_projection/*.INC

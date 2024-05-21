@@ -34,13 +34,6 @@ from katpoint.projection import (
 
 from .helper import assert_angles_almost_equal
 
-try:
-    from .aips_projection import dircos, newpos
-
-    HAS_AIPS = True
-except ImportError:
-    HAS_AIPS = False
-
 
 @pytest.fixture(name="restore_treatment")
 def fixture_restore_treatment():
@@ -360,41 +353,6 @@ def test_wcs_compatibility(random, projection, decimal, N=100):
     assert_angles_almost_equal(el, el_wcs, decimal=decimal)
     np.testing.assert_almost_equal(xx, x_wcs, decimal=decimal)
     np.testing.assert_almost_equal(yy, y_wcs, decimal=decimal)
-
-
-# The decimal accuracy for each projection is the maximum that makes
-# the test pass during an extended random run (N = 100000).
-@pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
-@pytest.mark.parametrize(
-    "projection, aips_code, decimal",
-    [("SIN", 2, 11), ("TAN", 3, 11), ("ARC", 4, 11), ("STG", 6, 11)],
-)
-def test_aips_compatibility(random, projection, aips_code, decimal, N=100):
-    """Compare with original AIPS routine (if available)."""
-    plane_to_sphere = katpoint.plane_to_sphere[projection]
-    sphere_to_plane = katpoint.sphere_to_plane[projection]
-    az0, el0, x, y = generate_data[projection](random, N)
-    if projection == "TAN":
-        # AIPS TAN only deprojects (x, y) coordinates within unit circle
-        r = x * x + y * y
-        az0, el0 = az0[r <= 1.0], el0[r <= 1.0]
-        x, y = x[r <= 1.0], y[r <= 1.0]
-    az, el = plane_to_sphere(az0, el0, x, y)
-    xx, yy = sphere_to_plane(az0, el0, az, el)
-    az_aips, el_aips = np.zeros_like(az), np.zeros_like(el)
-    x_aips, y_aips = np.zeros_like(xx), np.zeros_like(yy)
-    for n, _ in enumerate(az):
-        az_aips[n], el_aips[n], ierr = newpos(aips_code, az0[n], el0[n], x[n], y[n])
-        assert ierr == 0
-        x_aips[n], y_aips[n], ierr = dircos(aips_code, az0[n], el0[n], az[n], el[n])
-        assert ierr == 0
-    # AIPS NEWPOS STG has poor accuracy on azimuth angle
-    # (large closure errors by itself)
-    if projection != "STG":
-        assert_angles_almost_equal(az, az_aips, decimal=decimal)
-    assert_angles_almost_equal(el, el_aips, decimal=decimal)
-    np.testing.assert_almost_equal(xx, x_aips, decimal=decimal)
-    np.testing.assert_almost_equal(yy, y_aips, decimal=decimal)
 
 
 @pytest.mark.parametrize(
