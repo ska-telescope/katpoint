@@ -225,10 +225,10 @@ generate_data = {
 
 
 # The decimal accuracy for each projection is the maximum that makes
-# the test pass during an extended random run.
+# the test pass during an extended random run (N=100000).
 @pytest.mark.parametrize(
     "projection, decimal",
-    [("SIN", 10), ("TAN", 8), ("ARC", 8), ("STG", 9), ("CAR", 12), ("SSN", 10)],
+    [("SIN", 10), ("TAN", 10), ("ARC", 10), ("STG", 11), ("CAR", 14), ("SSN", 11)],
 )
 def test_random_closure(random, projection, decimal, N=100):
     """Do random projections and check closure."""
@@ -363,11 +363,11 @@ def test_wcs_compatibility(random, projection, decimal, N=100):
 
 
 # The decimal accuracy for each projection is the maximum that makes
-# the test pass during an extended random run.
+# the test pass during an extended random run (N = 100000).
 @pytest.mark.skipif(not HAS_AIPS, reason="AIPS projection module not found")
 @pytest.mark.parametrize(
     "projection, aips_code, decimal",
-    [("SIN", 2, 9), ("TAN", 3, 10), ("ARC", 4, 8), ("STG", 6, 9)],
+    [("SIN", 2, 11), ("TAN", 3, 11), ("ARC", 4, 11), ("STG", 6, 11)],
 )
 def test_aips_compatibility(random, projection, aips_code, decimal, N=100):
     """Compare with original AIPS routine (if available)."""
