@@ -287,7 +287,7 @@ def sphere_to_plane_wcs(code, az0_rad, el0_rad, az_rad, el_rad):
         xy_deg = np.zeros_like(azel_deg)
         for n in range(azel_deg.shape[0]):
             wcs.wcs.crval = azel0_deg[n]
-            xy_deg[n] = wcs.wcs.s2p(azel_deg[n:n + 1], origin=1)["imgcrd"]
+            xy_deg[n] = wcs.wcs.s2p(azel_deg[n : n + 1], origin=1)["imgcrd"]
     xy_rad = np.deg2rad(xy_deg)
     # XXX Support out-of-range treatment (at least "nan" and "raise") via s2p "stat"
     return _fix_scalar(xy_rad[:, 0], az_rad), _fix_scalar(xy_rad[:, 1], el_rad)
@@ -327,7 +327,7 @@ def plane_to_sphere_wcs(code, az0_rad, el0_rad, x_rad, y_rad):
         azel_deg = np.zeros_like(xy_deg)
         for n in range(xy_deg.shape[0]):
             wcs.wcs.crval = azel0_deg[n]
-            azel_deg[n] = wcs.wcs.p2s(xy_deg[n:n + 1], origin=1)["world"]
+            azel_deg[n] = wcs.wcs.p2s(xy_deg[n : n + 1], origin=1)["world"]
     azel_rad = np.deg2rad(azel_deg)
     # XXX Support out-of-range treatment (at least "nan" and "raise") via p2s "stat"
     return _fix_scalar(azel_rad[:, 0], x_rad), _fix_scalar(azel_rad[:, 1], y_rad)
