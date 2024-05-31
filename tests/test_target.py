@@ -23,7 +23,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy import __version__ as astropy_version
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle, SkyCoord
 from packaging.version import Version
 
 import katpoint
@@ -497,7 +497,22 @@ def test_coords():
     check_separation(coord, "245:34:49.20442837d", "15:36:24.87974969d", tol=1 * u.mas)
     # PyEphem:               245:34:49.3,           15:36:24.7
     coord = TARGET.parallactic_angle(TS, ANT1)
-    assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
+    assert coord.deg == pytest.approx(-139.9200496732312)
+    # Astropy topocentric apparent:   -140.279593566336 (CIRS)
+    # PyEphem:                        -140.34440985011398
+
+
+def test_parallactic_angle():
+    """More checks on parallactic angle calculations."""
+    # Position angle of North in AzEl == position angle of zenith in ICRS
+    # Confirm that parallactic angle has the same value both ways
+    target_azel = SkyCoord(TARGET.azel(TS, ANT1))
+    # pylint: disable=protected-access
+    step = katpoint.target._SMALL_STEP
+    above_target = target_azel.directional_offset_by(0 * u.rad, step)
+    target_radec = SkyCoord(TARGET.radec(TS, ANT1))
+    parang = target_radec.position_angle(above_target).wrap_at(180 * u.deg)
+    assert parang.deg == pytest.approx(-139.9200496732312)
 
 
 DELAY_TARGET = katpoint.Target("radec, 20.0, -20.0")
