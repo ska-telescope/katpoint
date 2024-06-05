@@ -13,6 +13,11 @@ python-pre-lint:
 python-pre-test:
 	poetry install
 
+# Test that we actually have a working package after a pip install
+python-post-test:
+	pip3 install .
+	python3 -c "import katpoint"
+
 python-pre-build:
 	poetry install
 
