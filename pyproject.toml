@@ -18,7 +18,7 @@ classifiers = [
 ]
 include = [
     { path = "tests", format = "sdist" },
-    { path = "src/katpoint/_version.py", format = "sdist" }
+    { path = "src/katpoint/_version.py", format = ["sdist", "wheel"] }
 ]
 
 
