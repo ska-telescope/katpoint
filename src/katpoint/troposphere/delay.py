@@ -1,5 +1,5 @@
 ################################################################################
-# Copyright (c) 2009-2022, National Research Foundation (SARAO)
+# Copyright (c) 2020-2024, National Research Foundation (SARAO)
 #
 # Licensed under the BSD 3-Clause License (the "License"); you may not use
 # this file except in compliance with the License. You may obtain a copy
@@ -14,224 +14,23 @@
 # limitations under the License.
 ################################################################################
 
-"""Refraction correction.
+"""Tropospheric delay model.
 
-This implements corrections for refractive bending and propagation delay
-in the atmosphere (mostly the troposphere and stratosphere).
+This predicts the propagation delay due to neutral gas in the troposphere and
+stratosphere as a function of elevation angle, based on the weather, location
+and season. The basic model is a direct translation of the model in ALMA's
+version of CALC.
 """
 
-import logging
+from dataclasses import dataclass, field
+from typing import Callable
 
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
+from astropy.coordinates import EarthLocation
 
-from .timestamp import Timestamp
-
-logger = logging.getLogger(__name__)
-
-
-def refraction_offset_vlbi(el, temperature_C, pressure_hPa, humidity_percent):
-    """Calculate refraction correction using model in VLBI Field System.
-
-    This uses the refraction model in the VLBI Field System to calculate a
-    correction to a given elevation angle to account for refractive bending in
-    the atmosphere, based on surface weather measurements. Each input parameter
-    can either be a scalar value or an array of values, as long as all arrays
-    are of the same shape.
-
-    Parameters
-    ----------
-    el : float or array
-        Requested elevation angle(s), in radians
-    temperature_C : float or array
-        Ambient air temperature at surface, in degrees Celsius
-    pressure_hPa : float or array
-        Total barometric pressure at surface, in hectopascal (hPa) or millibars
-    humidity_percent : float or array
-        Relative humidity at surface, as a percentage in range [0, 100]
-
-    Returns
-    -------
-    el_offset : float or array
-        Refraction offset(s) in radians, which needs to be *added* to
-        elevation angle(s) to correct it
-
-    Notes
-    -----
-    The code is based on poclb/refrwn.c in Field System version 9.9.2, which
-    was added on 2006-11-15. This is a C version (with typos fixed) of the
-    Fortran version in polb/refr.f. As noted in the Field System
-    documentation [Him1993b]_, the refraction model originated with the Haystack
-    pointing system. A description of the model can be found in [Clark1966]_,
-    which in turn references [IH1963]_ as the ultimate source.
-
-    References
-    ----------
-    .. [Him1993b] E. Himwich, "Station Programs," Mark IV Field System Reference
-       Manual, Version 8.2, 1 September 1993.
-    .. [Clark1966] C.A. Clark, "Haystack Pointing System: Radar Coordinate
-       Correction," Technical Note 1966-56, Lincoln Laboratory, MIT, 1966,
-       `<https://doi.org/10.21236/ad0641603>`_
-    .. [IH1963] W.R. Iliff, J.M. Holt, "Use of Surface Refractivity in the
-       Empirical Prediction of Total Atmospheric Refraction," Journal of Research
-       of the National Bureau of Standards--D. Radio Propagation, vol. 67D,
-       no. 1, Jan 1963, `<https://doi.org/10.6028/jres.067d.006>`_
-    """
-    p = (0.458675e1, 0.322009e0, 0.103452e-1, 0.274777e-3, 0.157115e-5)
-    cvt = 1.33289
-    a = 40.0
-    b = 2.7
-    c = 4.0
-    d = 42.5
-    e = 0.4
-    f = 2.64
-    g = 0.57295787e-4
-
-    # Compute SN (surface refractivity)
-    # (via dewpoint and water vapor partial pressure? [LS])
-    rhumi = (100.0 - humidity_percent) * 0.9
-    dewpt = temperature_C - rhumi * (
-        0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
-    )
-    pp = p[0] + p[1] * dewpt + p[2] * dewpt**2 + p[3] * dewpt**3 + p[4] * dewpt**4
-    temperature_K = temperature_C + 273.0
-    # This looks like Smith & Weintraub (1953) or Crane (1976) [LS]
-    sn = 77.6 * (pressure_hPa + (4810.0 * cvt * pp) / temperature_K) / temperature_K
-
-    # Compute refraction at elevation
-    # (clipped at 1 degree to avoid cot(el) blow-up at horizon)
-    el_deg = np.clip(np.degrees(el), 1.0, 90.0)
-    aphi = a / ((el_deg + b) ** c)
-    dele = -d / ((el_deg + e) ** f)
-    zenith_angle = np.radians(90.0 - el_deg)
-    bphi = g * (np.tan(zenith_angle) + dele)
-    # Threw out an (el < 0.01) check here,
-    # which will never succeed because el is clipped to be above 1.0 [LS]
-
-    return np.radians(bphi * sn - aphi)
-
-
-class RefractionCorrection:
-    """Correct pointing for refractive bending in atmosphere.
-
-    This uses the specified refraction model to calculate a correction to a
-    given elevation angle to account for refractive bending in the atmosphere,
-    based on surface weather measurements. The refraction correction can also
-    be undone, usually to refer the actual antenna position to the coordinate
-    frame before corrections were applied.
-
-    Parameters
-    ----------
-    model : string, optional
-        Name of refraction model to use
-
-    Raises
-    ------
-    ValueError
-        If the specified refraction model is unknown
-    """
-
-    def __init__(self, model="VLBI Field System"):
-        self.models = {"VLBI Field System": refraction_offset_vlbi}
-        try:
-            self.offset = self.models[model]
-        except KeyError:
-            raise ValueError(
-                f"Unknown refraction correction model '{model}' - "
-                f"should be one of {self.models.keys()}"
-            ) from None
-        self.model = model
-
-    def __repr__(self):
-        """Short human-friendly string representation of object."""
-        return f"<katpoint.RefractionCorrection model='{self.model}' at {id(self):#x}>"
-
-    def __eq__(self, other):
-        """Equality comparison operator."""
-        return isinstance(other, RefractionCorrection) and (self.model == other.model)
-
-    def __hash__(self):
-        """Compute hash on underlying model name, just like equality operator."""
-        return hash((self.__class__, self.model))
-
-    def apply(self, el, temperature_C, pressure_hPa, humidity_percent):
-        """Apply refraction correction to elevation angle.
-
-        Each input parameter can either be a scalar value or an array of values,
-        as long as all arrays are of the same shape.
-
-        Parameters
-        ----------
-        el : float or array
-            Requested elevation angle(s), in radians
-        temperature_C : float or array
-            Ambient air temperature at surface, in degrees Celsius
-        pressure_hPa : float or array
-            Total barometric pressure at surface, in hectopascal (hPa) or millibars
-        humidity_percent : float or array
-            Relative humidity at surface, as a percentage in range [0, 100]
-
-        Returns
-        -------
-        refracted_el : float or array
-            Elevation angle(s), corrected for refraction, in radians
-        """
-        return el + self.offset(el, temperature_C, pressure_hPa, humidity_percent)
-
-    def reverse(self, refracted_el, temperature_C, pressure_hPa, humidity_percent):
-        """Remove refraction correction from elevation angle.
-
-        This undoes a refraction correction that resulted in the given elevation
-        angle. It is the inverse of :meth:`apply`.
-
-        Parameters
-        ----------
-        refracted_el : float or array
-            Elevation angle(s), corrected for refraction, in radians
-        temperature_C : float or array
-            Ambient air temperature at surface, in degrees Celsius
-        pressure_hPa : float or array
-            Total barometric pressure at surface, in hectopascal (hPa) or millibars
-        humidity_percent : float or array
-            Relative humidity at surface, as a percentage in range [0, 100]
-
-        Returns
-        -------
-        el : float or array
-            Elevation angle(s) before refraction correction, in radians
-        """
-        # Maximum difference between input elevation and
-        # refraction-corrected version of final output elevation
-        tolerance = np.radians(0.01 / 3600)
-        # Assume offset from corrected el is similar to offset from uncorrected el
-        # -> get lower bound on desired el
-        close_offset = self.offset(
-            refracted_el, temperature_C, pressure_hPa, humidity_percent
-        )
-        lower = refracted_el - 4 * np.abs(close_offset)
-        # We know that corrected el > uncorrected el (mostly)
-        # -> this becomes upper bound on desired el
-        upper = refracted_el + np.radians(1.0 / 3600.0)
-        # Do binary search for desired el within this range (but cap iterations
-        # in case of a mishap). This assumes that refraction-corrected elevation
-        # is monotone function of uncorrected elevation.
-        for iteration in range(40):
-            el = 0.5 * (lower + upper)
-            test_el = self.apply(el, temperature_C, pressure_hPa, humidity_percent)
-            if np.all(np.abs(test_el - refracted_el) < tolerance):
-                break
-            lower = np.where(test_el < refracted_el, el, lower)
-            upper = np.where(test_el > refracted_el, el, upper)
-        else:
-            logger.warning(
-                "Reverse refraction correction did not converge in "
-                "%d iterations - elevation differs by at most %f arcsecs",
-                iteration + 1,
-                np.degrees(np.abs(test_el - refracted_el).max()) * 3600.0,
-            )
-        return el if el.ndim else el.item()
-
+from ..timestamp import Timestamp
 
 _EXCESS_PATH_PER_PRESSURE = 2.2768 * u.m / u.bar
 
@@ -986,6 +785,7 @@ class GlobalMappingFunction:
 _MAPPING_FUNCTION = {"GlobalMappingFunction": GlobalMappingFunction}
 
 
+@dataclass(frozen=True)
 class TroposphericDelay:
     """Propagation delay due to neutral gas in the troposphere and stratosphere.
 
@@ -1004,22 +804,29 @@ class TroposphericDelay:
     model_id : str, optional
         Unique identifier of tropospheric model (defaults to the only model
         implemented so far)
+
+    Raises
+    ------
+    ValueError
+        If the specified tropospheric model is unknown or has wrong format
     """
 
-    def __init__(
-        self, location, model_id="SaastamoinenZenithDelay-GlobalMappingFunction"
-    ):
-        # These will effectively be read-only attributes because setattr is disabled
-        super().__setattr__("location", location)
-        super().__setattr__("model_id", model_id)
+    location: EarthLocation
+    model_id: str = "SaastamoinenZenithDelay-GlobalMappingFunction"
+    _delay: Callable = field(init=False, repr=False, compare=False)
+    # EarthLocation is not hashable, but dataclass assumes it is, so disable it
+    __hash__ = None
+
+    def __post_init__(self):
+        """Initialise main function `_delay` from `location` and `model_id`."""
         # Parse model identifier string
-        model_parts = model_id.split("-")
+        model_parts = self.model_id.split("-")
         if len(model_parts) == 2:
             model_parts.append("total")
         if len(model_parts) != 3:
             raise ValueError(
                 f"Format for tropospheric delay model ID is '<zenith delay>-"
-                f"<mapping function>[-<hydrostatic/wet>]', not {model_id:!r}"
+                f"<mapping function>[-<hydrostatic/wet>]', not {self.model_id!r}"
             )
 
         def get(mapping, key, name):
@@ -1027,15 +834,15 @@ class TroposphericDelay:
                 return mapping[key]
             except KeyError as err:
                 raise ValueError(
-                    f"Tropospheric delay model {model_id!r} has unknown {name} "
+                    f"Tropospheric delay model {self.model_id!r} has unknown {name} "
                     f"{key!r}, available ones are {list(mapping.keys())}"
                 ) from err
 
         zenith_delay = get(_ZENITH_DELAY, model_parts[0], "zenith delay function")(
-            location
+            self.location
         )
         mapping_function = get(_MAPPING_FUNCTION, model_parts[1], "mapping function")(
-            location
+            self.location
         )
 
         def hydrostatic(p, t, h, el, ts):  # pylint: disable=unused-argument
@@ -1048,11 +855,8 @@ class TroposphericDelay:
             return hydrostatic(p, t, h, el, ts) + wet(p, t, h, el, ts)
 
         model_types = {"hydrostatic": hydrostatic, "wet": wet, "total": total}
+        # Set attribute on base class because this class is frozen
         super().__setattr__("_delay", get(model_types, model_parts[2], "type"))
-
-    def __setattr__(self, name, value):
-        """Prevent modification of attributes (the model is read-only)."""
-        raise AttributeError("Tropospheric delay models are immutable")
 
     @u.quantity_input(equivalencies=u.temperature())
     def __call__(
@@ -1084,7 +888,6 @@ class TroposphericDelay:
         delay : :class:`~astropy.units.Quantity`
             Tropospheric propagation delay
         """
-        # pylint: disable=no-member
         return self._delay(
             pressure,
             temperature,

@@ -11,7 +11,8 @@ Welcome to katpoint's documentation!
    :caption: Contents:
 
    modules
-   API
+   math_pointing
+   api_changes
 
 
 Indices and tables

@@ -45,15 +45,14 @@ initial-content = """
 
 
 
-# XXX Restore this entry when the latest Poetry demands it
-# [[tool.poetry.source]]
-# name = "PyPI"
-# priority = "primary"
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
 
 [[tool.poetry.source]]
 name = "ska"
 url = "https://artefact.skao.int/repository/pypi-internal/simple"
-# priority = "supplemental"
+priority = "supplemental"
 
 
 
@@ -67,8 +66,9 @@ python = "^3.6.2"
 astropy = ">=4.1"
 numpy = "^1.13"
 sgp4 = "^2.7"
+dataclasses = { version = ">=0.8", python = "<3.7" }
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 # These are versions used to produce the poetry.lock file
 # poetry = ">=1.7.1"
 # poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}

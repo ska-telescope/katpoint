@@ -236,7 +236,7 @@ def test_tropospheric_delay():
     """Test that `DelayCorrection` correctly applies tropospheric delays."""
     model = dict(ant_models=ANT_MODELS, **DELAY_MODEL)
     dc = katpoint.DelayCorrection(json.dumps(model))
-    tropospheric_delay = katpoint.refraction.TroposphericDelay(dc.ref_location)
+    tropospheric_delay = katpoint.troposphere.delay.TroposphericDelay(dc.ref_location)
     elevation = 15 * u.deg
     target = katpoint.Target.from_azel(0, elevation.to_value(u.rad))
     ts = katpoint.Timestamp(1605646800.0).time

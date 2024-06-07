@@ -36,9 +36,9 @@ from astropy.coordinates import (
 from .antenna import Antenna
 from .conversion import azel_to_enu, ecef_to_enu
 from .delay_model import DelayModel
-from .refraction import TroposphericDelay
 from .target import Target
 from .timestamp import Timestamp
+from .troposphere.delay import TroposphericDelay
 
 NO_TEMPERATURE = -300 * u.deg_C  # used as default parameter, akin to None
 
@@ -346,11 +346,7 @@ class DelayCorrection:
     @property
     def tropospheric_model(self):
         """Unique identifier of tropospheric model, or 'None' for no correction."""
-        return (
-            self._tropospheric_delay.model_id  # pylint: disable=no-member
-            if self._tropospheric_delay
-            else "None"
-        )
+        return self._tropospheric_delay.model_id if self._tropospheric_delay else "None"
 
     @property
     def ant_locations(self):
