@@ -16,6 +16,13 @@ History
 * Timestamp/Antenna/Target mirrors Time/EarthLocation/SkyCoord (!5, !10, !22)
 * Add tropospheric delays and proper NIAO to DelayCorrection (!13, !18, !20)
 
+0.10 (2021-04-20)
+-----------------
+* [The following parts of the 0.10 release were retrofitted as part of 1.0a3]
+* Handle out-of-range projection inputs (#67, #68)
+* Allow fixed parameters during pointing model fitting (#73)
+* Update pointing and other documentation (#65, #70, #71, #74)
+
 0.9 (2019-10-02)
 ----------------
 * Add Antenna.array_reference_antenna utility function (#51)
