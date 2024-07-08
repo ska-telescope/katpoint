@@ -1,6 +1,12 @@
 History
 =======
 
+1.0a3 (2024-07-09)
+------------------
+* Rework tropospheric refraction code to use ERFA routines (!35)
+* Add all outstanding changes from GitHub 0.10 release [see 0.10 below] (!30)
+* Fix unit tests on newer Astropy and upgrade CI build system (!31 - !36)
+
 1.0a2 (2022-09-16)
 ------------------
 * Use Astropy units for baselines, UVW, flux density, Catalogue (!24)
