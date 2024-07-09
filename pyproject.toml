@@ -71,7 +71,7 @@ dataclasses = { version = ">=0.8", python = "<3.7" }
 
 [tool.poetry.group.dev.dependencies]
 # These are versions used to produce the poetry.lock file
-# poetry = ">=1.7.1"
+# poetry = ">=1.8.2"
 # poetry-dynamic-versioning = {extras = ["plugin"], version = ">=1.1.1"}
 # build = "^1.0.3"
 # These are the last versions that can still run on Python 3.6
@@ -88,6 +88,7 @@ pylint-junit = "^0.3.2"
 pylint-pytest = "^1.1.2"
 pytest = "^7.0.1"
 pytest-cov = ">=3.0"
+twine = ">=3.8.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = ">=1.6,<7"
