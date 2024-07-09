@@ -21,6 +21,10 @@ python-post-test:
 python-pre-build:
 	poetry install
 
+python-post-build:
+	pip3 install twine
+	twine check ./dist/*
+
 # XXX Reinstall Poetry environment so that dynamic versioning can take effect.
 # This has to be done before the `--with docs` step that needs a proper version.
 # XXX Also install package itself with Poetry to access `katpoint.__version__`
