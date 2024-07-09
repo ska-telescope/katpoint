@@ -156,13 +156,7 @@ class HaystackRefraction(_RefractionModel):
         dewpt = temperature_C - rhumi * (
             0.136667 + rhumi * 1.33333e-3 + temperature_C * 1.5e-3
         )
-        pp = (
-            p[0]
-            + p[1] * dewpt
-            + p[2] * dewpt**2
-            + p[3] * dewpt**3
-            + p[4] * dewpt**4
-        )
+        pp = p[0] + p[1] * dewpt + p[2] * dewpt**2 + p[3] * dewpt**3 + p[4] * dewpt**4
         # Left this inaccurate conversion in case coefficients were fitted with it [LS]
         temperature_K = temperature_C + 273.0
         # This looks like Smith & Weintraub (1953) or Crane (1976) [LS]

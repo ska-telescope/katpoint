@@ -180,11 +180,7 @@ class FluxDensityModel:
         a, b, c, d, e, f = self.coefs[:6]
         log10_v = np.log10(frequency.to_value(u.MHz))
         log10_S = (
-            a
-            + b * log10_v
-            + c * log10_v**2
-            + d * log10_v**3
-            + e * np.exp(f * log10_v)
+            a + b * log10_v + c * log10_v**2 + d * log10_v**3 + e * np.exp(f * log10_v)
         )
         return 10**log10_S * u.Jy
 

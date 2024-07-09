@@ -40,6 +40,7 @@ folders = [
 persistent-substitution = true
 initial-content = """
   \"""Version data populated by poetry-dynamic-versioning / Dunamai.\"""
+
   __version__ = "0.0.0"
   __version_tuple__ = (0, 0, 0)
 """
