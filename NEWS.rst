@@ -1,7 +1,7 @@
 History
 =======
 
-1.0a3 (2024-07-09)
+1.0a3 (2024-07-10)
 ------------------
 * Rework tropospheric refraction code to use ERFA routines (!35)
 * Add all outstanding changes from GitHub 0.10 release [see 0.10 below] (!30)
