@@ -5,7 +5,7 @@ History
 ------------------
 * Rework tropospheric refraction code to use ERFA routines (!35)
 * Add all outstanding changes from GitHub 0.10 release [see 0.10 below] (!30)
-* Fix unit tests on newer Astropy and upgrade CI build system (!31 - !36)
+* Fix unit tests on newer Astropy and upgrade CI build system (!31 - !36, !38)
 
 1.0a2 (2022-09-16)
 ------------------
