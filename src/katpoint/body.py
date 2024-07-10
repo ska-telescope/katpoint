@@ -402,9 +402,7 @@ class EarthSatelliteBody(Body):
             0,  # satnum: Satellite number is not stored by XEphem so pick unused one
             sgp4_epoch,  # epoch
             drag_coef,  # bstar
-            (orbit_decay * u.cycle / u.day**2).to_value(
-                u.rad / u.minute**2
-            ),  # ndot
+            (orbit_decay * u.cycle / u.day**2).to_value(u.rad / u.minute**2),  # ndot
             0.0,  # nddot (not used by SGP4)
             eccentricity,  # ecco
             (arg_perigee * u.deg).to_value(u.rad),  # argpo
