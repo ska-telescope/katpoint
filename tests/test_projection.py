@@ -260,20 +260,20 @@ def sphere_to_plane_wcs(code, az0_rad, el0_rad, az_rad, el_rad):
     ----------
     code : str
         Three-letter projection code defined by the FITS standard
-    az0_rad : float or array
+    az0_rad : float or array of shape (N,)
         Azimuth / right ascension / longitude of reference point(s), in radians
-    el0_rad : float or array
+    el0_rad : float or array of shape (N,)
         Elevation / declination / latitude of reference point(s), in radians
-    az_rad : float or array
+    az_rad : float or array of shape (N,)
         Azimuth / right ascension / longitude of point(s) to project, in radians
-    el_rad : float or array
+    el_rad : float or array of shape (N,)
         Elevation / declination / latitude of point(s) to project, in radians
 
     Returns
     -------
-    x_rad : float or array
+    x_rad : float or array of shape (N,)
         Azimuth-like coordinate(s) on plane (equivalent to l), in radians
-    y_rad : float or array
+    y_rad : float or array of shape (N,)
         Elevation-like coordinate(s) on plane (equivalent to m), in radians
     """
     wcs = _prepare_wcs(code)
@@ -300,20 +300,20 @@ def plane_to_sphere_wcs(code, az0_rad, el0_rad, x_rad, y_rad):
     ----------
     code : str
         Three-letter projection code defined by the FITS standard
-    az0_rad : float or array
+    az0_rad : float or array of shape (N,)
         Azimuth / right ascension / longitude of reference point(s), in radians
-    el0_rad : float or array
+    el0_rad : float or array of shape (N,)
         Elevation / declination / latitude of reference point(s), in radians
-    x_rad : float or array
+    x_rad : float or array of shape (N,)
         Azimuth-like coordinate(s) on plane (equivalent to l), in radians
-    y_rad : float or array
+    y_rad : float or array of shape (N,)
         Elevation-like coordinate(s) on plane (equivalent to m), in radians
 
     Returns
     -------
-    az_rad : float or array
+    az_rad : float or array of shape (N,)
         Azimuth / right ascension / longitude of deprojected point(s), in radians
-    el_rad : float or array
+    el_rad : float or array of shape (N,)
         Elevation / declination / latitude of deprojected point(s), in radians
     """
     wcs = _prepare_wcs(code)
