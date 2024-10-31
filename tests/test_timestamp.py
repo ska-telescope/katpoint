@@ -29,6 +29,11 @@ try:
     from astropy.time import TimeDeltaMissingUnitWarning
 except ImportError:
     TimeDeltaMissingUnitWarning = None
+# XXX Remove workaround once we drop support for NumPy < 1.25
+try:
+    from numpy.exceptions import ComplexWarning
+except ImportError:
+    from numpy import ComplexWarning
 
 import katpoint
 
@@ -80,7 +85,7 @@ def test_construct_invalid_timestamp(init_value):
     """Test that `Timestamp` rejects invalid inputs."""
     with pytest.raises(ValueError):
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", np.ComplexWarning)
+            warnings.simplefilter("ignore", ComplexWarning)
             katpoint.Timestamp(init_value)
 
 

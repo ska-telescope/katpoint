@@ -137,7 +137,7 @@ class FluxDensityModel:
         nondefault_coefs = np.nonzero(self.coefs != self._DEFAULT_COEFS)[0]
         last_nondefault_coef = nondefault_coefs[-1] if len(nondefault_coefs) > 0 else 0
         pruned_coefs = self.coefs[: last_nondefault_coef + 1]
-        coefs_str = " ".join([repr(c) for c in pruned_coefs])
+        coefs_str = " ".join([str(c) for c in pruned_coefs])
         return f"({min_freq} {max_freq} {coefs_str})"
 
     @classmethod
