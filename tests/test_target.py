@@ -390,7 +390,7 @@ def test_no_name_targets(description):
     assert katpoint.Target(description).description == description
 
 
-NON_AZEL = "astrometric_radec apparent_radec galactic"
+NON_AZEL = "radec galactic"
 
 
 @contextmanager
@@ -464,8 +464,11 @@ def test_array_valued_methods(description):
     assert times.shape == offsets.shape
     target = katpoint.Target(description)
     _array_vs_scalar(lambda t: target.azel(t, ANT1), times, sky_coord=True)
-    _array_vs_scalar(lambda t: target.apparent_radec(t, ANT1), times, sky_coord=True)
-    _array_vs_scalar(lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True)
+    _array_vs_scalar(lambda t: target.radec(t, ANT1), times, sky_coord=True)
+    with pytest.warns(FutureWarning):
+        _array_vs_scalar(
+            lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True
+        )
     _array_vs_scalar(lambda t: target.galactic(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.parallactic_angle(t, ANT1), times)
     _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[0], times)
@@ -487,10 +490,7 @@ def test_coords():
     coord = TARGET.azel(TS, ANT1)
     assert coord.az.deg == 45  # PyEphem: 45
     assert coord.alt.deg == 75  # PyEphem: 75
-    coord = TARGET.apparent_radec(TS, ANT1)
-    check_separation(coord, "8:53:03.49166920h", "-19:54:51.92328722d", tol=1 * u.mas)
-    # PyEphem:               8:53:09.60,          -19:51:43.0 (same as astrometric)
-    coord = TARGET.astrometric_radec(TS, ANT1)
+    coord = TARGET.radec(TS, ANT1)
     check_separation(coord, "8:53:09.60397465h", "-19:51:42.87773802d", tol=1 * u.mas)
     # PyEphem:               8:53:09.60,          -19:51:43.0
     coord = TARGET.galactic(TS, ANT1)
@@ -652,8 +652,9 @@ def test_earth_location():
     timestamps = katpoint.Timestamp("2021-02-11 14:28:00") + offsets
     target = katpoint.Target("radec, 20, -20")
     _ant_vs_location(lambda a1, a2: target.azel(timestamps, a1))
-    _ant_vs_location(lambda a1, a2: target.apparent_radec(timestamps, a1))
-    _ant_vs_location(lambda a1, a2: target.astrometric_radec(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.radec(timestamps, a1))
+    with pytest.warns(FutureWarning):
+        _ant_vs_location(lambda a1, a2: target.astrometric_radec(timestamps, a1))
     _ant_vs_location(lambda a1, a2: target.galactic(timestamps, a1))
     _ant_vs_location(lambda a1, a2: target.parallactic_angle(timestamps, a1))
     _ant_vs_location(

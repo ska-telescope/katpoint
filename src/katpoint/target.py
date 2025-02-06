@@ -23,7 +23,6 @@ import astropy.constants as const
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import (
-    CIRS,
     FK4,
     ICRS,
     AltAz,
@@ -610,42 +609,7 @@ class Target:
         altaz = AltAz(obstime=time, location=location)
         return self.body.compute(altaz, time, location)
 
-    def apparent_radec(self, timestamp=None, antenna=None):
-        """Calculate target's apparent (ra, dec) as seen from antenna at time(s).
-
-        This calculates the *apparent topocentric position* of the target for
-        the epoch-of-date in equatorial coordinates. Take note that this is
-        *not* the "star-atlas" position of the target, but the position as is
-        actually seen from the antenna at the given times. The difference is on
-        the order of a few arcminutes. These are the coordinates that a telescope
-        with an equatorial mount would use to track the target.
-
-        Parameters
-        ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
-            Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or
-            :class:`Antenna`, optional
-            Antenna which points at target (defaults to default antenna)
-
-        Returns
-        -------
-        radec : :class:`~astropy.coordinates.CIRS`, same shape as *timestamp*
-            Right ascension and declination in CIRS frame
-
-        Raises
-        ------
-        ValueError
-            If no antenna is specified and body type requires it for (ra, dec)
-        """
-        time, location = self._astropy_funnel(timestamp, antenna)
-        # XXX This is a bit of mess... Consider going to TETE
-        # for the traditional geocentric apparent place or remove entirely
-        return self.body.compute(
-            CIRS(obstime=time), time, location, to_celestial_sphere=True
-        )
-
-    def astrometric_radec(self, timestamp=None, antenna=None):
+    def radec(self, timestamp=None, antenna=None):
         """Calculate target's astrometric (ra, dec) as seen from antenna at time(s).
 
         This calculates the ICRS *astrometric topocentric position* of the
@@ -675,7 +639,13 @@ class Target:
         return self.body.compute(ICRS(), time, location, to_celestial_sphere=True)
 
     # The default (ra, dec) coordinates are the astrometric ones
-    radec = astrometric_radec
+    def astrometric_radec(self, timestamp=None, antenna=None):
+        """Calculate target's astrometric (ra, dec) [DEPRECATED, see Target.radec]."""
+        warnings.warn(
+            "Target.astrometric_radec is deprecated; replace with Target.radec",
+            FutureWarning,
+        )
+        return self.radec(timestamp, antenna)
 
     def galactic(self, timestamp=None, antenna=None):
         """Calculate target's galactic (l, b) as seen from antenna at time(s).
