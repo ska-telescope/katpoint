@@ -23,7 +23,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy import __version__ as astropy_version
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle, SkyCoord
 from packaging.version import Version
 
 import katpoint
@@ -390,7 +390,7 @@ def test_no_name_targets(description):
     assert katpoint.Target(description).description == description
 
 
-NON_AZEL = "astrometric_radec apparent_radec galactic"
+NON_AZEL = "radec galactic"
 
 
 @contextmanager
@@ -464,8 +464,11 @@ def test_array_valued_methods(description):
     assert times.shape == offsets.shape
     target = katpoint.Target(description)
     _array_vs_scalar(lambda t: target.azel(t, ANT1), times, sky_coord=True)
-    _array_vs_scalar(lambda t: target.apparent_radec(t, ANT1), times, sky_coord=True)
-    _array_vs_scalar(lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True)
+    _array_vs_scalar(lambda t: target.radec(t, ANT1), times, sky_coord=True)
+    with pytest.warns(FutureWarning):
+        _array_vs_scalar(
+            lambda t: target.astrometric_radec(t, ANT1), times, sky_coord=True
+        )
     _array_vs_scalar(lambda t: target.galactic(t, ANT1), times, sky_coord=True)
     _array_vs_scalar(lambda t: target.parallactic_angle(t, ANT1), times)
     _array_vs_scalar(lambda t: target.geometric_delay(ANT2, t, ANT1)[0], times)
@@ -487,17 +490,29 @@ def test_coords():
     coord = TARGET.azel(TS, ANT1)
     assert coord.az.deg == 45  # PyEphem: 45
     assert coord.alt.deg == 75  # PyEphem: 75
-    coord = TARGET.apparent_radec(TS, ANT1)
-    check_separation(coord, "8:53:03.49166920h", "-19:54:51.92328722d", tol=1 * u.mas)
-    # PyEphem:               8:53:09.60,          -19:51:43.0 (same as astrometric)
-    coord = TARGET.astrometric_radec(TS, ANT1)
+    coord = TARGET.radec(TS, ANT1)
     check_separation(coord, "8:53:09.60397465h", "-19:51:42.87773802d", tol=1 * u.mas)
     # PyEphem:               8:53:09.60,          -19:51:43.0
     coord = TARGET.galactic(TS, ANT1)
     check_separation(coord, "245:34:49.20442837d", "15:36:24.87974969d", tol=1 * u.mas)
     # PyEphem:               245:34:49.3,           15:36:24.7
     coord = TARGET.parallactic_angle(TS, ANT1)
-    assert coord.deg == pytest.approx(-140.279593566336)  # PyEphem: -140.34440985011398
+    assert coord.deg == pytest.approx(-139.9200496732312)
+    # Astropy topocentric apparent:   -140.279593566336 (CIRS)
+    # PyEphem:                        -140.34440985011398
+
+
+def test_parallactic_angle():
+    """More checks on parallactic angle calculations."""
+    # Position angle of North in AzEl == position angle of zenith in ICRS
+    # Confirm that parallactic angle has the same value both ways
+    target_azel = SkyCoord(TARGET.azel(TS, ANT1))
+    # pylint: disable=protected-access
+    step = katpoint.target._SMALL_STEP
+    above_target = target_azel.directional_offset_by(0 * u.rad, step)
+    target_radec = SkyCoord(TARGET.radec(TS, ANT1))
+    parang = target_radec.position_angle(above_target).wrap_at(180 * u.deg)
+    assert parang.deg == pytest.approx(-139.9200496732312)
 
 
 DELAY_TARGET = katpoint.Target("radec, 20.0, -20.0")
@@ -637,8 +652,9 @@ def test_earth_location():
     timestamps = katpoint.Timestamp("2021-02-11 14:28:00") + offsets
     target = katpoint.Target("radec, 20, -20")
     _ant_vs_location(lambda a1, a2: target.azel(timestamps, a1))
-    _ant_vs_location(lambda a1, a2: target.apparent_radec(timestamps, a1))
-    _ant_vs_location(lambda a1, a2: target.astrometric_radec(timestamps, a1))
+    _ant_vs_location(lambda a1, a2: target.radec(timestamps, a1))
+    with pytest.warns(FutureWarning):
+        _ant_vs_location(lambda a1, a2: target.astrometric_radec(timestamps, a1))
     _ant_vs_location(lambda a1, a2: target.galactic(timestamps, a1))
     _ant_vs_location(lambda a1, a2: target.parallactic_angle(timestamps, a1))
     _ant_vs_location(

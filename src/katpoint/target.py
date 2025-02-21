@@ -23,11 +23,9 @@ import astropy.constants as const
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import (
-    CIRS,
     FK4,
     ICRS,
     AltAz,
-    Angle,
     CartesianRepresentation,
     Galactic,
     SkyCoord,
@@ -51,6 +49,8 @@ from .timestamp import Timestamp, delta_seconds
 
 # Singleton that identifies default target parameters
 _DEFAULT = object()
+# Offset to remain local to target direction to avoid aberration distortion
+_SMALL_STEP = 1e-5 * u.rad
 
 
 class NonAsciiError(ValueError):
@@ -609,42 +609,7 @@ class Target:
         altaz = AltAz(obstime=time, location=location)
         return self.body.compute(altaz, time, location)
 
-    def apparent_radec(self, timestamp=None, antenna=None):
-        """Calculate target's apparent (ra, dec) as seen from antenna at time(s).
-
-        This calculates the *apparent topocentric position* of the target for
-        the epoch-of-date in equatorial coordinates. Take note that this is
-        *not* the "star-atlas" position of the target, but the position as is
-        actually seen from the antenna at the given times. The difference is on
-        the order of a few arcminutes. These are the coordinates that a telescope
-        with an equatorial mount would use to track the target.
-
-        Parameters
-        ----------
-        timestamp : :class:`~astropy.time.Time`, :class:`Timestamp` or equiv, optional
-            Timestamp(s), defaults to now
-        antenna : :class:`~astropy.coordinates.EarthLocation` or
-            :class:`Antenna`, optional
-            Antenna which points at target (defaults to default antenna)
-
-        Returns
-        -------
-        radec : :class:`~astropy.coordinates.CIRS`, same shape as *timestamp*
-            Right ascension and declination in CIRS frame
-
-        Raises
-        ------
-        ValueError
-            If no antenna is specified and body type requires it for (ra, dec)
-        """
-        time, location = self._astropy_funnel(timestamp, antenna)
-        # XXX This is a bit of mess... Consider going to TETE
-        # for the traditional geocentric apparent place or remove entirely
-        return self.body.compute(
-            CIRS(obstime=time), time, location, to_celestial_sphere=True
-        )
-
-    def astrometric_radec(self, timestamp=None, antenna=None):
+    def radec(self, timestamp=None, antenna=None):
         """Calculate target's astrometric (ra, dec) as seen from antenna at time(s).
 
         This calculates the ICRS *astrometric topocentric position* of the
@@ -674,7 +639,13 @@ class Target:
         return self.body.compute(ICRS(), time, location, to_celestial_sphere=True)
 
     # The default (ra, dec) coordinates are the astrometric ones
-    radec = astrometric_radec
+    def astrometric_radec(self, timestamp=None, antenna=None):
+        """Calculate target's astrometric (ra, dec) [DEPRECATED, see Target.radec]."""
+        warnings.warn(
+            "Target.astrometric_radec is deprecated; replace with Target.radec",
+            FutureWarning,
+        )
+        return self.radec(timestamp, antenna)
 
     def galactic(self, timestamp=None, antenna=None):
         """Calculate target's galactic (l, b) as seen from antenna at time(s).
@@ -708,13 +679,13 @@ class Target:
     def parallactic_angle(self, timestamp=None, antenna=None):
         """Calculate parallactic angle on target as seen from antenna at time(s).
 
-        This calculates the *parallactic angle*, which is the position angle of
-        the observer's vertical on the sky, measured from north toward east.
-        This is the angle between the great-circle arc connecting the celestial
-        North pole to the target position, and the great-circle arc connecting
-        the zenith above the antenna to the target, or the angle between the
-        *hour circle* and *vertical circle* through the target, at the given
-        timestamp(s).
+        This calculates the *parallactic angle*, which is the position angle
+        of the observer's vertical on the sky, measured from north toward east
+        in the ICRS frame. This is the angle between the great-circle arc
+        connecting the celestial North pole to the target position, and the
+        great-circle arc connecting the zenith above the antenna to the target,
+        or the angle between the *hour circle* and *vertical circle* through
+        the target, at the given timestamp(s).
 
         Parameters
         ----------
@@ -727,7 +698,7 @@ class Target:
         Returns
         -------
         parangle : :class:`~astropy.coordinates.Angle`, same shape as *timestamp*
-            Parallactic angle
+            Parallactic angle, in range [-180, 180) degrees
 
         Raises
         ------
@@ -736,26 +707,28 @@ class Target:
 
         Notes
         -----
-        The formula can be found in the `AIPS++ glossary`_ or in the SLALIB
-        source code (file pa.f, function sla_PA) which is part of the now
-        defunct `Starlink project`_.
+        The original formula could be found in the `AIPS++ glossary`_ or in
+        the SLALIB source code (file pa.f, function sla_PA) which is part of
+        the now defunct `Starlink project`_.
 
-        .. _`AIPS++ Glossary`: http://www.astron.nl/aips++/docs/glossary/p.html
-        .. _`Starlink Project`: http://www.starlink.rl.ac.uk
+        Instead of geocentric apparent (HA, Dec) this function uses ICRS
+        (RA, Dec) as the celestial frame. It also replaces the North celestial
+        pole with a local offset towards North to deal with the non-rigid
+        distortion introduced by aberration (which does not preserve great
+        circles), thereby producing a parallactic angle local to the target.
+
+        .. _`AIPS++ Glossary`: https://casa.nrao.edu/aips2_docs/glossary/p.html
+        .. _`Starlink Project`: http://star-www.rl.ac.uk/docs/sun67.htx/sun67ss128.html
         """
-        # XXX Right ascension and local time should use the same framework:
-        # either CIRS RA and earth rotation angle, or
-        # TETE RA and local sidereal time
         time, location = self._astropy_funnel(timestamp, antenna)
-        antenna = self._valid_antenna(antenna)
-        # Get apparent hour angle and declination
-        radec = self.apparent_radec(time, location)
-        ha = antenna.local_sidereal_time(time) - radec.ra
-        y = np.sin(ha)
-        x = np.tan(location.lat.rad) * np.cos(radec.dec) - np.sin(radec.dec) * np.cos(
-            ha
-        )
-        return Angle(np.arctan2(y, x))
+        # Use ICRS instead of geocentric apparent (HA, Dec)
+        target_radec = SkyCoord(self.radec(time, location))
+        # Don't use the NCP directly, but represent the pole by a direction
+        # just North of the target in order to deal with aberration distortion.
+        north_of_target = target_radec.directional_offset_by(0 * u.rad, _SMALL_STEP)
+        target_azel = SkyCoord(self.azel(time, location))
+        # Position angle of North in AzEl == position angle of zenith in ICRS
+        return target_azel.position_angle(north_of_target).wrap_at(180 * u.deg)
 
     def geometric_delay(self, antenna2, timestamp=None, antenna=None):
         r"""Calculate geometric delay between two antennas pointing at target.

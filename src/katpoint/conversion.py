@@ -450,33 +450,6 @@ def enu_to_azel(east, north, up):
     return np.arctan2(east, north), np.arctan2(up, np.hypot(east, north))
 
 
-def hadec_to_enu(ha_rad, dec_rad, lat_rad):
-    """Convert (ha, dec) spherical coordinates to unit vector in ENU coordinates.
-
-    This converts equatorial spherical coordinates (hour angle and declination)
-    to a unit vector in the corresponding local east-north-up (ENU) coordinate
-    system. The geodetic latitude of the observer is also required.
-
-    Parameters
-    ----------
-    ha_rad, dec_rad, lat_rad : float or array
-        Hour angle, declination and geodetic latitude, in radians
-
-    Returns
-    -------
-    e, n, u : float or array
-        East, North, Up coordinates of unit vector
-    """
-    sin_ha, cos_ha = np.sin(ha_rad), np.cos(ha_rad)
-    sin_dec, cos_dec = np.sin(dec_rad), np.cos(dec_rad)
-    sin_lat, cos_lat = np.sin(lat_rad), np.cos(lat_rad)
-    return (
-        -cos_dec * sin_ha,
-        cos_lat * sin_dec - sin_lat * cos_dec * cos_ha,
-        sin_lat * sin_dec + cos_lat * cos_dec * cos_ha,
-    )
-
-
 def enu_to_xyz(east, north, up, lat_rad):
     """Convert ENU to XYZ coordinates.
 

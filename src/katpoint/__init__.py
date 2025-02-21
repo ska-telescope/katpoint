@@ -37,7 +37,6 @@ from .conversion import (
     enu_to_azel,
     enu_to_ecef,
     enu_to_xyz,
-    hadec_to_enu,
     lla_to_ecef,
 )
 from .delay_correction import DelayCorrection
